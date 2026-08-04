@@ -1,14 +1,21 @@
 import requests
 
 
-def fetch_miniflux_entries(url: str, username: str, password: str, days: int = 7) -> list[dict]:
-    """Fetch unread entries from a Miniflux RSS server.
+def fetch_miniflux_entries(
+    url: str,
+    username: str,
+    password: str,
+    days: int = 7,
+    target_date: str | None = None,
+) -> list[dict]:
+    """Fetch unread entries from a Miniflux RSS server, optionally filtered by published date.
 
     Args:
         url: Base URL of Miniflux server.
         username: Miniflux username.
         password: Miniflux password.
         days: Number of past days to consider (default: 7).
+        target_date: Specific target date (YYYY-MM-DD) to filter entries by.
 
     Returns:
         List of entry dictionaries returned by Miniflux API.
@@ -17,5 +24,16 @@ def fetch_miniflux_entries(url: str, username: str, password: str, days: int = 7
     resp = requests.get(api_url, auth=(username, password), timeout=10)
     resp.raise_for_status()
     data = resp.json()
-    return data.get("entries", [])
+    entries = data.get("entries", [])
+
+    if target_date:
+        filtered = []
+        for entry in entries:
+            pub_at = entry.get("published_at") or ""
+            if pub_at.startswith(target_date):
+                filtered.append(entry)
+        return filtered
+
+    return entries
+
 

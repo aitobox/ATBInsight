@@ -1,3 +1,4 @@
+import argparse
 import os
 import datetime
 from src.config import load_config
@@ -11,6 +12,7 @@ def run_pipeline(
     config_path: str = "etc/ai_insight_pipeline.yaml",
     db_path: str = "var/db/pipeline_cache.db",
     output_dir: str = "docs/insight",
+    target_date: str | None = None,
 ):
     cfg = {}
     if os.path.exists(config_path):
@@ -30,9 +32,10 @@ def run_pipeline(
         username=username,
         password=password,
         days=days,
+        target_date=target_date,
     )
 
-    date_str = datetime.date.today().strftime("%Y-%m-%d")
+    date_str = target_date if target_date else datetime.date.today().strftime("%Y-%m-%d")
     target_dir = os.path.join(output_dir, date_str)
 
     try:
@@ -77,4 +80,9 @@ def run_pipeline(
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    parser = argparse.ArgumentParser(description="AI Insight Pipeline Runner")
+    parser.add_argument("--date", type=str, help="Specific target date to fetch and process (format: YYYY-MM-DD)")
+    args = parser.parse_args()
+
+    run_pipeline(target_date=args.date)
+
