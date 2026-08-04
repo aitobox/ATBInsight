@@ -26,15 +26,13 @@ def localize_images(markdown_content: str, output_dir: str, conn: sqlite3.Connec
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
                 sha256 = hashlib.sha256(resp.content).hexdigest()[:12]
-                ct = resp.headers.get("Content-Type", "").lower()
-                if "png" in ct:
-                    ext = "png"
-                elif "webp" in ct:
+                content_type = resp.headers.get("Content-Type", "")
+                if "webp" in content_type or url.endswith(".webp"):
                     ext = "webp"
-                elif "gif" in ct:
+                elif "png" in content_type or url.endswith(".png"):
+                    ext = "png"
+                elif "gif" in content_type or url.endswith(".gif"):
                     ext = "gif"
-                elif "svg" in ct:
-                    ext = "svg"
                 else:
                     ext = "jpg"
                     

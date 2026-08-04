@@ -24,7 +24,7 @@ def test_fetch_miniflux_entries_success(mock_get):
     assert len(entries) == 1
     assert entries[0]["title"] == "AI Insight Test"
     mock_get.assert_called_once_with(
-        "http://mock-miniflux/v1/entries?status=read,unread",
+        "http://mock-miniflux/v1/entries?status=unread",
         auth=("user", "pass"),
         timeout=10,
     )
@@ -40,7 +40,7 @@ def test_fetch_miniflux_entries_trailing_slash_url(mock_get):
     entries = fetch_miniflux_entries("http://mock-miniflux/", "user", "pass", days=7)
     assert entries == []
     mock_get.assert_called_once_with(
-        "http://mock-miniflux/v1/entries?status=read,unread",
+        "http://mock-miniflux/v1/entries?status=unread",
         auth=("user", "pass"),
         timeout=10,
     )
