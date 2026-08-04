@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import datetime
+import yaml
 from src.config import load_config
 from src.db import init_db, is_entry_processed, mark_entry
 from src.robots.miniflux_robot import fetch_miniflux_entries
@@ -18,7 +19,7 @@ logger = logging.getLogger("ai_insight")
 def run_pipeline(
     config_path: str = "etc/ai_insight_pipeline.yaml",
     db_path: str = "var/db/pipeline_cache.db",
-    output_dir: str = "docs/insight",
+    output_dir: str = "docs/blog/posts",
     target_date: str | None = None,
     override_days: int | None = None,
 ):
@@ -45,7 +46,7 @@ def run_pipeline(
     )
 
     date_str = target_date if target_date else datetime.date.today().strftime("%Y-%m-%d")
-    target_dir = os.path.join(output_dir, date_str)
+    target_dir = output_dir
 
     if not entries:
         logger.info("No entries to process.")
@@ -89,11 +90,23 @@ def run_pipeline(
             localized_md = localize_images(refined_md, target_dir, conn)
 
             os.makedirs(target_dir, exist_ok=True)
-            slug = f"article_{entry_id}.md"
+            
+            front_matter = {
+                "title": title,
+                "date": date_str,
+                "authors": ["aitoboxrobot"],
+                "categories": ["深度研报"],
+                "tags": ["AI", "科技解构"],
+            }
+            fm_str = yaml.dump(front_matter, allow_unicode=True, sort_keys=False)
+            post_content = f"---\n{fm_str}---\n\n{localized_md}"
+
+            safe_title = title.replace("/", "_").replace("\\", "_")
+            slug = f"{date_str}-{safe_title}.md"
             filepath = os.path.join(target_dir, slug)
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(localized_md)
+                f.write(post_content)
 
             mark_entry(
                 conn,
