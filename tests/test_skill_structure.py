@@ -9,3 +9,7 @@ def test_tech_article_translator_skill_exists():
     assert "name: tech-article-translator" in content
     assert "description: Use when" in content
     assert "bak/origin/" in content
+    assert "HARD-GATE" in content
+    assert "Rename" in content
+
+
