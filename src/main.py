@@ -13,6 +13,7 @@ def run_pipeline(
     db_path: str = "var/db/pipeline_cache.db",
     output_dir: str = "docs/insight",
     target_date: str | None = None,
+    override_days: int | None = None,
 ):
     cfg = {}
     if os.path.exists(config_path):
@@ -25,7 +26,7 @@ def run_pipeline(
     url = os.getenv("MINIFLUX_URL") or miniflux_cfg.get("url") or ""
     username = os.getenv("MINIFLUX_USERNAME") or miniflux_cfg.get("username") or ""
     password = os.getenv("MINIFLUX_PASSWORD") or miniflux_cfg.get("password") or ""
-    days = miniflux_cfg.get("days", 7)
+    days = override_days if override_days is not None else miniflux_cfg.get("days", 7)
 
     entries = fetch_miniflux_entries(
         url=url,
@@ -82,7 +83,9 @@ def run_pipeline(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AI Insight Pipeline Runner")
     parser.add_argument("--date", type=str, help="Specific target date to fetch and process (format: YYYY-MM-DD)")
+    parser.add_argument("--days", type=int, help="Number of past days to fetch entries for (e.g. 7)")
     args = parser.parse_args()
 
-    run_pipeline(target_date=args.date)
+    run_pipeline(target_date=args.date, override_days=args.days)
+
 

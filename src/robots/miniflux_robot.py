@@ -34,6 +34,23 @@ def fetch_miniflux_entries(
                 filtered.append(entry)
         return filtered
 
+    if days > 0:
+        import datetime
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+        filtered = []
+        for entry in entries:
+            pub_at = entry.get("published_at") or ""
+            if pub_at:
+                try:
+                    dt = datetime.datetime.fromisoformat(pub_at.replace("Z", "+00:00"))
+                    if dt >= cutoff:
+                        filtered.append(entry)
+                except ValueError:
+                    filtered.append(entry)
+            else:
+                filtered.append(entry)
+        return filtered
+
     return entries
 
 
