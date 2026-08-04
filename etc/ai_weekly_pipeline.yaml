@@ -1,0 +1,62 @@
+name: "AI Weekly News Pipeline"
+
+steps:
+  - name: "fetch_rss"
+    robot: "MinifluxFetchRobot"
+    config:
+      url: "${MINIFLUX_URL:http://192.168.100.112:1202}"
+      username: "${MINIFLUX_USERNAME:aitobox}"
+      password: "${MINIFLUX_PASSWORD}"
+      days: 7
+    input_mappings: {}
+    output_mappings:
+      entries: "raw_entries"
+
+  - name: "fetch_issues"
+    robot: "GithubIssueRobot"
+    config:
+      enabled: false  # 通过 --with-issues 动态覆盖为 true
+      repo: "${GITHUB_ISSUE_REPO:aitobox/ATBInsight}"
+      days: 7
+      state: "open"
+    input_mappings: {}
+    output_mappings:
+      issue_entries: "issue_entries"
+
+  - name: "filter_and_score"
+    robot: "RelevanceScoreRobot"
+    config:
+      min_score: 30.0
+    input_mappings:
+      entries: "raw_entries"
+    output_mappings:
+      scored_entries: "qualified_entries"
+
+  - name: "generate_report"
+    robot: "ReportFormatterRobot"
+    config:
+      llm_type: "newapi"
+      days: 7
+      issue_number: null
+      output_dir: "./doc/insight/"
+      max_entries: 30
+    input_mappings:
+      entries: "qualified_entries"
+      issue_entries: "issue_entries"
+    output_mappings:
+      markdown_path: "report_path"
+      markdown_content: "report_content"
+      start_date: "start_date"
+      end_date: "end_date"
+
+  - name: "git_push"
+    robot: "GitPublishRobot"
+    config:
+      enabled: false  # 通过命令行参数 --git-push 动态覆盖为 true
+      repo_url: "${GIT_REPO_URL}"
+      target_dir: "${GIT_TARGET_DIR}"
+      branch: "${GIT_BRANCH:main}"
+    input_mappings:
+      filepath: "report_path"
+    output_mappings:
+      status: "publish_status"
