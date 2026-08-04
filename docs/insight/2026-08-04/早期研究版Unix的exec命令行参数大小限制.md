@@ -1,0 +1,73 @@
+# 早期研究版Unix的exec命令行参数大小限制
+
+### 背景与摘要
+本文带读者回顾了早期研究版 Unix 操作系统中存在的一个有趣的限制：直到 V6 版本，`exec(2)` 系统调用在传递命令行参数 (`argv`) 时被严格限制在 510 字节以内。这一限制源于早期内核粗暴但巧妙地借用 512 字节标准磁盘缓冲区作为临时空间来传递数据的实现方式。到了 V7 版本，为了支持环境变量，内核设计更加复杂，通过借用交换空间 (swap space) 的方式突破了这一限制，也为更现代的内存管理打下了基础。
+
+## Summary
+直到研究版 Unix 第 6 版 (V6)，`exec(2)` 系统调用对命令行参数 (`argv`) 强制实行严格的 510 字节限制。这种限制源于内核一种巧妙但却很暴力的做法——使用标准的 512 字节磁盘缓冲区作为临时便笺空间，在用户和内核内存之间传输参数数据。到了第 7 版 (V7)——该版本引入了环境变量——这种实现演变为通过磁盘缓冲区利用交换空间，最终为更现代的内存管理铺平了道路。
+> Up through Research Unix Version 6 (V6), the `exec(2)` system call enforced a strict 510-byte limit on command-line arguments (`argv`). This limitation arose from the kernel's clever yet brute-force method of using standard 512-byte disk buffers as temporary scratch space to transfer argument data between user and kernel memory. By Version 7 (V7)—which introduced environment variables—the implementation evolved to utilize swap space via disk buffers, ultimately paving the way for more modern memory management.
+
+---
+
+## The Origins of the 510-Byte Limit
+在执行一个新程序 (`exec()`) 时，进程会丢弃其当前的内存地址空间。因为要传递给新程序的参数 (`argv`) 位于当前用户内存中，内核必须临时将这些数据复制到内核空间。
+> When executing a new program (`exec()`), a process discards its current memory address space. Because the arguments (`argv`) to be passed to the new program reside in the current user memory, the kernel must temporarily copy this data into kernel space. 
+
+在现代操作系统中，这通过动态内核内存分配（类似于 `malloc()`）来处理。然而，早期的研究版 Unix 内核非常简单，缺乏这种机制。相反，直到 V6，内核重用了现有的设施来作为其临时便笺空间：**磁盘缓冲区**。
+> In modern operating systems, this is handled via dynamic kernel memory allocation (similar to `malloc()`). However, early Research Unix kernels were remarkably simple and lacked such mechanisms. Instead, up through V6, the kernel reused an existing facility for its temporary scratch space: **disk buffers**. 
+
+因为这些磁盘缓冲区的长度是 **512 字节**，所以命令行参数的大小限制自然就被限制在 **510 字节**以内（包括 `argv[0]`，程序的表面名称）。
+> Because these disk buffers were **512 bytes long**, the command-line argument size limit was naturally capped at **510 bytes** (including `argv[0]`, the program's nominal name). 
+
+> *注意：为什么限制精确到 510 字节而不是 512 字节，目前仍有点不清楚，可能最后两个字节是保留给辅助簿记的。*
+> > *Note: It remains slightly unclear why the limit is precisely 510 bytes rather than 512, as the final two bytes may have been reserved for auxiliary bookkeeping.*
+
+您可以通过 [`sys/ken/sys1.c`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/ken/sys1.c) 查看在 V6 内核 `exec()` 代码中返回 `E2BIG` 错误的这一检查逻辑。
+> You can inspect this check returning the `E2BIG` error in the V6 kernel `exec()` code via [`sys/ken/sys1.c`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/ken/sys1.c).
+
+---
+
+## Brute-Force Kernel Design
+依赖磁盘缓冲区听起来就像只是把动态分配的问题转移到了磁盘缓冲系统上，但早期的研究版 Unix 很大程度上依赖于这种暴力的简单性。
+> Relying on disk buffers might sound like it simply shifts the dynamic allocation problem to the disk buffering system, but early Research Unix relied heavily on brute-force simplicity. 
+
+V6 内核维护了一个固定的、有限的内存数组来供磁盘缓冲区使用（即 [`sys/dmr/bio.c`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/dmr/bio.c) 中的 `buffers`），其最大容量由 [`sys/param.h`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/param.h) 中的 `NBUF` 定义。
+> The V6 kernel maintained a fixed, limited array of memory reserved for disk buffers (`buffers` in [`sys/dmr/bio.c`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/dmr/bio.c)), with its maximum size defined by `NBUF` in [`sys/param.h`](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/sys/param.h). 
+
+因为早期的研究版 Unix 运行在资源极其受限的系统上，这些限制都非常低。作为背景，同样的 `param.h` 配置文件将整个系统的进程上限设定为区区 **50 个进程**。这种对 `exec()` 和磁盘缓冲区的处理方式至少可以追溯到研究版 Unix V4。
+> Because early Research Unix operated on severely resource-constrained systems, these limits were very low. For context, that same `param.h` configuration file capped the entire system at just **50 processes total**. This approach to `exec()` and disk buffers dates back to at least Research Unix V4.
+
+---
+
+## Evolution in Version 7: The Swap Space Trick
+到了研究版 Unix V7 问世时，[内核实现在复杂性上有了显著增长](https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/sys/sys/sys1.c)，主要原因是[它现在需要支持环境变量](https://utcc.utoronto.ca/~cks/space/blog/unix/V7GaveUsEnvironmentVariables)。
+> By the time Research Unix V7 arrived, [the kernel implementation grew significantly more complex](https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/sys/sys/sys1.c), primarily because [it now needed to support environment variables](https://utcc.utoronto.ca/~cks/space/blog/unix/V7GaveUsEnvironmentVariables). 
+
+为了在不消耗宝贵 RAM 的情况下容纳额外的空间，V7 重新利用了交换空间。它使用标准磁盘缓冲系统来读写交换空间（这往往意味着写入交换空间的缓冲在片刻后读回时，仍然缓存于 RAM 中）。
+> To accommodate extra space without consuming scarce RAM, V7 repurposed swap space. It read and wrote to swap using the standard disk buffer system (which often meant the buffer written to swap was still cached in RAM when read back moments later). 
+
+V7 的 `exec()` 和 `exece()` 例程功能如下：
+> The V7 `exec()` and `exece()` routine functioned as follows:
+1. 在交换空间中分配一个磁盘缓冲区。
+> 1. Allocate a disk buffer in swap space.
+2. 将数据从用户空间复制到磁盘缓冲区直至满载。
+> 2. Copy data from user space into the disk buffer until full.
+3. 刷新并释放该磁盘缓冲区。
+> 3. Flush and release the disk buffer.
+4. 为下一块交换空间获取一个新的磁盘缓冲区，重复该过程。
+> 4. Acquire a new disk buffer for the next block of swap, repeating the process.
+
+### The Whole-Program Swapping Complication
+V7 没有以页面为单位的交换机制；它是将整个程序换入和换出的。在执行 `exece()` 期间，V7 为一个 [`NCARGS`](https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/sys/h/param.h) 大小的“程序”分配交换空间，根据需要逐块消耗磁盘缓冲区。如果系统在 `exece()` 期间未能分配所需的交换空间，**内核会崩溃 (panic)**。
+> V7 did not feature page-based swapping; it swapped entire programs in and out. During an `exece()`, V7 allocated swap space for an [`NCARGS`](https://www.tuhs.org/cgi-bin/utree.pl?file=V7/usr/sys/h/param.h)-sized "program," consuming disk buffers one block at a time as needed. If the system failed to allocate the required swap space during `exece()`, **the kernel panicked**.
+
+---
+
+## Trivia: C Syntax in V6
+检查 V6 中 `exec()` 的源代码揭示了一行不寻常的代码：
+> Examining the V6 source code for `exec()` reveals an unusual line:
+```c
+suword(ap=+2, c);
+```
+对于现代程序员来说，这在语法上看起来是不正确的，但在 [V6 的 C 语言中，`=+` 是就地加法的标准语法](https://utcc.utoronto.ca/~cks/space/blog/programming/InterpretedLanguageAdvantage)——它也是我们今天使用的现代 `+=` 运算符的历史前身。
+> This looks syntactically incorrect to modern programmers, but [in V6 C, `=+` was the standard syntax for in-place addition](https://utcc.utoronto.ca/~cks/space/blog/programming/InterpretedLanguageAdvantage)—the historical precursor to the modern `+=` operator we use today.

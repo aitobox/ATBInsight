@@ -1,0 +1,146 @@
+# Inkling：我们的开放权重模型
+
+**背景与摘要：**
+由 Mira Murati 创立的 Thinking Machines Lab 发布了其首个开放权重多模态模型 **Inkling**。Inkling 采用 Apache-2.0 协议授权，是一个混合专家 (MoE) Transformer 模型，总参数量达到 9750 亿（激活参数为 410 亿），并在涵盖文本、图像、音频和视频的 45 万亿个 Token 上进行了训练。虽然它并没有被定位为前沿模型（frontier model），但作为一个强大的、可定制的基础模型，它非常适合通过 Thinking Machines 的 Tinker 平台进行微调。
+
+> ## Summary
+> Thinking Machines Lab (founded by Mira Murati) has released **Inkling**, its first open-weights multimodal model. Licensed under Apache-2.0, Inkling is a Mixture-of-Experts (MoE) transformer featuring 975 billion total parameters (41 billion active) and trained on 45 trillion tokens of text, images, audio, and video. While not positioned as a frontier model, it serves as a strong, customizable base model optimized for fine-tuning via Thinking Machines' Tinker platform.
+
+---
+
+## 模型概览与架构
+
+Inkling 是一款采用 Apache-2.0 协议授权的多模态模型，具有以下特点：
+* **架构:** 混合专家 (MoE) Transformer
+* **参数量:** 9750 亿总参数 / 410 亿激活参数
+* **训练数据:** 跨越文本、图像、音频和视频的 45 万亿个 Token
+
+> ## Model Overview & Architecture
+> 
+> Inkling is an Apache-2.0 licensed multimodal model featuring:
+> * **Architecture:** Mixture-of-Experts (MoE) transformer
+> * **Parameters:** 975B total / 41B active
+> * **Training Data:** 45 trillion tokens spanning text, images, audio, and video
+
+Thinking Machines 还宣布了 **Inkling-Small**，这是一个拥有 2760 亿参数（120 亿激活参数）的模型，目前正在进行测试，测试完成后将发布其权重。
+
+> Thinking Machines has also announced **Inkling-Small**, a 276B parameter model (12B active), which is currently undergoing testing and will have its weights released upon completion.
+
+---
+
+## 文档与训练数据
+
+与美国主要 AI 实验室发布的标准文档相比，官方的[模型卡 (model card)](https://thinkingmachines.ai/model-card/inkling/) 显得格外简明。同样地，其 [训练数据文档](https://thinkingmachines.ai/training-data-documentation/) 提供的具体细节极少，仅将其数据来源总结如下：
+
+> ## Documentation & Training Data
+> 
+> The official [model card](https://thinkingmachines.ai/model-card/inkling/) is notably concise compared to standard releases from major US AI labs. Similarly, the [Training Data Documentation](https://thinkingmachines.ai/training-data-documentation/) offers minimal specifics, summarizing its data sources as follows:
+
+> Thinking Machines Lab 用于开发其 AI 服务的数据集既包括公共领域的内容，也包括可能受知识产权保护的内容。
+> 
+> Thinking Machines Lab 的服务是使用从开放互联网和可公开访问的数据存储库中获取的公开内容开发的。某些数据集也是从第三方获取的。
+
+> > The datasets Thinking Machines Lab uses to develop its AI services includes content that is in the public domain as well as content that may be subject to intellectual property protection.
+> > 
+> > Thinking Machines Lab’s services were developed using publicly available content obtained from the open internet and publicly accessible data repositories. Certain datasets were also obtained from third parties.
+
+---
+
+## 定位与微调
+
+正如该实验室自己所承认的，Inkling 并不打算成为一个顶尖的前沿模型。相反，它的价值在于其多功能性：
+
+> ## Positioning & Fine-Tuning
+> 
+> By the lab's own admission, Inkling is not intended to be a top-tier frontier model. Instead, its value lies in its versatility:
+
+> Inkling 并不是目前可用的、最强大的综合模型，无论是开源还是闭源。相反，多种优良特性的组合使其成为定制化的优秀开放权重基座：多模态能力、高效的推理思考，以及可以在 Tinker 上获取并进行微调。
+
+> > Inkling is not the strongest overall model available today, open or closed. Instead, a combination of qualities makes it a good open-weights base for customization: multimodal capabilities, efficient thinking, and availability on Tinker for fine-tuning.
+
+此次发布巩固了美国的开放权重生态系统，为抗衡来自中国的模型以及诸如 NVIDIA Nemotron 和 Gemma 4 等成熟的美国产品提供了强有力的替代方案。
+
+> This release strengthens the US open-weights ecosystem, providing a competitive alternative to models coming out of China, as well as established US offerings like NVIDIA Nemotron and Gemma 4.
+
+---
+
+## 上手实战：生成 SVG
+
+我们可以通过 Thinking Machines API 来测试 Inkling 的能力。以下是一个使用 `curl` 提示模型生成一张“鹈鹕骑自行车”的 SVG 图像的例子：
+
+> ## Hands-On Example: Generating an SVG
+> 
+> Inkling's capabilities can be tested via the Thinking Machines API. Below is an example using `curl` to prompt the model to generate an SVG of a pelican riding a bicycle:
+
+```bash
+curl "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1/chat/completions" \
+  -H "Authorization: Bearer $TINKER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "thinkingmachines/Inkling",
+    "messages": [
+      {"role": "user", "content": "Generate an SVG of a pelican riding a bicycle"}
+    ],
+    "stream": false
+  }'
+```
+
+*（你可以在[这里](https://gist.github.com/simonw/8117ac4376371dd3fc2b5dbce27e0855)查看完整的 API 响应。）*
+
+> *(You can view the full API response [here](https://gist.github.com/simonw/8117ac4376371dd3fc2b5dbce27e0855).)*
+
+### 多模态自我分析
+
+为了测试其多模态能力，我们把渲染出的图像转换成 JPEG 格式并发送回 Inkling，要求它详细描述自己生成的作品：
+
+> ### Multimodal Self-Analysis
+> 
+> To test its multimodal capabilities, the rendered image was converted to a JPEG and sent back to Inkling with a request to describe its own output:
+
+```json
+{
+  "model": "thinkingmachines/Inkling",
+  "messages": [{
+    "role": "user",
+    "content": [
+      {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$BASE_64_JPEG"}},
+      {"type": "text", "text": "Describe this image in detail"}
+    ]
+  }],
+  "stream": false
+}
+```
+
+在[它的完整回复](https://gist.github.com/simonw/dccebd0581f5c4056c5b0ca5bdc38cd9#reasoning_content)中——虽然稍微错把画中主角当成了鹳或海鸥——Inkling 提供了如下描述：
+
+> In [its full response](https://gist.github.com/simonw/dccebd0581f5c4056c5b0ca5bdc38cd9#reasoning_content)—mistaking its subject slightly for a stork or seagull—Inkling provided the following description:
+
+> 这是一幅欢快、扁平化矢量风格的卡通插画，画中有一只白色的鸟正骑着自行车穿过一片绿色的风景地。
+> 
+> **鸟:** 中心人物是一只经过风格化处理的白鸟——看起来像一只鹳或海鸥——身体丰满圆润。它有一个又长又显眼的橙色喙，微微张开，露出一条代表嘴巴的黑线。它的眼睛又小又黑，带有一点白色高光。这只鸟有着边缘呈白色的黑色翅膀和尾羽，细长的橙色腿末端是黑色的脚，正踩在自行车橙色的踏板上。
+> 
+> **自行车:** 这辆自行车有着简单的黑色车架，两个大轮子带有黑色轮胎、灰色内圈以及呈十字形排列的黑色辐条。车把是黑色的，黑色曲柄上连接着鲜艳的橙色踏板。在鸟儿身体的后方可以看到一个白色的车座。
+> 
+> **背景设置:** 场景设定在晴朗的浅蓝色天空下。有两朵蓬松的白云——一朵在左侧，另一朵较小的在右侧靠近鸟儿头部的地方。右上角照耀着一轮明亮的、纯黄色的太阳。在底部，是起伏的绿色丘陵，带有一条平滑、弯曲的顶部边缘，自行车就停靠在上面。
+> 
+> 整体风格俏皮、简单而多彩，线条干净，营造出一种明亮、阳光明媚的氛围。
+
+> > This is a cheerful, flat-vector cartoon illustration featuring a white bird riding a bicycle across a green landscape.
+> > 
+> > **The Bird:** The central figure is a stylized white bird—resembling a stork or seagull—with a plump, rounded body. It has a long, prominent orange beak that is slightly open, revealing a black line for the mouth. Its eye is small and black with a tiny white highlight. The bird has black wing and tail feathers with white edges, and thin orange legs ending in black feet that rest on the bicycle's orange pedals.
+> > 
+> > **The Bicycle:** The bike has a simple black frame with two large wheels featuring black tires, gray inner rims, and black spokes arranged in a cross pattern. The handlebars are black, and there are bright orange pedals attached to a black crank. A white seat is visible behind the bird's body.
+> > 
+> > **The Setting:** The scene is set against a clear, light blue sky. There are two fluffy white clouds—one on the left side and a smaller one near the bird's head on the right. A bright, solid yellow sun shines in the upper right corner. At the bottom, there are rolling green hills with a smooth, curved top edge where the bicycle rests.
+> > 
+> > The overall style is playful, simple, and colorful, with clean lines and a bright, sunny atmosphere.
+
+---
+
+*通过 [Hacker News](https://news.ycombinator.com/item?id=48924912)*
+
+**标签:** [ai](https://simonwillison.net/tags/ai), [generative-ai](https://simonwillison.net/tags/generative-ai), [llms](https://simonwillison.net/tags/llms), [training-data](https://simonwillison.net/tags/training-data), [pelican-riding-a-bicycle](https://simonwillison.net/tags/pelican-riding-a-bicycle), [llm-release](https://simonwillison.net/tags/llm-release)
+
+> *Via [Hacker News](https://news.ycombinator.com/item?id=48924912)*
+> 
+> **Tags:** [ai](https://simonwillison.net/tags/ai), [generative-ai](https://simonwillison.net/tags/generative-ai), [llms](https://simonwillison.net/tags/llms), [training-data](https://simonwillison.net/tags/training-data), [pelican-riding-a-bicycle](https://simonwillison.net/tags/pelican-riding-a-bicycle), [llm-release](https://simonwillison.net/tags/llm-release)

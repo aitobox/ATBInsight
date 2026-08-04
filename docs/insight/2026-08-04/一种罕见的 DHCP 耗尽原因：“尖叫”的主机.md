@@ -1,0 +1,68 @@
+# 一种罕见的 DHCP 耗尽原因：“尖叫”的主机
+
+**背景与摘要：**
+本文探讨了一种网络故障场景，即网络中的一个故障设备可能会意外引发彻底的 DHCP 服务中断。该故障设备错误地对所有 IP 地址的 ICMP Echo 请求都进行响应（即所谓的“尖叫”主机）。由于 ISC DHCP 服务器在分配动态 IP 之前会执行“ping 检测”以防冲突，这种全盘响应会使得服务器误以为整个 IP 池中的地址都已被占用，从而拒绝分配任何新的动态地址。
+
+> # An Unusual Cause for DHCP Exhaustion: The "Screaming" Host
+
+### 摘要
+
+网络上运行异常的设备可能会通过响应每个 IP 地址的 ICMP Echo 请求来无意中触发全面的 DHCP 服务中断。因为 ISC DHCP 服务器在分配动态租约之前会执行“ping 检测”，一台响应所有 ping 请求的主机会导致服务器认为整个 IP 池已被占用，从而有效地阻止了所有新的动态地址分配。
+
+> ### Summary
+> A malfunctioning device on a network can inadvertently trigger a total DHCP service outage by responding to ICMP Echo requests for every IP address. Because the ISC DHCP server performs a "ping check" before assigning dynamic leases, a host that answers all pings causes the server to perceive the entire IP pool as occupied, effectively blocking all new dynamic address assignments.
+
+---
+
+### 故障机制
+
+ISC DHCP 服务器（`dhcpd`）包含一个旨在防止 IP 地址冲突的内置安全机制。在向客户端提供动态 IP 之前，服务器会向该地址发送一个 ICMP Echo 请求（ping）。如果服务器收到了回复，它会假设该 IP 已经被使用，并将其标记为“已废弃”（abandoned）。
+
+> ### The Mechanism of Failure
+> The ISC DHCP server (`dhcpd`) includes a built-in safety mechanism designed to prevent IP address conflicts. Before offering a dynamic IP to a client, the server sends an ICMP Echo request (ping) to that address. If the server receives a reply, it assumes the IP is already in use and marks it as "abandoned."
+
+当网络上的某台设备配置错误，导致它响应针对*所有* IP 地址的 ping 请求时——这种行为通常被称为“尖叫（screaming）”主机——DHCP 服务器就会断定其地址池中的每一个可用地址都已被占用。结果，服务器会停止发放新的租约，从而导致整个网络范围内的 DHCP 瘫痪。
+
+> When a device on the network is misconfigured to respond to pings for *every* IP address—a behavior often referred to as a "screaming" host—the DHCP server concludes that every available address in its pool is already taken. Consequently, the server stops issuing new leases, leading to a complete network-wide DHCP failure.
+
+### 识别症状
+
+如果您的 ISC DHCP 服务器正受到此问题的困扰，您通常会在日志中看到以下错误模式：
+
+> ### Identifying the Symptoms
+> If your ISC DHCP server is suffering from this issue, you will typically see the following error patterns in your logs:
+
+```text
+dhcpd[1656384]: Reclaiming abandoned lease 172.17.101.132.
+[...]
+dhcpd[1656384]: ICMP Echo reply while lease 172.17.101.132 valid.
+dhcpd[1656384]: Abandoning IP address 172.17.101.132: pinged before offer
+```
+
+### 故障排查与解决
+
+追踪一台“尖叫”的主机可能会很困难，因为可能无法立刻明显地看出是哪台设备在响应这些 ping 请求。
+
+> ### Troubleshooting and Resolution
+> Tracking down a "screaming" host can be difficult, as it may not be immediately obvious which device is responding to the pings. 
+
+*   **检查 ARP 表:** 在上述案例中，恶意设备使用了它真实的 MAC 地址来响应 ping。这导致 DHCP 服务器的 ARP 表中充斥着与各种 IP 地址相关联的同一个 MAC 地址，从而提供了一条清晰的追踪线索。
+*   **交换机诊断:** 如果 MAC 地址不是立即可见的，您可能需要检查交换机的 ARP 表或端口级流量统计信息，以确定异常 ICMP 响应的来源。
+*   **网络隔离:** 作为最后的手段，管理员可能需要系统地断开各个网络段的连接，以此来隔离引发问题的设备，尽管这种方法具有很强的破坏性。
+
+> *   **Check ARP Tables:** In the case described, the rogue device used its actual MAC address to answer the pings. This caused the DHCP server's ARP table to be flooded with the same MAC address associated with various IP addresses, providing a clear trail.
+> *   **Switch Diagnostics:** If the MAC address isn't immediately obvious, you may need to inspect switch ARP tables or port-level traffic statistics to identify the source of the anomalous ICMP responses.
+> *   **Network Isolation:** As a last resort, administrators may need to systematically disconnect segments of the network to isolate the offending device, though this is highly disruptive.
+
+### 为什么端口隔离无济于事
+
+即使在利用了**端口隔离**（或私有 VLAN）的网络中，这个问题依然可能存在。因为 DHCP 服务器必须与整个网络保持连通性才能正常运作，它的 ARP 请求和 ICMP 探测被允许穿过交换机架构。恶意设备只要存在于网络上，就能拦截这些探测并作出响应，完全无视旨在阻止客户端之间通信的隔离设置。
+
+> ### Why Port Isolation Didn't Help
+> Even in networks utilizing **Port Isolation** (or Private VLANs), this issue can persist. Because the DHCP server must maintain connectivity with the entire network to function, its ARP requests and ICMP probes are permitted to traverse the switch fabric. The rogue device, by virtue of being on the network, can intercept these probes and respond, regardless of the isolation settings intended to prevent client-to-client communication.
+
+***
+
+*来源：[cks 发布在 Fediverse 的原始帖子](https://mastodon.social/@cks/116891615025664130)*
+
+> *Source: [Original post by cks on the Fediverse](https://mastodon.social/@cks/116891615025664130)*

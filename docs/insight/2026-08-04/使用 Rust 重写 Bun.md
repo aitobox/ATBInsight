@@ -1,0 +1,104 @@
+# 使用 Rust 重写 Bun (Rewriting Bun in Rust)
+
+### 文章背景与核心概要
+本文记录了 Jarred Sumner 利用先进的 AI 智能体工程（Agentic Engineering），将 JavaScript 运行时 Bun 从 Zig 语言重写为 Rust 的传奇经历。传统软件开发中“切忌从头重写”的铁律被 AI 编程智能体、强大的 TypeScript 一致性测试套件以及对解决复杂内存管理 Bug 的需求所彻底打破。重写后的 Bun 展现出了极高的稳定性，并已在生产环境中成功部署。
+
+---
+
+## 简介 (Introduction)
+
+自 5 月 9 日起，Jarred Sumner 就承诺要发表一篇关于他使用 Rust 重写 [Bun](https://bun.com/blog/bun-in-rust) 的博客文章——这段等待的时间甚至比他实际完成重写所花的时间还要长得多。
+
+但这份等待绝对物超所值。这篇文章详细介绍了一个极其复杂的智能体工程（agentic engineering）案例，其中融合了动态工作流、试运行、对抗性审查以及各种其他巧妙的技术。
+
+尽管 Jarred 在文章的前半部分对 Zig 帮助 Bun 走到今天这一步赞不绝口，但他最终得出了一个重大的认识：
+
+> 我们的 Bug 修复列表让人感觉糟糕，我已经厌倦了每天晚上带着对 Bun 崩溃的担忧入睡。我并不因此责怪 Zig——其他 Zig 用户并没有遇到我们这样的 Bug，而且将垃圾回收（GC）与手动管理内存结合在一起，对于软件需求来说实在太不常见了，以至于没有任何语言会专门为此进行设计。如果不是因为 Zig，我们不可能走到今天，对此我将永远心存感激。**直到最近，对于像 Bun 这样的项目来说，编程语言的选择依然是一条单行道。**
+
+> Jarred Sumner has been promising a blog post about his Zig-to-Rust rewrite of [Bun](https://bun.com/blog/bun-in-rust) since May 9th—for significantly longer than it actually took him to finish the rewrite. 
+
+> The wait was well worth it. The post details an extremely sophisticated piece of agentic engineering featuring dynamic workflows, trial runs, adversarial review, and a variety of other clever techniques.
+
+> While Jarred spends the first half of the post praising Zig for getting Bun to its current state, he arrives at a significant realization:
+
+> Our bugfix list felt bad and I was tired of going to sleep worrying about crashes in Bun. I don't blame Zig for that - other users of Zig don't have the bugs we had, and mixing GC with manually-managed memory is an uncommon enough thing for software to need that no language really designs for it. We wouldn't have gotten this far if not for Zig, and I'll always be grateful. **Until very recently, programming language choice was a one-way decision for a project like Bun.**
+
+---
+
+## 为什么要重写？迈入 AI 智能体时代 (Why Rewrite? Entering the Age of AI Agents)
+
+传统的软件开发智慧——正如乔尔·斯波尔斯基（Joel Spolsky）在 2000 年 4 月发表的著名文章《[你绝对不应该做的那些事，第一部分](https://www.joelonsoftware.com/2000/04/06/things-you-should-never-do-part-i/)》（Things You Should Never Do, Part I）中所强调的那样——断言你永远不应该暂停一切去从头重写一个大型软件。
+
+然而，由当今前沿模型驱动的编程智能体彻底改变了这一等式。
+
+### 内存管理的挑战 (The Memory Management Challenge)
+
+选择 Rust 的核心动机归结为安全性和内存管理：
+
+> 那份列表中的很大一部分 Bug 都是在错误路径中发生的释放后使用（use-after-free）、重复释放（double-free）和“忘记释放”。在安全的 Rust 中，这些都是编译器错误，并且可以通过带有 `Drop` 的 RAII 风格实现自动清理。
+
+> Conventional software wisdom—famously highlighted by Joel Spolsky in [Things You Should Never Do, Part I](https://www.joelonsoftware.com/2000/04/06/things-you-should-never-do-part-i/) back in April 2000—dictates that you should never stop the world and rewrite a large piece of software from the ground up. 
+
+> However, coding agents powered by today's frontier models completely change that equation.
+
+> The primary motivation for choosing Rust came down to safety and memory management:
+
+> A large percentage of bugs from that list are use-after-free, double-free, and "forgot to free" in an error path. In safe Rust, these are compiler errors and RAII-like automatic cleanup with `Drop`.
+
+---
+
+## 一致性测试套件与 AI 的角色 (The Role of Conformance Suites and AI)
+
+这次重写能够成功的关键赋能因素是 Bun 用 TypeScript 编写的全面测试套件，它充当了一个强大的[一致性测试套件（conformance suite）](https://simonwillison.net/tags/conformance-suites/)。这使得智能体框架能够将大部分初始移植过程自动化，作为对目前作为 Mythos/Fable 提供服务的早期模型版本的一次实验。
+
+> 起初，我没指望它能成功。几天后，测试套件的高比例开始通过，我看到新的 Rust 代码与最初的 Zig 代码库契合得有多么好。我的观点从“这值得一试”变成了“我打算合并它”。[...]
+>
+> 在那 11 天的大部分时间里（以及之后），我都在监控工作流——手动阅读输出以检查问题和 Bug，并提示 Claude 修改循环来修复问题。
+
+### 审查百万行拉取请求 (Reviewing a Million-Line Pull Request)
+
+你如何对合并海量由大语言模型（LLM）编写的代码建立信心？Jarred 的方法依赖于：
+* 包含超过一百万个断言的语言无关测试套件。
+* 对抗性代码审查。
+* 当出现问题时，去修复生成代码的*流程*，而不是手动去修补代码本身。
+
+> A crucial enabling factor for the rewrite was Bun's comprehensive test suite written in TypeScript, which served as a robust [conformance suite](https://simonwillison.net/tags/conformance-suites/). This allowed an agent harness to automate much of the initial porting process as an experiment with an early version of the model now available as Mythos/Fable.
+
+> At first, I didn't expect it to work. A few days in, a high % of the test suite started passing and I saw how much the new Rust code matched up with the original Zig codebase. My opinion went from "this is worth trying" to "I'm going to merge this". [...]
+>
+> For most of those 11 days (and after), I monitored workflows - manually reading the outputs to check for issues and bugs, and prompting Claude to edit the loop to fix things.
+
+> How do you build confidence in merging massive quantities of LLM-authored code? Jarred's approach relied on:
+* A language-independent test suite containing over a million assertions.
+* Adversarial code review.
+* Fixing the *process* that generates the code when something goes wrong, rather than manually patching the code itself.
+
+---
+
+## 部署与成本 (Deployment and Costs)
+
+基于 Rust 的全新 Bun 实现已经在 Claude Code 中上线将近一个月了：
+
+> Claude Code v2.1.181（6 月 17 日发布）及更高版本使用了 Bun 的 Rust 移植版本。在 Linux 上启动速度快了 10%，除此之外，几乎没人注意到有什么不同。无聊（平稳）就是好事。
+
+当然，在 Anthropic 工作有一个独特的福利：不必自掏腰包支付 Token 费用——当预估的 API 成本达到 **165,000 美元**时，这一点尤其管用：
+
+> 合并之前，这消耗了 59 亿个未缓存的输入 Token、6.9 亿个输出 Token 以及 720 亿次缓存输入 Token 读取——按照 API 定价大约为 165,000 美元。
+
+归根结底，这场重写堪称一个迷人的案例研究，展示了如何通过协调、并行的 AI 智能体的力量来攻克极具野心的工程项目。
+
+> The new Rust-based implementation of Bun has been live in Claude Code for nearly a month:
+
+> Claude Code v2.1.181 (released June 17th) and later use the Rust port of Bun. Startup got 10% faster on Linux but otherwise, barely anyone noticed. Boring is good.
+
+> Of course, working at Anthropic comes with one distinct perk: not having to pay out-of-pocket for tokens—especially handy when the estimated API cost hits **$165,000**:
+
+> Pre-merge, this took 5.9 billion uncached input tokens, 690 million output tokens, and 72 billion cached input token reads — around $165,000 at API pricing.
+
+> Ultimately, the rewrite stands as a fascinating case study in taking on wildly ambitious engineering projects through the power of coordinated, parallel AI agents.
+
+---
+
+*Via [Hacker News](https://news.ycombinator.com/item?id=48837877)*
+
+**Tags:** [ai](https://simonwillison.net/tags/ai), [rust](https://simonwillison.net/tags/rust), [zig](https://simonwillison.net/tags/zig), [generative-ai](https://simonwillison.net/tags/generative-ai), [llms](https://simonwillison.net/tags/llms), [ai-assisted-programming](https://simonwillison.net/tags/ai-assisted-programming), [anthropic](https://simonwillison.net/tags/anthropic), [bun](https://simonwillison.net/tags/bun), [conformance-suites](https://simonwillison.net/tags/conformance-suites), [agentic-engineering](https://simonwillison.net/tags/agentic-engineering), [claude-mythos-fable](https://simonwillison.net/tags/claude-mythos-fable)
