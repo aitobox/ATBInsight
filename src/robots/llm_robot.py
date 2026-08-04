@@ -60,11 +60,35 @@ def _chat_completion_with_fallback(
 
 def score_article(entry: dict, min_score: float = 30.0) -> float:
     content_text = entry.get("content") or ""
+    author = entry.get("author") or ""
+    feed_title = ""
+    if isinstance(entry.get("feed"), dict):
+        feed_title = entry.get("feed", {}).get("title") or ""
+    
+    char_count = len(content_text)
+    
     prompt = (
-        f"Evaluate article quality and AI relevance (0-100). "
-        f"Output format SCORE: <number>.\n"
-        f"Title: {entry.get('title')}\n"
-        f"Content: {content_text[:1000]}"
+        "You are an expert AI technical curator. Evaluate the quality of the following AI article and assign a final score from 0 to 100.\n"
+        "Strictly adhere to the following scoring dimensions and weights:\n\n"
+        "1. Content Depth & Length (30%):\n"
+        "   - Longer, in-depth technical documents/analysis deserve HIGHER scores.\n"
+        "   - Extremely short posts (< 300 words) or superficial summaries should receive lower scores.\n\n"
+        "2. Conciseness & Structure (30%):\n"
+        "   - Clear, concise, well-structured articles without fluff, clickbait, or excessive marketing rhetoric deserve HIGHER scores.\n"
+        "   - Direct, informative technical prose is highly favored.\n\n"
+        "3. Author & Publication Reputation (20%):\n"
+        "   - Submissions from well-known AI researchers, engineers, official company tech blogs (e.g. OpenAI, Anthropic, Google DeepMind, Meta AI) or reputable tech portals deserve HIGHER scores.\n\n"
+        "4. AI Relevance & Technical Insight (20%):\n"
+        "   - High relevance to AI architecture, LLM engineering, research papers, or practical system design.\n\n"
+        f"Article Metadata:\n"
+        f"- Title: {entry.get('title')}\n"
+        f"- Author: {author}\n"
+        f"- Publication Source: {feed_title}\n"
+        f"- URL: {entry.get('url')}\n"
+        f"- Character Count: {char_count}\n\n"
+        f"Article Content Preview:\n"
+        f"{content_text[:3000]}\n\n"
+        "Output format required: output exactly 'SCORE: <number>' on a new line."
     )
     content = _chat_completion_with_fallback([{"role": "user", "content": prompt}], temperature=0.2, timeout=30)
     match = re.search(r"SCORE:\s*(\d+(\.\d+)?)", content)
