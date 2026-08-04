@@ -42,3 +42,31 @@ def test_refine_markdown(mock_post):
     refined = refine_markdown({"title": "Test Title", "content": "Raw content"})
     assert refined == "# Refined Title\n\nRefined content summary."
     mock_post.assert_called_once()
+
+
+@patch("time.sleep")
+@patch("requests.post")
+def test_backoff_retry_and_fallback(mock_post, mock_sleep):
+    fail_resp = MagicMock()
+    fail_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("500 Internal Server Error")
+    
+    success_resp = MagicMock()
+    success_resp.status_code = 200
+    success_resp.json.return_value = {
+        "choices": [{"message": {"content": "SCORE: 90"}}]
+    }
+    # Fail 5 times on model 1 (1 immediate + 4 backoffs: 8, 16, 32, 64), then succeed on model 2
+    mock_post.side_effect = [fail_resp, fail_resp, fail_resp, fail_resp, fail_resp, success_resp]
+
+    with patch.dict("os.environ", {"NEWAPI_MODEL": "model-1,model-2"}):
+        score = score_article({"title": "Test Title", "content": "Raw content"})
+        assert score == 90.0
+
+    assert mock_sleep.call_count == 4
+    mock_sleep.assert_has_calls([
+        ((8,),),
+        ((16,),),
+        ((32,),),
+        ((64,),),
+    ])
+

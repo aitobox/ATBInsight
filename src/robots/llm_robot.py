@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import requests
 from dotenv import load_dotenv
 
@@ -15,7 +16,12 @@ def _get_llm_config():
     return api_base, api_key, models
 
 
-def _chat_completion_with_fallback(messages: list[dict], temperature: float = 0.2, timeout: int = 30) -> str:
+def _chat_completion_with_fallback(
+    messages: list[dict],
+    temperature: float = 0.2,
+    timeout: int = 30,
+    backoff_delays: tuple[int, ...] = (8, 16, 32, 64),
+) -> str:
     api_base, api_key, models = _get_llm_config()
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -29,18 +35,23 @@ def _chat_completion_with_fallback(messages: list[dict], temperature: float = 0.
             "messages": messages,
             "temperature": temperature,
         }
-        try:
-            resp = requests.post(
-                f"{api_base.rstrip('/')}/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=timeout,
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
-        except Exception as e:
-            last_exception = e
-            continue
+        # First immediate attempt (delay=0), followed by configured backoff delays
+        all_delays = (0,) + backoff_delays
+        for delay in all_delays:
+            if delay > 0:
+                time.sleep(delay)
+            try:
+                resp = requests.post(
+                    f"{api_base.rstrip('/')}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+            except Exception as e:
+                last_exception = e
+                continue
 
     if last_exception:
         raise last_exception
