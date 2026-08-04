@@ -12,9 +12,15 @@ def test_score_article(mock_post):
     }
     mock_post.return_value = mock_resp
 
-    score = score_article({"title": "Test", "content": "Content"})
+    long_content = "A" * 2500
+    score = score_article({"title": "Test", "content": long_content})
     assert score == 85.0
     mock_post.assert_called_once()
+
+
+def test_score_article_short_content():
+    score = score_article({"title": "Short Article", "content": "Short text"})
+    assert score == 0.0
 
 
 @patch("requests.post")
@@ -26,7 +32,8 @@ def test_score_article_no_match(mock_post):
     }
     mock_post.return_value = mock_resp
 
-    score = score_article({"title": "Test", "content": "Content"})
+    long_content = "A" * 2500
+    score = score_article({"title": "Test", "content": long_content})
     assert score == 0.0
 
 
@@ -58,8 +65,9 @@ def test_backoff_retry_and_fallback(mock_post, mock_sleep):
     # Fail 5 times on model 1 (1 immediate + 4 backoffs: 8, 16, 32, 64), then succeed on model 2
     mock_post.side_effect = [fail_resp, fail_resp, fail_resp, fail_resp, fail_resp, success_resp]
 
+    long_content = "A" * 2500
     with patch.dict("os.environ", {"NEWAPI_MODEL": "model-1,model-2"}):
-        score = score_article({"title": "Test Title", "content": "Raw content"})
+        score = score_article({"title": "Test Title", "content": long_content})
         assert score == 90.0
 
     assert mock_sleep.call_count == 4

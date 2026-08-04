@@ -60,19 +60,23 @@ def _chat_completion_with_fallback(
 
 def score_article(entry: dict, min_score: float = 30.0) -> float:
     content_text = entry.get("content") or ""
+    char_count = len(content_text)
+    
+    # Strict length check: articles shorter than 2000 characters receive 0 score immediately
+    if char_count < 2000:
+        return 0.0
+
     author = entry.get("author") or ""
     feed_title = ""
     if isinstance(entry.get("feed"), dict):
         feed_title = entry.get("feed", {}).get("title") or ""
-    
-    char_count = len(content_text)
-    
+
     prompt = (
         "You are an expert AI technical curator. Evaluate the quality of the following AI article and assign a final score from 0 to 100.\n"
         "Strictly adhere to the following scoring dimensions and weights:\n\n"
         "1. Content Depth & Length (30%):\n"
-        "   - Longer, in-depth technical documents/analysis deserve HIGHER scores.\n"
-        "   - Extremely short posts (< 300 words) or superficial summaries should receive lower scores.\n\n"
+        "   - Long, in-depth technical articles (>= 2000 characters) receive higher scores.\n"
+        "   - Shallow or brief articles receive low scores.\n\n"
         "2. Conciseness & Structure (30%):\n"
         "   - Clear, concise, well-structured articles without fluff, clickbait, or excessive marketing rhetoric deserve HIGHER scores.\n"
         "   - Direct, informative technical prose is highly favored.\n\n"
