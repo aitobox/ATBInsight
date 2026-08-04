@@ -1,0 +1,97 @@
+# 为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练
+
+**背景与摘要：**
+在本期文章中，作者调查了 OpenAI 原始 GPT-2 模型在指令微调 (IFT) 任务上的卓越表现，是否归因于“过度训练 (overtraining)”——即使用的数据量远远超过 Chinchilla 最佳启发式算法的建议。通过增加词元 (token) 数量和多轮次 (epoch) 来训练新模型，作者试图测试这种方法能否缩小性能差距。结果显示测试损失 (test loss) 有了适度的改善，但在遵循指令方面的提升在统计学上并不显著，使得 OpenAI 权重性能的谜团在很大程度上依然未解。
+
+> ### Summary
+> In this installment, the author investigates whether the superior performance of OpenAI’s original GPT-2 models on instruction fine-tuning (IFT) tasks is due to "overtraining"—training on significantly more data than the Chinchilla-optimal heuristic suggests. By training new models with extended token counts and multiple epochs, the author tests if this approach closes the performance gap. The results show a modest improvement in test loss, but the gains in instruction-following remain statistically insignificant, leaving the mystery of the OpenAI weights' performance largely unresolved.
+
+---
+
+## 过度训练 vs. 过拟合
+
+区分这两个概念至关重要：
+*   **过拟合 (Overfitting):** 是一种失败的情况，即模型记住了特定的训练数据，而不是学到了普遍的规律。它几乎总是有害的。
+*   **过度训练 (Overtraining):** 是一种关于计算预算的判断。根据 *Chinchilla* 论文，“最佳”训练大约涉及每个参数 20 个 token。过度训练意味着超过这个比例。虽然与扩展模型规模相比，它通常被认为是低效的，但在参数数量受限（例如，用于移动端部署）时，它仍然可以带来性能提升。
+
+> ## Overtraining vs. Overfitting
+> It is crucial to distinguish between these two concepts:
+> *   **Overfitting:** A failure where the model memorizes specific training data rather than learning general rules. It is almost always detrimental.
+> *   **Overtraining:** A judgment call regarding the compute budget. Following the *Chinchilla* paper, "optimal" training involves roughly 20 tokens per parameter. Overtraining implies exceeding this ratio. While often considered inefficient compared to scaling model size, it can still yield performance gains when parameter counts are constrained (e.g., for mobile deployment).
+
+作者指出，GPT-2 是在 2019 年训练的，远在 Chinchilla 论文发表之前，而且可能在一个较小的数据集上使用了多个 epoch，按照现代标准来看，这实际上就是“过度训练”。
+
+> The author notes that GPT-2 was trained in 2019, well before the Chinchilla paper, and likely utilized multiple epochs over a smaller dataset, effectively "overtraining" by modern standards.
+
+## 实验
+
+为了测试过度训练能否复制 OpenAI 的成功，作者使用了他们的专用训练机 `poppy` 运行了两个实验：
+1.  **延长训练 (Extended-train):** 在 64 亿（6.4B）个唯一 token 上进行训练（是之前 32 亿基准数据的两倍）。
+2.  **两轮模型 (Two-epoch model):** 在标准的 32 亿 token 上进行训练，但将数据集重复用于第二个 epoch。
+
+> ## The Experiments
+> To test if overtraining could replicate OpenAI's success, the author used their dedicated training box, `poppy`, to run two experiments:
+> 1.  **Extended-train:** Training on 6.4B unique tokens (double the previous 3.2B baseline).
+> 2.  **Two-epoch model:** Training on the standard 3.2B tokens, but repeating the dataset for a second epoch.
+
+**实验前预测：**
+*   这两种模型在测试损失上都将优于现有模型。
+*   这两种模型在 IFT 测试中的得分都会更好，但仍然不及原始的 OpenAI GPT-2 小型模型。
+
+> **Pre-experiment predictions:**
+> *   Both models would outperform existing models on test loss.
+> *   Both models would score better on IFT tests but still fall short of the original OpenAI GPT-2 small model.
+
+## 结果：延长训练模型
+
+尽管出现了一个轻微的 `CUDA_ERROR_STREAM_CAPTURE_INVALIDATED` 崩溃，延长训练模型还是成功完成了。
+*   **测试损失 (Test Loss):** 模型实现了 **3.324953** 的损失，显著击败了之前的 Chinchilla 最佳基准 (3.418784)，并且接近 OpenAI 中型模型 (3.231442)。
+*   **生成 (Generation):** 冒烟测试证实模型保持了连贯性和功能性。
+
+> ## Results: The Extended-Train Model
+> Despite a minor `CUDA_ERROR_STREAM_CAPTURE_INVALIDATED` crash, the extended-train model completed successfully. 
+> *   **Test Loss:** The model achieved a loss of **3.324953**, significantly beating the previous Chinchilla-optimal baseline (3.418784) and coming close to the OpenAI medium model (3.231442).
+> *   **Generation:** Smoke tests confirmed the model remained coherent and functional.
+
+## 结果：两轮模型
+
+两轮运行在没有硬件问题的情况下完成。
+*   **测试损失 (Test Loss):** 该模型的损失达到了 **3.326482**。
+*   **比较 (Comparison):** 性能几乎与“一个长 epoch”的模型相同，这表明这两种方法之间的差异可以忽略不计。
+
+> ## Results: The Two-Epoch Model
+> The two-epoch run completed without hardware issues.
+> *   **Test Loss:** The model achieved a loss of **3.326482**. 
+> *   **Comparison:** The performance was nearly identical to the "one long epoch" model, suggesting that the difference between the two methods is negligible.
+
+## IFT 测试
+
+最终的测试是指令微调 (IFT) 评估。通过使用“LLM 作为裁判”脚本，作者将新模型与现有阵容进行了比较。
+
+> ## The IFT Test
+> The ultimate test was the Instruction Fine-Tuning (IFT) evaluation. Using an LLM-as-a-judge script, the author compared the new models against the existing lineup.
+
+| 模型 | 测试损失 | IFT 分数 |
+| :--- | :--- | :--- |
+| OpenAI 权重: medium | 3.231442 | 42.91 |
+| **JAX, 过度训练一个长 epoch** | 3.324953 | 18.75 |
+| **JAX, 过度训练两个常规 epoch** | 3.326482 | 18.45 |
+| OpenAI 权重: small | 3.499677 | 25.66 |
+
+> | Model | Test Loss | IFT Score |
+> | :--- | :--- | :--- |
+> | OpenAI weights: medium | 3.231442 | 42.91 |
+> | **JAX, overtrained one long epoch** | 3.324953 | 18.75 |
+> | **JAX, overtrained two normal epochs** | 3.326482 | 18.45 |
+> | OpenAI weights: small | 3.499677 | 25.66 |
+
+结果是不确定的。虽然新模型的表现略好于最相似的基准，但这种改善在评估过程的“噪音”范围内。这些模型依然明显比原始的 OpenAI GPT-2 小型模型差。
+
+> The results were inconclusive. While the new models performed slightly better than the most similar baseline, the improvement was within the "noise" of the evaluation process. The models remained significantly worse than the original OpenAI GPT-2 small model.
+
+## 结论
+
+认为简单的过度训练解释了性能差距的假设仍未得到证实。虽然模型显示出测试损失的改善，但它们在遵循指令的能力上并没有表现出突破。作者得出结论，虽然进一步的训练最终可能会产生结果，但目前的实验表明，过度训练并不是匹配原始 OpenAI 权重性能的“灵丹妙药”。作者计划在未来的文章中转向其他调查途径。
+
+> ## Conclusion
+> The hypothesis that simple overtraining explains the performance gap remains unproven. While the models showed improved test loss, they did not exhibit a breakthrough in instruction-following capability. The author concludes that while further training might eventually yield results, the current experiment suggests that overtraining is not a "silver bullet" for matching the performance of the original OpenAI weights. The author plans to pivot to other investigative avenues in future posts.
