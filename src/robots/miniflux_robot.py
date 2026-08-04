@@ -10,14 +10,15 @@ def fetch_miniflux_entries(
     password: str,
     days: int = 7,
     target_date: str | None = None,
+    limit: int = 500,
 ) -> list[dict]:
-    api_url = f"{url.rstrip('/')}/v1/entries?status=unread"
+    api_url = f"{url.rstrip('/')}/v1/entries?order=created_at&direction=desc&limit={limit}"
     logger.info(f"Fetching RSS entries from Miniflux: {api_url}")
-    resp = requests.get(api_url, auth=(username, password), timeout=10)
+    resp = requests.get(api_url, auth=(username, password), timeout=15)
     resp.raise_for_status()
     data = resp.json()
     entries = data.get("entries", [])
-    logger.info(f"Fetched {len(entries)} unread entries in total from Miniflux.")
+    logger.info(f"Fetched {len(entries)} entries in total from Miniflux.")
 
     if target_date:
         filtered = []
