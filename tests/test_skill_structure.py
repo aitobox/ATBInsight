@@ -10,6 +10,8 @@ def test_tech_article_translator_skill_exists():
     assert "description: Use when" in content
     assert "bak/origin/" in content
     assert "HARD-GATE" in content
-    assert "Rename" in content
+    assert "categories" in content
+    assert "docs/blog/posts/" in content
+
 
 
