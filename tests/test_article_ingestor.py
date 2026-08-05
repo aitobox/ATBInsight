@@ -2,14 +2,14 @@ import os
 import sqlite3
 import yaml
 from unittest.mock import patch
-from src.main import run_pipeline
+from scripts.article_ingestor import run_pipeline
 from src.db import is_entry_processed
 
 
-@patch("src.main.fetch_miniflux_entries")
-@patch("src.main.score_article")
-@patch("src.main.refine_markdown")
-@patch("src.main.localize_images")
+@patch("scripts.article_ingestor.fetch_miniflux_entries")
+@patch("scripts.article_ingestor.score_article")
+@patch("scripts.article_ingestor.refine_markdown")
+@patch("scripts.article_ingestor.localize_images")
 def test_run_pipeline(mock_loc, mock_ref, mock_score, mock_fetch, tmp_path):
     mock_fetch.return_value = [
         {"id": "1", "title": "Test AI", "content": "Content", "url": "http://test.com"}
@@ -24,10 +24,10 @@ def test_run_pipeline(mock_loc, mock_ref, mock_score, mock_fetch, tmp_path):
     assert mock_fetch.called
 
 
-@patch("src.main.fetch_miniflux_entries")
-@patch("src.main.score_article")
-@patch("src.main.refine_markdown")
-@patch("src.main.localize_images")
+@patch("scripts.article_ingestor.fetch_miniflux_entries")
+@patch("scripts.article_ingestor.score_article")
+@patch("scripts.article_ingestor.refine_markdown")
+@patch("scripts.article_ingestor.localize_images")
 def test_run_pipeline_skips_low_score_and_already_processed(
     mock_loc, mock_ref, mock_score, mock_fetch, tmp_path
 ):
@@ -60,20 +60,11 @@ def test_run_pipeline_skips_low_score_and_already_processed(
     cur.execute("SELECT status, output_path FROM processed_entries WHERE entry_id = '101'")
     row101 = cur.fetchone()
     assert row101[0] == "processed"
-    assert row101[1].endswith("2026-08-05-High Score AI.md")
+    assert row101[1].endswith("article_101.md")
     assert os.path.exists(row101[1])
     with open(row101[1], "r", encoding="utf-8") as f:
         content = f.read()
-        assert content.startswith("---")
-        parts = content.split("---", 2)
-        assert len(parts) >= 3
-        fm = yaml.safe_load(parts[1])
-        assert fm["title"] == "High Score AI"
-        assert fm["date"] == "2026-08-05"
-        assert fm["authors"] == ["aitoboxrobot"]
-        assert fm["categories"] == ["深度研报"]
-        assert fm["tags"] == ["AI", "科技解构"]
-        assert "# Localized Markdown 101" in parts[2]
+        assert "# Localized Markdown 101" in content
 
     cur.execute("SELECT status, output_path FROM processed_entries WHERE entry_id = '102'")
     row102 = cur.fetchone()

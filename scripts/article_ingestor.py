@@ -19,7 +19,7 @@ logger = logging.getLogger("ai_insight")
 def run_pipeline(
     config_path: str = "etc/ai_insight_pipeline.yaml",
     db_path: str = "var/db/pipeline_cache.db",
-    output_dir: str = "docs/blog/posts",
+    output_dir: str = "bak/origin",
     target_date: str | None = None,
     override_days: int | None = None,
 ):
@@ -46,7 +46,7 @@ def run_pipeline(
     )
 
     date_str = target_date if target_date else datetime.date.today().strftime("%Y-%m-%d")
-    target_dir = output_dir
+    target_dir = os.path.join(output_dir, date_str)
 
     if not entries:
         logger.info("No entries to process.")
@@ -91,22 +91,10 @@ def run_pipeline(
 
             os.makedirs(target_dir, exist_ok=True)
             
-            front_matter = {
-                "title": title,
-                "date": date_str,
-                "authors": ["aitoboxrobot"],
-                "categories": ["深度研报"],
-                "tags": ["AI", "科技解构"],
-            }
-            fm_str = yaml.dump(front_matter, allow_unicode=True, sort_keys=False)
-            post_content = f"---\n{fm_str}---\n\n{localized_md}"
-
-            safe_title = title.replace("/", "_").replace("\\", "_")
-            slug = f"{date_str}-{safe_title}.md"
-            filepath = os.path.join(target_dir, slug)
+            filepath = os.path.join(target_dir, f"article_{entry_id}.md")
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(post_content)
+                f.write(localized_md)
 
             mark_entry(
                 conn,

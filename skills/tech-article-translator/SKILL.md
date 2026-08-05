@@ -1,6 +1,6 @@
 ---
 name: tech-article-translator
-description: Use when translating English Markdown technology articles into Chinese with bilingual paragraph quote blocks, YAML Front Matter headers, and backing up original files.
+description: Use when translating English Markdown technology articles into Chinese with bilingual paragraph quote blocks and YAML Front Matter headers.
 ---
 
 # Tech Article Translator (科技文章翻译官)
@@ -13,15 +13,11 @@ Guides an Agent to translate Markdown technology articles from English into cris
 Do **NOT** write or execute external python/bash scripts, API call wrappers, or automated batch LLM tools to process the articles. All reading, understanding, translating, formatting, and file writing MUST be performed directly by the Agent (or via subagents).
 </HARD-GATE>
 
-The translation process backs up original files to `bak/origin/YYYY-MM-DD/`, inserts a YAML Front Matter metadata header at the very top of the file, places a Chinese background & summary block, presents text paragraphs in bilingual format (Chinese translation followed by original English in a `>` quote block), and saves the result as `docs/blog/posts/YYYY-MM-DD-<title>.md`.
+The translation process takes raw articles from `bak/origin/YYYY-MM-DD/`, inserts a YAML Front Matter metadata header at the very top of the file, places a Chinese background & summary block, presents text paragraphs in bilingual format (Chinese translation followed by original English in a `>` quote block), and saves the result as `docs/blog/posts/YYYY-MM-DD-<title>.md`.
 
 ## Workflow
 
-1. **Backup Original Files**:
-   - Create `bak/origin/<DATE>/` directory if it does not exist.
-   - Copy original `.md` files to `bak/origin/<DATE>/` before editing.
-
-2. **Inject YAML Front Matter Header**:
+1. **Inject YAML Front Matter Header**:
    - At the very beginning of the Markdown file (Line 1), insert a standard YAML Front Matter header:
      ```yaml
      ---
@@ -37,8 +33,8 @@ The translation process backs up original files to `bak/origin/YYYY-MM-DD/`, ins
      ---
      ```
 
-3. **Generate Overview & Background**:
-   - Read the target Markdown file directly.
+2. **Generate Overview & Background**:
+   - Read the target Markdown file directly from `bak/origin/YYYY-MM-DD/`.
    - Below the YAML Front Matter and main `# Title`, add a Chinese background & summary block directly composed by the Agent:
      ```markdown
      ### 文章背景与核心概要
@@ -47,7 +43,7 @@ The translation process backs up original files to `bak/origin/YYYY-MM-DD/`, ins
      ---
      ```
 
-4. **Structure-Aware Translation**:
+3. **Structure-Aware Translation**:
    - **Text Paragraphs**: The Agent directly translates English text paragraphs into clear Chinese, followed by the original English in a quote block (`>`):
      ```markdown
      这是中文翻译段落。
@@ -56,6 +52,6 @@ The translation process backs up original files to `bak/origin/YYYY-MM-DD/`, ins
      ```
    - **Code Blocks, Images, & Equations**: Keep untouched without quote wrapping.
 
-5. **Save & Path Formatting**:
+4. **Save & Path Formatting**:
    - Save the translated content directly to `docs/blog/posts/YYYY-MM-DD-<translated-title>.md`.
-   - Delete/remove the old original file from its previous location.
+   - Leave the original file in `bak/origin/YYYY-MM-DD/` intact (do NOT delete it).
