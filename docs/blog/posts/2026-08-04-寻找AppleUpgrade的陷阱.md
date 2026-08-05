@@ -1,14 +1,15 @@
 ---
-title: 寻找 Apple Upgrade 的陷阱
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
+title: 寻找 Apple Upgrade 的陷阱
 ---
-
 # 寻找 Apple Upgrade 的陷阱
 
 ### 背景与摘要

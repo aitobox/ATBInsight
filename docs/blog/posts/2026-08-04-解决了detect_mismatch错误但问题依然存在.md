@@ -1,14 +1,15 @@
 ---
-title: 解决了 `#pragma detect_mismatch` 错误，但问题依然存在
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
+title: 解决了 `#pragma detect_mismatch` 错误，但问题依然存在
 ---
-
 # 解决了 `#pragma detect_mismatch` 错误，但问题依然存在
 
 ### 背景与摘要

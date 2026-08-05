@@ -1,18 +1,19 @@
 ---
-title: xai-org/grok-build 现已开源
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - Claude
 - xAI
 - Rust
+title: xai-org/grok-build 现已开源
 ---
-
 # xai-org/grok-build 现已开源
 
 ### 背景与摘要

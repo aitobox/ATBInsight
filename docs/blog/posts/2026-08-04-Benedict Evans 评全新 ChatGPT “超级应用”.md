@@ -1,17 +1,18 @@
 ---
-title: Benedict Evans 评全新 ChatGPT “超级应用”
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - GPT
 - Rust
+title: Benedict Evans 评全新 ChatGPT “超级应用”
 ---
-
 # Benedict Evans 评全新 ChatGPT “超级应用”
 
 **背景与摘要：**

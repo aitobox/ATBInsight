@@ -1,16 +1,17 @@
 ---
-title: 小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - Linux
 - 硬件
+title: 小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½
 ---
-
 # 小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½
 
 **背景与摘要：**

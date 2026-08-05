@@ -1,16 +1,17 @@
 ---
-title: 就是今天，OpenAI 搞砸了 ChatGPT Mac 应用
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - GPT
+title: 就是今天，OpenAI 搞砸了 ChatGPT Mac 应用
 ---
-
 # 就是今天，OpenAI 搞砸了 ChatGPT Mac 应用
 
 **背景与摘要：**

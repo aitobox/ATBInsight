@@ -1,17 +1,18 @@
 ---
-title: Mermaid转Unicode框线艺术 (grok-mermaid)
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - Claude
 - xAI
 - Rust
+title: Mermaid转Unicode框线艺术 (grok-mermaid)
 ---
-
 # Mermaid转Unicode框线艺术 (grok-mermaid)
 
 ### 背景与摘要

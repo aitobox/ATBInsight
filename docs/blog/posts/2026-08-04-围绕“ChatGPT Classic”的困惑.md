@@ -1,17 +1,18 @@
 ---
-title: 围绕“ChatGPT Classic”的困惑
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - GPT
 - Rust
+title: 围绕“ChatGPT Classic”的困惑
 ---
-
 # 围绕“ChatGPT Classic”的困惑
 
 **背景与摘要：**

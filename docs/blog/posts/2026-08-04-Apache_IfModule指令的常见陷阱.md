@@ -1,14 +1,15 @@
 ---
-title: Apache `<IfModule>` 指令的常见陷阱
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
+title: Apache `<IfModule>` 指令的常见陷阱
 ---
-
 # Apache `<IfModule>` 指令的常见陷阱
 
 ### 背景与摘要

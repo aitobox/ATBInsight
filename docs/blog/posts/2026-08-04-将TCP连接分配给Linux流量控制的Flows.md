@@ -1,15 +1,16 @@
 ---
-title: 将 TCP 连接分配给 Linux 流量控制的 'Flows'
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - Linux
+title: 将 TCP 连接分配给 Linux 流量控制的 'Flows'
 ---
-
 # 将 TCP 连接分配给 Linux 流量控制的 'Flows'
 
 ### 背景与摘要

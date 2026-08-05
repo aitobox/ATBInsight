@@ -1,18 +1,19 @@
 ---
-title: 毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - GPT
 - Claude
 - Rust
+title: 毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI
 ---
-
 # 毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI
 
 **背景与摘要：**

@@ -1,15 +1,16 @@
 ---
-title: 在 SQLite 中首选 STRICT 表
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - SQLite
+title: 在 SQLite 中首选 STRICT 表
 ---
-
 # 在 SQLite 中首选 STRICT 表
 
 **背景与摘要：**

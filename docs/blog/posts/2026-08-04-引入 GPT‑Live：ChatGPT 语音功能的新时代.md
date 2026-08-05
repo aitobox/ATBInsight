@@ -1,17 +1,18 @@
 ---
-title: '引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT
-  Voice)'
-date: '2026-08-04'
 authors:
 - aitoboxrobot
 categories:
 - 深度研报
+date: '2026-08-04'
+hide:
+- navigation
 tags:
 - AI
 - OpenAI
 - GPT
+title: '引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT
+  Voice)'
 ---
-
 # 引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT Voice)
 
 ### 文章背景与核心概要
