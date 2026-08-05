@@ -2,6 +2,9 @@ import os
 import re
 import time
 import requests
+import subprocess
+import json
+import logging
 from dotenv import load_dotenv
 
 
@@ -59,44 +62,46 @@ def _chat_completion_with_fallback(
 
 
 def score_article(entry: dict, min_score: float = 30.0) -> float:
+    logger = logging.getLogger("ai_insight")
     content_text = entry.get("content") or ""
     char_count = len(content_text)
     
-    # Strict length check: articles shorter than 2000 characters receive 0 score immediately
     if char_count < 2000:
         return 0.0
 
-    author = entry.get("author") or ""
-    feed_title = ""
-    if isinstance(entry.get("feed"), dict):
-        feed_title = entry.get("feed", {}).get("title") or ""
-
     prompt = (
-        "You are an expert AI technical curator. Evaluate the quality of the following AI article and assign a final score from 0 to 100.\n"
-        "Strictly adhere to the following scoring dimensions and weights:\n\n"
-        "1. Content Depth & Length (30%):\n"
-        "   - Long, in-depth technical articles (>= 2000 characters) receive higher scores.\n"
-        "   - Shallow or brief articles receive low scores.\n\n"
-        "2. Conciseness & Structure (30%):\n"
-        "   - Clear, concise, well-structured articles without fluff, clickbait, or excessive marketing rhetoric deserve HIGHER scores.\n"
-        "   - Direct, informative technical prose is highly favored.\n\n"
-        "3. Author & Publication Reputation (20%):\n"
-        "   - Submissions from well-known AI researchers, engineers, official company tech blogs (e.g. OpenAI, Anthropic, Google DeepMind, Meta AI) or reputable tech portals deserve HIGHER scores.\n\n"
-        "4. AI Relevance & Technical Insight (20%):\n"
-        "   - High relevance to AI architecture, LLM engineering, research papers, or practical system design.\n\n"
-        f"Article Metadata:\n"
+        f"Evaluate this article:\n"
         f"- Title: {entry.get('title')}\n"
-        f"- Author: {author}\n"
-        f"- Publication Source: {feed_title}\n"
-        f"- URL: {entry.get('url')}\n"
-        f"- Character Count: {char_count}\n\n"
-        f"Article Content Preview:\n"
-        f"{content_text[:3000]}\n\n"
-        "Output format required: output exactly 'SCORE: <number>' on a new line."
+        f"- Author: {entry.get('author')}\n"
+        f"- URL: {entry.get('url')}\n\n"
+        f"Content Preview:\n{content_text[:3000]}\n"
     )
-    content = _chat_completion_with_fallback([{"role": "user", "content": prompt}], temperature=0.2, timeout=30)
-    match = re.search(r"SCORE:\s*(\d+(\.\d+)?)", content)
-    return float(match.group(1)) if match else 0.0
+
+    try:
+        result = subprocess.run(
+            ["agy", "run", "--skill", "skills/article-screener/SKILL.md", prompt],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Agent failed with error: {result.stderr}")
+            return 0.0
+
+        # Try to find JSON block in stdout
+        match = re.search(r'\{.*\}', result.stdout, re.DOTALL)
+        if not match:
+            return 0.0
+            
+        data = json.loads(match.group(0))
+        score = float(data.get("score", 0.0))
+        reason = data.get("reason", "No reason provided")
+        logger.info(f"Agent Evaluation Reason: {reason}")
+        return score
+    except Exception as e:
+        logger.error(f"Exception calling agent: {e}")
+        return 0.0
 
 
 def refine_markdown(entry: dict) -> str:
