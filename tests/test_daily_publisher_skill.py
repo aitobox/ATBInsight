@@ -8,6 +8,7 @@ def test_daily_publisher_skill_exists():
         content = f.read()
         
     assert "article_ingestor.py" in content, "Must call ingestor script"
+    assert "bak/origin" in content, "Must instruct agent to use bak/origin path"
     assert "tech-article-translator" in content, "Must invoke translator skill"
     assert "zensical build" in content, "Must build site"
     assert "ghp-import" in content, "Must deploy to gh-pages"
