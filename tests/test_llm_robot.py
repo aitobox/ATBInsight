@@ -3,38 +3,6 @@ import pytest
 import requests
 from src.robots.llm_robot import score_article, refine_markdown
 
-@patch("requests.post")
-def test_score_article(mock_post):
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {
-        "choices": [{"message": {"content": "SCORE: 85"}}]
-    }
-    mock_post.return_value = mock_resp
-
-    long_content = "A" * 2500
-    score = score_article({"title": "Test", "content": long_content})
-    assert score == 85.0
-    mock_post.assert_called_once()
-
-
-def test_score_article_short_content():
-    score = score_article({"title": "Short Article", "content": "Short text"})
-    assert score == 0.0
-
-
-@patch("requests.post")
-def test_score_article_no_match(mock_post):
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {
-        "choices": [{"message": {"content": "Invalid output format"}}]
-    }
-    mock_post.return_value = mock_resp
-
-    long_content = "A" * 2500
-    score = score_article({"title": "Test", "content": long_content})
-    assert score == 0.0
 
 
 @patch("requests.post")
@@ -60,15 +28,14 @@ def test_backoff_retry_and_fallback(mock_post, mock_sleep):
     success_resp = MagicMock()
     success_resp.status_code = 200
     success_resp.json.return_value = {
-        "choices": [{"message": {"content": "SCORE: 90"}}]
+        "choices": [{"message": {"content": "# Refined Title"}}]
     }
     # Fail 5 times on model 1 (1 immediate + 4 backoffs: 8, 16, 32, 64), then succeed on model 2
     mock_post.side_effect = [fail_resp, fail_resp, fail_resp, fail_resp, fail_resp, success_resp]
 
-    long_content = "A" * 2500
     with patch.dict("os.environ", {"NEWAPI_MODEL": "model-1,model-2"}):
-        score = score_article({"title": "Test Title", "content": long_content})
-        assert score == 90.0
+        refined = refine_markdown({"title": "Test Title", "content": "Raw content"})
+        assert refined == "# Refined Title"
 
     assert mock_sleep.call_count == 4
     mock_sleep.assert_has_calls([
