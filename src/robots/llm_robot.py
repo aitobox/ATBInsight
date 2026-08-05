@@ -7,6 +7,7 @@ import json
 import logging
 from dotenv import load_dotenv
 
+logger = logging.getLogger("ai_insight")
 
 def _get_llm_config():
     load_dotenv()
@@ -61,8 +62,7 @@ def _chat_completion_with_fallback(
     raise RuntimeError("No valid LLM models configured or available.")
 
 
-def score_article(entry: dict, min_score: float = 30.0) -> float:
-    logger = logging.getLogger("ai_insight")
+def score_article(entry: dict) -> float:
     content_text = entry.get("content") or ""
     char_count = len(content_text)
     
@@ -90,7 +90,7 @@ def score_article(entry: dict, min_score: float = 30.0) -> float:
             return 0.0
 
         # Try to find JSON block in stdout
-        match = re.search(r'\{.*\}', result.stdout, re.DOTALL)
+        match = re.search(r'\{.*?\}', result.stdout, re.DOTALL)
         if not match:
             return 0.0
             
