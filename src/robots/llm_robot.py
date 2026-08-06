@@ -82,7 +82,7 @@ def score_article(entry: dict) -> float:
             ["agy", "run", "--skill", "skills/article-screener/SKILL.md", prompt],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=180
         )
         
         if result.returncode != 0:
