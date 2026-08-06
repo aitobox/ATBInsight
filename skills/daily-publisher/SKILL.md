@@ -9,7 +9,7 @@ You are the orchestration agent for ATBInsight's daily publishing pipeline. Your
 
 ## Phase 1: Ingestion & Screening
 Run the daily ingestor script. This script uses the Chief Editor persona to screen for high-quality, non-political long-form technical articles.
-**Command:** `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && PYTHONPATH=. python scripts/article_ingestor.py"`
+**Command:** `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && PYTHONPATH=. python scripts/article_ingestor.py --days 1"`
 Wait for this to complete. Screened raw markdown files will be saved into `bak/origin/YYYY-MM-DD` (where YYYY-MM-DD is today's date).
 
 ## Phase 2: Translation & Categorization
