@@ -26,7 +26,7 @@ The translation process takes raw articles from `bak/origin/YYYY-MM-DD/`, insert
      authors:
        - aitoboxrobot
      categories:
-       - 深度研报
+       - <从 [产品发布, 工具教程, 研究解读, 商业动态, 其他] 中选择最契合的1个分类>
      tags:
        - <提取的标签1>
        - <提取的标签2>

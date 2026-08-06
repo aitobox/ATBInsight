@@ -2,7 +2,7 @@
 authors:
 - aitoboxrobot
 categories:
-- 深度研报
+- 工具教程
 date: 2026-08-06
 hide:
 - navigation
