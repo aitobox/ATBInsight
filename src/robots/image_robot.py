@@ -23,7 +23,10 @@ def localize_images(markdown_content: str, output_dir: str, conn: sqlite3.Connec
             continue
 
         try:
-            resp = requests.get(url, timeout=10)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            resp = requests.get(url, headers=headers, timeout=10)
             if resp.status_code == 200:
                 sha256 = hashlib.sha256(resp.content).hexdigest()[:12]
                 content_type = resp.headers.get("Content-Type", "")

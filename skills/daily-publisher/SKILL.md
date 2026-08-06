@@ -41,7 +41,9 @@ Execute the following commands sequentially:
 4. **Generate category index pages and tags page**:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && python scripts/generate_indexes.py"`
    *(Cleans old category pages and regenerates `docs/tags.md` & `docs/blog/category/*.md`)*
-5. **Build the static site**:
+5. **Sync downloaded images to posts directory**:
+   `bash -c "mkdir -p docs/blog/posts/images && cp -rn bak/origin/*/images/* docs/blog/posts/images/ 2>/dev/null || true"`
+6. **Build the static site**:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && zensical build"`
 6. **Deploy to GitHub Pages**:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && ghp-import -p -b gh-pages site"`
