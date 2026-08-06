@@ -11,4 +11,5 @@ def test_daily_publisher_skill_exists():
     assert "bak/origin" in content, "Must instruct agent to use bak/origin path"
     assert "tech-article-translator" in content, "Must invoke translator skill"
     assert "zensical build" in content, "Must build site"
-    assert "ghp-import" in content, "Must deploy to gh-pages"
+    assert "generate_indexes.py" in content, "Must call generate_indexes script"
+    assert "git push origin main" in content, "Must push main branch to git"

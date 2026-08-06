@@ -55,7 +55,7 @@ def main():
     # Update the link
     index_content = re.sub(
         r'\[博客动态区\]\([^)]+\)', 
-        '[博客动态区](tags.md)', 
+        '[博客动态区](archive.md)', 
         index_content
     )
     

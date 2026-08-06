@@ -8,8 +8,10 @@ CATEGORY_DIR = 'docs/blog/category'
 TAGS_FILE = 'docs/tags.md'
 
 def main():
-    if not os.path.exists(CATEGORY_DIR):
-        os.makedirs(CATEGORY_DIR)
+    if os.path.exists(CATEGORY_DIR):
+        import shutil
+        shutil.rmtree(CATEGORY_DIR)
+    os.makedirs(CATEGORY_DIR)
 
     categories = defaultdict(list)
     tags = defaultdict(list)

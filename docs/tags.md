@@ -4,185 +4,347 @@ title: 标签浏览
 
 # 标签浏览
 
-## AI
+## 2000年展望
 
-- [Estimating a Cumulative Sum](blog/posts/2026-08-04-累积和的渐近估计.md)
-- [Ratio of Metallic Ratios](blog/posts/2026-08-04-金属比例的比率.md)
-- [智能体就是单子（但不是那种单子） (Agents are Monads (But Not That Kind))](blog/posts/2026-08-04-智能体就是单子（但不是那种单子） ).md)
-- [引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT Voice)](blog/posts/2026-08-04-引入 GPT‑Live：ChatGPT 语音功能的新时代.md)
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [训练盒子 Poppy 第一部分：起步 (Poppy the Training Box, Part 1: The Beginnings)](blog/posts/2026-08-04-训练盒子 Poppy 第一部分：起步.md)
-- [主机战争已经失败 (The Console Wars Have Been Lost)](blog/posts/2026-08-04-主机战争已经失败.md)
-- [服务器上的 BMC 与一个令人意外的 USB 网络设备 (BMCs and a Surprising USB Network Device on Your Server)](blog/posts/2026-08-04-服务器上的 BMC 与一个令人意外的 USB 网络设备.md)
-- [多元论：后政治 (Pluralistic: Post-political)](blog/posts/2026-08-04-多元论：后政治.md)
-- [诅咒电路 #6：反向雪崩振荡器 (Cursed Circuits #6: Reverse Avalanche Oscillator)](blog/posts/2026-08-04-诅咒电路6：反向雪崩振荡器.md)
-- [全新 GPT-5.6 家族：Luna、Terra 与 Sol](blog/posts/2026-08-04-全新 GPT-5.6 家族：Luna、Terra 与 Sol.md)
-- [就是今天，OpenAI 搞砸了 ChatGPT Mac 应用](blog/posts/2026-08-04-就是今天，OpenAI 搞砸了 ChatGPT Mac 应用.md)
-- [开箱：Zig](blog/posts/2026-08-04-开箱：Zig.md)
-- [解决了 `#pragma detect_mismatch` 错误，但问题依然存在](blog/posts/2026-08-04-解决了detect_mismatch错误但问题依然存在.md)
-- [毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI](blog/posts/2026-08-04-毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI.md)
-- [推出 Muse Spark 1.1](blog/posts/2026-08-04-推出Muse_Spark_1.1.md)
-- [困局：当创作上的僵化成为累赘](blog/posts/2026-08-04-困局：当创作上的僵化成为累赘.md)
-- [约翰·特努斯应扭转苹果在广告泥潭中的滑坡](blog/posts/2026-08-04-约翰·特努斯应扭转苹果在广告泥潭中的滑坡.md)
-- [一种罕见的 DHCP 耗尽原因：“尖叫”的主机](blog/posts/2026-08-04-一种罕见的 DHCP 耗尽原因：“尖叫”的主机.md)
-- [点积：分量与几何定义](blog/posts/2026-08-04-点积：分量与几何定义.md)
-- [Apache `<IfModule>` 指令的常见陷阱](blog/posts/2026-08-04-Apache_IfModule指令的常见陷阱.md)
-- [摘要](blog/posts/2026-08-04-“机器人的权利”与 AI 奴役幻想.md)
-- [为“不理解你的代码库”辩护](blog/posts/2026-08-04-为不理解你的代码库辩护.md)
-- [在 SQLite 中首选 STRICT 表](blog/posts/2026-08-04-在 SQLite 中首选 STRICT 表.md)
-- [本周包管理生态回顾：2026年7月11日](blog/posts/2026-08-04-本周包管理生态回顾：2026年7月11日.md)
-- [AI 2040 与智能狂热](blog/posts/2026-08-04-AI 2040 与智能狂热.md)
-- [阅读清单 — 2026年7月11日](blog/posts/2026-08-04-阅读清单—2026年7月11日.md)
-- [吉尔布雷斯猜想的新进展](blog/posts/2026-08-04-吉尔布雷斯猜想的新进展.md)
-- [Benedict Evans 评全新 ChatGPT “超级应用”](blog/posts/2026-08-04-Benedict Evans 评全新 ChatGPT “超级应用”.md)
-- [围绕“ChatGPT Classic”的困惑](blog/posts/2026-08-04-围绕“ChatGPT Classic”的困惑.md)
-- [法律的可预测性有多高？](blog/posts/2026-08-04-法律的可预测性有多高？.md)
-- [OpenAI泡沫](blog/posts/2026-08-04-OpenAI泡沫.md)
-- [xai-org/grok-build 现已开源](blog/posts/2026-08-04-xai-org_grok-build现已开源.md)
-- [Mermaid转Unicode框线艺术 (grok-mermaid)](blog/posts/2026-08-04-Mermaid转Unicode框线艺术_grok-mermaid.md)
-- [带回终端机：实体媒体的愿景](blog/posts/2026-08-04-带回终端机：实体媒体的愿景.md)
-- [早期研究版Unix的exec命令行参数大小限制](blog/posts/2026-08-04-早期研究版Unix的exec命令行参数大小限制.md)
-- [小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½](blog/posts/2026-08-04-小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½.md)
-- [关于控制面板扩展中指针截断的推测](blog/posts/2026-08-04-关于控制面板扩展中指针截断的推测.md)
-- [Inkling：我们的开放权重模型](blog/posts/2026-08-04-Inkling：我们的开放权重模型.md)
-- [中国几乎已经追平：美国不会“赢得”AI战，而是应该这么做](blog/posts/2026-08-04-中国几乎已经追平：美国不会“赢得”AI战，而是应该这么做.md)
-- [谁在害怕中国模型？](blog/posts/2026-08-04-谁在害怕中国模型？.md)
-- [我与理性主义者社区的决裂](blog/posts/2026-08-04-我与理性主义者社区的决裂.md)
-- [Ubuntu 26.04 关机公告和 `wall` 命令失效问题](blog/posts/2026-08-04-Ubuntu26.04关机公告和wall命令失效问题.md)
-- [每周更新513：用Claude武装家庭网络](blog/posts/2026-08-04-每周更新513：用Claude武装家庭网络.md)
-- [熟练制作文档](blog/posts/2026-08-04-熟练制作文档.md)
-- [阅读清单：2026年7月25日](blog/posts/2026-08-04-阅读清单：2026年7月25日.md)
-- [在 RTX 3090 上对 Qwen 3.6 35B MoE (3B 激活) 进行基准测试](blog/posts/2026-08-04-在RTX3090上对Qwen3.6_35BMoE进行基准测试.md)
-- [那些年我们终于找到的缺失防火墙规则](blog/posts/2026-08-04-那些年我们终于找到的缺失防火墙规则.md)
-- [将 TCP 连接分配给 Linux 流量控制的 'Flows'](blog/posts/2026-08-04-将TCP连接分配给Linux流量控制的Flows.md)
-- [Pluralistic：疯狂的亿万富翁及其综合征 (2026年7月16日)](blog/posts/2026-08-04-Pluralistic：疯狂的亿万富翁及其综合征 (2026年7月16日).md)
-- [政治记者总是错的吗？](blog/posts/2026-08-04-政治记者总是错的吗？.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复.md)
-- [为什么所有人都在试图制造固态电池？](blog/posts/2026-08-04-为什么所有人都在试图制造固态电池？.md)
-- [Pluralistic：监视定价能想到的最愚蠢的借口（2026年7月30日）](blog/posts/2026-08-04-Pluralistic：监视定价能想到的最愚蠢的借口（2026年7月30日）.md)
-- [所以你想用植物来降低室内二氧化碳](blog/posts/2026-08-04-所以你想用植物来降低室内二氧化碳.md)
-- [寻找 Apple Upgrade 的陷阱](blog/posts/2026-08-04-寻找AppleUpgrade的陷阱.md)
-- [买那个电视流媒体棒之前请先读读这篇文章](blog/posts/2026-08-04-买那个电视流媒体棒之前请先读读这篇文章.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练.md)
-- [商业智能泔水：企业采用 AI 是如何滋生职场平庸的](blog/posts/2026-08-04-商业智能泔水：企业采用 AI 是如何滋生职场平庸的.md)
-- [LLM 聊天补全服务器 0.1a0](blog/posts/2026-08-04-LLM 聊天补全服务器 0.1a0.md)
+- [千禧年问题大可放心](blog/posts/2026-08-06-千禧年问题大可放心.md)
 
-## Claude
+## AGI
 
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [全新 GPT-5.6 家族：Luna、Terra 与 Sol](blog/posts/2026-08-04-全新 GPT-5.6 家族：Luna、Terra 与 Sol.md)
-- [毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI](blog/posts/2026-08-04-毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI.md)
-- [AI 2040 与智能狂热](blog/posts/2026-08-04-AI 2040 与智能狂热.md)
-- [法律的可预测性有多高？](blog/posts/2026-08-04-法律的可预测性有多高？.md)
-- [xai-org/grok-build 现已开源](blog/posts/2026-08-04-xai-org_grok-build现已开源.md)
-- [Mermaid转Unicode框线艺术 (grok-mermaid)](blog/posts/2026-08-04-Mermaid转Unicode框线艺术_grok-mermaid.md)
-- [每周更新513：用Claude武装家庭网络](blog/posts/2026-08-04-每周更新513：用Claude武装家庭网络.md)
-- [熟练制作文档](blog/posts/2026-08-04-熟练制作文档.md)
+- [没有数学家的数学](blog/posts/2026-08-06-没有数学家的数学.md)
+- [书评：无工作乌托邦](blog/posts/2026-08-06-书评：无工作乌托邦.md)
 
-## GPT
+## AI应用
 
-- [引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT Voice)](blog/posts/2026-08-04-引入 GPT‑Live：ChatGPT 语音功能的新时代.md)
-- [训练盒子 Poppy 第一部分：起步 (Poppy the Training Box, Part 1: The Beginnings)](blog/posts/2026-08-04-训练盒子 Poppy 第一部分：起步.md)
-- [全新 GPT-5.6 家族：Luna、Terra 与 Sol](blog/posts/2026-08-04-全新 GPT-5.6 家族：Luna、Terra 与 Sol.md)
-- [就是今天，OpenAI 搞砸了 ChatGPT Mac 应用](blog/posts/2026-08-04-就是今天，OpenAI 搞砸了 ChatGPT Mac 应用.md)
-- [毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI](blog/posts/2026-08-04-毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI.md)
-- [AI 2040 与智能狂热](blog/posts/2026-08-04-AI 2040 与智能狂热.md)
-- [Benedict Evans 评全新 ChatGPT “超级应用”](blog/posts/2026-08-04-Benedict Evans 评全新 ChatGPT “超级应用”.md)
-- [围绕“ChatGPT Classic”的困惑](blog/posts/2026-08-04-围绕“ChatGPT Classic”的困惑.md)
-- [OpenAI泡沫](blog/posts/2026-08-04-OpenAI泡沫.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练.md)
-- [商业智能泔水：企业采用 AI 是如何滋生职场平庸的](blog/posts/2026-08-04-商业智能泔水：企业采用 AI 是如何滋生职场平庸的.md)
-- [LLM 聊天补全服务器 0.1a0](blog/posts/2026-08-04-LLM 聊天补全服务器 0.1a0.md)
+- [我如何在本博客中使用 AI](blog/posts/2026-08-06-我如何在本博客中使用AI.md)
 
-## Linux
+## AT&T
 
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [训练盒子 Poppy 第一部分：起步 (Poppy the Training Box, Part 1: The Beginnings)](blog/posts/2026-08-04-训练盒子 Poppy 第一部分：起步.md)
-- [服务器上的 BMC 与一个令人意外的 USB 网络设备 (BMCs and a Surprising USB Network Device on Your Server)](blog/posts/2026-08-04-服务器上的 BMC 与一个令人意外的 USB 网络设备.md)
-- [本周包管理生态回顾：2026年7月11日](blog/posts/2026-08-04-本周包管理生态回顾：2026年7月11日.md)
-- [小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½](blog/posts/2026-08-04-小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½.md)
-- [Ubuntu 26.04 关机公告和 `wall` 命令失效问题](blog/posts/2026-08-04-Ubuntu26.04关机公告和wall命令失效问题.md)
-- [在 RTX 3090 上对 Qwen 3.6 35B MoE (3B 激活) 进行基准测试](blog/posts/2026-08-04-在RTX3090上对Qwen3.6_35BMoE进行基准测试.md)
-- [那些年我们终于找到的缺失防火墙规则](blog/posts/2026-08-04-那些年我们终于找到的缺失防火墙规则.md)
-- [将 TCP 连接分配给 Linux 流量控制的 'Flows'](blog/posts/2026-08-04-将TCP连接分配给Linux流量控制的Flows.md)
+- [夹缝中的电话机：从贝尔系统垄断到残留租赁产业链](blog/posts/2026-08-06-夹缝中的电话机：从贝尔系统垄断到残留租赁产业链.md)
+
+## AWS
+
+- [2026年 Compiler Explorer 如何在 AWS 上运行](blog/posts/2026-08-06-2026年 Compiler Explorer 如何在 AWS 上运行.md)
+
+## Bug修复
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第二部分：Bug 修复](blog/posts/2026-08-06-为什么OpenAI的GPT-2权重能击败我的模型第二部分Bug修复.md)
+
+## C++
+
+- [构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）](blog/posts/2026-08-06-构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）.md)
+
+## COM
+
+- [构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）](blog/posts/2026-08-06-构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）.md)
+
+## Compiler Explorer
+
+- [2026年 Compiler Explorer 如何在 AWS 上运行](blog/posts/2026-08-06-2026年 Compiler Explorer 如何在 AWS 上运行.md)
+
+## DevOps
+
+- [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
+
+## GPT-2
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第二部分：Bug 修复](blog/posts/2026-08-06-为什么OpenAI的GPT-2权重能击败我的模型第二部分Bug修复.md)
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试](blog/posts/2026-08-06-为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试.md)
+
+## Go
+
+- [探索 Linux 上 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探索 Linux 上 Go 1.27 程序的内存映射布局.md)
+
+## Homebrew Bottles
+
+- [Wheels、Bottles 与容器镜像：二进制分发技术的演进与现状](blog/posts/2026-08-06-WheelsBottles与容器镜像二进制分发技术的演进与现状.md)
+
+## LLM评估
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第二部分：Bug 修复](blog/posts/2026-08-06-为什么OpenAI的GPT-2权重能击败我的模型第二部分Bug修复.md)
+
+## Linux Kernel
+
+- [探索 Linux 上 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探索 Linux 上 Go 1.27 程序的内存映射布局.md)
+
+## Mathematica
+
+- [求解 RK4 设计方程](blog/posts/2026-08-06-求解RK4设计方程.md)
+
+## OCI
+
+- [Wheels、Bottles 与容器镜像：二进制分发技术的演进与现状](blog/posts/2026-08-06-WheelsBottles与容器镜像二进制分发技术的演进与现状.md)
 
 ## OpenAI
 
-- [智能体就是单子（但不是那种单子） (Agents are Monads (But Not That Kind))](blog/posts/2026-08-04-智能体就是单子（但不是那种单子） ).md)
-- [引入 GPT‑Live：ChatGPT 语音功能的新时代 (Introducing GPT‑Live: A New Era for ChatGPT Voice)](blog/posts/2026-08-04-引入 GPT‑Live：ChatGPT 语音功能的新时代.md)
-- [全新 GPT-5.6 家族：Luna、Terra 与 Sol](blog/posts/2026-08-04-全新 GPT-5.6 家族：Luna、Terra 与 Sol.md)
-- [就是今天，OpenAI 搞砸了 ChatGPT Mac 应用](blog/posts/2026-08-04-就是今天，OpenAI 搞砸了 ChatGPT Mac 应用.md)
-- [毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI](blog/posts/2026-08-04-毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI.md)
-- [Benedict Evans 评全新 ChatGPT “超级应用”](blog/posts/2026-08-04-Benedict Evans 评全新 ChatGPT “超级应用”.md)
-- [围绕“ChatGPT Classic”的困惑](blog/posts/2026-08-04-围绕“ChatGPT Classic”的困惑.md)
-- [OpenAI泡沫](blog/posts/2026-08-04-OpenAI泡沫.md)
-- [xai-org/grok-build 现已开源](blog/posts/2026-08-04-xai-org_grok-build现已开源.md)
-- [中国几乎已经追平：美国不会“赢得”AI战，而是应该这么做](blog/posts/2026-08-04-中国几乎已经追平：美国不会“赢得”AI战，而是应该这么做.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第二部分：错误修复.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练.md)
-- [商业智能泔水：企业采用 AI 是如何滋生职场平庸的](blog/posts/2026-08-04-商业智能泔水：企业采用 AI 是如何滋生职场平庸的.md)
-- [LLM 聊天补全服务器 0.1a0](blog/posts/2026-08-04-LLM 聊天补全服务器 0.1a0.md)
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第二部分：Bug 修复](blog/posts/2026-08-06-为什么OpenAI的GPT-2权重能击败我的模型第二部分Bug修复.md)
 
-## Rust
+## Patreon
 
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [训练盒子 Poppy 第一部分：起步 (Poppy the Training Box, Part 1: The Beginnings)](blog/posts/2026-08-04-训练盒子 Poppy 第一部分：起步.md)
-- [多元论：后政治 (Pluralistic: Post-political)](blog/posts/2026-08-04-多元论：后政治.md)
-- [开箱：Zig](blog/posts/2026-08-04-开箱：Zig.md)
-- [毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI](blog/posts/2026-08-04-毫无悬念，潜在篡位者 Fidji Simo 离开 OpenAI.md)
-- [约翰·特努斯应扭转苹果在广告泥潭中的滑坡](blog/posts/2026-08-04-约翰·特努斯应扭转苹果在广告泥潭中的滑坡.md)
-- [本周包管理生态回顾：2026年7月11日](blog/posts/2026-08-04-本周包管理生态回顾：2026年7月11日.md)
-- [Benedict Evans 评全新 ChatGPT “超级应用”](blog/posts/2026-08-04-Benedict Evans 评全新 ChatGPT “超级应用”.md)
-- [围绕“ChatGPT Classic”的困惑](blog/posts/2026-08-04-围绕“ChatGPT Classic”的困惑.md)
-- [法律的可预测性有多高？](blog/posts/2026-08-04-法律的可预测性有多高？.md)
-- [xai-org/grok-build 现已开源](blog/posts/2026-08-04-xai-org_grok-build现已开源.md)
-- [Mermaid转Unicode框线艺术 (grok-mermaid)](blog/posts/2026-08-04-Mermaid转Unicode框线艺术_grok-mermaid.md)
-- [Ubuntu 26.04 关机公告和 `wall` 命令失效问题](blog/posts/2026-08-04-Ubuntu26.04关机公告和wall命令失效问题.md)
-- [熟练制作文档](blog/posts/2026-08-04-熟练制作文档.md)
-- [Pluralistic：疯狂的亿万富翁及其综合征 (2026年7月16日)](blog/posts/2026-08-04-Pluralistic：疯狂的亿万富翁及其综合征 (2026年7月16日).md)
+- [千禧年问题大可放心](blog/posts/2026-08-06-千禧年问题大可放心.md)
 
-## SQLite
+## Python
 
-- [在 SQLite 中首选 STRICT 表](blog/posts/2026-08-04-在 SQLite 中首选 STRICT 表.md)
+- [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
 
-## Zig
+## Python Wheels
 
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [开箱：Zig](blog/posts/2026-08-04-开箱：Zig.md)
+- [Wheels、Bottles 与容器镜像：二进制分发技术的演进与现状](blog/posts/2026-08-06-WheelsBottles与容器镜像二进制分发技术的演进与现状.md)
 
-## xAI
+## RK4
 
-- [xai-org/grok-build 现已开源](blog/posts/2026-08-04-xai-org_grok-build现已开源.md)
-- [Mermaid转Unicode框线艺术 (grok-mermaid)](blog/posts/2026-08-04-Mermaid转Unicode框线艺术_grok-mermaid.md)
+- [求解 RK4 设计方程](blog/posts/2026-08-06-求解RK4设计方程.md)
 
-## 函数式编程
+## Runge-Kutta
 
-- [智能体就是单子（但不是那种单子） (Agents are Monads (But Not That Kind))](blog/posts/2026-08-04-智能体就是单子（但不是那种单子） ).md)
+- [求解 RK4 设计方程](blog/posts/2026-08-06-求解RK4设计方程.md)
 
-## 数学
+## WinRT
 
-- [使用 Rust 重写 Bun (Rewriting Bun in Rust)](blog/posts/2026-08-04-使用 Rust 重写 Bun.md)
-- [全新 GPT-5.6 家族：Luna、Terra 与 Sol](blog/posts/2026-08-04-全新 GPT-5.6 家族：Luna、Terra 与 Sol.md)
-- [阅读清单：2026年7月25日](blog/posts/2026-08-04-阅读清单：2026年7月25日.md)
-- [政治记者总是错的吗？](blog/posts/2026-08-04-政治记者总是错的吗？.md)
-- [所以你想用植物来降低室内二氧化碳](blog/posts/2026-08-04-所以你想用植物来降低室内二氧化碳.md)
-- [买那个电视流媒体棒之前请先读读这篇文章](blog/posts/2026-08-04-买那个电视流媒体棒之前请先读读这篇文章.md)
-- [为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练](blog/posts/2026-08-04-为什么 OpenAI 的 GPT-2 权重能击败我的？第3部分：测试过度训练.md)
+- [构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）](blog/posts/2026-08-06-构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）.md)
 
-## 硬件
+## Windows编程
 
-- [多元论：后政治 (Pluralistic: Post-political)](blog/posts/2026-08-04-多元论：后政治.md)
-- [小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½](blog/posts/2026-08-04-小工具评测：Thermal Master DV2 - 红外线观鸟望远镜 ★★★★½.md)
-- [阅读清单：2026年7月25日](blog/posts/2026-08-04-阅读清单：2026年7月25日.md)
-- [为什么所有人都在试图制造固态电池？](blog/posts/2026-08-04-为什么所有人都在试图制造固态电池？.md)
+- [构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）](blog/posts/2026-08-06-构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）.md)
 
-## 硬件电路
+## npm
 
-- [诅咒电路 #6：反向雪崩振荡器 (Cursed Circuits #6: Reverse Avalanche Oscillator)](blog/posts/2026-08-04-诅咒电路6：反向雪崩振荡器.md)
+- [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
 
-## 网络
+## 个人成长
 
-- [服务器上的 BMC 与一个令人意外的 USB 网络设备 (BMCs and a Surprising USB Network Device on Your Server)](blog/posts/2026-08-04-服务器上的 BMC 与一个令人意外的 USB 网络设备.md)
-- [一种罕见的 DHCP 耗尽原因：“尖叫”的主机](blog/posts/2026-08-04-一种罕见的 DHCP 耗尽原因：“尖叫”的主机.md)
+- [激励机制是给输家准备的](blog/posts/2026-08-06-激励机制是给输家准备的.md)
+
+## 二氧化碳
+
+- [室内绿植真的能吸收你呼出的二氧化碳吗？](blog/posts/2026-08-06-室内绿植真的能吸收你呼出的二氧化碳吗.md)
+
+## 二进制分发
+
+- [Wheels、Bottles 与容器镜像：二进制分发技术的演进与现状](blog/posts/2026-08-06-WheelsBottles与容器镜像二进制分发技术的演进与现状.md)
+
+## 产业动态
+
+- [阅读清单：2026年8月1日](blog/posts/2026-08-06-阅读清单：2026年8月1日.md)
+
+## 人工智能
+
+- [我如何在本博客中使用 AI](blog/posts/2026-08-06-我如何在本博客中使用AI.md)
+- [没有数学家的数学](blog/posts/2026-08-06-没有数学家的数学.md)
+
+## 代码审查
+
+- [我如何在本博客中使用 AI](blog/posts/2026-08-06-我如何在本博客中使用AI.md)
+
+## 住宅代理
+
+- [购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱](blog/posts/2026-08-06-购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱.md)
+
+## 内存管理
+
+- [探索 Linux 上 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探索 Linux 上 Go 1.27 程序的内存映射布局.md)
+
+## 写作流程
+
+- [我如何在本博客中使用 AI](blog/posts/2026-08-06-我如何在本博客中使用AI.md)
+
+## 制造与技术
+
+- [阅读清单：2026年8月1日](blog/posts/2026-08-06-阅读清单：2026年8月1日.md)
+
+## 功劳分配
+
+- [大厂中的功劳争取与分配](blog/posts/2026-08-06-大厂中的功劳争取与分配.md)
+
+## 包管理
+
+- [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
+
+## 博客前瞻
+
+- [千禧年问题大可放心](blog/posts/2026-08-06-千禧年问题大可放心.md)
+
+## 反垄断
+
+- [夹缝中的电话机：从贝尔系统垄断到残留租赁产业链](blog/posts/2026-08-06-夹缝中的电话机：从贝尔系统垄断到残留租赁产业链.md)
+
+## 商业模式
+
+- [夹缝中的电话机：从贝尔系统垄断到残留租赁产业链](blog/posts/2026-08-06-夹缝中的电话机：从贝尔系统垄断到残留租赁产业链.md)
+
+## 团队协作
+
+- [大厂中的功劳争取与分配](blog/posts/2026-08-06-大厂中的功劳争取与分配.md)
+
+## 固态电池
+
+- [为什么所有人都在尝试制造固态电池？](blog/posts/2026-08-06-为什么所有人都在尝试制造固态电池.md)
+
+## 地缘政治
+
+- [阅读清单：2026年8月1日](blog/posts/2026-08-06-阅读清单：2026年8月1日.md)
+
+## 大语言模型
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试](blog/posts/2026-08-06-为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试.md)
+
+## 宏观经济
+
+- [书评：无工作乌托邦](blog/posts/2026-08-06-书评：无工作乌托邦.md)
+
+## 室内空气
+
+- [室内绿植真的能吸收你呼出的二氧化碳吗？](blog/posts/2026-08-06-室内绿植真的能吸收你呼出的二氧化碳吗.md)
+
+## 容器镜像
+
+- [Wheels、Bottles 与容器镜像：二进制分发技术的演进与现状](blog/posts/2026-08-06-WheelsBottles与容器镜像二进制分发技术的演进与现状.md)
+
+## 广告欺诈
+
+- [购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱](blog/posts/2026-08-06-购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱.md)
+
+## 建筑与城市
+
+- [阅读清单：2026年8月1日](blog/posts/2026-08-06-阅读清单：2026年8月1日.md)
+
+## 开源安全
+
+- [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
+
+## 开源运维
+
+- [2026年 Compiler Explorer 如何在 AWS 上运行](blog/posts/2026-08-06-2026年 Compiler Explorer 如何在 AWS 上运行.md)
+
+## 心理学
+
+- [激励机制是给输家准备的](blog/posts/2026-08-06-激励机制是给输家准备的.md)
+
+## 技术哲学
+
+- [没有数学家的数学](blog/posts/2026-08-06-没有数学家的数学.md)
+
+## 指令微调
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第二部分：Bug 修复](blog/posts/2026-08-06-为什么OpenAI的GPT-2权重能击败我的模型第二部分Bug修复.md)
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试](blog/posts/2026-08-06-为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试.md)
+
+## 政治经济学
+
+- [书评：无工作乌托邦](blog/posts/2026-08-06-书评：无工作乌托邦.md)
+
+## 数值分析
+
+- [求解 RK4 设计方程](blog/posts/2026-08-06-求解RK4设计方程.md)
+
+## 数学研究
+
+- [没有数学家的数学](blog/posts/2026-08-06-没有数学家的数学.md)
+
+## 无工作乌托邦
+
+- [书评：无工作乌托邦](blog/posts/2026-08-06-书评：无工作乌托邦.md)
+
+## 架构设计
+
+- [2026年 Compiler Explorer 如何在 AWS 上运行](blog/posts/2026-08-06-2026年 Compiler Explorer 如何在 AWS 上运行.md)
+
+## 植物光合作用
+
+- [室内绿植真的能吸收你呼出的二氧化碳吗？](blog/posts/2026-08-06-室内绿植真的能吸收你呼出的二氧化碳吗.md)
+
+## 消费心理学
+
+- [你被关于白炽灯泡的谣言误导了](blog/posts/2026-08-06-你被关于白炽灯泡的谣言误导了.md)
+
+## 物理原理
+
+- [你被关于白炽灯泡的谣言误导了](blog/posts/2026-08-06-你被关于白炽灯泡的谣言误导了.md)
+
+## 物联网安全
+
+- [购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱](blog/posts/2026-08-06-购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱.md)
+
+## 电信历史
+
+- [夹缝中的电话机：从贝尔系统垄断到残留租赁产业链](blog/posts/2026-08-06-夹缝中的电话机：从贝尔系统垄断到残留租赁产业链.md)
+
+## 电子游戏史
+
+- [千禧年问题大可放心](blog/posts/2026-08-06-千禧年问题大可放心.md)
+
+## 电池技术
+
+- [为什么所有人都在尝试制造固态电池？](blog/posts/2026-08-06-为什么所有人都在尝试制造固态电池.md)
+
+## 电视电视棒
+
+- [购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱](blog/posts/2026-08-06-购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱.md)
+
+## 社会影响
+
+- [没有数学家的数学](blog/posts/2026-08-06-没有数学家的数学.md)
+
+## 社会批评
+
+- [激励机制是给输家准备的](blog/posts/2026-08-06-激励机制是给输家准备的.md)
+
+## 科学科普
+
+- [室内绿植真的能吸收你呼出的二氧化碳吗？](blog/posts/2026-08-06-室内绿植真的能吸收你呼出的二氧化碳吗.md)
+
+## 科技史
+
+- [你被关于白炽灯泡的谣言误导了](blog/posts/2026-08-06-你被关于白炽灯泡的谣言误导了.md)
+
+## 绿植净化
+
+- [室内绿植真的能吸收你呼出的二氧化碳吗？](blog/posts/2026-08-06-室内绿植真的能吸收你呼出的二氧化碳吗.md)
+
+## 网络安全
+
+- [购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱](blog/posts/2026-08-06-购买电视流媒体电视棒之前必看：揭秘低价电视盒背后的黑产与安全陷阱.md)
+
+## 职场生存
+
+- [大厂中的功劳争取与分配](blog/posts/2026-08-06-大厂中的功劳争取与分配.md)
+
+## 能量密度
+
+- [为什么所有人都在尝试制造固态电池？](blog/posts/2026-08-06-为什么所有人都在尝试制造固态电池.md)
+
+## 行为激励
+
+- [激励机制是给输家准备的](blog/posts/2026-08-06-激励机制是给输家准备的.md)
+
+## 计划报废
+
+- [你被关于白炽灯泡的谣言误导了](blog/posts/2026-08-06-你被关于白炽灯泡的谣言误导了.md)
+
+## 软件工程
+
+- [大厂中的功劳争取与分配](blog/posts/2026-08-06-大厂中的功劳争取与分配.md)
+
+## 软件设计
+
+- [构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）](blog/posts/2026-08-06-构建技术上敏捷但在原套房外不可用的伪敏捷包装器（第二部分）.md)
+
+## 过度训练
+
+- [为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试](blog/posts/2026-08-06-为什么 OpenAI 的 GPT-2 权重能击败我的模型？第三部分：过度训练测试.md)
+
+## 运行时诊断
+
+- [探索 Linux 上 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探索 Linux 上 Go 1.27 程序的内存映射布局.md)
+
+## 通信监管
+
+- [夹缝中的电话机：从贝尔系统垄断到残留租赁产业链](blog/posts/2026-08-06-夹缝中的电话机：从贝尔系统垄断到残留租赁产业链.md)
+
+## 道德哲学
+
+- [激励机制是给输家准备的](blog/posts/2026-08-06-激励机制是给输家准备的.md)
+
+## 锂电池
+
+- [为什么所有人都在尝试制造固态电池？](blog/posts/2026-08-06-为什么所有人都在尝试制造固态电池.md)
 

@@ -69,7 +69,18 @@ def score_article(entry: dict) -> float:
     if char_count < 2000:
         return 0.0
 
-    prompt = (
+    system_prompt = (
+        "You are the ATBInsight Chief Editor, an expert AI technical curator. Your job is to read incoming articles and evaluate their quality based on your strong editorial preferences.\n"
+        "Preferences:\n"
+        "- Dislikes: Absolutely hates political content. Any hint of politics means you immediately reject it (0 score).\n"
+        "- Loves: Deep tech, long-form, and highly substantive technical articles. The longer and deeper, the better.\n"
+        "- Appreciates: Humorous, geeky, and interesting tech news or culture pieces.\n\n"
+        "OUTPUT CONSTRAINTS (CRITICAL):\n"
+        "You MUST output ONLY a valid JSON object without markdown code block backticks. Output exactly like this:\n"
+        '{"score": 85, "reason": "This is a great long-form deep dive..."}'
+    )
+
+    user_prompt = (
         f"Evaluate this article:\n"
         f"- Title: {entry.get('title')}\n"
         f"- Author: {entry.get('author')}\n"
@@ -78,29 +89,26 @@ def score_article(entry: dict) -> float:
     )
 
     try:
-        result = subprocess.run(
-            ["agy", "run", "--skill", "skills/article-screener/SKILL.md", prompt],
-            capture_output=True,
-            text=True,
-            timeout=180
+        response_text = _chat_completion_with_fallback(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.1,
+            timeout=15,
         )
         
-        if result.returncode != 0:
-            logger.error(f"Agent failed with error: {result.stderr}")
-            return 0.0
-
-        # Try to find JSON block in stdout
-        match = re.search(r'\{.*?\}', result.stdout, re.DOTALL)
+        match = re.search(r'\{.*?\}', response_text, re.DOTALL)
         if not match:
             return 0.0
             
         data = json.loads(match.group(0))
         score = float(data.get("score", 0.0))
         reason = data.get("reason", "No reason provided")
-        logger.info(f"Agent Evaluation Reason: {reason}")
+        logger.info(f"Chief Editor Evaluation Reason: {reason}")
         return score
     except Exception as e:
-        logger.error(f"Exception calling agent: {e}")
+        logger.error(f"Exception evaluating article score: {e}")
         return 0.0
 
 

@@ -32,9 +32,13 @@ Execute the following commands sequentially:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && python scripts/generate_archive.py"`
 2. Update daily headlines:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && python scripts/update_daily_headlines.py"`
-3. Build the site:
+3. Generate categories and tags pages:
+   `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && python scripts/generate_indexes.py"`
+4. Build the site:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && zensical build"`
-4. Deploy to GitHub Pages:
+5. Deploy to GitHub Pages:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && ghp-import -p -b gh-pages site"`
+6. Commit and push main branch changes to git:
+   `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && git add . && git commit -m 'docs: update daily posts, indexes and site content' && git push origin main"`
 
 Report the final success status and provide a link to the live site to the user.
