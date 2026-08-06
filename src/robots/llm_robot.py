@@ -120,7 +120,8 @@ def refine_markdown(entry: dict) -> str:
     prompt = (
         f"Convert and polish the following content into elegant Markdown with a summary and proper headings:\n"
         f"Title: {entry.get('title')}\n"
-        f"Content: {content_text}"
+        f"Content: {content_text}\n\n"
+        f"CRITICAL INSTRUCTION: You MUST preserve all image links (e.g., ![...](./images/...) or <img ...>) and diagram code blocks exactly as they appear in the content. NEVER delete, omit, or modify image links!"
     )
     return _chat_completion_with_fallback([{"role": "user", "content": prompt}], temperature=0.3, timeout=60)
 

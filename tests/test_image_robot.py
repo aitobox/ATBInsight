@@ -56,3 +56,9 @@ def test_localize_images_download_failure(mock_get, tmp_path):
 
     new_md = localize_images(md, out_dir, conn)
     assert new_md == md
+
+def test_unwrap_proxy_url():
+    from src.robots.image_robot import unwrap_proxy_url
+    proxy_url = "http://localhost/proxy/token123/aHR0cHM6Ly9leGFtcGxlLmNvbS9pbWFnZS5qcGc="
+    unwrapped = unwrap_proxy_url(proxy_url)
+    assert unwrapped == "https://example.com/image.jpg"

@@ -4,68 +4,91 @@ title: 标签浏览
 
 # 标签浏览
 
-## AI Agent
+## 3D 游戏开发
 
-- [一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏](blog/posts/2026-08-06-一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏.md)
+- [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
+
+## AI 编程
+
+- [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
+
+## AI开发
+
+- [关键开源包中 AI 披露的过去一年](blog/posts/2026-08-06-关键开源包中AI披露的过去一年.md)
 
 ## AWS
 
-- [Compiler Explorer 在 2026 年如何基于 AWS 运行](blog/posts/2026-08-06-Compiler Explorer 在 2026 年如何基于 AWS 运行.md)
+- [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 
 ## C++
 
-- [创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）](blog/posts/2026-08-06-创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）.md)
-- [Compiler Explorer 在 2026 年如何基于 AWS 运行](blog/posts/2026-08-06-Compiler Explorer 在 2026 年如何基于 AWS 运行.md)
+- [构建仅在宿主套间内起效的伪敏捷包装器（第三部分）](blog/posts/2026-08-06-构建仅在宿主套间内起效的伪敏捷包装器（第三部分）.md)
 
 ## COM
 
-- [创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）](blog/posts/2026-08-06-创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）.md)
+- [构建仅在宿主套间内起效的伪敏捷包装器（第三部分）](blog/posts/2026-08-06-构建仅在宿主套间内起效的伪敏捷包装器（第三部分）.md)
 
 ## Claude
 
-- [一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏](blog/posts/2026-08-06-一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏.md)
+- [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
+
+## Claude Code
+
+- [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
 
 ## Compiler Explorer
 
-- [Compiler Explorer 在 2026 年如何基于 AWS 运行](blog/posts/2026-08-06-Compiler Explorer 在 2026 年如何基于 AWS 运行.md)
+- [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 
-## Go
+## GitHub
 
-- [探秘 Linux 下 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探秘 Linux 下 Go 1.27 程序的内存映射布局.md)
+- [关键开源包中 AI 披露的过去一年](blog/posts/2026-08-06-关键开源包中AI披露的过去一年.md)
 
-## Go runtime
+## Go语言
 
-- [探秘 Linux 下 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探秘 Linux 下 Go 1.27 程序的内存映射布局.md)
+- [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
 
-## Linux
+## Linux内存
 
-- [探秘 Linux 下 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探秘 Linux 下 Go 1.27 程序的内存映射布局.md)
+- [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
 
 ## Three.js
 
-- [一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏](blog/posts/2026-08-06-一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏.md)
-
-## Vibe Coding
-
-- [一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏](blog/posts/2026-08-06-一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏.md)
-
-## WinRT
-
-- [创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）](blog/posts/2026-08-06-创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）.md)
+- [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
 
 ## Windows
 
-- [创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）](blog/posts/2026-08-06-创建假敏捷包装器：理论敏捷但仅限本套间使用（第 3 部分）.md)
+- [构建仅在宿主套间内起效的伪敏捷包装器（第三部分）](blog/posts/2026-08-06-构建仅在宿主套间内起效的伪敏捷包装器（第三部分）.md)
 
-## 云架构
+## 云计算
 
-- [Compiler Explorer 在 2026 年如何基于 AWS 运行](blog/posts/2026-08-06-Compiler Explorer 在 2026 年如何基于 AWS 运行.md)
+- [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 
-## 内存管理
+## 代码统计
 
-- [探秘 Linux 下 Go 1.27 程序的内存映射布局](blog/posts/2026-08-06-探秘 Linux 下 Go 1.27 程序的内存映射布局.md)
+- [关键开源包中 AI 披露的过去一年](blog/posts/2026-08-06-关键开源包中AI披露的过去一年.md)
 
-## 游戏开发
+## 多线程
 
-- [一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏](blog/posts/2026-08-06-一次性成功搞定“浣熊大劫案”：使用 Claude Fable 5 构建游戏.md)
+- [构建仅在宿主套间内起效的伪敏捷包装器（第三部分）](blog/posts/2026-08-06-构建仅在宿主套间内起效的伪敏捷包装器（第三部分）.md)
+
+## 开源
+
+- [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
+
+## 开源安全
+
+- [关键开源包中 AI 披露的过去一年](blog/posts/2026-08-06-关键开源包中AI披露的过去一年.md)
+
+## 性能优化
+
+- [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
+
+## 架构设计
+
+- [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
+
+## 系统编程
+
+- [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
 

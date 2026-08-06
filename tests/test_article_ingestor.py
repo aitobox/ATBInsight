@@ -64,7 +64,7 @@ def test_run_pipeline_skips_low_score_and_already_processed(
     assert os.path.exists(row101[1])
     with open(row101[1], "r", encoding="utf-8") as f:
         content = f.read()
-        assert "# Localized Markdown 101" in content
+        assert "# Refined Markdown 101" in content
 
     cur.execute("SELECT status, output_path FROM processed_entries WHERE entry_id = '102'")
     row102 = cur.fetchone()

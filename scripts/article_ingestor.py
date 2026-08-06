@@ -46,17 +46,21 @@ def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: 
             )
             return ("skipped", score, "Score below threshold")
 
-        logger.info(f"  -> Score {score:.1f} >= {threshold:.1f}. Refining article content...")
-        refined_md = refine_markdown(entry)
-        
-        logger.info(f"  -> Localizing images for entry ID {entry_id}...")
-        localized_md = localize_images(refined_md, target_dir, conn)
+        logger.info(f"  -> Score {score:.1f} >= {threshold:.1f}. Localizing images for entry ID {entry_id}...")
+        raw_content = entry.get("content") or ""
+        localized_raw_md = localize_images(raw_content, target_dir, conn)
+
+        entry_copy = dict(entry)
+        entry_copy["content"] = localized_raw_md
+
+        logger.info(f"  -> Refining article content via LLM...")
+        refined_md = refine_markdown(entry_copy)
 
         os.makedirs(target_dir, exist_ok=True)
         filepath = os.path.join(target_dir, f"article_{entry_id}.md")
 
         with open(filepath, "w", encoding="utf-8") as f:
-            f.write(localized_md)
+            f.write(refined_md)
 
         mark_entry(
             conn,
