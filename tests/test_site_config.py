@@ -13,6 +13,6 @@ def test_header_override_contains_rss():
     assert os.path.exists(header_path)
     with open(header_path, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "/rss.xml" in content
+    assert "feed_rss_created.xml" in content
     assert "RSS 订阅" in content
 
