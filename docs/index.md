@@ -7,4 +7,4 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
-- **2026-08-06**: [包管理周报：2026年8月1日](blog/posts/2026-08-06-包管理周报：2026年8月1日.md)
+- **2026-08-06**: [Compiler Explorer 在 2026 年如何基于 AWS 运行](blog/posts/2026-08-06-Compiler Explorer 在 2026 年如何基于 AWS 运行.md)

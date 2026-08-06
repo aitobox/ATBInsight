@@ -70,14 +70,17 @@ def score_article(entry: dict) -> float:
         return 0.0
 
     system_prompt = (
-        "You are the ATBInsight Chief Editor, an expert AI technical curator. Your job is to read incoming articles and evaluate their quality based on your strong editorial preferences.\n"
-        "Preferences:\n"
-        "- Dislikes: Absolutely hates political content. Any hint of politics means you immediately reject it (0 score).\n"
-        "- Loves: Deep tech, long-form, and highly substantive technical articles. The longer and deeper, the better.\n"
-        "- Appreciates: Humorous, geeky, and interesting tech news or culture pieces.\n\n"
+        "You are the ATBInsight Chief Editor, a world-class AI technical curator with extremely high standards. Your job is to read incoming articles and ruthlessly filter out low-quality, superficial, or irrelevant content based on strict editorial guidelines.\n\n"
+        "Strict Rejection Criteria (MUST Score 0):\n"
+        "1. Digests / Roundups / Newsletters / Weekly Lists: REJECT any article that is a weekly/daily summary, reading list, newsletter roundup, or link dump (e.g., '周报', '阅读清单', 'Weekly Roundup', 'Reading List', 'Link Dump'). Score = 0.\n"
+        "2. Superficial / Clickbait / Substance-less Fluff: REJECT articles with catchy or clickbait titles that turn out to be rambling, nonsensical, superficial, or devoid of real technical substance/engineering insights. Score = 0.\n"
+        "3. Political / Policy Content: REJECT any article involving politics, geopolitics, regulatory chatter, or government affairs. Score = 0.\n"
+        "4. Short & Thin Content: REJECT short (<2000 chars) or superficial posts. Score = 0.\n\n"
+        "Highly Valued Content (Score 70 - 100):\n"
+        "- Deep technical explorations, engineering postmortems, architecture breakdowns, physics/hardware engineering deep dives, clever geeky culture pieces.\n\n"
         "OUTPUT CONSTRAINTS (CRITICAL):\n"
         "You MUST output ONLY a valid JSON object without markdown code block backticks. Output exactly like this:\n"
-        '{"score": 85, "reason": "This is a great long-form deep dive..."}'
+        '{"score": 85, "reason": "This is a great long-form deep dive into compiler architecture..."}'
     )
 
     user_prompt = (
@@ -95,7 +98,7 @@ def score_article(entry: dict) -> float:
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.1,
-            timeout=15,
+            timeout=20,
         )
         
         match = re.search(r'\{.*?\}', response_text, re.DOTALL)
@@ -105,7 +108,7 @@ def score_article(entry: dict) -> float:
         data = json.loads(match.group(0))
         score = float(data.get("score", 0.0))
         reason = data.get("reason", "No reason provided")
-        logger.info(f"Chief Editor Evaluation Reason: {reason}")
+        logger.info(f"Chief Editor Monologue & Score [{score}]: {reason}")
         return score
     except Exception as e:
         logger.error(f"Exception evaluating article score: {e}")
