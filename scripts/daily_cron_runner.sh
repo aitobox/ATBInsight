@@ -58,12 +58,15 @@ fi
 # 8. 执行 AGY 指令并精确捕获退出码
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running skill: ${SKILL_PATH}" >> "${LOG_FILE}"
 
-"${AGY_BIN}" run \
-    --non-interactive \
-    --auto-approve \
-    --model gemini-3.6-flash-high \
-    --skill "${SKILL_PATH}" \
-    "fetch recent 1 days good article and publish" >> "${LOG_FILE}" 2>&1
+"${AGY_BIN}" \
+    --add-dir /opt/aitobox/ATBInsight \
+    --dangerously-skip-permissions   \
+    --model gemini-3.6-flash-high   \
+    --effort high   \
+    --print-timeout 30m   \
+    --output-format stream-json   \
+    -p "Use skill skills/daily-publisher/SKILL.md to fetch recent 30 days good article and publish" \
+     >> "${LOG_FILE}" 2>&1
 
 EXIT_CODE=$?
 
