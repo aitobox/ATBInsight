@@ -1,0 +1,1350 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-PyTorch%20%E6%80%A7%E8%83%BD%E5%89%96%E6%9E%90%EF%BC%88%E7%AC%AC%E4%B8%89%E7%AF%87%EF%BC%89%EF%BC%9A%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6%EF%BC%88Attention%EF%BC%89%E5%85%A8%E8%A7%A3%E6%9E%90/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Executive Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduction-to-the-series" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Introduction to the Series
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        系列简介
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#naive-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Naive Attention
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#naive-attention_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        朴素注意力机制（Naive Attention）
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="朴素注意力机制（Naive Attention）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixing-the-memory-copy-with-in-place-causal-masking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fixing the Memory Copy with In-Place Causal Masking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-place" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用原地（In-Place）因果掩码消除内存拷贝
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaled-dot-product-attention-sdpa" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scaled Dot Product Attention (SDPA)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scaled Dot Product Attention (SDPA)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-math-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. The Math Backend
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sdpa" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        缩放点积注意力 (SDPA)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="缩放点积注意力 (SDPA)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-math-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 数学后端（Math Backend）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-the-efficient-backend-xformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. The Efficient Backend (xFormers)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-xformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 高效后端（xFormers）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-the-flash-backend-flashattention-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. The Flash Backend (FlashAttention-2)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-flash-flashattention-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Flash 后端（FlashAttention-2）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-the-cudnn-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. The cuDNN Backend
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-cudnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. cuDNN 后端
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary-of-attention-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary of Attention Variants
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        注意力变体总结
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文是“PyTorch 性能剖析”系列教程的第三篇。在相继探讨了基础算术运算（第一篇）以及线性层与 MLP（第二篇）之后，本文将目光转向现代 Transformer 架构的核心组件：<strong>注意力机制（Attention）</strong>。</p>
+<p>文章通过 PyTorch 性能剖析器（Profiler），详细对比了手写的朴素注意力机制与 PyTorch 原生 <code>Scaled Dot Product Attention (SDPA)</code> 及其多种底层后端（<code>math</code>、<code>efficient</code>、<code>flash</code> 和 <code>cudnn</code>）在 NVIDIA A100 GPU 上的实际表现。通过深入剖析剖析器追踪图（trace），我们揭示了隐藏的内存拷贝开销、张量核心（Tensor Core）的利用差异、显存带宽瓶颈，以及算子融合（Kernel Fusion）如何显著加速 Transformer 的工作负载。</p>
+<hr />
+<h2 id="executive-summary">Executive Summary</h2>
+<p>This article is the third installment in the <strong>Profiling in PyTorch</strong> series. Following our exploration of basic arithmetic operations (Part 1) and linear layers/MLPs (Part 2), this post tackles the fundamental architecture of modern transformers: <strong>Attention</strong>. </p>
+<p>We analyze how different attention implementations appear under the PyTorch profiler, comparing a hand-written naive attention mechanism against PyTorch's native <code>Scaled Dot Product Attention (SDPA)</code> and its various backends (<code>math</code>, <code>efficient</code>, <code>flash</code>, and <code>cudnn</code>). By learning to read profiler traces, we uncover hidden memory copies, tensor core utilization differences, memory traffic bottlenecks, and how kernel fusion radically accelerates transformer workloads.</p>
+<blockquote>
+<p>本文是<strong>《PyTorch 性能剖析》</strong>系列的第三篇文章。继第一篇探讨基础算术运算、第二篇探讨线性层与 MLP 之后，本文聚焦于现代 Transformer 的核心架构：<strong>注意力机制（Attention）</strong>。</p>
+<p>我们分析了不同的注意力机制实现方式在 PyTorch 性能剖析器下的表现，对比了手写的朴素注意力机制与 PyTorch 原生的 <code>缩放点积注意力 (SDPA)</code> 及其多种后端（<code>math</code>、<code>efficient</code>、<code>flash</code> 和 <code>cudnn</code>）。通过学习如何解读剖析器追踪图，我们揭示了隐藏的内存拷贝、张量核心利用率的差异、显存流量瓶颈，以及算子融合如何彻底加速 Transformer 工作负载。</p>
+</blockquote>
+<hr />
+<h2 id="introduction-to-the-series">Introduction to the Series</h2>
+<p>This series is designed to help you build the intuition required to read profiler traces and tables to drive targeted model optimizations:
+1. <a href="https://huggingface.co/blog/torch-profiler">Profiling in PyTorch (Part 1): A Beginner's Guide to torch.profiler</a>
+2. <a href="https://huggingface.co/blog/torch-mlp-fusion">Profiling in PyTorch (Part 2): From nn.Linear to a Fused MLP</a>
+3. <strong>Profiling in PyTorch (Part 3): Attention is all you profile</strong> <em>(current)</em></p>
+<p>While attention is famous for its quadratic-time complexity, many clever optimizations exist to mitigate this bottleneck. Our goal here is to examine how each optimization strategy looks under the hood of an <code>NVIDIA A100-SXM4-80GB</code> GPU using the PyTorch profiler.</p>
+<blockquote>
+<p><strong>Note:</strong> The scripts for this blog post live in the repository: <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_a_naive_attention.py"><code>04_a_naive_attention.py</code></a>, <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_b_inplace_ops_attention.py"><code>04_b_inplace_ops_attention.py</code></a>, <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_c_sdpa_attention.py"><code>04_c_sdpa_attention.py</code></a>, and <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_d_kernels_attention.py"><code>04_d_kernels_attention.py</code></a>.</p>
+<h2 id="_2">系列简介</h2>
+<p>本系列旨在帮助读者建立阅读剖析器追踪图（Profiler Traces）和数据表的直觉，从而推动针对性的模型优化：
+1. <a href="https://huggingface.co/blog/torch-profiler">PyTorch 性能剖析（第一篇）：torch.profiler 新手指南</a>
+2. <a href="https://huggingface.co/blog/torch-mlp-fusion">PyTorch 性能剖析（第二篇）：从 nn.Linear 到融合 MLP</a>
+3. <strong>PyTorch 性能剖析（第三篇）：注意力机制全解析</strong> <em>（当前文章）</em></p>
+<p>尽管注意力机制以其二次方的时间复杂度而闻名，但目前已有许多巧妙的优化方法来缓解这一瓶颈。我们此处的目是通过 PyTorch 剖析器，深入检视各种优化策略在 <code>NVIDIA A100-SXM4-80GB</code> GPU 底层的实际表现。</p>
+<blockquote>
+<p><strong>注意：</strong> 本博客的脚本存放在仓库中：<a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_a_naive_attention.py"><code>04_a_naive_attention.py</code></a>、<a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_b_inplace_ops_attention.py"><code>04_b_inplace_ops_attention.py</code></a>、<a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_c_sdpa_attention.py"><code>04_c_sdpa_attention.py</code></a> 和 <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/04_d_kernels_attention.py"><code>04_d_kernels_attention.py</code></a>。</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2 id="naive-attention">Naive Attention</h2>
+<p>Attention processes Queries (<span class="arithmatex">\(q\)</span>), Keys (<span class="arithmatex">\(k\)</span>), and Values (<span class="arithmatex">\(v\)</span>) through a sequential pipeline:
+1. Compute attention scores: <code>scores = matmul(q, k.T)</code>
+2. Scale scores: <code>scores * scale</code>
+3. Apply a causal mask: <code>scores.masked_fill(mask, "-inf")</code>
+4. Normalize with softmax: <code>attn = softmax(scores)</code>
+5. Reweight values: <code>matmul(attn, v)</code></p>
+<p>Here is a naive implementation in PyTorch:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NaiveCausalAttention</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head_dim</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">head_dim</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">scores</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+        <span class="n">attn</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">attn</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+<p>When profiling this implementation (<code>uv run 04_a_naive_attention.py</code>), we expect a series of distinct operations: matrix multiplications, scaling, masking, and softmax.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 1: The CPU lane highlighting discrete operations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/c26617870ebd.png"><img alt="CPU lane of the naive attention profiler trace, with the attn_fwd block expanded to show its matmul, mul, masked_fill and softmax operations" src=".././images/c26617870ebd.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>When unfolding the GPU lane, we can inspect the exact sequence of launched kernels:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 2: GPU and CPU lanes highlighting kernel collections</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/b92e043e007e.png"><img alt="Profiler trace of naive attention showing the CPU lane above the GPU lane, with each attn_fwd step mapping to a cluster of GPU kernels" src=".././images/b92e043e007e.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>Zooming in on a single step reveals an unexpected guest: a <strong>Memory Copy (<code>Memcpy</code>)</strong> kernel.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 3: Zoomed-in GPU lane showing individual kernels</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/83a878e1a668.png"><img alt="Zoomed-in GPU lane of naive attention showing the individual kernels for one step: two matmuls, a mul, a memory copy, a masking kernel and a softmax" src=".././images/83a878e1a668.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<h2 id="naive-attention_1">朴素注意力机制（Naive Attention）</h2>
+<p>注意力机制通过一个顺序流水线处理查询（<span class="arithmatex">\(q\)</span>）、键（<span class="arithmatex">\(k\)</span>）和值（<span class="arithmatex">\(v\)</span>）：
+1. 计算注意力得分：<code>scores = matmul(q, k.T)</code>
+2. 得分缩放：<code>scores * scale</code>
+3. 应用因果掩码：<code>scores.masked_fill(mask, "-inf")</code>
+4. 使用 softmax 进行归一化：<code>attn = softmax(scores)</code>
+5. 对值进行加权：<code>matmul(attn, v)</code></p>
+<p>以下是 PyTorch 中的一个朴素实现：</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NaiveCausalAttention</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head_dim</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">head_dim</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">scores</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+        <span class="n">attn</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">attn</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+<p>在剖析此实现（<code>uv run 04_a_naive_attention.py</code>）时，我们预期会看到一系列独立的连续操作：矩阵乘法、缩放、加掩码和 softmax。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 1：高亮显示离散操作的 CPU 通道</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/c26617870ebd.png"><img alt="CPU lane of the naive attention profiler trace, with the attn_fwd block expanded to show its matmul, mul, masked_fill and softmax operations" src=".././images/c26617870ebd.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>展开 GPU 通道后，我们可以检查所启动的精确内核序列：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 2：高亮显示内核集合的 GPU 与 CPU 通道</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/b92e043e007e.png"><img alt="Profiler trace of naive attention showing the CPU lane above the GPU lane, with each attn_fwd step mapping to a cluster of GPU kernels" src=".././images/b92e043e007e.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>放大到单步执行时，会发现一个意料之外的访客：<strong>内存拷贝（<code>Memcpy</code>）</strong>内核。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 3：显示单个内核的放大 GPU 通道</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/83a878e1a668.png"><img alt="Zoomed-in GPU lane of naive attention showing the individual kernels for one step: two matmuls, a mul, a memory copy, a masking kernel and a softmax" src=".././images/83a878e1a668.png" /></a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<h3 id="fixing-the-memory-copy-with-in-place-causal-masking">Fixing the Memory Copy with In-Place Causal Masking</h3>
+<p>The out-of-place nature of standard <code>masked_fill</code> forces PyTorch to allocate a copy of the tensor, execute the fill, and return it. By switching to the in-place equivalent (<code>masked_fill_</code>), we eliminate this overhead:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Before: scores = scores.masked_fill(mask, float(&quot;-inf&quot;))</span>
+<span class="c1"># After:</span>
+<span class="n">scores</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Type</th>
+<th style="text-align: center;">CPU Stream Comparison</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>Figure 4:</strong> Naive Masking</td>
+<td style="text-align: center;"><a href=".././images/c26617870ebd.png"><img alt="CPU lane of naive attention with out-of-place masked_fill" src=".././images/c26617870ebd.png" /></a></td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Figure 5:</strong> In-Place Masking</td>
+<td style="text-align: center;"><a href=".././images/a9a34581234d.png"><img alt="CPU lane of naive attention with in-place masked_fill_" src=".././images/a9a34581234d.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>Looking at the GPU lanes, the <code>Memcpy</code> kernel completely vanishes:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Type</th>
+<th style="text-align: center;">GPU Stream Comparison</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>Figure 6:</strong> Naive Masking</td>
+<td style="text-align: center;"><a href=".././images/83a878e1a668.png"><img alt="GPU kernels for naive attention including a separate Memcpy kernel before the masking" src=".././images/83a878e1a668.png" /></a></td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Figure 7:</strong> In-Place Masking</td>
+<td style="text-align: center;"><a href=".././images/5f431d330086.png"><img alt="GPU kernels for naive attention with in-place masking, with the Memcpy kernel gone" src=".././images/5f431d330086.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<h3 id="in-place">使用原地（In-Place）因果掩码消除内存拷贝</h3>
+<p>标准 <code>masked_fill</code> 的非原地（out-of-place）特性迫使 PyTorch 分配张量的副本、执行填充并将其返回。通过切换到原地等效操作（<code>masked_fill_</code>），我们消除了这一开销：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 之前：scores = scores.masked_fill(mask, float(&quot;-inf&quot;))</span>
+<span class="c1"># 之后：</span>
+<span class="n">scores</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">类型</th>
+<th style="text-align: center;">CPU 流对比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>图 4：</strong> 朴素掩码</td>
+<td style="text-align: center;"><a href=".././images/c26617870ebd.png"><img alt="CPU lane of naive attention with out-of-place masked_fill" src=".././images/c26617870ebd.png" /></a></td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>图 5：</strong> 原地掩码</td>
+<td style="text-align: center;"><a href=".././images/a9a34581234d.png"><img alt="CPU lane of naive attention with in-place masked_fill_" src=".././images/a9a34581234d.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>观察 GPU 通道，<code>Memcpy</code> 内核完全消失了：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">类型</th>
+<th style="text-align: center;">GPU 流对比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>图 6：</strong> 朴素掩码</td>
+<td style="text-align: center;"><a href=".././images/83a878e1a668.png"><img alt="GPU kernels for naive attention including a separate Memcpy kernel before the masking" src=".././images/83a878e1a668.png" /></a></td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>图 7：</strong> 原地掩码</td>
+<td style="text-align: center;"><a href=".././images/5f431d330086.png"><img alt="GPU kernels for naive attention with in-place masking, with the Memcpy kernel gone" src=".././images/5f431d330086.png" /></a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="scaled-dot-product-attention-sdpa">Scaled Dot Product Attention (SDPA)</h2>
+<p>PyTorch bundles the complete attention pipeline into a single optimized function:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">functional</span> <span class="k">as</span> <span class="n">F</span>
+
+<span class="n">F</span><span class="o">.</span><span class="n">scaled_dot_product_attention</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">is_causal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></p>
+<p>SDPA dynamically dispatches to different backends depending on the hardware, inputs, and constraints. We can pin specific backends using the <code>torch.nn.attention.sdpa_kernel</code> context manager.</p>
+<h3 id="1-the-math-backend">1. The Math Backend</h3>
+<p>Running <code>uv run 04_c_sdpa_attention.py --backend math</code> reveals a surprising result: <strong>the one-liner is roughly 3.7x slower</strong> than our naive in-place attention implementation.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: center;">Naive In-Place</th>
+<th style="text-align: center;">SDPA Math</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>*_fwd</code> CUDA time avg</td>
+<td style="text-align: center;">1.955 ms</td>
+<td style="text-align: center;">7.239 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;">Self CUDA time total</td>
+<td style="text-align: center;">7.194 ms</td>
+<td style="text-align: center;">27.279 ms</td>
+</tr>
+</tbody>
+</table>
+<p>While our naive implementation launches <strong>5 kernels</strong>, the math backend launches <strong>20 kernels</strong> per forward pass:
+* <strong>Tensor Cores Left Vacant:</strong> Instead of utilizing high-performance Tensor Cores (e.g., <code>s16816</code> instructions in bfloat16), it falls back to ordinary CUDA cores using <code>sgemm</code> (FP32), upcasting tensors and doubling data movement.
+* <strong>Rebuilt Causal Masks:</strong> Passing <code>is_causal=True</code> causes the backend to materialize a fresh lower-triangular mask on every call via <code>aten::ones</code>, <code>aten::tril</code>, and <code>aten::where</code>.
+* <strong>Safe Softmax:</strong> It executes <code>_safe_softmax</code> to handle fully masked rows and prevent <code>NaN</code> generation (<code>0/0</code>), introducing additional arithmetic overhead.</p>
+<blockquote>
+<h2 id="sdpa">缩放点积注意力 (SDPA)</h2>
+<p>PyTorch 将完整的注意力流水线打包成一个单一的优化函数：
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">functional</span> <span class="k">as</span> <span class="n">F</span>
+
+<span class="n">F</span><span class="o">.</span><span class="n">scaled_dot_product_attention</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">is_causal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></p>
+<p>SDPA 根据硬件、输入和约束条件动态调度到不同的后端。我们可以使用 <code>torch.nn.attention.sdpa_kernel</code> 上下文管理器来锁定特定的后端。</p>
+<h3 id="1-math-backend">1. 数学后端（Math Backend）</h3>
+<p>运行 <code>uv run 04_c_sdpa_attention.py --backend math</code> 会揭示一个令人惊讶的结果：<strong>这行单行代码比我们的朴素原地注意力实现慢大约 3.7 倍</strong>。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">指标</th>
+<th style="text-align: center;">朴素原地实现</th>
+<th style="text-align: center;">SDPA 数学后端</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>*_fwd</code> CUDA 平均时间</td>
+<td style="text-align: center;">1.955 ms</td>
+<td style="text-align: center;">7.239 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;">自定义 CUDA 总时间</td>
+<td style="text-align: center;">7.194 ms</td>
+<td style="text-align: center;">27.279 ms</td>
+</tr>
+</tbody>
+</table>
+<p>我们的朴素实现启动了 <strong>5 个内核</strong>，而数学后端在每个前向传播中启动了 <strong>20 个内核</strong>：
+* <strong>Tensor Core 处于闲置状态：</strong> 它没有利用高性能 Tensor Core（例如 bfloat16 中的 <code>s16816</code> 指令），而是回退到使用普通 CUDA 核心和 <code>sgemm</code>（FP32），这会提升张量精度并使数据移动量翻倍。
+* <strong>重建因果掩码：</strong> 传入 <code>is_causal=True</code> 会导致后端在每次调用时通过 <code>aten::ones</code>、<code>aten::tril</code> 和 <code>aten::where</code> 重新生成一个新的下三角掩码。
+* <strong>安全 Softmax（Safe Softmax）：</strong> 它执行 <code>_safe_softmax</code> 来处理全掩码行并防止产生 <code>NaN</code>（<code>0/0</code>），从而引入了额外的算术开销。</p>
+</blockquote>
+<hr />
+<h3 id="2-the-efficient-backend-xformers">2. The Efficient Backend (xFormers)</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>efficient
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 14: Profiler trace for SDPA with efficient backend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/33cbd8aa2fec.png"><img alt="Profiler trace of the SDPA efficient backend showing a single fused fmha_cutlassF attention kernel per forward" src=".././images/33cbd8aa2fec.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>The efficient backend (derived from Meta's xFormers) collapses the entire attention routine into a single fused kernel: <code>fmha_cutlassF_bf16_aligned_64x64_rf_sm80</code>. It operates directly in <code>bf16</code> using Tensor Cores and keeps working sets in fast register memory (<code>rf</code>).</p>
+<blockquote>
+<h3 id="2-xformers">2. 高效后端（xFormers）</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>efficient
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 14：带有高效后端的 SDPA 剖析追踪图</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/33cbd8aa2fec.png"><img alt="Profiler trace of the SDPA efficient backend showing a single fused fmha_cutlassF attention kernel per forward" src=".././images/33cbd8aa2fec.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>高效后端（源自 Meta 的 xFormers）将整个注意力常规流程压缩为一个单一的融合内核：<code>fmha_cutlassF_bf16_aligned_64x64_rf_sm80</code>。它直接在 <code>bf16</code> 中使用 Tensor Core 运行，并将工作集保留在快速寄存器内存（<code>rf</code>）中。</p>
+</blockquote>
+<hr />
+<h3 id="3-the-flash-backend-flashattention-2">3. The Flash Backend (FlashAttention-2)</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>flash
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 15: Flash backend trace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/db532935274c.png"><img alt="Profiler trace of the SDPA flash backend" src=".././images/db532935274c.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>FlashAttention-2 (<code>void pytorch_flash</code>) solves the core bottleneck of attention: <strong>HBM (High Bandwidth Memory) traffic</strong>. </p>
+<p>Traditional attention writes intermediate <code>[seq, seq]</code> score matrices (millions of elements) back and forth to global memory. FlashAttention processes keys and values in <strong>tiles</strong>, utilizing an <em>online softmax</em> trick to accumulate outputs incrementally without ever materializing the massive score matrix in global memory.</p>
+<blockquote>
+<p><strong>Understanding Occupancy:</strong> Profilers may report low occupancy (e.g., <strong>13%</strong>) for FlashAttention kernels. This occurs because Flash allocates significant shared memory and heavy register usage per block (e.g., 255 registers per thread). This low occupancy is intentional—it trades thread-level concurrency to keep data in on-chip SRAM and prevent expensive global memory round-trips.</p>
+<h3 id="3-flash-flashattention-2">3. Flash 后端（FlashAttention-2）</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>flash
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 15：Flash 后端追踪图</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/db532935274c.png"><img alt="Profiler trace of the SDPA flash backend" src=".././images/db532935274c.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>FlashAttention-2（<code>void pytorch_flash</code>）解决了注意力的核心瓶颈：<strong>HBM（高带宽内存）流量</strong>。</p>
+<p>传统的注意力机制会在全局内存中来回读写中间的 <code>[seq, seq]</code> 得分矩阵（包含数百万个元素）。而 FlashAttention 以<strong>分块（tiles）</strong>的形式处理键和值，利用<em>在线 Softmax（online softmax）</em>技巧来增量累加输出，而无需在全局内存中实际生成巨大的得分矩阵。</p>
+<blockquote>
+<p><strong>理解占用率（Occupancy）：</strong> 剖析器可能会报告 FlashAttention 内核的占用率较低（例如 <strong>13%</strong>）。这是因为 Flash 在每个块中分配了大量的共享内存并高强度使用寄存器（例如每个线程 255 个寄存器）。这种低占用率是有意为之的——它牺牲了线程级的并发性，从而将数据保留在片上 SRAM 中，并防止了昂贵的全局内存往返。</p>
+</blockquote>
+</blockquote>
+<hr />
+<h3 id="4-the-cudnn-backend">4. The cuDNN Backend</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>cudnn
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Figure 18: cuDNN backend trace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/8911d3aec5ec.png"><img alt="Profiler trace of the SDPA cuDNN backend showing a single cudnn_generated attention kernel per forward" src=".././images/8911d3aec5ec.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>NVIDIA's cuDNN backend dynamically generates and tunes a custom attention kernel specifically tailored to the runtime shape and problem profile:</p>
+<ul>
+<li><strong>No Transposes:</strong> Unlike flash or efficient backends which require metadata reshapes, cuDNN consumes native <code>[B, H, S, D]</code> layouts directly.</li>
+<li><strong>Driver-Level Launch:</strong> It launches via <code>cuLaunchKernelEx</code> rather than the standard runtime API <code>cudaLaunchKernel</code>.</li>
+<li><strong>CPU Overhead:</strong> While the GPU kernel executes efficiently, the CPU time is significantly higher (approx. <strong>214 µs</strong> vs 138 µs for flash) due to the runtime plan-selection and "knob" tuning performed on every call.</li>
+</ul>
+<blockquote>
+<h3 id="4-cudnn">4. cuDNN 后端</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>04_c_sdpa_attention.py<span class="w"> </span>--backend<span class="w"> </span>cudnn
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">图 18：cuDNN 后端追踪图</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><a href=".././images/8911d3aec5ec.png"><img alt="Profiler trace of the SDPA cuDNN backend showing a single cudnn_generated attention kernel per forward" src=".././images/8911d3aec5ec.png" /></a></td>
+</tr>
+</tbody>
+</table>
+<p>NVIDIA 的 cuDNN 后端会根据运行时的形状和问题特征，动态生成并调优专用的自定义注意力内核：</p>
+<ul>
+<li><strong>无需转置：</strong> 与需要元数据重塑（reshapes）的 flash 或 efficient 后端不同，cuDNN 直接消费原生的 <code>[B, H, S, D]</code> 布局。</li>
+<li><strong>驱动层启动：</strong> 它通过 <code>cuLaunchKernelEx</code> 启动，而不是标准的运行时 API <code>cudaLaunchKernel</code>。</li>
+<li><strong>CPU 开销：</strong> 尽管 GPU 内核执行效率很高，但由于每次调用时都会执行运行时方案选择和“参数（knob）”调优，因此 CPU 时间明显更高（约为 <strong>214 µs</strong>，而 flash 为 138 µs）。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="summary-of-attention-variants">Summary of Attention Variants</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variant</th>
+<th style="text-align: left;">What We Changed</th>
+<th style="text-align: center;">Kernels / Forward</th>
+<th style="text-align: left;">Key Takeaway</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Naive Attention</strong></td>
+<td style="text-align: left;">Built using primitive PyTorch ops</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">Out-of-place <code>masked_fill</code> introduces a hidden <code>Memcpy</code> kernel.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Naive In-Place</strong></td>
+<td style="text-align: left;"><code>masked_fill</code> <span class="arithmatex">\(\rightarrow\)</span> <code>masked_fill_</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;">In-place operation eliminates the <code>Memcpy</code> overhead entirely.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA Math</strong></td>
+<td style="text-align: left;">Pinned to <code>SDPBackend.MATH</code></td>
+<td style="text-align: center;">20</td>
+<td style="text-align: left;">Reference implementation; uses FP32 on CUDA cores, making it correct but <span class="arithmatex">\(\sim\)</span>3.7x slower.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA Efficient</strong></td>
+<td style="text-align: left;">xFormers-backed implementation</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Fused <code>fmha_cutlassF</code> kernel running natively in <code>bf16</code> on Tensor Cores.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA Flash</strong></td>
+<td style="text-align: left;">FlashAttention-2 (<code>pytorch_flash</code>)</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Eliminates global memory traffic via tiling; fastest overall performance.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA cuDNN</strong></td>
+<td style="text-align: left;">cuDNN generated backend</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Dynamically tuned kernel with zero transposes, though plan generation increases CPU overhead.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<h2 id="_3">注意力变体总结</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">变体</th>
+<th style="text-align: left;">更改内容</th>
+<th style="text-align: center;">单次前向内核数</th>
+<th style="text-align: left;">核心要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>朴素注意力</strong></td>
+<td style="text-align: left;">使用 PyTorch 原语构建</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">非原地的 <code>masked_fill</code> 引入了隐藏的 <code>Memcpy</code> 内核。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>朴素原地实现</strong></td>
+<td style="text-align: left;"><code>masked_fill</code> <span class="arithmatex">\(\rightarrow\)</span> <code>masked_fill_</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;">原地操作完全消除了 <code>Memcpy</code> 开销。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA 数学后端</strong></td>
+<td style="text-align: left;">锁定到 <code>SDPBackend.MATH</code></td>
+<td style="text-align: center;">20</td>
+<td style="text-align: left;">参考实现；在 CUDA 核心上使用 FP32，正确但慢约 3.7 倍。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA 高效后端</strong></td>
+<td style="text-align: left;">基于 xFormers 的实现</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">融合的 <code>fmha_cutlassF</code> 内核，在 Tensor Core 上以 <code>bf16</code> 原生运行。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA Flash</strong></td>
+<td style="text-align: left;">FlashAttention-2 (<code>pytorch_flash</code>)</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">通过分块消除全局内存流量；整体性能最快。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDPA cuDNN</strong></td>
+<td style="text-align: left;">cuDNN 生成的后端</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">动态调优的内核，无需转置，但方案生成增加了 CPU 开销。</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<p>The golden rule of profiling covered throughout this series is simple: <strong>Guess first, then look.</strong> </p>
+<p>By stating your expectations before opening a trace, unexpected behaviors—such as hidden memory copies, fallback to CUDA cores, or heavy CPU dispatch costs—transform from confusing anomalies into valuable insights. Profiling is not an esoteric black art; it is simply the practice of asking <em>"Why is that happening?"</em> until the bottleneck is revealed.</p>
+<p>Now open up a trace, formulate your hypothesis, and start optimizing! 🤗</p>
+<blockquote>
+<h2 id="_4">结论</h2>
+<p>本系列贯穿始终的剖析黄金法则很简单：<strong>先猜测，后查看。</strong></p>
+<p>通过在打开追踪图之前陈述您的预期，那些意料之外的行为——例如隐藏的内存拷贝、回退到 CUDA 核心或沉重的 CPU 调度成本——就会从令人困惑的异常转变为有价值的洞察。性能剖析并非深奥的黑魔法；它只是一种不断追问“为什么会这样？”直到揭示瓶颈的实践。</p>
+<p>现在，打开一个追踪图，提出您的假设，开始优化吧！🤗</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PyTorch</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能剖析</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">FlashAttention</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">算子融合</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

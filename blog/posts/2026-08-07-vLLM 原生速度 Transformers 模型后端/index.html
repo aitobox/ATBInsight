@@ -1,0 +1,730 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-vLLM%20%E5%8E%9F%E7%94%9F%E9%80%9F%E5%BA%A6%20Transformers%20%E6%A8%A1%E5%9E%8B%E5%90%8E%E7%AB%AF/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>vLLM 原生速度 Transformers 模型后端 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              vLLM 原生速度 Transformers 模型后端
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vllm-transformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        原生速度 vLLM Transformers 模型后端
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        展示
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="展示">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        测量方法
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        有什么新变化？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        它是如何工作的？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">vLLM 原生速度 Transformers 模型后端</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>vLLM 团队近期宣布，其 <code>transformers</code> 模型后端已实现重大突破，在性能上达到甚至超越了针对特定架构的手写原生 vLLM 实现。这一进展意味着模型开发者无需再为 vLLM 手动移植模型，即可直接利用 <code>transformers</code> 库的通用性，同时享受 vLLM 的连续批处理（Continuous Batching）和自定义注意力算子等高性能推理优化。</p>
+<p>该技术核心在于利用 <code>torch.fx</code> 对模型计算图进行静态分析，通过抽象语法树（AST）重写操作，实现推理时的动态算子融合与并行化支持。这一改进不仅简化了模型部署流程，还确保了模型在训练、评估与推理任务之间的一致性，为大规模模型的高效部署提供了更灵活的路径。</p>
+<hr />
+<h2 id="vllm-transformers">原生速度 vLLM Transformers 模型后端</h2>
+<p><strong>TL;DR</strong>: 对于许多 LLM 架构而言，transformers vLLM 后端现在的速度已经与定制的 vLLM 实现相当（甚至更快）。模型作者可以自动利用他们的 transformers 实现，免费获得超高速的 vLLM 推理能力。</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 升级 vllm pip 包</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>vllm<span class="w"> </span>--torch-backend<span class="w"> </span>auto
+</code></pre></div>
+<blockquote>
+<p>The <code>transformers</code> library has become the reference modeling library for Machine Learning, supporting over 450 architectures with consistent APIs. Its design ensures that model implementations are self-contained and easy to understand, making it the ideal starting point for developers to learn architectures before porting them to frameworks like vLLM, SGLang, MLX, or llama.cpp.</p>
+</blockquote>
+<p><code>transformers</code> 库已成为机器学习领域的参考建模库，支持超过 450 种架构，并提供一致的 API。其设计确保了模型实现是自包含且易于理解的，这使其成为开发者在将模型移植到 vLLM、SGLang、MLX 或 llama.cpp 等框架之前，学习架构的理想起点。</p>
+<blockquote>
+<p>We have invested significant effort into integrating <code>transformers</code> as a modeling backend in vLLM. This allows model authors to run transformers models (LLMs and VLMs) inside vLLM without manual porting, combining the accessibility of transformers with vLLM’s optimized inference techniques like continuous batching and custom attention kernels.</p>
+</blockquote>
+<p>我们投入了大量精力将 <code>transformers</code> 集成为 vLLM 的建模后端。这使得模型作者无需手动移植，即可在 vLLM 中运行 transformers 模型（LLM 和 VLM），从而将 transformers 的易用性与 vLLM 的优化推理技术（如连续批处理和自定义注意力算子）结合起来。</p>
+<hr />
+<h2 id="_2">展示</h2>
+<p>我们对比了 vLLM 的 transformers 建模后端与 vLLM 手写原生实现，涵盖了三种不同的 Qwen3 模型：
+*   单 GPU 上的 4B 稠密模型
+*   使用张量并行（Tensor Parallelism）的 32B 稠密模型
+*   在 8×H100 节点上的 235B 参数 FP8 混合专家模型（MoE）</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Pre and Post PR benchmarks with trasnformers vllm backend" src=".././images/8f8b468e0ec6.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">结果：transformers 建模后端在上述所有模型中均<strong>达到或超过了</strong>原生吞吐量。</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Running any supported Hugging Face model through the transformers modeling backend requires only a single flag: <code>--model-impl transformers</code>.</p>
+</blockquote>
+<p>通过 transformers 建模后端运行任何受支持的 Hugging Face 模型，只需添加一个标志：<code>--model-impl transformers</code>。</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Qwen3-4B 稠密模型，单 GPU</span>
+vllm<span class="w"> </span>serve<span class="w"> </span>Qwen/Qwen3-4B<span class="w"> </span>--model-impl<span class="w"> </span>transformers
+
+<span class="c1"># Qwen3-32B 稠密模型，跨 2 个 GPU 的张量并行</span>
+vllm<span class="w"> </span>serve<span class="w"> </span>Qwen/Qwen3-32B<span class="w"> </span>--model-impl<span class="w"> </span>transformers<span class="w"> </span>--tensor-parallel-size<span class="w"> </span><span class="m">2</span>
+
+<span class="c1"># Qwen3-235B-A22B-FP8 MoE，跨 8 个 GPU 的数据并行 + 专家并行</span>
+vllm<span class="w"> </span>serve<span class="w"> </span>Qwen/Qwen3-235B-A22B-FP8<span class="w"> </span>--model-impl<span class="w"> </span>transformers<span class="w"> </span>--data-parallel-size<span class="w"> </span><span class="m">8</span><span class="w"> </span>--enable-expert-parallel
+</code></pre></div>
+<h3 id="_3">测量方法</h3>
+<p>每个模型都在三种条件下进行了比较：
+1.  <strong>native</strong>: <code>--model-impl vllm</code> (基准)。
+2.  <strong>after</strong>: 使用最新 PR 的 <code>--model-impl transformers</code>。
+3.  <strong>before</strong>: 未使用该 PR 的 <code>--model-impl transformers</code>。</p>
+<p>完整的、可复现的运行脚本可作为 <a href="https://huggingface.co/datasets/ariG23498/useful-scripts/blob/main/transformers-backend-vllm-benchmark.sh">benchmark.sh</a> gist 获取。</p>
+<hr />
+<h2 id="_4">有什么新变化？</h2>
+<p>此前，transformers 建模后端主要关注将注意力机制作为推理瓶颈。虽然有效，但它缺乏定制 vLLM 端口所提供的专门优化（如自定义并行化和融合算子）。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="New model integration to transformers and vLLM" src=".././images/02464c789ee3.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">过去，新模型需要分别针对 transformers 集成一次，并针对 vLLM 进行定制优化集成一次。</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="New model integrates to transformers, and is immediately available to vLLM" src=".././images/ade00c64cff2.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">现在，新模型一旦集成到 transformers 中，即可立即在 vLLM 中使用，并获得原生 vLLM 的实现速度。</td>
+</tr>
+</tbody>
+</table>
+<p>最新迭代在运行时动态应用了推理特定的层融合，使兼容架构的性能与定制代码实现相匹配。</p>
+<hr />
+<h2 id="_5">它是如何工作的？</h2>
+<p>该后端现在使用 <code>torch.fx</code> 对模型的计算图进行静态分析。它识别已知模式并使用抽象语法树（AST）原地重写操作。</p>
+<p><strong>关键能力：</strong>
+*   <strong>融合操作（Fused Operations）</strong>：将操作映射到优化的 vLLM 算子，例如 MoE 模型中用于专家并行（EP）的算子。
+*   <strong>并行支持（Parallelism Support）</strong>：使用 <code>MergedColumnParallelLinear</code> 和 <code>QKVParallelLinear</code> 等模块推断张量并行（TP）和流水线并行（PP）方案。
+*   <strong>编译（Compilation）</strong>：处理后的模型与 <code>torch.compile</code> 和 CUDA Graphs 完全兼容。
+*   <strong>统一代码库（Unified Codebase）</strong>：与专用的 vLLM 实现不同，这些基于 transformers 的模型仍然可以用于训练、评估和 RL 滚动更新。</p>
+<blockquote>
+<p><strong>注意</strong>：我们目前正在准备一篇详细的博客文章，深入探讨这些优化的推理方法以及我们模型操作技术的具体技术细节。</p>
+</blockquote>
+<hr />
+<h2 id="_6">资源</h2>
+<ul>
+<li><a href="https://huggingface.co/blog/transformers-model-definition#a-model-definition-library">Transformers 模型定义</a></li>
+<li><a href="https://vllm.ai/blog/2025-04-11-transformers-backend">vLLM 中的 Transformers 建模后端</a></li>
+<li><a href="https://vllm.ai/blog/2025-12-17-large-scale-serving">大规模服务</a></li>
+<li><a href="https://docs.pytorch.org/docs/2.12/fx.html">Torch FX</a></li>
+<li><a href="https://docs.python.org/3/library/ast.html">抽象语法树</a></li>
+</ul>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">vLLM</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformers</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">LLM</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度学习</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,725 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-vLLM%20V0%20%E5%88%B0%20V1%20%E8%BF%81%E7%A7%BB%EF%BC%9A%E5%9C%A8%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0%E4%B8%AD%E7%BA%A0%E6%AD%A3%E5%81%8F%E5%B7%AE%E5%89%8D%EF%BC%8C%E5%85%88%E7%A1%AE%E4%BF%9D%E5%90%8E%E7%AB%AF%E6%AD%A3%E7%A1%AE%E6%80%A7/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>vLLM V0 到 V1 迁移：在强化学习中纠正偏差前，先确保后端正确性 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              vLLM V0 到 V1 迁移：在强化学习中纠正偏差前，先确保后端正确性
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        迁移目标
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        故障模式
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        V1 后端修复
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="V1 后端修复">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        对数概率语义
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        运行时默认设置
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        运行中的权重更新
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fp32-lm_head" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        最后的差距：fp32 lm_head
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么我们首先修复后端正确性
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">vLLM V0 到 V1 迁移：在强化学习中纠正偏差前，先确保后端正确性</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在将 <a href="https://github.com/ServiceNow/PipelineRL/">PipelineRL</a> 推理引擎从 vLLM V0 迁移到 V1 时，我们遇到了明显的训练与推理不匹配问题。与其调整强化学习（RL）目标函数来弥补这些差异，我们选择优先恢复后端的一致性。通过修复对数概率（logprob）语义、对齐运行时默认设置、管理运行中的权重更新（inflight weight updates）以及确保使用 fp32 的 <code>lm_head</code> 投影，我们成功匹配了 V0 的训练动态，而无需修改强化学习目标函数本身。</p>
+<blockquote>
+<p>When migrating the <a href="https://github.com/ServiceNow/PipelineRL/">PipelineRL</a> inference engine from vLLM V0 to V1, we encountered significant train-inference mismatches. Rather than adjusting the RL objective to compensate for these discrepancies, we prioritized restoring backend parity. By fixing logprob semantics, aligning runtime defaults, managing inflight weight updates, and ensuring an fp32 <code>lm_head</code> projection, we successfully matched V0 training dynamics without needing to alter the RL objective itself.</p>
+</blockquote>
+<hr />
+<h3 id="_2">迁移目标</h3>
+<p>vLLM V1 是对 V0 引擎的大规模重写。我们的迁移目标非常明确且收敛：
+1. 验证 V1 返回的 rollout 对数概率是否符合训练器预期的格式。
+2. 针对 V0 参考基准重新运行相同的工作负载。
+3. 仅在恢复后端一致性之后，再评估目标层面的更改。</p>
+<p>最初的 V1 运行结果显示，与 vLLM <code>0.8.5</code> 参考基准相比，<code>kl_new_old</code>、<code>entropy</code> 和 <code>reward</code> 等指标存在明显的发散。</p>
+<blockquote>
+<p>vLLM V1 is a substantial rewrite of the V0 engine. Our migration target was deliberately narrow:
+1. Verify that V1 returned rollout logprobs in the format the trainer expected.
+2. Rerun the same workload against the V0 reference.
+3. Evaluate objective-level changes only after backend parity was restored.</p>
+<p>Initial V1 runs showed clear divergence in metrics like <code>kl_new_old</code>, <code>entropy</code>, and <code>reward</code> compared to the vLLM <code>0.8.5</code> reference.</p>
+</blockquote>
+<p><img alt="Figure 1. Trainer-side metrics for the vLLM V0 reference (blue), the initial vLLM V1 attempt (red), and the final vLLM V1 run after our fixes (green)." src=".././images/3bcbe7dbf99d.png" /></p>
+<p><img alt="Figure 2. Current-policy logprobs (left) and reward (right). The initial vLLM V1 run (red) separates from the vLLM V0 reference (blue)." src=".././images/56058b20f40a.png" /></p>
+<p><img alt="Figure 3. Clip rate, entropy, and reward showing how the rollout/trainer policy gap propagates into training." src=".././images/0f8258a53b5d.png" /></p>
+<hr />
+<h3 id="_3">故障模式</h3>
+<p>我们将潜在原因归纳为三个层面：
+1. <strong>语义不匹配</strong>：后端返回的对数概率其含义与预期不符。
+2. <strong>推理路径不匹配</strong>：不同的运行时默认设置（缓存、调度）导致了不同的执行路径。
+3. <strong>目标不匹配</strong>：强化学习目标函数需要对残留的陈旧性（staleness）进行修正。</p>
+<p>我们将前两点视为后端行为问题，在考虑目标侧的更改之前先予以排除。</p>
+<blockquote>
+<p>We categorized potential causes into three layers:
+1. <strong>Semantic mismatch</strong>: The backend returns logprobs with different meanings than expected.
+2. <strong>Inference-path mismatch</strong>: Different runtime defaults (caching, scheduling) lead to different execution paths.
+3. <strong>Objective mismatch</strong>: The RL objective requires correction for remaining staleness.</p>
+<p>We treated the first two as backend behavior problems to be ruled out before considering objective-side changes.</p>
+</blockquote>
+<hr />
+<h3 id="v1">V1 后端修复</h3>
+<h4 id="_4">对数概率语义</h4>
+<p>vLLM V1 默认返回原始模型输出。我们需要设置 <code>logprobs-mode=processed_logprobs</code>，以确保对数概率与采样器使用的分布相匹配。这消除了策略比率（policy ratios）中的均值偏移。</p>
+<blockquote>
+<p>vLLM V1 returns raw model outputs by default. We required <code>logprobs-mode=processed_logprobs</code> to ensure the logprobs matched the distribution used by the sampler. This eliminated the mean offset in policy ratios.</p>
+</blockquote>
+<p><img alt="Figure 4. Per-step deviation of the rollout/trainer policy ratio from 1.0." src=".././images/353a9d3975b4.png" /></p>
+<h4 id="_5">运行时默认设置</h4>
+<p>我们显式禁用了与 V0 参考路径不同的功能，以确保一致性：</p>
+<blockquote>
+<p>We explicitly disabled features that differed from the V0 reference path to ensure parity:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nt">vllm_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">use_v1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">vllm_kwargs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">logprobs-mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">processed_logprobs</span>
+<span class="w">    </span><span class="nt">enable-prefix-caching</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">async-scheduling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<h4 id="_6">运行中的权重更新</h4>
+<p>为了匹配 V0 的行为，我们确保权重更新不会触发显式的缓存失效：</p>
+<blockquote>
+<p>To match V0 behavior, we ensured that weight updates did not trigger explicit cache invalidation:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">pause_generation</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;keep&quot;</span><span class="p">,</span> <span class="n">clear_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">engine_client</span><span class="o">.</span><span class="n">collective_rpc_async</span><span class="p">(</span>
+    <span class="s2">&quot;receive_weight_update&quot;</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(),),</span>
+<span class="p">)</span>
+<span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">resume_generation</span><span class="p">()</span>
+</code></pre></div>
+<p><img alt="Figure 5. Weight lag in the rollout server." src=".././images/530123ee6cff.png" /></p>
+<hr />
+<h3 id="fp32-lm_head">最后的差距：fp32 lm_head</h3>
+<p>实现最终的一致性需要匹配 Logit 计算的数值路径。通过强制 <code>lm_head</code> 在 fp32 精度下计算，我们将 rollout 后端与训练器的投影行为进行了对齐，成功弥合了奖励轨迹（reward trajectories）上的差距。</p>
+<blockquote>
+<p>Final parity required matching the numerical path for logit computation. By forcing the <code>lm_head</code> to compute in fp32, we aligned the rollout backend with the trainer's projection behavior, successfully closing the gap in reward trajectories.</p>
+</blockquote>
+<p><img alt="Figure 6. Reward for the vLLM V0 reference (blue), initial V1 (red), and final V1 with fp32 lm_head (green)." src=".././images/41bdac4fa895.png" /></p>
+<hr />
+<h3 id="_7">为什么我们首先修复后端正确性</h3>
+<p>目标侧的修正（例如重要性采样比率重加权）非常强大，但在后端未对齐的情况下应用它们会掩盖根本原因。通过将推理正确性与目标设计分离开来，我们确保了训练曲线的可解释性。给我们的教训很明确：<strong>首先修复后端的正确性，然后针对剩余的不匹配进行修正。</strong></p>
+<blockquote>
+<p>Objective-side corrections (like importance-ratio reweighting) are powerful, but applying them while the backend is misaligned masks the root cause. By separating inference correctness from objective design, we ensured that our training curves remained interpretable. The lesson is clear: <strong>fix backend correctness first, then add corrections for the mismatch that remains.</strong></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">vLLM</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">强化学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">机器学习工程</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

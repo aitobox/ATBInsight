@@ -1,0 +1,1089 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-PyTorch%20%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90%EF%BC%88%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%89%EF%BC%9A%E4%BB%8E%20nn.Linear%20%E5%88%B0%E8%9E%8D%E5%90%88%20MLP/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        系列导航
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        引言
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#matmul-add-linear" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        从 <code>matmul-add</code> 到 <code>Linear</code>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="从 matmul-add 到 Linear">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        转置操作在做什么？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mul-add" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么没有单独的 <code>mul</code> 和 <code>add</code> 内核？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>--compile</code> 对单个线性层有帮助吗？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        转置去哪了？内核布局与预操作
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlp" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        堆叠三个线性层：MLP
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="堆叠三个线性层：MLP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gemm" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么有两种 GEMM 内核？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#torchcompile" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>torch.compile</code> 做了什么？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triton" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        融合的 Triton 内核
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        让我们使用手动调优的内核
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="让我们使用手动调优的内核">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kernels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么要使用 <code>kernels</code> 库？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么调优内核更好？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文是“PyTorch 性能分析”系列的第二篇。在前作中，我们探讨了如何解读基础的 Profiler 轨迹，本文则进一步深入，将分析对象从简单的矩阵乘法扩展到深度学习的核心构建模块：<code>nn.Linear</code> 层以及包含 GeGLU 激活函数的完整多层感知机（MLP）块。</p>
+<p>文章重点分析了 PyTorch 如何通过“算子融合（Fusion）”技术减少 GPU 高带宽内存（HBM）的读写开销。我们对比了 Eager 模式、<code>torch.compile</code> 编译模式以及使用 Liger Kernels 手动调优内核在性能表现和调度开销上的差异，旨在帮助开发者理解 GPU 内核调度、算子融合机制以及如何通过工具链实现极致性能。</p>
+<hr />
+<h2 id="_2">系列导航</h2>
+<ol>
+<li><a href="https://huggingface.co/blog/torch-profiler">Profiling in PyTorch (Part 1): A Beginner's Guide to torch.profiler</a></li>
+<li><strong>Profiling in PyTorch (Part 2): From nn.Linear to a Fused MLP</strong> <em>(当前文章)</em></li>
+<li><a href="https://huggingface.co/blog/torch-attention-profile">Profiling in PyTorch (Part 3): Attention is all you profile</a></li>
+</ol>
+<hr />
+<h2 id="_3">引言</h2>
+<p>在<a href="https://huggingface.co/blog/torch-profiler">本系列的第一部分</a>中，我们通过 <code>torch.add(torch.matmul(x, w), b)</code> 学习了如何解读 PyTorch Profiler 轨迹，探索了 CPU 分发链、启动开销、计算受限与开销受限的区别，以及 <code>torch.compile</code> 的内部机制。</p>
+<p>在第二篇中，我们将更进一步，用 <code>nn.Linear</code> 模块（设置 <code>bias=True</code>）替换手动编写的运算。随后，我们将堆叠三个线性层，并结合 GeGLU 激活函数，构建一个完整的多层感知机（MLP）块。</p>
+<blockquote>
+<p><strong>注意：</strong> 本文的脚本位于：<a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/02_linear.py"><code>02_linear.py</code></a>、<a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/03_simple_mlp.py"><code>03_simple_mlp.py</code></a> 和 <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/03_kernels_mlp.py"><code>03_kernels_mlp.py</code></a>。建议在单独的标签页中打开它们以便跟随阅读。所有脚本均在 <code>NVIDIA A100-SXM4-80GB</code> GPU 上执行。你可以通过 <a href="https://huggingface.co/docs/hub/spaces-dev-mode">Dev Mode with Spaces</a> 或 <a href="https://huggingface.co/docs/huggingface_hub/en/guides/jobs">Hugging Face Jobs pipeline</a> 轻松配置 GPU 环境。</p>
+</blockquote>
+<p>在开始之前，请记住两个核心原则：
+1. GPU <strong>内核（Kernel）</strong> 是在多个 GPU 线程上并行运行的程序。
+2. CPU <strong>调度并启动</strong>这些内核；大部分观察到的 PyTorch CPU 开销都源于这种调度工作。</p>
+<hr />
+<h2 id="matmul-add-linear">从 <code>matmul-add</code> 到 <code>Linear</code></h2>
+<p><code>nn.Linear</code> 封装了我们在第一部分中分析过的矩阵乘法和加法运算，同时将权重和偏置作为参数进行管理：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># bias=True 模拟了第一部分中的乘法和加法运算</span>
+<span class="n">linear_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_dim</span><span class="p">,</span> <span class="n">out_dim</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">linear_layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+<p>数学表达式为：
+$<span class="arithmatex">\(y = x W^T + b\)</span>$</p>
+<p>让我们运行 <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/02_linear.py"><code>02_linear.py</code></a> 并检查分析结果：</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>02_linear.py<span class="w"> </span>--batch<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--in_dim<span class="w"> </span><span class="m">32</span><span class="w"> </span>--out_dim<span class="w"> </span><span class="m">64</span>
+uvx<span class="w"> </span>trace-util<span class="w"> </span>-f<span class="w"> </span>traces<span class="w"> </span>-b<span class="w"> </span>&lt;hf_uname&gt;/traces
+</code></pre></div>
+<blockquote>
+<p><strong>提示：</strong> <a href="https://x.com/ariG23498/status/2054811716727517374"><code>trace-util</code></a> 会将你的轨迹同步到 <a href="https://huggingface.co/storage">Hugging Face 存储桶</a>，并直接在终端中提供 <a href="https://perfetto.dev/">Perfetto URL</a>。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="PyTorch profiler trace of an nn.Linear forward pass" src=".././images/b5420596487b.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 1：<code>nn.Linear</code> 的 Profiler 轨迹</em></td>
+</tr>
+</tbody>
+</table>
+<p>图 1 展示了线性层单次前向传播的 Profiler 轨迹（<code>wait=1</code>, <code>warmup=1</code>, <code>active=3</code>）。</p>
+<h3 id="_4">转置操作在做什么？</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Zoomed in CPU dispatch chain showing aten::t" src=".././images/f0c2f0953287.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 2：转置 CPU 行</em></td>
+</tr>
+</tbody>
+</table>
+<p>放大轨迹（图 2），我们可以看到 <code>aten::addmm</code> 之前有一个 <code>aten::t</code>（转置）操作，这证实了 <code>nn.Linear</code> 在乘法之前会对权重参数进行转置。</p>
+<p>关键在于，<code>aten::t</code> <strong>不会复制数据</strong>。它只是在 CPU 上更新张量的元数据（形状和步长），不会在 GPU 上启动任何内核。</p>
+<h3 id="mul-add">为什么没有单独的 <code>mul</code> 和 <code>add</code> 内核？</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Profiler trace of the linear layer dispatch chain" src=".././images/67dc8a065878.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 3：线性层分析中没有 <code>aten::add</code></em></td>
+</tr>
+</tbody>
+</table>
+<p>如图 3 所示，分发链中不存在 <code>aten::add</code>，因为偏置加法通过<strong>尾声（Epilogue）</strong>被<strong>折叠（Folded）</strong>进了矩阵乘法内核中。</p>
+<p><strong>尾声</strong>是 GEMM（通用矩阵乘法）内核在将结果写回高带宽内存（HBM）之前执行的一小段最终计算。通过直接在内核中执行偏置加法、缩放或激活等操作，我们避免了昂贵的额外 HBM 内存往返。<code>aten::linear</code> 分发了 <code>aten::addmm(bias, x, weight)</code>，直接映射到带有内置偏置加法的 cuBLAS GEMM 变体。</p>
+<h3 id="-compile"><code>--compile</code> 对单个线性层有帮助吗？</h3>
+<p>让我们编译前向调用：</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>02_linear.py<span class="w"> </span>--batch<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--in_dim<span class="w"> </span><span class="m">32</span><span class="w"> </span>--out_dim<span class="w"> </span><span class="m">64</span><span class="w"> </span>--compile
+uvx<span class="w"> </span>trace-util<span class="w"> </span>-f<span class="w"> </span>traces<span class="w"> </span>-b<span class="w"> </span>&lt;hf_uname&gt;/traces
+</code></pre></div>
+<p>对比单个 <code>nn.Linear</code> 的 Eager 模式和编译模式轨迹，发现它们使用了相同的 cuBLAS GEMM 内核和 <code>aten::addmm</code> 操作。由于 Eager 模式下的 <code>nn.Linear</code> 已经利用了优化的融合内核（<code>addmm</code>），<code>torch.compile</code> 对单个孤立层几乎没有进一步优化的空间。</p>
+<h3 id="_5">转置去哪了？内核布局与预操作</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Eager 分发链 (<code>aten::t</code> + <code>aten::addmm</code>)</th>
+<th style="text-align: center;">编译分发链 (直接 <code>aten::addmm</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img alt="图 4" src=".././images/36778d689f3b.png" /></td>
+<td style="text-align: center;"><img alt="图 5" src=".././images/5a1045a30951.png" /></td>
+</tr>
+<tr>
+<td style="text-align: center;"><em>图 4：Eager 分发链</em></td>
+<td style="text-align: center;"><em>图 5：编译分发链</em></td>
+</tr>
+</tbody>
+</table>
+<p>在底层，张量将数据存储为内存中的平铺数组，并通过 <code>shape</code>（形状）和 <code>stride</code>（步长）进行解释。通过 <code>M.t()</code> 进行转置只是交换了步长，而没有复制数据：</p>
+<div class="highlight"><pre><span></span><code><span class="o">&gt;&gt;&gt;</span> <span class="n">M</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">M</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">M</span><span class="o">.</span><span class="n">stride</span><span class="p">()</span>
+<span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">T</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">T</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">stride</span><span class="p">()</span>
+<span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># 步长已交换，数据未动</span>
+</code></pre></div>
+<p>虽然 Eager 模式会产生 CPU 开销来维护这些视图，但 Inductor 会在编译时预计算步长，从而完全消除了 <code>aten::t</code> 的 CPU 开销。</p>
+<blockquote>
+<p><strong>提示：</strong> Profiler 轨迹中的 GPU 内核名称（例如 <code>cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_32x1_tn_align8</code>）通过后缀（如 <code>tn</code>，表示转置/非转置）编码了其输入布局。分发器会匹配输入步长以选择正确的预编译内核二进制文件。</p>
+</blockquote>
+<hr />
+<h2 id="mlp">堆叠三个线性层：MLP</h2>
+<p>接下来，我们将分析一个使用 <strong>GeGLU</strong> 激活变体的多层感知机（MLP），这在现代 Transformer 架构中非常流行。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Conclusions section of the GLU Variants Improve Transformer paper" src=".././images/6c725feb4688.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 6：<a href="https://arxiv.org/abs/2002.05202">GLU Variants Improve Transformer</a> 的结论</em></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SimpleGeGLUMLP</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">hidden</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gate_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">up_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">hidden</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">down_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gate_proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">up_proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">gelu</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">approximate</span><span class="o">=</span><span class="s2">&quot;tanh&quot;</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">u</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down_proj</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y</span>
+</code></pre></div>
+<p>执行 <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/03_simple_mlp.py"><code>03_simple_mlp.py</code></a>：</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>03_simple_mlp.py<span class="w"> </span>--batch<span class="w"> </span><span class="m">64</span><span class="w"> </span>--seq<span class="w"> </span><span class="m">128</span><span class="w"> </span>--dim<span class="w"> </span><span class="m">768</span><span class="w"> </span>--hidden<span class="w"> </span><span class="m">3072</span>
+uvx<span class="w"> </span>trace-util<span class="w"> </span>-f<span class="w"> </span>traces<span class="w"> </span>-b<span class="w"> </span>&lt;hf_uname&gt;/traces
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Profiler trace of the GeGLU MLP forward pass" src=".././images/1e053df37894.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 7：GeGLU MLP 的 Profiler 轨迹</em></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Occupancy Queries in linear projection traces" src=".././images/dacc945f36f2.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 8：线性投影通道中的占用率查询</em></td>
+</tr>
+</tbody>
+</table>
+<p>在每次前向传播中，GPU 执行 <strong>5 个内核</strong>：三个线性投影、一个 GeLU 激活和一个逐元素乘法。线性层还会执行占用率查询（<code>cudaOccupancyMaxActiveBlocksPerMultiprocessor</code>）来确定网格大小（图 8）。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">操作</th>
+<th style="text-align: center;">CPU 操作</th>
+<th style="text-align: center;">GPU 内核</th>
+<th style="text-align: center;">启动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><code>gate_proj</code></td>
+<td style="text-align: center;"><code>aten::linear</code></td>
+<td style="text-align: center;"><code>ampere_bf16_s16816gemm_bf16_128x128_...</code></td>
+<td style="text-align: center;">占用率查询 + <code>cudaLaunchKernel</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>up_proj</code></td>
+<td style="text-align: center;"><code>aten::linear</code></td>
+<td style="text-align: center;"><code>ampere_bf16_s16816gemm_bf16_128x128_...</code></td>
+<td style="text-align: center;">占用率查询 + <code>cudaLaunchKernel</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>gelu</code></td>
+<td style="text-align: center;"><code>aten::gelu</code></td>
+<td style="text-align: center;"><code>vectorized_elementwise_kernel&lt;4, GeluCUDAKernelImpl...&gt;</code></td>
+<td style="text-align: center;"><code>cudaLaunchKernel</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>h * u</code></td>
+<td style="text-align: center;"><code>aten::mul</code></td>
+<td style="text-align: center;"><code>vectorized_elementwise_kernel&lt;4, ...MulFunctor...&gt;</code></td>
+<td style="text-align: center;"><code>cudaLaunchKernel</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>down_proj</code></td>
+<td style="text-align: center;"><code>aten::linear</code></td>
+<td style="text-align: center;"><code>ampere_bf16_s16816gemm_bf16_128x256_...</code></td>
+<td style="text-align: center;">占用率查询 + <code>cudaLaunchKernel</code></td>
+</tr>
+</tbody>
+</table>
+<p>元数据操作（<code>aten::t</code>、<code>aten::reshape</code> 等）在 Profiler 表中显示为 <code>0.000us</code> 的 CUDA 时间，因为它们不启动任何内核。</p>
+<h3 id="gemm">为什么有两种 GEMM 内核？</h3>
+<p>虽然所有三个 GEMM 的 FLOP 计数大致相同（每个约 <span class="arithmatex">\(38.7 \text{ GFLOP}\)</span>），但 <code>down_proj</code> 的运行速度快了约 <span class="arithmatex">\(10\%\)</span>。由于其输出形状不同（<span class="arithmatex">\(N=768\)</span> 对比 <span class="arithmatex">\(3072\)</span>），cuBLAS 为该特定形状选择了不同的平铺策略（<span class="arithmatex">\(128\times 256\)</span> 并带有更深的流水线）。</p>
+<h3 id="torchcompile"><code>torch.compile</code> 做了什么？</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>03_simple_mlp.py<span class="w"> </span>--batch<span class="w"> </span><span class="m">64</span><span class="w"> </span>--seq<span class="w"> </span><span class="m">128</span><span class="w"> </span>--dim<span class="w"> </span><span class="m">768</span><span class="w"> </span>--hidden<span class="w"> </span><span class="m">3072</span><span class="w"> </span>--compile
+uvx<span class="w"> </span>trace-util<span class="w"> </span>-f<span class="w"> </span>traces<span class="w"> </span>-b<span class="w"> </span>&lt;hf_uname&gt;/traces
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Profiler trace of the compiled GeGLU MLP" src=".././images/409d034facfe.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 10：编译后 MLP 的 Profiler 轨迹</em></td>
+</tr>
+</tbody>
+</table>
+<p><code>torch.compile</code> 剥离了高级 ATen 分发器包装，留下了原始的 <code>aten::mm</code> 调用，其内核名称与 Eager 模式完全一致。</p>
+<h3 id="triton">融合的 Triton 内核</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Compiled MLP trace with fused triton kernel" src=".././images/59cc20bb59af.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 11：融合的 Triton 内核</em></td>
+</tr>
+</tbody>
+</table>
+<p>在 Eager 模式下，中间的 <code>h = gelu(g)</code> 张量（约 50 MB）由 GeLU 内核写入 HBM，并立即被乘法内核读回。</p>
+<p>编译将 GeLU、乘法和 reshape 合并为一个<strong>融合的 Triton 内核</strong>（<code>triton_poi_fused__unsafe_view_gelu_mul_0</code>，图 11）。这使得中间值保留在快速的片上寄存器中，消除了通过全局 HBM 的完整往返。</p>
+<hr />
+<h2 id="_6">让我们使用手动调优的内核</h2>
+<p>或者，我们可以使用 <code>kernels</code> 库直接从 <a href="https://huggingface.co/kernels/kernels-community/liger-kernels">Hugging Face Hub</a> 获取专家调优的 <code>LigerGEGLUMLP</code> 内核：</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_kernel</span>
+
+<span class="n">kernels_layers</span> <span class="o">=</span> <span class="n">get_kernel</span><span class="p">(</span><span class="s2">&quot;kernels-community/liger-kernels&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">layers</span>
+<span class="n">kernels_geglu_mlp</span> <span class="o">=</span> <span class="n">kernels_layers</span><span class="o">.</span><span class="n">LigerGEGLUMLP</span><span class="p">(</span><span class="n">Config</span><span class="p">())</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">)</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+</code></pre></div>
+<p>运行 <a href="https://huggingface.co/datasets/ariG23498/profiling-pytorch/blob/main/03_kernels_mlp.py"><code>03_kernels_mlp.py</code></a>：</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>03_kernels_mlp.py<span class="w"> </span>--batch<span class="w"> </span><span class="m">64</span><span class="w"> </span>--seq<span class="w"> </span><span class="m">128</span><span class="w"> </span>--dim<span class="w"> </span><span class="m">768</span><span class="w"> </span>--hidden<span class="w"> </span><span class="m">3072</span>
+uvx<span class="w"> </span>trace-util<span class="w"> </span>-f<span class="w"> </span>traces<span class="w"> </span>-b<span class="w"> </span>&lt;hf_uname&gt;/traces
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;"><img alt="Profiler trace of the LigerGEGLUMLP forward pass" src=".././images/19f092841a1f.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><em>图 12：<code>LigerGEGLUMLP</code> 的 Profiler 轨迹</em></td>
+</tr>
+</tbody>
+</table>
+<h3 id="kernels">为什么要使用 <code>kernels</code> 库？</h3>
+<p>在本地编译 Triton 或 CUDA 内核通常会因为环境不匹配而失败。<a href="https://github.com/huggingface/kernels"><code>kernels</code></a> 库下载的是<strong>预构建、版本锁定</strong>的内核包，并缓存在本地（<code>~/.cache/...kernels-community--liger-kernels</code>）：
+* 在 CI 中跨多种架构编译一次。
+* <code>version=1</code> 锁定确切构建，防止意外的性能回归。
+* 提供即插即用的 <code>nn.Module</code> 替代方案（例如 <code>LigerGEGLUMLP</code>）。</p>
+<h3 id="_7">为什么调优内核更好？</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">编译运行预操作 (Dynamo, guards, prologue)</th>
+<th style="text-align: center;">Liger 内核 (零编译开销)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img alt="图 13" src=".././images/f6400a54995b.png" /></td>
+<td style="text-align: center;"><img alt="图 14" src=".././images/c71415729221.png" /></td>
+</tr>
+<tr>
+<td style="text-align: center;"><em>图 13：编译运行开销</em></td>
+<td style="text-align: center;"><em>图 14：Liger 内核 (无预操作)</em></td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li><strong>内置融合：</strong> <code>LigerGEGLUMLP</code> 执行单个优化的 Triton 内核（<code>_geglu_tanh_forward_kernel</code>），无需 PyTorch 编译，也不会产生 Dynamo 守卫延迟（图 13 和 14）。</li>
+<li><strong>硬件调优参数：</strong> 块大小是根据输入维度专门选择的。</li>
+</ol>
+<p>虽然 Inductor 的编译内核对于<em>静态</em>形状的运行速度略快（<code>89.4 µs</code>）于 Liger（<code>92.8 µs</code>），但 <code>torch.compile</code> 会针对每个输入形状专门化内核——如果维度发生变化，会触发昂贵的重新编译。Liger 用几微秒的形状特定优化换取了稳健、与形状无关的执行，且没有重新编译开销。</p>
+<hr />
+<h2 id="_8">结论</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">设置</th>
+<th style="text-align: left;">变化</th>
+<th style="text-align: left;">保持不变</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Eager <code>nn.Linear</code></strong></td>
+<td style="text-align: left;">基准：偏置加法作为单个 cuBLAS 内核折叠进 GEMM 尾声 (<code>addmm</code>)。</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Compiled <code>nn.Linear</code></strong></td>
+<td style="text-align: left;">CPU 分发簿记 (<code>aten::t</code>) 消失。</td>
+<td style="text-align: left;">相同的单个 cuBLAS GEMM 内核。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Eager MLP</strong></td>
+<td style="text-align: left;">5 个 GPU 内核：3 个 GEMM + GeLU + 乘法。中间值进行完整的 HBM 往返。</td>
+<td style="text-align: left;">每个 GEMM 保持为标准 cuBLAS 内核。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Compiled MLP</strong></td>
+<td style="text-align: left;">GeLU + 乘法 + reshape 合并为<strong>一个</strong>融合的 Triton 内核。产生编译预操作 (Dynamo/guards)。</td>
+<td style="text-align: left;">3 个 GEMM 保持不变。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Liger MLP</strong></td>
+<td style="text-align: left;">通过手写 Triton 内核实现内置融合，<strong>零</strong> Dynamo、守卫或编译延迟。</td>
+<td style="text-align: left;">3 个 GEMM 保持为标准 cuBLAS 内核。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>性能分析的黄金法则：</strong> <em>先猜测，再观察。</em> 在打开轨迹之前，务必先陈述你的预期，并将任何不匹配视为学习的机会。</p>
+<p>在下一篇文章中，我们将继续攀登性能分析的阶梯，迈向注意力块和完整模型！</p>
+<p><em>感谢 <a href="https://huggingface.co/NoeFlandre">Noe Flandre</a> 和 <a href="https://huggingface.co/pedrogengo">Pedro Gabriel Gengo Lourenço</a> 的宝贵审阅！</em></p>
+<blockquote>
+<p><strong>注意：</strong> 本文在 LLM 的协助下进行了润色，以优化非母语英语使用者的语法和措辞，同时保持了完整的技术真实性。🤗</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PyTorch</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Profiler</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">MLP</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Triton</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

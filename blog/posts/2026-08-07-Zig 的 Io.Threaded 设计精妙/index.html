@@ -1,0 +1,740 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-Zig%20%E7%9A%84%20Io.Threaded%20%E8%AE%BE%E8%AE%A1%E7%B2%BE%E5%A6%99/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Zig 的 Io.Threaded 设计精妙 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Zig 的 Io.Threaded 设计精妙
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zigs-iothreaded-is-neat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Zig's Io.Threaded is Neat
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zig&#x27;s Io.Threaded is Neat">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency-vs-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Concurrency vs. Parallelism
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency-vs-parallelism_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Concurrency vs. Parallelism
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#just-use-threads" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Just Use Threads
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#just-use-threads_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Just Use Threads
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sigio" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SIGIO
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sigio_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SIGIO
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prior-art" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prior Art
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prior-art_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prior Art
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文探讨了 Zig 语言中实现并发的新 <code>Io</code> 接口的其中一个实现——<code>std.Io.Threaded</code>。尽管它看似是一个“枯燥”的基于线程的实现，但其设计极其优雅。它解决了一个系统编程中长期存在的难题——如何可靠地取消阻塞的系统调用（syscall），并且其稳健程度超出了以往的认知。</p>
+<p>文章指出，并发的关键在于“取消”（cancellation），而传统的基于线程的模型在处理陷入内核系统调用的线程时往往束手无策。Zig 的 <code>Io.Threaded</code> 在 POSIX 系统上巧妙地运用了基于信号（signal）的协议（在 Windows 上则使用 <code>NtCancelSynchronousIoFile</code>），配合语言自身的错误处理模型，使得在不引入 <code>io_uring</code> 等现代异步运行时的高开销和复杂性的前提下，安全、可靠地取消阻塞系统调用成为可能。</p>
+<hr />
+<h1 id="zigs-iothreaded-is-neat">Zig's Io.Threaded is Neat</h1>
+<p><em>August 6, 2026</em></p>
+<p><a href="https://codeberg.org/ziglang/zig/src/commit/16b42da3fd359bf5ae602aa0153e3ec1d6d14822/lib/std/Io/Threaded.zig">std.Io.Threaded</a> 是 Zig 用于实现并发的新 <code>Io</code> 接口的实现之一。虽然它看起来像是一个“枯燥的”基于线程的实现，但它却异常优雅。它以一种比以往认为的更稳健的方式，解决了系统编程中长期存在的挑战——可靠地取消阻塞系统调用。</p>
+<blockquote>
+<p><a href="https://codeberg.org/ziglang/zig/src/commit/16b42da3fd359bf5ae602aa0153e3ec1d6d14822/lib/std/Io/Threaded.zig">std.Io.Threaded</a> is one of the implementations of Zig’s new <code>Io</code> interface that enables concurrency. While it might seem like a "boring" thread-based implementation, it is remarkably elegant. It solves a long-standing challenge in systems programming—reliable cancellation of blocking syscalls—in a way that is more robust than previously thought possible.</p>
+</blockquote>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>本文探讨了 Zig 的 <code>std.Io.Threaded</code>，这是一个利用标准操作系统线程和阻塞系统调用提供并发能力的实现。与在取消操作上举步维艰的传统线程模型不同，Zig 在 POSIX 系统上使用了一种巧妙的基于信号的协议（在 Windows 上使用 <code>NtCancelSynchronousIoFile</code>），从而允许线程被安全地中断。通过将其集成到语言的错误处理模型中，Zig 提供了一种在没有现代异步运行时（如 <code>io_uring</code>）所带来的开销或复杂性的情况下实现可靠取消的方法。</p>
+<blockquote>
+<h2 id="summary_1">Summary</h2>
+<p>The article explores Zig's <code>std.Io.Threaded</code>, an implementation that provides concurrency using standard OS threads and blocking syscalls. Unlike traditional threading models that struggle with cancellation, Zig uses a clever signal-based protocol on POSIX (and <code>NtCancelSynchronousIoFile</code> on Windows) to allow threads to be interrupted safely. By integrating this into the language's error-handling model, Zig provides a way to achieve reliable cancellation without the overhead or complexity of modern asynchronous runtimes like <code>io_uring</code>.</p>
+</blockquote>
+<hr />
+<h2 id="concurrency-vs-parallelism">Concurrency vs. Parallelism</h2>
+<p>借鉴 <a href="https://www.tedinski.com/2018/10/16/concurrency-vs-parallelism.html">@tedinski</a> 的观点，我们可以区分这两者：
+* <strong>并发（Concurrency）</strong> 关乎处理异步、非确定的事件。
+* <strong>并行（Parallelism）</strong> 关乎利用硬件资源同时执行任务。</p>
+<p>并行通常是<strong>确定性/声明式</strong>的（例如 Rust 中的 Rayon），由平台负责管理任务切分。然而，并发则<strong>不可避免地涉及取消操作</strong>。当两个异步任务在运行时，其中一个可能会因为变得冗余或无法完成而需要主动取消另一个。</p>
+<blockquote>
+<h2 id="concurrency-vs-parallelism_1">Concurrency vs. Parallelism</h2>
+<p>Drawing from <a href="https://www.tedinski.com/2018/10/16/concurrency-vs-parallelism.html">@tedinski</a>, we can distinguish the two:
+* <strong>Concurrency</strong> is about handling asynchronous, nondeterministic events.
+* <strong>Parallelism</strong> is about using hardware resources to perform tasks simultaneously.</p>
+<p>Parallelism is typically <strong>deterministic/declarative</strong> (e.g., Rayon in Rust), where the platform manages partitioning. Concurrency, however, <strong>invariably involves cancellation</strong>. When two asynchronous tasks run, one may need to actively cancel the other because it has become redundant or impossible to complete.</p>
+</blockquote>
+<h2 id="just-use-threads">Just Use Threads</h2>
+<p>“直接使用线程”（Just Use Threads）的主要问题在于：当它们阻塞在内核系统调用内部时，无法将其取消。虽然你可以在用户空间的循环中轻松检查取消标志，但一旦遇到诸如 <code>read(fd, buffer)</code> 这样的系统调用，你就会陷入困境。Zig 的 <code>Io.Threaded</code> 通过允许可靠地中断标准操作系统线程，完美解决了这一问题。</p>
+<blockquote>
+<h2 id="just-use-threads_1">Just Use Threads</h2>
+<p>The primary issue with "just using threads" is the inability to cancel them when they are blocked inside a kernel syscall. While you can easily check for cancellation in a user-space loop, you are stuck once you hit a syscall like <code>read(fd, buffer)</code>. Zig’s <code>Io.Threaded</code> solves this by allowing standard OS threads to be interrupted reliably.</p>
+</blockquote>
+<h2 id="sigio">SIGIO</h2>
+<p>在 POSIX 系统上，Zig 使用了一种“饱受诟病”（cursed）但极其有效的基于信号的协议：
+1. 取消线程在共享内存中设置一个标志。
+2. 它在循环中向目标线程发送信号。
+3. 目标线程从系统调用中收到 <code>EINTR</code> 返回后，会检查该标志。
+4. 如果标志已设置，线程确认取消并开始栈展开（unwinding）；否则，它将重试该系统调用。</p>
+<p>在 Windows 上，这通过 <code>NtCancelSynchronousIoFile</code> 得到了更直接的处理。在 Zig 中，这种取消操作被具象化为 <code>error.Canceled</code>，从而将取消作为一种特定类型的错误载荷来处理。</p>
+<blockquote>
+<h2 id="sigio_1">SIGIO</h2>
+<p>On POSIX, Zig uses a "cursed" but effective signal-based protocol:
+1. The canceling thread sets a flag in shared memory.
+2. It signals the target thread in a loop.
+3. The target thread, upon receiving <code>EINTR</code> from a syscall, checks the flag.
+4. If the flag is set, the thread acknowledges the cancellation and begins unwinding; otherwise, it retries the syscall.</p>
+<p>On Windows, this is handled more directly via <code>NtCancelSynchronousIoFile</code>. In Zig, this cancellation is materialized as <code>error.Canceled</code>, treating cancellation as a specific type of error payload.</p>
+</blockquote>
+<h2 id="prior-art">Prior Art</h2>
+<ul>
+<li><strong>Java：</strong> 存在线程中断机制，但不支持中断系统调用，这导致 IO 操作实际上是无法被中断的。</li>
+<li><strong>pthread_cancel：</strong> 存在这种机制，但它缺乏与语言级特性（如 <code>try</code> 和 <code>defer</code>）的集成，这使得资源清理变得十分困难。此外，它还饱受线程创建高开销的困扰。</li>
+<li><strong>Zig 的方法：</strong> Zig 在接口层面上将“可能并发运行”（may run concurrently）与“必须并发运行”（must run concurrently）区分开来。通过使用线程池以及精确的命名（<code>io.async</code> 对比 <code>io.concurrent</code>），Zig 为并发提供了一种清晰、高性能且安全的模型，避免了内核、运行时和语言之间尴尬的“中间地带”。</li>
+</ul>
+<blockquote>
+<h2 id="prior-art_1">Prior Art</h2>
+<ul>
+<li><strong>Java:</strong> Thread interruption exists but does not support interrupting syscalls, making IO operations effectively non-interruptible.</li>
+<li><strong>pthread_cancel:</strong> This mechanism exists but lacks integration with language-level features like <code>try</code> and <code>defer</code>, making cleanup difficult. It also suffers from the high cost of thread creation.</li>
+<li><strong>Zig's Approach:</strong> Zig separates "may run concurrently" from "must run concurrently" at the interface level. By using a thread pool and precise naming (<code>io.async</code> vs <code>io.concurrent</code>), Zig provides a clear, performant, and safe model for concurrency that avoids the "twilight zone" between kernel, runtime, and language.</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Zig</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">并发编程</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统编程</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">操作系统</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

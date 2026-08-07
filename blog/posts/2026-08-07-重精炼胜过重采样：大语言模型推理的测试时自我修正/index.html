@@ -1,0 +1,708 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-07-%E9%87%8D%E7%B2%BE%E7%82%BC%E8%83%9C%E8%BF%87%E9%87%8D%E9%87%87%E6%A0%B7%EF%BC%9A%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86%E7%9A%84%E6%B5%8B%E8%AF%95%E6%97%B6%E8%87%AA%E6%88%91%E4%BF%AE%E6%AD%A3/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>重精炼胜过重采样：大语言模型推理的测试时自我修正 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              重精炼胜过重采样：大语言模型推理的测试时自我修正
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refining-over-resampling-test-time-self-correction-for-llm-reasoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Refining Over Resampling: Test-Time Self-Correction for LLM Reasoning
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Refining Over Resampling: Test-Time Self-Correction for LLM Reasoning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔍 Key Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#links-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 Links &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#citations-external-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📚 Citations &amp; External Tools
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型（LLM）的推理任务中，测试时扩展（Test-time scaling）通过分配更多的推理计算资源，已成为提升模型性能的主流方法。然而，单纯依赖更广泛的采样往往会导致收益递减，因为新生成的轨迹往往会重复现有的答案模式，而无法引入真正的推理多样性。同时，基于验证器的选择方法也高度依赖于外部奖励模型的校准精度。</p>
+<p>为了克服这些局限性，本文作者提出了一种无需验证器的“广度-深度精炼框架”（verifier-free breadth–depth refinement framework）。该方法通过结构化的流水线，利用测试时计算来探索和改进候选解决方案：首先通过广度探索采样多个独立的推理轨迹以保持多样性；其次通过深度精炼利用迭代自评与自我修正修复局部推理错误；最后通过多数投票聚合精炼后的答案。在多个开源模型及主流基准测试（如 AIME24、AIME25、AMC、OlympiadBench 和 MATH500）上的实验表明，该方法显著优于标准的贪婪解码、多数投票及验证器选择等基线方法。</p>
+<hr />
+<h1 id="refining-over-resampling-test-time-self-correction-for-llm-reasoning">Refining Over Resampling: Test-Time Self-Correction for LLM Reasoning</h1>
+<blockquote>
+<p><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.05643">2608.05643</a><br />
+<strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>); Computation and Language (<code>cs.CL</code>)<br />
+<strong>Submitted:</strong> August 6, 2026 (Submitted to EMNLP 2026)<br />
+<strong>Authors:</strong> Ahsan Bilal, Muhammad Ahmed Mohsin, Muhammad Umer, Lena Trigg, Ali Subhan, Muhammad Ali, Dean F. Hougen  </p>
+</blockquote>
+<hr />
+<h2 id="summary">📋 Summary</h2>
+<blockquote>
+<p>测试时扩展是提升大语言模型（LLM）推理能力的一种流行方法，它通过分配额外的推理计算资源来实现。然而，仅仅依赖<strong>更广泛的采样</strong>往往会导致收益递减，因为新的生成轨迹倾向于重复现有的答案模式，而不是引入真正的推理多样性。此外，<strong>基于验证器的选择</strong>则高度依赖于外部奖励模型的校准。</p>
+<p><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.05643">2608.05643</a><br />
+<strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>); Computation and Language (<code>cs.CL</code>)<br />
+<strong>Submitted:</strong> August 6, 2026 (Submitted to EMNLP 2026)<br />
+<strong>Authors:</strong> Ahsan Bilal, Muhammad Ahmed Mohsin, Muhammad Umer, Lena Trigg, Ali Subhan, Muhammad Ali, Dean F. Hougen  </p>
+</blockquote>
+<hr />
+<h2 id="_2">📋 摘要</h2>
+<blockquote>
+<p>为了克服这些局限性，作者提出了一种<strong>无需验证器的广度-深度精炼框架</strong>。该方法利用测试时计算，通过以下结构化流水线来探索和改进候选解决方案：
+1. <strong>广度（探索）：</strong> 采样多个独立的推理轨迹，以保留多样化的初始尝试。
+2. <strong>深度（精炼）：</strong> 通过迭代自评和自我修正，修复每个轨迹中的局部推理错误。
+3. <strong>聚合：</strong> 使用多数投票法将精炼后的答案进行组合。</p>
+<p>To overcome these limitations, the authors propose a <strong>verifier-free breadth–depth refinement framework</strong>. This method uses test-time compute to both explore and improve candidate solutions through a structured pipeline:
+1. <strong>Breadth (Exploration):</strong> Sample multiple independent reasoning rollouts to preserve diverse initial attempts.
+2. <strong>Depth (Refinement):</strong> Repair local reasoning errors in each rollout via iterative self-critique and self-correction.
+3. <strong>Aggregation:</strong> Combine the refined answers using majority voting.</p>
+</blockquote>
+<hr />
+<h2 id="key-results">🔍 Key Results</h2>
+<blockquote>
+<p>在对包括 <strong>AIME24、AIME25、AMC、OlympiadBench 和 MATH500</strong> 在内的基准数据集进行严格评估时，所提出的框架在多个开源权重模型上，始终表现得优于标准方法（如贪婪解码、多数投票、基于验证器的 <span class="arithmatex">\(N\)</span> 选最优、束搜索以及前瞻解码）。</p>
+<p>Across rigorous evaluations on benchmark datasets—including <strong>AIME24, AIME25, AMC, OlympiadBench, and MATH500</strong>—the proposed framework consistently outperforms standard methods such as greedy decoding, majority voting, verifier-based best-of-<span class="arithmatex">\(N\)</span>, beam search, and lookahead decoding across multiple open-weight models.</p>
+<ul>
+<li><strong>MATH500（使用 Qwen2.5-1.5B）：</strong> 准确率从最强的基于验证器的基线提升至 <strong><span class="arithmatex">\(58.0\%\)</span></strong>。</li>
+<li>
+<p><strong>AMC（使用 Qwen2.5-1.5B）：</strong> 准确率从 <strong><span class="arithmatex">\(25.0\%\)</span> 跃升至 <span class="arithmatex">\(32.5\%\)</span></strong>。</p>
+</li>
+<li>
+<p><strong>MATH500 (using Qwen2.5-1.5B):</strong> Accuracy increases from the strongest verifier-based baseline to <strong><span class="arithmatex">\(58.0\%\)</span></strong>.</p>
+</li>
+<li><strong>AMC (using Qwen2.5-1.5B):</strong> Accuracy jumps from <strong><span class="arithmatex">\(25.0\%\)</span> to <span class="arithmatex">\(32.5\%\)</span></strong>.</li>
+</ul>
+<p>这些发现表明，将测试时计算分配给<strong>精炼采样轨迹</strong>，比单纯生成更多候选或完全依赖验证器引导的选择能带来显著更好的性能。</p>
+<p>These findings demonstrate that allocating test-time compute toward <strong>refining sampled trajectories</strong> yields significantly better performance than simply generating more candidates or depending entirely on verifier-guided selection.</p>
+</blockquote>
+<hr />
+<h2 id="links-resources">🔗 Links &amp; Resources</h2>
+<blockquote>
+<ul>
+<li><strong>全文访问：</strong> <a href="https://arxiv.org/pdf/2608.05643">查看 PDF</a> | <a href="https://arxiv.org/html/2608.05643v1">HTML 版本</a> | <a href="https://arxiv.org/src/2608.05643">TeX 源码</a></li>
+<li><strong>数字对象唯一标识符 (DOI)：</strong> <a href="https://doi.org/10.48550/arXiv.2608.05643">10.48550/arXiv.2608.05643</a></li>
+<li>
+<p><strong>许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a><br />
+  <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" /></p>
+</li>
+<li>
+<p><strong>Full-Text Access:</strong> <a href="https://arxiv.org/pdf/2608.05643">View PDF</a> | <a href="https://arxiv.org/html/2608.05643v1">HTML Version</a> | <a href="https://arxiv.org/src/2608.05643">TeX Source</a></p>
+</li>
+<li><strong>Digital Object Identifier (DOI):</strong> <a href="https://doi.org/10.48550/arXiv.2608.05643">10.48550/arXiv.2608.05643</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a><br />
+  <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" /></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="citations-external-tools">📚 Citations &amp; External Tools</h2>
+<blockquote>
+<ul>
+<li><strong>文献数据库：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.05643">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.05643">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.05643">NASA ADS</a></li>
+<li>
+<p><strong>交互与研究工具：</strong> <a href="https://alphaxiv.org/">alphaXiv</a> | <a href="https://www.catalyzex.com">CatalyzeX 代码查找器</a> | <a href="https://huggingface.co/docs/hub/spaces">Hugging Face Spaces</a></p>
+</li>
+<li>
+<p><strong>Bibliographic Databases:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.05643">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.05643">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.05643">NASA ADS</a></p>
+</li>
+<li><strong>Interactive &amp; Research Tools:</strong> <a href="https://alphaxiv.org/">alphaXiv</a> | <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a> | <a href="https://huggingface.co/docs/hub/spaces">Hugging Face Spaces</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">测试时计算</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">自我修正</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">算法创新</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
