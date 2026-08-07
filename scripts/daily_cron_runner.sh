@@ -8,5 +8,5 @@ if [ -f .env ]; then
 fi
 mkdir -p var/log
 echo "[$(date)] Starting daily publisher automation..." >> var/log/cron_publisher.log
-/home/aitobox/.local/bin/agy run --skill skills/daily-publisher/SKILL.md "fetch recent 1 days" >> var/log/cron_publisher.log 2>&1
+/home/aitobox/.local/bin/agy run --non-interactive --auto-approve  --model gemini-3.6-flash-high --skill skills/daily-publisher/SKILL.md "fetch recent 1 days good article and publish" >> var/log/cron_publisher.log 2>&1
 echo "[$(date)] Daily publisher automation completed successfully." >> var/log/cron_publisher.log
