@@ -77,3 +77,15 @@ def test_run_pipeline_skips_low_score_and_already_processed(
     run_pipeline(db_path=db_path, output_dir=out_dir, target_date="2026-08-05")
     mock_score.assert_not_called()
     mock_ref.assert_not_called()
+
+
+@patch("requests.get")
+def test_fetch_full_article_content(mock_get):
+    from scripts.article_ingestor import fetch_full_article_content
+    mock_resp = mock_get.return_value
+    mock_resp.content = b"<html><body><article><p>Full original content paragraph.</p></article></body></html>"
+    mock_resp.raise_for_status.return_value = None
+
+    result = fetch_full_article_content("https://example.com/post")
+    assert "Full original content paragraph" in result
+

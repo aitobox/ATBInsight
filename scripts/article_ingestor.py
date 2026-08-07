@@ -17,6 +17,46 @@ logging.basicConfig(
 logger = logging.getLogger("ai_insight")
 
 
+import re
+import requests
+from bs4 import BeautifulSoup
+
+def fetch_full_article_content(url: str) -> str:
+    """
+    Fetches the web page from the original URL and extracts the main article content
+    when the RSS feed content is truncated or incomplete.
+    """
+    if not url or not url.startswith("http"):
+        return ""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.content, "html.parser")
+
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "iframe", "noscript", "svg", "button", "form"]):
+            tag.decompose()
+
+        container = (
+            soup.find("article")
+            or soup.find("main")
+            or soup.find(attrs={"role": "main"})
+            or soup.find("div", class_=re.compile(r"post-content|article-content|entry-content|main-content|post-body|article-body|content-body", re.I))
+            or soup.find("div", id=re.compile(r"content|main|article|post", re.I))
+            or soup.find("body")
+        )
+
+        if container:
+            return str(container)
+        return str(soup)
+    except Exception as e:
+        logger.warning(f"Failed to fetch full article content from {url}: {e}")
+        return ""
+
+
 def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: float = 60.0) -> tuple[str, float, str]:
     """
     Evaluates an article entry using parallel Chief Editor Agent subprocess (agy run).
@@ -30,6 +70,16 @@ def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: 
     try:
         if is_entry_processed(conn, entry_id):
             return ("cached", 0.0, "Already cached")
+
+        url = entry.get("url") or ""
+        raw_content = entry.get("content") or ""
+
+        if url and (len(raw_content) < 3000 or "continue reading" in raw_content.lower() or "read more" in raw_content.lower()):
+            logger.info(f"Entry ID {entry_id}: RSS content is short/incomplete ({len(raw_content)} chars). Fetching full content from original URL...")
+            full_content = fetch_full_article_content(url)
+            if len(full_content) > len(raw_content):
+                logger.info(f"  -> Successfully expanded content to {len(full_content)} chars from original URL.")
+                entry["content"] = full_content
 
         logger.info(f"Evaluating entry ID {entry_id} ('{title}') via Chief Editor Agent...")
         score = score_article(entry)
