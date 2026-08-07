@@ -5,6 +5,103 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>构建仅在宿主套间内起效的伪敏捷包装器（第四部分）</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-07/构建仅在宿主套间内起效的伪敏捷包装器（第四部分）/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/构建仅在宿主套间内起效的伪敏捷包装器（第四部分）/</guid>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本系列文章探讨了 Windows COM 编程中套间（Apartment）与敏捷对象（Agile Object）的技术细节。在第四部分中，作者对上一篇中建立的“伪敏捷（Fake Agile）”全局接口表（GIT）包装器进行了性能与资源管理层面的优化。核心改进是将不可封送的 COM 对象从深拷贝模式改为通过右值引用（rvalue references）进行高效“移动（Move）”；同时深入阐述了 C++ 类模板参数推导（CTAD）与转发引用的交互机制，并为下一篇引入 `std::unique_ptr` 简化资源释放埋下了伏笔。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+在系列文章的第四部分中，我们通过优化资源所有权对“伪敏捷” COM 包装器进行了微调。我们更新了 `force_marshal` 包装器及构造函数的底层管线，不再复制不可封送的 COM 对象，而是通过右值引用高效地对其进行移动。我们还探讨了类模板参数推导（CTAD）如何与转发引用（forwarding references）相互作用，并为下一篇文章中使用 `std::unique_ptr` 实现更简洁的资源管理方案奠定了基础。
+
+&gt; In this fourth installment of the series, we fine-tune our "fake agile" COM wrapper by optimizing resource ownership. Instead of copying non-marshalable COM objects, we update the `force_marshal` wrapper and constructor plumbing to move them efficiently via rvalue references. We also explore how Class Template Argument Deduction (CTAD) interacts with forwarding references and set the stage for a cleaner resource management approach using `std::unique_ptr` in the next post.
+
+---
+
+## 采用移动而非复制
+
+&gt; ## Moving Rather Than Copying
+
+上次，我们成功确立了利用全局接口表（GIT）来持有伪敏捷包装器的方案——该包装器在技术上是敏捷的，尽管它在其宿主套间（home apartment）之外并没有实际用途。正如之前指出的那样，这个实现方案还有几个可以微调优化的空间。
+
+&gt; Last time, we successfully established our plan to use the Global Interface Table (GIT) to hold a fake agile wrapper that is technically agile, even though it isn't useful outside its home apartment. As noted, there are several opportunities for fine-tuning this implementation.
+
+其中一个关键改进是**移动**（move）不可封送的 COM 对象，而不是对其进行复制（copy）。这需要将引用一路完美转发（forward）到 `force_marshal` 包装器内部：
+
+&gt; One key improvement is to **move** the non-marshalable COM object rather than copying it. This involves forwarding the reference all the way into the `force_marshal` wrapper:
+
+```cpp
+template&lt;typename Smart&gt;
+struct force_marshal :
+    winrt::implements&lt;force_marshal&lt;Smart&gt;, IUnknown, winrt::non_agile&gt;
+{
+    template&lt;typename Arg&gt;                                   
+    force_marshal(Arg&amp;&amp; arg) : m_p(std::forward&lt;Arg&gt;(arg)) {}
+    Smart m_p;
+};
+```
+
+现在，`force_marshal&lt;Smart&gt;` 结构体可以接收任何参数并将其直接转发给智能指针。因此，如果传入的参数是一个指向智能指针的右值引用，COM 引用将被直接移动到 `force_marshal&lt;Smart&gt;` 对象中，而不是执行复制。
+
+&gt; The `force_marshal&lt;Smart&gt;` struct now accepts anything and forwards it directly into the smart pointer. Consequently, if the inbound parameter is an rvalue reference to a smart pointer, the COM reference is moved into the `force_marshal&lt;Smart&gt;` object instead of being copied.
+
+---
+
+## 贯通管道引用
+
+&gt; ## Plumbing the Reference
+
+接下来，我们将这个引用一路向下贯通到 `fake_agile_ref` 和 `make_agile_delegate` 的实现中：
+
+&gt; Next, we plumb this reference all the way down through the `fake_agile_ref` and `make_agile_delegate` implementations:
+
+```cpp
+template&lt;typename T&gt;
+struct fake_agile_ref
+{
+    ⟦ ... ⟧
+
+    template&lt;typename Arg&gt;
+    fake_agile_ref(Arg&amp;&amp; p) : m_raw(winrt::get_abi(p))
+    {
+        if (m_raw) {
+            m_context = winrt::capture&lt;IContextCallback&gt;(CoGetObjectContext);
+            m_token = get_context_token();
+            m_git = winrt::create_instance&lt;IGlobalInterfaceTable&gt;(CLSID_StdGlobalInterfaceTable);
+            winrt::check_hresult(m_git-&gt;RegisterInterfaceInGlobal(
+                winrt::make&lt;force_marshal&lt;Smart&gt;&gt;(std::forward&lt;Arg&gt;(p)).get(),
+                __uuidof(IUnknown), &amp;m_cookie));
+        }
+    }
+
+    ⟦ ... ⟧
+};
+
+template&lt;typename Delegate&gt;
+std::remove_reference_t&lt;Delegate&gt; make_agile_delegate(Delegate&amp;&amp; d)
+{
+    if (d.try_as&lt;::IAgileObject&gt;()) {
+        return d;
+    }
+
+    if (d.try_as&lt;::INoMarshal&gt;()) {
+        return [agile = fake_agile_ref(std::forward&lt;Delegate&gt;(d)](auto&amp;&amp;...args) {
+            return agile.get()(std::forward&lt;decltype(args)&gt;(args)...);
+        };
+    }
+
+    return [agile = winrt::agile_ref(d)](auto&amp;&amp;...args) {
+        return agile.get()(std::forward&lt;decltype(args)&gt;(args)...);
+    };
+}
+```</description>
+    </item>
+    <item>
       <title>Zig 的 Io.Threaded 设计精妙</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-07/Zig-的-Io-Threaded-设计精妙/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-07/Zig-的-Io-Threaded-设计精妙/</guid>
