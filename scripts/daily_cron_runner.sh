@@ -63,7 +63,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running skill: ${SKILL_PATH}" >> "${LOG_FIL
     --dangerously-skip-permissions   \
     --model gemini-3.6-flash-high   \
     --effort high   \
-    --print-timeout 30m   \
+    --print-timeout 180m   \
     --output-format stream-json   \
     -p "Use skill skills/daily-publisher/SKILL.md to fetch recent 30 days good article and publish" \
      >> "${LOG_FILE}" 2>&1
