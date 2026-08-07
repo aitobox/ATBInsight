@@ -7,9 +7,12 @@ description: Automates the complete daily publishing pipeline: RSS ingestion, Ch
 
 You are the orchestration agent for ATBInsight's daily publishing pipeline. Your job is to execute the following three phases sequentially and fully autonomously. Do not stop to ask the user for permission between phases unless an unrecoverable error occurs.
 
+**CRITICAL - Detailed Logging:** You MUST output explicit, detailed status updates to the user at *every single step* and sub-step of this pipeline (e.g., "Step 3.4: Generating category index pages..."). Never run a command silently.
+
 ## Phase 1: Ingestion & Screening
-Run the daily ingestor script. This script uses the Chief Editor persona to screen for high-quality, non-political long-form technical articles.
-**Command:** `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && PYTHONPATH=. python scripts/article_ingestor.py --days 1"`
+Identify the number of days `N` to ingest from the user's prompt (e.g., "fetch recent 3 days"). If not specified, default to `1`.
+Run the daily ingestor script, substituting `{N}` with the extracted number of days.
+**Command:** `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && PYTHONPATH=. python scripts/article_ingestor.py --days {N}"`
 Wait for this to complete. Screened raw markdown files will be saved into `bak/origin/YYYY-MM-DD` (where YYYY-MM-DD is today's date).
 
 ## Phase 2: Translation & Categorization
