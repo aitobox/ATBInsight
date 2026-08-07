@@ -5,6 +5,124 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-08-08-$-cos(200!)$ 的计算奥秘：为什么大数的三角函数需要高精度算术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-08/$-cos(200!)$ 的计算奥秘：为什么大数的三角函数需要高精度算术/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-08/$-cos(200!)$ 的计算奥秘：为什么大数的三角函数需要高精度算术/</guid>
+      <pubDate>Sat, 08 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在处理极其庞大的数字时，例如阶乘 $200!$，Python 的数学库可以仅通过最高有效数字轻松计算出其对数。然而，计算余弦（cosine）则有着根本的不同。因为 $\cos(n)$ 的结果完全取决于 $n \pmod{2\pi}$，这意味着 $n$ 的每一个单独数字都至关重要。
+
+本文探讨了为什么微调超大整数的任意一位数字都会导致其余弦值跃变到一个完全全新且不可预测的值。通过具体的数学推导和图形展示，文章揭示了计算天文数字般的三角函数为何必须依赖扩展精度算术（extended precision arithmetic），并指出了范围约减算法在其中的局限性与必要性。
+
+---
+
+## 大数的对数
+## The Logarithm of Large Numbers
+
+在[先前一篇文章](https://www.johndcook.com/blog/2026/08/06/log1000/)的脚注中，我曾指出 Python 的数学库可以计算极大数字的对数，但无法计算其余弦值。本文将进一步展开对这一观测结果的讨论。
+
+&gt; In a footnote to a [previous post](https://www.johndcook.com/blog/2026/08/06/log1000/), I noted that Python’s math library can calculate the logarithm of extremely large numbers, but not the cosine. This post expands on that observation.
+
+在此，我们以 $n = 200!$ 作为示例，而不是 $1000!$。这个 $n$ 值比可表示的最大浮点数还要大，但又足够小，便于进行实际操作。
+
+&gt; Here, let $n = 200!$ as our example rather than $1000!$. This value of $n$ is larger than the largest representable floating-point number, but small enough to be convenient to work with.
+
+假设有人为你计算出了 $200!$ 的值：
+
+&gt; Suppose someone calculates $200!$ for you:
+
+```text
+78865786736479050355236321393218506229513597768717326329474253324435\
+94499634033429203042840119846239041772121389196388302576427902426371\
+05061926624952829931113462857270763317237396988943922445621451664240\
+25403329186413122742829485327752424240757390324032125740557956866022\
+60319041703240623517008587961789222227896237038973747200000000000000\
+00000000000000000000000000000000000
+```
+
+你现在可以使用科学计数法来计算 $\log(n)$：
+
+&gt; You could now calculate $\log(n)$ using scientific notation:
+
+$$n = 7.886578673647905 \times 10^{374}$$
+
+因此：
+
+&gt; And so:
+
+$$\log(n) = \log(7.886578673647905 \times 10^{374})$$
+$$\log(n) = \log(7.886578673647905) + 374 \log(10) = 863.2319871924055$$
+
+使这一切成为可能的核心在于：$n$ 的最低有效数字只会影响 $\log(n)$ 的最低有效数字。在上述计算中，保留 $n$ 的前 16 位数字就足够了；Python 不需要（也无法利用）更多的数字来计算出达到机器精度的对数。
+
+&gt; The key thing that makes this possible is that the least significant digits of $n$ only affect the least significant digits of $\log(n)$. In the calculation above, keeping the first 16 digits of $n$ was sufficient; Python couldn't make use of (nor did it need) any more digits to produce the logarithm to machine precision.
+
+---
+
+## 为什么余弦函数截然不同
+## Why Cosine is Different
+
+余弦函数并非如此运作。$n$ 的余弦值取决于 $n$ 除以 $2\pi$ 的余数，而该余数取决于 $n$ 的**每一个数字**。
+
+&gt; Cosine does not work that way. The cosine of $n$ depends on the remainder when $n$ is divided by $2\pi$, and that remainder depends on **every single digit** of $n$. 
+
+使用 `bc -l` 并将精度（scale）设置为 400，我们可以计算 $n$ 并随后计算：
+
+&gt; Using `bc -l` and setting the scale to 400, we can calculate $n$ and then compute:
+
+$$\cos(n + 10^i)$$
+
+其中 $i$ 从 $0$ 到 $374$ 变化，每次对一个数字进行微调（当数字为 $9$ 导致加法产生进位的情况除外）：
+
+&gt; for $i$ running from $0$ to $374$, tweaking each digit one at a time (except when a digit is a $9$ and the addition results in a carry):
+
+```text
+    n = 1
+    for (i = 1; i &lt;= 200; i++) n *= i
+    scale = 400
+    for (i = 1; i &lt;= 374; i++) {
+        x = c(n+10^i)
+        scale = 16
+        print x/1, "\n"
+        scale = 400
+    }
+```
+
+以下是计算结果的绘图：
+
+&gt; Here is what a plot of the results looks like:
+
+&lt;img fetchpriority="high" decoding="async" src="./images/a2d3f3ad80cb.png" width="480" height="360" loading="lazy"/&gt;
+
+$\cos(n)$ 的真实值大约是 $-0.985$，但上述受扰动的值散布在整个取值范围内。我们可以通过将所有点投影到左边缘然后将其旋转四分之一圈，来更清晰地可视化取值范围：
+
+&gt; The true value of $\cos(n)$ is about $-0.985$, but the perturbed values above are scattered all over the map. We can visualize the range more clearly by projecting all the points over to the left edge and then rotating them a quarter turn:
+
+&lt;img decoding="async" src="./images/00e70f18f18b.png" width="360" height="15" loading="lazy"/&gt;
+
+这张图片引人注目的一点是，其中存在清晰可见的间隙——这意味着某些特定的数值是余弦值**根本不会**取到的。
+
+&gt; The remarkable thing about this image is that there are visible gaps—meaning there are a few specific values that the cosine simply *does not* take on.
+
+---
+
+## 结论
+## Conclusion
+
+从更高级的视角来看：序列 $10^i \pmod{2\pi}$ 在 $[0, 2\pi]$ 中是稠密的。因此，通过在序列中取足够远的值，我们可以找到一个数值，它能将 $n$ 的相位在任意给定容差内按任意期望的量进行偏移。
+
+&gt; Here is a more sophisticated way to look at it: the sequence $10^i \pmod{2\pi}$ is dense in $[0, 2\pi]$. Therefore, by going far enough out in the sequence, we can find a value that shifts the phase of $n$ by any desired amount within any given tolerance.
+
+$n$ 中的每一个数字都很重要，改变任何一个数字都可以将余弦值推移到基本上任意数值。不使用某种形式的扩展精度算术，就无法计算出庞大数字的余弦值。虽然巧妙的范围约减算法可以最大限度地减少所需的扩展算术量，但它无法被完全消除。
+
+&gt; Every digit in $n$ matters, and changing any digit can shift the cosine to essentially any value. You cannot calculate the cosine of an enormous number without using some kind of extended precision arithmetic. While clever range reduction algorithms can minimize the amount of extended arithmetic necessary, it cannot be completely eliminated.
+
+***
+
+*原文 [cos(200!)](https://www.johndcook.com/blog/2026/08/07/cos200/) 首发于 [John D. Cook](https://www.johndcook.com/blog)。*
+
+&gt; *The post [cos(200!)](https://www.johndcook.com/blog/2026/08/07/cos200/) first appeared on [John D. Cook](https://www.johndcook.com/blog).*</description>
+    </item>
+    <item>
       <title>2026-08-07-马尔可夫决策过程的属性驱动因果抽象</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-07/马尔可夫决策过程的属性驱动因果抽象/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-07/马尔可夫决策过程的属性驱动因果抽象/</guid>
@@ -3483,65 +3601,6 @@ Nunchaku Lite 模型库的功能与标准 Diffusers 库完全一致。transforme
 
 ## 局部化异常检测与可微分D-vine Copulas
 ## Localized Anomaly Detection via Differentiable D-vine Copulas</description>
-    </item>
-    <item>
-      <title>2026-08-07-基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本文针对真实工业生产环境中机器状态监测与异常检测的难题展开研究。在现实油田等生产场景中，通常缺乏现成的故障日志以及人为诱发的训练异常数据。为此，研究人员利用公开的 Equinor Volve 油田数据集，提出了一套基于物理工程规范和现场文档的严谨标签构建框架。
-
-研究人员通过无监督基线模型以及从金属缺陷检测技术中改进而来的紧凑型监督双头模型（用于识别事件的存在性及分类），对这些构建好的标签进行了评估。实验结果表明，无监督检测器能够独立收敛至规则标记的区域，从而验证了标签的有效性；同时，监督模型尽管在时间定位上较为粗糙，但成功实现了对未见过的新井中事件检测与分类的泛化。该研究的完整数据集、基础标签、溯源信息、基线评估、训练模型及代码均已在 CC-BY-NC-SA 4.0 许可证下开源。
-
----
-
-## 文档详情 (Document Details)
-
-| 元数据 (Metadata) | 详情 (Details) |
-| :--- | :--- |
-| **arXiv ID** | [`arXiv:2608.05685`](https://arxiv.org/abs/2608.05685) [cs.AI] |
-| **Title** | Grounded Well-Condition Anomaly Detection on the Volve Field: Constructed Labels, a Baseline, and a Dual-Head Model |
-| **Authors** | Gospel Bassey, Vincent Fakiyesi |
-| **Primary Subject** | 人工智能 (`cs.AI`) |
-| **Submitted Date** | 2026年8月6日 |
-| **DOI** | [10.48550/arXiv.2608.05685](https://doi.org/10.48550/arXiv.2608.05685) |
-
----
-
-## 摘要 (Abstract)
-
-大多数用于机器状态监测的公共基准测试都来自测试台，在这些测试台中，故障是人为诱发的且每个事件都是已知的。然而，真实的生产油田极少能提供这样的条件。它们提供的是没有附带故障日志的传感器历史数据，而这正是异常检测方法必须自行生成标签、且容易悄然引入未察觉假设的典型场景。
-
-我们使用 Equinor 发布的公开 Volve 油田数据，并认真对待了此类数据集通常会忽略的两个核心问题：
-1. **基础标签（Grounded Labels）：** 我们构建的异常标签不仅来源于数据中的模式，还结合了现场工程文档中记录的实际物理故障可能性进行交叉验证。我们公开了每个标签背后的推理过程。
-2. **可学习性测试（Learnability Testing）：** 我们利用无监督基线和一个小型双头模型（可标记事件发生的时间及其类型——这一灵感源于我们早期在金属零件缺陷检测中的工作），测试了这些构建的标签是否具备可学习性。
-
-研究结果客观坦诚。一个从未见过这些标签的无监督检测器，依然能够落入我们规则标记的相同区域，这说明这些标签并非凭空捏造。紧凑型监督模型能够跨越其从未见过的油田井，很好地恢复事件的存在性和事件类型，尽管在时间上的定位较为粗糙。我们如实报告了有效的方法、无效的方法以及其中的所有假设。
-
-&gt; Most public benchmarks for machine-condition monitoring come from test rigs, where faults are induced on purpose and every event is known. Real production fields rarely offer that. They give you sensor histories with no fault log attached, which is exactly the situation where an anomaly-detection method has to invent its own labels, and where quiet assumptions can slip in unnoticed. 
-&gt; 
-&gt; We work with the open Volve field data released by Equinor and take two things seriously that such datasets usually skip:
-&gt; 1. **Grounded Labels:** We build anomaly labels that are not just patterns in the numbers, but are checked against what the field's own engineering documents say can physically go wrong. We release the reasoning behind every label.
-&gt; 2. **Learnability Testing:** We test whether those constructed labels are learnable at all, using both an unsupervised baseline and a small dual-head model that marks when an event happens and what kind it is—an idea we carry over from earlier work on defect detection in metal parts.
-&gt; 
-&gt; The results are honest. An unsupervised detector that never sees the labels still lands on the same regions our rules flagged, which tells us the labels are not arbitrary. A compact supervised model recovers event presence and event type well across wells it has never seen, and locates events in time only roughly. We report what worked, what did not, and every assumption in between.
-
----
-
-## 资源与访问 (Resources &amp; Access)
-* **全文 PDF：** [通过 arXiv 查看 PDF](https://arxiv.org/pdf/2608.05685)
-* **代码与数据可用性：** 数据集、基础标签、每个标签的溯源、基线分数、训练模型和代码已在 **CC-BY-NC-SA 4.0** 许可证下向公众开源。
-* **文献计量与引用工具：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.05685)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.05685)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.05685)
-
-&gt; * **Full-Text PDF:** [View PDF via arXiv](https://arxiv.org/pdf/2608.05685)
-&gt; * **Code &amp; Data Availability:** Dataset, grounded labels, per-label provenance, baseline scores, trained models, and code are released publicly under the **CC-BY-NC-SA 4.0** license.
-&gt; * **Bibliographic &amp; Citation Tools:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.05685)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.05685)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.05685)</description>
     </item>
   </channel>
 </rss>
