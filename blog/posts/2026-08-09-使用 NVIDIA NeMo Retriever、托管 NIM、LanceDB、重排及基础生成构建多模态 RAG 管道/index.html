@@ -1,0 +1,1010 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-09-%E4%BD%BF%E7%94%A8%20NVIDIA%20NeMo%20Retriever%E3%80%81%E6%89%98%E7%AE%A1%20NIM%E3%80%81LanceDB%E3%80%81%E9%87%8D%E6%8E%92%E5%8F%8A%E5%9F%BA%E7%A1%80%E7%94%9F%E6%88%90%E6%9E%84%E5%BB%BA%E5%A4%9A%E6%A8%A1%E6%80%81%20RAG%20%E7%AE%A1%E9%81%93/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-environment-setup-and-offline-text-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Environment Setup and Offline Text Extraction
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 环境设置与离线文本提取
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-multimodal-ingestion-via-hosted-nims" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Multimodal Ingestion via Hosted NIMs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-nim" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 通过托管 NIM 进行多模态摄取
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-dense-retrieval-extraction-inspection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Dense Retrieval &amp; Extraction Inspection
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 稠密检索与提取检查
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-vision-language-reranking-and-filtered-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Vision-Language Reranking and Filtered Retrieval
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 视觉语言重排与过滤检索
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-grounded-rag-generation-and-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Grounded RAG Generation and Evaluation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-rag" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. 基于溯源的 RAG 生成与评估
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本教程深入探讨了如何利用 NVIDIA NeMo Retriever 构建一个先进的多模态检索增强生成（RAG）管道。文章首先指导用户配置 Python 3.12 环境并执行基于 PDFium 的离线文本提取，随后无缝接入托管的 NVIDIA NIM 微服务，以解析复杂文档中的页面元素、表格、图表和信息图。</p>
+<p>处理后的数据经过分块、去密和向量化处理后存储于高性能的 LanceDB 向量数据库中。在此基础上，系统结合了稠密检索、视觉语言重排（Vision-Language Reranking）以及元数据过滤功能，最后利用 Nemotron 大语言模型生成带内联引用和页面元数据的扎实回答，并通过 Recall-at-k 指标评估检索效果。</p>
+<hr />
+<h2 id="1-environment-setup-and-offline-text-extraction">1. Environment Setup and Offline Text Extraction</h2>
+<h2 id="1">1. 环境设置与离线文本提取</h2>
+<p>We begin by configuring the Python 3.12 environment, installing NVIDIA NeMo Retriever, and importing the required ingestion and retrieval components. We download the sample multimodal PDF, define it as the input document, and perform CPU-based offline text extraction with PDFium.</p>
+<blockquote>
+<p>我们首先配置 Python 3.12 环境，安装 NVIDIA NeMo Retriever，并导入所需的摄取和检索组件。接着下载样本多模态 PDF，将其定义为输入文档，并使用 PDFium 执行基于 CPU 的离线文本提取。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">textwrap</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span>
+   <span class="sa">f</span><span class="s2">&quot;nemo-retriever requires Python 3.12.x (found </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">). &quot;</span>
+   <span class="s2">&quot;Colab&#39;s default runtime is 3.12; if you changed it, switch back.&quot;</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sh</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;$ </span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+   <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+   <span class="kn">import</span><span class="w"> </span><span class="nn">nemo_retriever</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;nemo-retriever already installed&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+   <span class="n">sh</span><span class="p">(</span><span class="s2">&quot;pip install -q --ignore-installed PyJWT nemo-retriever openai&quot;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nemo_retriever</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;nemo-retriever version:&quot;</span><span class="p">,</span> <span class="n">nemo_retriever</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nemo_retriever</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_ingestor</span>
+<span class="k">try</span><span class="p">:</span>
+   <span class="kn">from</span><span class="w"> </span><span class="nn">nemo_retriever.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_markdown</span><span class="p">,</span> <span class="n">to_markdown_by_page</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+   <span class="kn">from</span><span class="w"> </span><span class="nn">nemo_retriever.common.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_markdown</span><span class="p">,</span> <span class="n">to_markdown_by_page</span>
+<span class="k">try</span><span class="p">:</span>
+   <span class="kn">from</span><span class="w"> </span><span class="nn">nemo_retriever.retriever</span><span class="w"> </span><span class="kn">import</span> <span class="n">Retriever</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+   <span class="kn">from</span><span class="w"> </span><span class="nn">nemo_retriever.graph.retriever</span><span class="w"> </span><span class="kn">import</span> <span class="n">Retriever</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;display.max_colwidth&quot;</span><span class="p">,</span> <span class="mi">160</span><span class="p">)</span>
+<span class="n">DOC</span> <span class="o">=</span> <span class="s2">&quot;multimodal_test.pdf&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">DOC</span><span class="p">):</span>
+   <span class="n">sh</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;curl -sL -o </span><span class="si">{</span><span class="n">DOC</span><span class="si">}</span><span class="s2"> &quot;</span>
+      <span class="s2">&quot;https://raw.githubusercontent.com/NVIDIA/NeMo-Retriever/main/data/multimodal_test.pdf&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;document:&quot;</span><span class="p">,</span> <span class="n">DOC</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">DOC</span><span class="p">),</span> <span class="s2">&quot;bytes&quot;</span><span class="p">)</span>
+<span class="n">DOCS</span> <span class="o">=</span> <span class="p">[</span><span class="n">DOC</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 1: offline text extraction (no API key) ===&quot;</span><span class="p">)</span>
+<span class="n">offline</span> <span class="o">=</span> <span class="p">(</span>
+   <span class="n">create_ingestor</span><span class="p">(</span><span class="n">run_mode</span><span class="o">=</span><span class="s2">&quot;inprocess&quot;</span><span class="p">,</span> <span class="n">allow_no_gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="n">DOCS</span><span class="p">)</span>
+   <span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+       <span class="n">extract_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+       <span class="n">extract_tables</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extract_charts</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+       <span class="n">extract_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extract_infographics</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+       <span class="n">use_page_elements</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+       <span class="n">extract_page_as_image</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+       <span class="n">method</span><span class="o">=</span><span class="s2">&quot;pdfium&quot;</span><span class="p">,</span>
+   <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">df_offline</span> <span class="o">=</span> <span class="n">offline</span><span class="o">.</span><span class="n">ingest</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;rows:&quot;</span><span class="p">,</span> <span class="n">df_offline</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">columns:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">df_offline</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">page 1 text preview:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">df_offline</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;text&quot;</span><span class="p">][:</span><span class="mi">400</span><span class="p">])</span>
+</code></pre></div>
+<hr />
+<h2 id="2-multimodal-ingestion-via-hosted-nims">2. Multimodal Ingestion via Hosted NIMs</h2>
+<h2 id="2-nim">2. 通过托管 NIM 进行多模态摄取</h2>
+<p>Next, we securely load the NVIDIA API key and define the hosted NIM endpoints for layout detection, OCR, table extraction, graphic analysis, embedding, reranking, and generation. We create a multimodal ingestion pipeline that extracts text, tables, charts, and infographics, applies token-aware chunking, deduplicates content, generates embeddings, and uploads vectors to a LanceDB table.</p>
+<blockquote>
+<p>接下来，我们安全加载 NVIDIA API 密钥，并定义用于版面检测、OCR、表格提取、图形分析、嵌入、重排和生成的托管 NIM 端点。我们构建了一个多模态摄取管道，用于提取文本、表格、图表和信息图，应用基于 Token 感知的分块，对内容去重，生成向量嵌入，并将向量上传到 LanceDB 表中。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">getpass</span><span class="w"> </span><span class="kn">import</span> <span class="n">getpass</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;NVIDIA_API_KEY&quot;</span><span class="p">):</span>
+   <span class="k">try</span><span class="p">:</span>
+       <span class="kn">from</span><span class="w"> </span><span class="nn">google.colab</span><span class="w"> </span><span class="kn">import</span> <span class="n">userdata</span>
+       <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVIDIA_API_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">userdata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;NVIDIA_API_KEY&quot;</span><span class="p">)</span>
+   <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+       <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVIDIA_API_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">(</span><span class="s2">&quot;NVIDIA_API_KEY (nvapi-...): &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="n">API_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;NVIDIA_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="n">HAVE_KEY</span> <span class="o">=</span> <span class="n">API_KEY</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;nvapi-&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;API key present:&quot;</span><span class="p">,</span> <span class="n">HAVE_KEY</span><span class="p">)</span>
+<span class="n">PAGE_ELEMENTS_URL</span>   <span class="o">=</span> <span class="s2">&quot;https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-page-elements-v3&quot;</span>
+<span class="n">OCR_URL</span>             <span class="o">=</span> <span class="s2">&quot;https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v1&quot;</span>
+<span class="n">TABLE_STRUCT_URL</span>    <span class="o">=</span> <span class="s2">&quot;https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-table-structure-v1&quot;</span>
+<span class="n">GRAPHIC_ELEM_URL</span>    <span class="o">=</span> <span class="s2">&quot;https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-graphic-elements-v1&quot;</span>
+<span class="n">EMBED_URL</span>           <span class="o">=</span> <span class="s2">&quot;https://integrate.api.nvidia.com/v1/embeddings&quot;</span>
+<span class="n">RERANK_URL</span>          <span class="o">=</span> <span class="s2">&quot;https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking&quot;</span>
+<span class="n">CHAT_URL</span>            <span class="o">=</span> <span class="s2">&quot;https://integrate.api.nvidia.com/v1&quot;</span>
+<span class="n">EMBED_MODEL</span>  <span class="o">=</span> <span class="s2">&quot;nvidia/llama-nemotron-embed-1b-v2&quot;</span>
+<span class="n">RERANK_MODEL</span> <span class="o">=</span> <span class="s2">&quot;nvidia/llama-nemotron-rerank-vl-1b-v2&quot;</span>
+<span class="n">LLM_MODEL</span>    <span class="o">=</span> <span class="s2">&quot;nvidia/llama-3.3-nemotron-super-49b-v1.5&quot;</span>
+<span class="n">LANCEDB_URI</span><span class="p">,</span> <span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;./lancedb&quot;</span><span class="p">,</span> <span class="s2">&quot;colab_demo&quot;</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df_offline</span>
+<span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 2: multimodal ingest via hosted NIMs ===&quot;</span><span class="p">)</span>
+   <span class="n">ing</span> <span class="o">=</span> <span class="p">(</span>
+       <span class="n">create_ingestor</span><span class="p">(</span>
+           <span class="n">run_mode</span><span class="o">=</span><span class="s2">&quot;inprocess&quot;</span><span class="p">,</span>
+           <span class="n">allow_no_gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">error_policy</span><span class="o">=</span><span class="s2">&quot;collect&quot;</span><span class="p">,</span>
+       <span class="p">)</span>
+       <span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="n">DOCS</span><span class="p">)</span>
+       <span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+           <span class="n">extract_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">extract_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">extract_charts</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">extract_infographics</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+           <span class="n">extract_images</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+           <span class="n">method</span><span class="o">=</span><span class="s2">&quot;pdfium&quot;</span><span class="p">,</span>
+           <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+           <span class="n">table_output_format</span><span class="o">=</span><span class="s2">&quot;markdown&quot;</span><span class="p">,</span>
+           <span class="n">page_elements_invoke_url</span><span class="o">=</span><span class="n">PAGE_ELEMENTS_URL</span><span class="p">,</span>
+           <span class="n">ocr_invoke_url</span><span class="o">=</span><span class="n">OCR_URL</span><span class="p">,</span>
+           <span class="n">table_structure_invoke_url</span><span class="o">=</span><span class="n">TABLE_STRUCT_URL</span><span class="p">,</span>
+           <span class="n">graphic_elements_invoke_url</span><span class="o">=</span><span class="n">GRAPHIC_ELEM_URL</span><span class="p">,</span>
+           <span class="n">api_key</span><span class="o">=</span><span class="n">API_KEY</span><span class="p">,</span>
+           <span class="n">request_timeout_s</span><span class="o">=</span><span class="mf">120.0</span><span class="p">,</span>
+           <span class="n">split_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">:</span> <span class="mi">512</span><span class="p">,</span> <span class="s2">&quot;overlap_tokens&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">}},</span>
+       <span class="p">)</span>
+       <span class="o">.</span><span class="n">dedup</span><span class="p">(</span><span class="n">content_hash</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bbox_iou</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">iou_threshold</span><span class="o">=</span><span class="mf">0.45</span><span class="p">)</span>
+       <span class="o">.</span><span class="n">embed</span><span class="p">(</span>
+           <span class="n">embedding_endpoint</span><span class="o">=</span><span class="n">EMBED_URL</span><span class="p">,</span>
+           <span class="n">model_name</span><span class="o">=</span><span class="n">EMBED_MODEL</span><span class="p">,</span>
+           <span class="n">embed_model_name</span><span class="o">=</span><span class="n">EMBED_MODEL</span><span class="p">,</span>
+           <span class="n">api_key</span><span class="o">=</span><span class="n">API_KEY</span><span class="p">,</span>
+           <span class="n">input_type</span><span class="o">=</span><span class="s2">&quot;passage&quot;</span><span class="p">,</span>
+           <span class="n">inference_batch_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+           <span class="n">nim_http_max_concurrent</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+       <span class="p">)</span>
+       <span class="o">.</span><span class="n">vdb_upload</span><span class="p">(</span>
+           <span class="n">vdb_op</span><span class="o">=</span><span class="s2">&quot;lancedb&quot;</span><span class="p">,</span>
+           <span class="n">vdb_kwargs</span><span class="o">=</span><span class="p">{</span>
+               <span class="s2">&quot;uri&quot;</span><span class="p">:</span> <span class="n">LANCEDB_URI</span><span class="p">,</span>
+               <span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="n">TABLE</span><span class="p">,</span>
+               <span class="s2">&quot;overwrite&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+               <span class="s2">&quot;create_index&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+               <span class="s2">&quot;index_type&quot;</span><span class="p">:</span> <span class="s2">&quot;IVF_HNSW_SQ&quot;</span><span class="p">,</span>
+               <span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;l2&quot;</span><span class="p">,</span>
+           <span class="p">},</span>
+       <span class="p">)</span>
+   <span class="p">)</span>
+   <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+   <span class="n">df</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+   <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ingested in </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">t0</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s -&gt; </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="3-dense-retrieval-extraction-inspection">3. Dense Retrieval &amp; Extraction Inspection</h2>
+<h2 id="3">3. 稠密检索与提取检查</h2>
+<p>We inspect the extracted elements, convert the document to page-level and full Markdown, and set up a dense retriever to search the LanceDB vector index.</p>
+<blockquote>
+<p>我们检查提取出的元素，将文档转换为按页及全文的 Markdown 格式，并设置稠密检索器来搜索 LanceDB 向量索引。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Extraction inspection ===&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;tables&quot;</span><span class="p">,</span> <span class="s2">&quot;charts&quot;</span><span class="p">,</span> <span class="s2">&quot;infographics&quot;</span><span class="p">,</span> <span class="s2">&quot;images&quot;</span><span class="p">]:</span>
+   <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+       <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+       <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">col</span><span class="si">:</span><span class="s2">&lt;14</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">pages</span> <span class="o">=</span> <span class="n">to_markdown_by_page</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">pages rendered to markdown:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">pages</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- page 1 markdown (first 900 chars) ---</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pages</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">pages</span><span class="p">)][:</span><span class="mi">900</span><span class="p">])</span>
+<span class="n">full_md</span> <span class="o">=</span> <span class="n">to_markdown</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">full_md</span><span class="p">:</span>
+   <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;extracted.md&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+       <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">full_md</span><span class="p">)</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">full document markdown -&gt; extracted.md&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 3: dense retrieval ===&quot;</span><span class="p">)</span>
+   <span class="n">retriever</span> <span class="o">=</span> <span class="n">Retriever</span><span class="p">(</span>
+       <span class="n">run_mode</span><span class="o">=</span><span class="s2">&quot;service&quot;</span><span class="p">,</span>
+       <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+       <span class="n">rerank</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+       <span class="n">vdb_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;uri&quot;</span><span class="p">:</span> <span class="n">LANCEDB_URI</span><span class="p">,</span> <span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="n">TABLE</span><span class="p">},</span>
+       <span class="n">embed_kwargs</span><span class="o">=</span><span class="p">{</span>
+           <span class="s2">&quot;embedding_endpoint&quot;</span><span class="p">:</span> <span class="n">EMBED_URL</span><span class="p">,</span>
+           <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">EMBED_MODEL</span><span class="p">,</span>
+           <span class="s2">&quot;embed_model_name&quot;</span><span class="p">:</span> <span class="n">EMBED_MODEL</span><span class="p">,</span>
+           <span class="s2">&quot;api_key&quot;</span><span class="p">:</span> <span class="n">API_KEY</span><span class="p">,</span>
+           <span class="s2">&quot;input_type&quot;</span><span class="p">:</span> <span class="s2">&quot;query&quot;</span><span class="p">,</span>
+       <span class="p">},</span>
+   <span class="p">)</span>
+   <span class="n">QUERIES</span> <span class="o">=</span> <span class="p">[</span>
+       <span class="s2">&quot;Given their activities, which animal is responsible for the typos in my documents?&quot;</span><span class="p">,</span>
+       <span class="s2">&quot;What is the most expensive gadget and how much does it cost?&quot;</span><span class="p">,</span>
+       <span class="s2">&quot;Which animal is at the beach?&quot;</span><span class="p">,</span>
+   <span class="p">]</span>
+   <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+       <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> ---&quot;</span><span class="p">)</span>
+       <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+           <span class="n">meta</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span>
+           <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+               <span class="k">try</span><span class="p">:</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+               <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span> <span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+           <span class="n">page</span> <span class="o">=</span> <span class="p">(</span><span class="n">meta</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;page_number&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+           <span class="n">score</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_distance&quot;</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rerank_score&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+           <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">())[:</span><span class="mi">180</span><span class="p">]</span>
+           <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">. p</span><span class="si">{</span><span class="n">page</span><span class="si">}</span><span class="s2"> score=</span><span class="si">{</span><span class="n">score</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+   <span class="n">show</span><span class="p">(</span><span class="n">retriever</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">QUERIES</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="s2">&quot;single query&quot;</span><span class="p">)</span>
+   <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">hits</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">QUERIES</span><span class="p">,</span> <span class="n">retriever</span><span class="o">.</span><span class="n">queries</span><span class="p">(</span><span class="n">QUERIES</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">3</span><span class="p">)):</span>
+       <span class="n">show</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">q</span><span class="p">[:</span><span class="mi">60</span><span class="p">])</span>
+</code></pre></div>
+<hr />
+<h2 id="4-vision-language-reranking-and-filtered-retrieval">4. Vision-Language Reranking and Filtered Retrieval</h2>
+<h2 id="4">4. 视觉语言重排与过滤检索</h2>
+<p>We introduce a vision-language reranking pipeline to reorder retrieval results by semantic relevance and apply text-based filters to pinpoint specific document chunks.</p>
+<blockquote>
+<p>我们引入了视觉语言重排管道，根据语义相关性对检索结果进行重新排序，并应用基于文本的过滤器来精确定位特定的文档块。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 4: retrieve + VL rerank ===&quot;</span><span class="p">)</span>
+   <span class="n">reranking</span> <span class="o">=</span> <span class="n">Retriever</span><span class="p">(</span>
+       <span class="n">run_mode</span><span class="o">=</span><span class="s2">&quot;service&quot;</span><span class="p">,</span>
+       <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+       <span class="n">rerank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+       <span class="n">vdb_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;uri&quot;</span><span class="p">:</span> <span class="n">LANCEDB_URI</span><span class="p">,</span> <span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="n">TABLE</span><span class="p">},</span>
+       <span class="n">embed_kwargs</span><span class="o">=</span><span class="p">{</span>
+           <span class="s2">&quot;embedding_endpoint&quot;</span><span class="p">:</span> <span class="n">EMBED_URL</span><span class="p">,</span> <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">EMBED_MODEL</span><span class="p">,</span>
+           <span class="s2">&quot;embed_model_name&quot;</span><span class="p">:</span> <span class="n">EMBED_MODEL</span><span class="p">,</span> <span class="s2">&quot;api_key&quot;</span><span class="p">:</span> <span class="n">API_KEY</span><span class="p">,</span> <span class="s2">&quot;input_type&quot;</span><span class="p">:</span> <span class="s2">&quot;query&quot;</span><span class="p">,</span>
+       <span class="p">},</span>
+       <span class="n">rerank_kwargs</span><span class="o">=</span><span class="p">{</span>
+           <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">RERANK_MODEL</span><span class="p">,</span>
+           <span class="s2">&quot;invoke_url&quot;</span><span class="p">:</span> <span class="n">RERANK_URL</span><span class="p">,</span>
+           <span class="s2">&quot;api_key&quot;</span><span class="p">:</span> <span class="n">API_KEY</span><span class="p">,</span>
+           <span class="s2">&quot;refine_factor&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+           <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+       <span class="p">},</span>
+   <span class="p">)</span>
+   <span class="k">try</span><span class="p">:</span>
+       <span class="n">show</span><span class="p">(</span><span class="n">reranking</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">QUERIES</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="s2">&quot;reranked&quot;</span><span class="p">)</span>
+   <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+       <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;rerank unavailable, dense results stand:&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)[:</span><span class="mi">160</span><span class="p">])</span>
+<span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 5: filtered retrieval ===&quot;</span><span class="p">)</span>
+   <span class="k">try</span><span class="p">:</span>
+       <span class="n">hits</span> <span class="o">=</span> <span class="n">retriever</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+           <span class="s2">&quot;gadget costs&quot;</span><span class="p">,</span>
+           <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+           <span class="n">vdb_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;where&quot;</span><span class="p">:</span> <span class="s2">&quot;text LIKE &#39;%Cost%&#39;&quot;</span><span class="p">},</span>
+       <span class="p">)</span>
+       <span class="n">show</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="s2">&quot;where: text LIKE &#39;%Cost%&#39;&quot;</span><span class="p">)</span>
+   <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+       <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;filter push-down failed:&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)[:</span><span class="mi">160</span><span class="p">])</span>
+   <span class="kn">import</span><span class="w"> </span><span class="nn">lancedb</span>
+   <span class="n">tbl</span> <span class="o">=</span> <span class="n">lancedb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">LANCEDB_URI</span><span class="p">)</span><span class="o">.</span><span class="n">open_table</span><span class="p">(</span><span class="n">TABLE</span><span class="p">)</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">rows in LanceDB:&quot;</span><span class="p">,</span> <span class="n">tbl</span><span class="o">.</span><span class="n">count_rows</span><span class="p">())</span>
+   <span class="nb">print</span><span class="p">(</span><span class="n">tbl</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()[[</span><span class="s2">&quot;text&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+</code></pre></div>
+<hr />
+<h2 id="5-grounded-rag-generation-and-evaluation">5. Grounded RAG Generation and Evaluation</h2>
+<h2 id="5-rag">5. 基于溯源的 RAG 生成与评估</h2>
+<p>We use a hosted Nemotron language model to generate answers grounded strictly in the supplied context, accompanied by citations and page metadata. Finally, we measure retrieval effectiveness using a recall-at-k evaluation.</p>
+<blockquote>
+<p>我们使用托管的 Nemotron 语言模型来生成严格基于所提供上下文的答案，并附带引用和页面元数据。最后，我们使用 recall-at-k 评估指标来衡量检索的有效性。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== STAGE 6: RAG answer ===&quot;</span><span class="p">)</span>
+   <span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+   <span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="n">CHAT_URL</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">API_KEY</span><span class="p">)</span>
+   <span class="k">def</span><span class="w"> </span><span class="nf">rag</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+       <span class="n">hits</span> <span class="o">=</span> <span class="n">retriever</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+       <span class="n">ctx</span> <span class="o">=</span> <span class="p">[]</span>
+       <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+           <span class="n">meta</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span>
+           <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+               <span class="k">try</span><span class="p">:</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+               <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span> <span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+           <span class="n">ctx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] (page </span><span class="si">{</span><span class="p">(</span><span class="n">meta</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;page_number&#39;</span><span class="p">,</span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="si">{</span><span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+       <span class="n">prompt</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">           Answer the question using ONLY the numbered context below.</span>
+<span class="s2">           Cite the sources you used as [1], [2], etc. If the context is</span>
+<span class="s2">           insufficient, say so plainly.</span>
+<span class="s2">           Context:</span>
+<span class="s2">           </span><span class="si">{</span><span class="nb">chr</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">           Question: </span><span class="si">{</span><span class="n">question</span><span class="si">}</span>
+<span class="s2">           &quot;&quot;&quot;</span><span class="p">)</span>
+       <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+           <span class="n">model</span><span class="o">=</span><span class="n">LLM_MODEL</span><span class="p">,</span>
+           <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}],</span>
+           <span class="n">temperature</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+       <span class="p">)</span>
+       <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="n">hits</span>
+   <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">QUERIES</span><span class="p">[:</span><span class="mi">2</span><span class="p">]:</span>
+       <span class="k">try</span><span class="p">:</span>
+           <span class="n">ans</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">rag</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+           <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Q: </span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="se">\n</span><span class="s2">A: </span><span class="si">{</span><span class="n">ans</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+       <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+           <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;generation failed:&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)[:</span><span class="mi">200</span><span class="p">])</span>
+<span class="k">if</span> <span class="n">HAVE_KEY</span><span class="p">:</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Recall@k check ===&quot;</span><span class="p">)</span>
+   <span class="n">GOLD</span> <span class="o">=</span> <span class="p">[</span>
+       <span class="p">(</span><span class="s2">&quot;which animal is jumping onto a laptop&quot;</span><span class="p">,</span> <span class="s2">&quot;Cat&quot;</span><span class="p">),</span>
+       <span class="p">(</span><span class="s2">&quot;what does the chart show&quot;</span><span class="p">,</span> <span class="s2">&quot;Gadgets&quot;</span><span class="p">),</span>
+       <span class="p">(</span><span class="s2">&quot;which animal is at the beach&quot;</span><span class="p">,</span> <span class="s2">&quot;Giraffe&quot;</span><span class="p">),</span>
+   <span class="p">]</span>
+   <span class="n">K</span> <span class="o">=</span> <span class="mi">5</span>
+   <span class="n">hit_lists</span> <span class="o">=</span> <span class="n">retriever</span><span class="o">.</span><span class="n">queries</span><span class="p">([</span><span class="n">q</span> <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">GOLD</span><span class="p">],</span> <span class="n">top_k</span><span class="o">=</span><span class="n">K</span><span class="p">)</span>
+   <span class="n">got</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+       <span class="nb">any</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">)</span>
+       <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">exp</span><span class="p">),</span> <span class="n">hits</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">GOLD</span><span class="p">,</span> <span class="n">hit_lists</span><span class="p">)</span>
+   <span class="p">)</span>
+   <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;recall@</span><span class="si">{</span><span class="n">K</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">got</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">GOLD</span><span class="p">)</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">got</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">GOLD</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Done. Artifacts: ./lancedb (vector table), ./extracted.md (markdown).&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<h2 id="_2">结论</h2>
+<p>By completing this workflow, we established a reusable foundation for building document intelligence applications that process text, tables, charts, and visual elements through a unified retrieval pipeline. NeMo Retriever coordinates extraction, deduplication, chunking, embedding, vector database indexing, retrieval, and reranking, while hosted NVIDIA NIM services keep resource requirements lightweight.</p>
+<blockquote>
+<p>通过完成此工作流，我们为构建文档智能应用程序奠定了可复用的基础，能够通过统一的检索管道处理文本、表格、图表和视觉元素。NeMo Retriever 协调了提取、去重、分块、嵌入、向量数据库索引、检索和重排，而托管的 NVIDIA NIM 服务则使资源需求保持在轻量级水平。</p>
+</blockquote>
+<hr />
+<p><strong>Check out the <a href="https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/LLM%2520Projects/nvidia_nemo_retriever_advanced_multimodal_rag_Marktechpost.ipynb">FULL CODES here</a>.</strong> </p>
+<blockquote>
+<p><strong>点击此处查看<a href="https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/LLM%2520Projects/nvidia_nemo_retriever_advanced_multimodal_rag_Marktechpost.ipynb">完整代码</a>。</strong></p>
+</blockquote>
+<p>Also, feel free to follow us on <strong><a href="https://x.com/intent/follow?screen_name=marktechpost">Twitter</a></strong> and don’t forget to join our <strong><a href="https://www.reddit.com/r/machinelearningnews/">150k+ ML SubReddit</a></strong>, Subscribe to <strong><a href="https://www.aidevsignals.com/">our Newsletter</a></strong>, and join us on <strong><a href="https://t.me/machinelearningresearchnews">Telegram</a></strong>.</p>
+<blockquote>
+<p>此外，欢迎在 <strong><a href="https://x.com/intent/follow?screen_name=marktechpost">Twitter</a></strong> 上关注我们，加入我们拥有超 15万名成员的 <strong><a href="https://www.reddit.com/r/machinelearningnews/">ML SubReddit</a></strong>，订阅 <strong><a href="https://www.aidevsignals.com/">我们的新闻通讯</a></strong>，并加入我们的 <strong><a href="https://t.me/machinelearningresearchnews">Telegram 频道</a></strong>。</p>
+</blockquote>
+<p>Need to partner with us for promoting your GitHub Repo, Hugging Face Page, Product Release, or Webinar? <strong><a href="https://forms.gle/wbash1wF6efRj8G58">Connect with us</a></strong>.</p>
+<blockquote>
+<p>如果您需要与我们合作推广您的 GitHub 仓库、Hugging Face 页面、产品发布或网络研讨会，请<strong><a href="https://forms.gle/wbash1wF6efRj8G58">与我们联系</a></strong>。</p>
+</blockquote>
+<p><em>The post <a href="https://www.marktechpost.com/2026/08/07/building-a-multimodal-rag-pipeline-with-nvidia-nemo-retriever-hosted-nims-lancedb-reranking-and-grounded-generation/">Building a Multimodal RAG Pipeline with NVIDIA NeMo Retriever, Hosted NIMs, LanceDB, Reranking, and Grounded Generation</a> appeared first on <a href="https://www.marktechpost.com">MarkTechPost</a>.</em></p>
+<blockquote>
+<p><em>本文首发于 <a href="https://www.marktechpost.com">MarkTechPost</a>，原标题为<a href="https://www.marktechpost.com/2026/08/07/building-a-multimodal-rag-pipeline-with-nvidia-nemo-retriever-hosted-nims-lancedb-reranking-and-grounded-generation/">使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道</a></em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">NVIDIA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">NeMo Retriever</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">LanceDB</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">RAG</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">多模态</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

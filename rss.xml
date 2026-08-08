@@ -5,6 +5,727 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Shared between prover, verifier</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-09/零知识证明浅析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-09/零知识证明浅析/</guid>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本文从计算机科学和图论的角度出发，带读者深入探讨了零知识证明（Zero-Knowledge Proofs, ZKPs）的底层原理，全程不涉及任何加密货币。受 Goldreich、Micali 和 Wigderson 在 1990 年发表的经典论文启发，作者拆解了证明者（Prover）与验证者（Verifier）如何在不泄露解本身的前提下，向验证者证明自己掌握了 NP 完全问题（具体为图的三染色问题）的解。
+
+文章不仅附带了单轮交互的 Python 代码片段、概率计算公式，还延伸讨论了数独等智力游戏的应用，以及如何通过规约（Reduction）将其他 NP 完全问题转化为图三染色问题，从而揭开交互式证明机制的神秘面纱。
+
+---
+
+## 简介 (Introduction)
+
+Chris 上周给我发信息，问我想不想实现零知识证明。我一开始并不感兴趣，但他接着说：
+
+&gt; 如果我告诉你有一种零知识证明和加密货币毫无关系呢？如果我告诉你它涉及图论呢？如果我告诉你只需要 30 行代码就能实现呢？
+
+这下*有意思*了。
+
+零知识证明（ZKP）的核心思想是存在两个参与者：证明者和验证者。证明者声称自己拥有某个（通常是 NP 完全的）问题的解。证明者可以在不共享该问题实际解的情况下，让验证者确信这一点。
+
+最经典的例子是图的三染色（3-coloring）。也就是说，证明者声称，对于一个给定的（共享的）图，它有一个合法的 3 染色方案。它希望让验证者相信这一点，同时又不能透露具体的颜色分配方案。
+
+&gt; 简单回顾一下，图染色问题是指：给定一个图，我们要为每个节点指定一种颜色，使得任意两个相邻节点没有相同的颜色。3 染色则是指最多使用 3 种颜色进行染色。
+
+```dot
+%0
+node [color=black, fillcolor=white, style=filled];
+subgraph cluster_0 {
+    label = "";
+    style = invis;
+    0 [fillcolor=red];
+    1 [fillcolor=blue];
+    0 -- 1;
+    2 [fillcolor=green];
+    0 -- 2;
+    1 -- 2;
+    3 [fillcolor=red];
+    2 -- 3;
+    4 [fillcolor=blue];
+    3 -- 4;
+    4 -- 0;
+}
+```
+
+```dot
+%0
+node [color=black, fillcolor=white, style=filled];
+subgraph cluster_0 {
+    label = "";
+    style = invis;
+    0 [fillcolor=red];
+    1 [fillcolor=blue];
+    0 -- 1;
+    2 [fillcolor=green];
+    0 -- 2;
+    1 -- 2;
+    3 [fillcolor=red];
+    2 -- 3;
+    4 [fillcolor=blue];
+    3 -- 4;
+    4 -- 0;
+}
+```
+
+怎么做到这一点呢？各式各样的博客文章和花哨的演示虽然很有趣，但并不能帮我们理解太多本质。
+
+我和 Chris 兜兜转转了一阵，决定去读一读 Goldreich、Micali 和 Widgerson 的[原始论文之一](https://dl.acm.org/doi/pdf/10.1145/116825.116852)（PDF）。我们其实只读了第 23 页（PDF 中标注为第 713 页），但这已经足够让我们把代码跑起来了。
+
+---
+
+## 论文中的协议 (The Paper’s Protocol)
+
+论文中的协议 4 描述了证明者（P，带有编号的步骤）与验证者（V，带有编号的步骤）之间进行交互式 3 染色证明的过程，现重现如下：
+
+&gt; *公共输入* 一个图 `G(V, E)`（其中 `n = |V|`, `m = |E|`）。
+&gt; 
+&gt; 以下四个步骤将执行 `m²` 次，每次使用独立的抛硬币结果。
+&gt; 
+&gt; (P1) 证明者随机选择一个对 `φ` 诱导出的三个独立集的 3 种颜色的置换，用这个 3 染色方案给图着色，并将这些颜色放入 `n` 个加锁的盒子中，每个盒子上标有对应顶点的编号。更具体地说，证明者选择一个置换 `π ∈R S₃`，将 `π(φ(i))` 放入标有 `i` 的盒子中（对所有 `i ∈ V`），锁上所有盒子并（在没有钥匙的情况下）将它们发送给验证者。
+&gt; 
+&gt; (V1) 验证者随机选择一条边 `e ∈R E` 并将其发送给证明者。（直观地说，验证者要求检查 `e ∈ E` 两个端点的颜色。）
+&gt; 
+&gt; (P2) 如果 `e = (u, v) ∈ E`，则证明者通过向验证者发送盒子 `u` 和 `v` 的钥匙来揭晓 `u` 和 `v` 的颜色。否则，证明者什么都不做。
+&gt; 
+&gt; (V2) 验证者使用收到的钥匙打开盒子 `u` 和 `v`，并检查它们是否包含 `{1, 2, 3}` 中的两个不同元素。如果钥匙打不开盒子，或者内容违反了条件，验证者就会**拒绝**并停止。否则，验证者继续下一轮迭代。
+&gt; 
+&gt; 如果验证者完成了所有的 `m²` 次迭代，则表示它**接受**。
+
+我们稍后会回过头来讨论迭代次数。现在，让我们尝试只执行**单轮**迭代。对于每个步骤，我都会在代码中加上“仅限证明者 (Only prover)”或“仅限验证者 (Only verifier)”的注释，以便清楚地了解谁能看到什么数据。
+
+---
+
+## 单轮迭代 (One Iteration)
+
+我们首先勾勒出一个图的结构。对于上面那个 graphviz 示例图，我们有以下边列表数据结构：
+
+```python
+# Shared between prover, verifier
+edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (0, 2)]
+```
+
+&gt; `&gt; # 在证明者和验证者之间共享`
+
+列表中的每个元组表示两个编号节点之间的连接。非常巧妙。因为这是一个无向图，所以 `(0, 1)` 和 `(1, 0)` 是等价的，因此我们不需要把两边都列出来。我们还可以为它着色：
+
+```python
+# Only prover
+coloring = {0: "navy", 1: "darkgreen", 2: "crimson", 3: "navy", 4: "darkgreen"}
+```
+
+&gt; `&gt; # 仅限证明者`
+
+每个键是一个节点编号，每个值是一种颜色。
+
+虽然为图找到一个 3 染色方案很慢，但验证一个 3 染色方案很快——其时间复杂度与边的数量呈线性关系。让我们验证一下我们拥有一个合法的示例染色方案：
+
+```python
+# For the reader
+# Check each edge to make sure no edge has the same color on each node
+assert all(coloring[u] != coloring[v] for u, v in edges)
+# Check that the total number of colors used is 3
+assert len(set(coloring.values())) &lt;= 3
+```
+
+&gt; `&gt; # 供读者参考`
+&gt; `&gt; # 检查每条边，确保没有任何一条边的两个节点颜色相同`
+&gt; `&gt; # 检查使用的颜色总数是否为 3`
+
+现在我们将逐一执行论文中的步骤，并为每个步骤编写一些配套代码。</description>
+    </item>
+    <item>
+      <title>2026-08-09-如何错误地计算余弦值</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-09/如何错误地计算余弦值/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-09/如何错误地计算余弦值/</guid>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 GMT</pubDate>
+      <description>微积分教材通常会暗示计算机是通过幂级数来计算三角函数的，然而对于远离级数中心的值来说，这是一个常见的误解。例如，尝试使用标准的余弦幂级数来计算 $\cos(200)$ 会导致巨大的数值不稳定性、上溢问题以及灾难性的相消误差。在实际工程中，精确计算三角函数需要依赖更高级的技术（如精确的区间约简），而不是单纯地进行朴素的级数展开。
+
+本文由知名数学与软件专家 John D. Cook 撰写，深入剖析了初学者在数值计算中常犯的直觉错误。通过具体的 Python 代码示例，文章展示了为什么盲目套用幂级数会产生高达 $10^{67}$ 的荒谬结果，并简要介绍了工业级数值计算中处理大数和小数运算的正确方向。
+
+---
+
+## 幂级数的幻觉
+
+&gt; Calculus professors with no experience in numerical computing will tell students that computers calculate trig functions with power series. They don’t. I worked on the implementation of trig functions in hardware, and I can assure you we didn’t just use power series.
+
+没有数值计算经验的微积分教授会告诉学生，计算机是用幂级数来计算三角函数的。事实并非如此。我曾参与过硬件中三角函数的实现，我可以向你保证，我们绝不仅仅使用幂级数。
+
+&gt; Power series are an excellent way to calculate functions *near the center of the series*, such as computing [sine for small angles](https://www.johndcook.com/blog/2010/07/27/sine-approximation-for-small-x/). But the further you get from the center, the less useful power series are.
+
+幂级数是计算*靠近级数中心*函数值的极佳方法，例如[计算小角度的正弦值](https://www.johndcook.com/blog/2010/07/27/sine-approximation-for-small-x/)。但你离中心越远，幂级数的实用性就越差。
+
+---
+
+## 一次失败的尝试：计算 $\cos(200)$
+
+&gt; Let’s suppose you want to calculate $\cos(200)$ using the power series for cosine. The $n$-th term of that series is:
+&gt; 
+&gt; $$\frac{(-1)^n x^{2n}}{(2n)!}$$
+&gt; 
+&gt; This is an alternating series, and so the error in truncating the series after $n$ terms is bounded by the size of the $n+1$ term, *if* you’ve gone far enough out in the series that the terms are monotonically decreasing in absolute value.
+
+假设你想用余弦的幂级数来计算 $\cos(200)$。该级数的第 $n$ 项为：
+
+$$\frac{(-1)^n x^{2n}}{(2n)!}$$
+
+这是一个交错级数，因此如果在第 $n$ 项后截断级数，其误差受限于第 $n+1$ 项的大小——*前提是*你在级数中取得足够远，使得各项的绝对值呈单调递减趋势。
+
+&gt; To calculate $\cos(200)$ to machine precision, i.e., with an error of less than $2^{-52}$, we’d need to sum the series up to $n$ where:
+&gt; 
+&gt; $$\left| \frac{200^{2n+2}}{(2n + 2)!} \right| &lt; 2^{-52}$$
+&gt; 
+&gt; Actually, that will ensure that the *absolute* error is small enough, but not that the *relative* error is small enough; if the value of $\cos(200)$ is small, we’d need more terms. Let’s ignore that and assume we’re only concerned with absolute error.
+
+为了以机器精度（即误差小于 $2^{-52}$）计算 $\cos(200)$，我们需要将级数求和到满足以下条件的 $n$：
+
+$$\left| \frac{200^{2n+2}}{(2n + 2)!} \right| &lt; 2^{-52}$$
+
+实际上，这只能确保*绝对*误差足够小，而不能确保*相对*误差足够小；如果 $\cos(200)$ 的值本身很小，我们需要更多的项。让我们暂时忽略这一点，假设我们只关心绝对误差。
+
+&gt; It turns out we’d need 287 terms. That’s a lot of terms. But you might say, *"That’s fine. I’m not in a hurry, and it’s just more work for the computer, not for me."* OK, so let’s try:
+&gt; 
+&gt; ```python
+&gt; from math import *
+&gt; 
+&gt; s = 0
+&gt; for n in range(288):
+&gt;     s += (-1)**n * 200**(2*n) / factorial(2*n)
+&gt; print(s)
+&gt; ```
+
+事实证明，我们需要 287 项。这是相当多的项。但你可能会说：“*没关系。我不急，这只是计算机的工作，又不是我的。*”好吧，让我们来试一下：
+
+```python
+from math import *
+
+s = 0
+for n in range(288):
+    s += (-1)**n * 200**(2*n) / factorial(2*n)
+print(s)
+```
+
+&gt; This prints `-3.6840358571084123e+67`. You may suspect the answer is incorrect since values of cosine are on the order of $1$, not on the order of $10^{67}$. Something went spectacularly bad. On closer inspection, it’s remarkable the code didn’t crash.
+
+这段代码打印出了 `-3.6840358571084123e+67`。你可能会怀疑这个答案是错误的，因为余弦值应该在 $1$ 的量级，而不是 $10^{67}$ 的量级。有些地方出了严重的问题。仔细检查后，代码竟然没有崩溃，这本身就很令人惊奇了。
+
+---
+
+## 为什么会失败：上溢与灾难性相消
+
+&gt; If you changed `200` to `200.0` above, the code would crash. Calculating `200.0**(2*n)` overflows when $n = 67$. But when we calculate `200**(2*n)`, the result is an integer. And we’re dividing by `factorial(2*n)`, which is also an integer. 
+
+如果你把上面代码中的 `200` 改为 `200.0`，代码就会崩溃。当 $n = 67$ 时，计算 `200.0**(2*n)` 会发生上溢。但当我们计算 `200**(2*n)` 时，结果是一个整数。并且我们在除以 `factorial(2*n)`，这也是一个整数。
+
+&gt; Both of these integers become too large to fit in a float, but their *ratio* has a maximum value of around $10^{80}$, smaller than the maximum float, which is on the order of $10^{308}$.
+
+这两个整数都变得太大而无法放入浮点数（float）中，但它们的*比值*最大值约为 $10^{80}$，小于浮点数的最大上限（在 $10^{308}$ 的量级）。
+
+&gt; When we don’t overflow, we have a different problem: **catastrophic cancellation**. You can’t calculate a number between $-1$ and $1$ as an alternating sum of numbers as large as $10^{80}$. You’d need more than $80 + 16 = 96$ decimal places of precision to compute the sum accurately, and floating point only gives you between $15$ and $16$ decimal places of precision.
+
+即使我们没有遇到上溢，也会面临另一个问题：**灾难性相消（Catastrophic Cancellation）**。你无法通过将高达 $10^{80}$ 的数字进行交错求和，来计算出一个介于 $-1$ 和 $1$ 之间的数。为了准确计算这个总和，你需要超过 $80 + 16 = 96$ 位十进制数的精度，而标准浮点数只能提供 $15$ 到 $16$ 位的十进制精度。
+
+---
+
+## 正确的方法：区间约简
+
+&gt; So how *would* you calculate $\cos(200)$? The first step would be to use some sort of range reduction on $200$. You could reduce $200 \pmod{2\pi}$ to get a smaller number to work with:
+&gt; 
+&gt; ```python
+&gt; &gt;&gt;&gt; from math import cos, pi
+&gt; &gt;&gt;&gt; x = 200 % (2*pi)
+&gt; &gt;&gt;&gt; x
+&gt; 5.221255477432827
+&gt; ```
+
+那么，究竟该*如何*计算 $\cos(200)$ 呢？第一步是对 $200$ 进行某种形式的区间约简（Range Reduction）。你可以对 $200 \pmod{2\pi}$ 进行约简，以得到一个更小的数来进行计算：
+
+```python
+&gt;&gt;&gt; from math import cos, pi
+&gt;&gt;&gt; x = 200 % (2*pi)
+&gt;&gt;&gt; x
+5.221255477432827
+```
+
+&gt; Using a power series to compute the cosine of $5.221255477432827$ is feasible, but not optimal. There’s also another problem: the naive range reduction above loses some precision.
+&gt; 
+&gt; ```python
+&gt; &gt;&gt;&gt; cos(x)
+&gt; 0.48718767500701254
+&gt; &gt;&gt;&gt; cos(x) - cos(200)
+&gt; 6.661338147750939e-15
+&gt; ```
+
+使用幂级数来计算 $5.221255477432827$ 的余弦值是可行的，但并非最佳选择。这里还有另一个问题：上面这种朴素的区间约简丢失了一些精度。
+
+```python
+&gt;&gt;&gt; cos(x)
+0.48718767500701254
+&gt;&gt;&gt; cos(x) - cos(200)
+6.661338147750939e-15
+```
+
+&gt; The error is small, but it’s still an order of magnitude larger than machine precision. You can’t simply reduce $n \pmod{2\pi}$ with ordinary float division because the integer part of $n / 2\pi$ pushes some digits of precision off the right end. I intend to write about how range reduction works in future posts.
+
+误差虽然很小，但仍然比机器精度大了一个数量级。你不能简单地用普通的浮点数除法来计算 $n \pmod{2\pi}$，因为 $n / 2\pi$ 的整数部分会把右侧的一些精度位数挤掉。我打算在以后的文章中专门探讨区间约简的工作原理。
+
+---
+
+*Source: [How not to calculate cosine](https://www.johndcook.com/blog/2026/08/07/how-not-to-calculate-cos/) by [John D. Cook](https://www.johndcook.com/blog).*</description>
+    </item>
+    <item>
+      <title>2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-09/使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-09/使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道/</guid>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本教程深入探讨了如何利用 NVIDIA NeMo Retriever 构建一个先进的多模态检索增强生成（RAG）管道。文章首先指导用户配置 Python 3.12 环境并执行基于 PDFium 的离线文本提取，随后无缝接入托管的 NVIDIA NIM 微服务，以解析复杂文档中的页面元素、表格、图表和信息图。
+
+处理后的数据经过分块、去密和向量化处理后存储于高性能的 LanceDB 向量数据库中。在此基础上，系统结合了稠密检索、视觉语言重排（Vision-Language Reranking）以及元数据过滤功能，最后利用 Nemotron 大语言模型生成带内联引用和页面元数据的扎实回答，并通过 Recall-at-k 指标评估检索效果。
+
+---
+
+## 1. Environment Setup and Offline Text Extraction
+## 1. 环境设置与离线文本提取
+
+We begin by configuring the Python 3.12 environment, installing NVIDIA NeMo Retriever, and importing the required ingestion and retrieval components. We download the sample multimodal PDF, define it as the input document, and perform CPU-based offline text extraction with PDFium.
+&gt; 我们首先配置 Python 3.12 环境，安装 NVIDIA NeMo Retriever，并导入所需的摄取和检索组件。接着下载样本多模态 PDF，将其定义为输入文档，并使用 PDFium 执行基于 CPU 的离线文本提取。
+
+```python
+import sys, os, subprocess, textwrap, json, time, warnings
+warnings.filterwarnings("ignore")
+assert sys.version_info[:2] == (3, 12), (
+   f"nemo-retriever requires Python 3.12.x (found {sys.version.split()[0]}). "
+   "Colab's default runtime is 3.12; if you changed it, switch back."
+)
+def sh(cmd):
+   print(f"$ {cmd}")
+   subprocess.run(cmd, shell=True, check=False)
+try:
+   import nemo_retriever
+   print("nemo-retriever already installed")
+except ImportError:
+   sh("pip install -q --ignore-installed PyJWT nemo-retriever openai")
+import nemo_retriever
+print("nemo-retriever version:", nemo_retriever.__version__)
+from nemo_retriever import create_ingestor
+try:
+   from nemo_retriever.io import to_markdown, to_markdown_by_page
+except ImportError:
+   from nemo_retriever.common.io import to_markdown, to_markdown_by_page
+try:
+   from nemo_retriever.retriever import Retriever
+except ImportError:
+   from nemo_retriever.graph.retriever import Retriever
+import pandas as pd
+pd.set_option("display.max_colwidth", 160)
+DOC = "multimodal_test.pdf"
+if not os.path.exists(DOC):
+   sh(f"curl -sL -o {DOC} "
+      "https://raw.githubusercontent.com/NVIDIA/NeMo-Retriever/main/data/multimodal_test.pdf")
+print("document:", DOC, os.path.getsize(DOC), "bytes")
+DOCS = [DOC]
+print("\n=== STAGE 1: offline text extraction (no API key) ===")
+offline = (
+   create_ingestor(run_mode="inprocess", allow_no_gpu=True)
+   .files(DOCS)
+   .extract(
+       extract_text=True,
+       extract_tables=False, extract_charts=False,
+       extract_images=False, extract_infographics=False,
+       use_page_elements=False,
+       extract_page_as_image=False,
+       method="pdfium",
+   )
+)
+df_offline = offline.ingest()
+print("rows:", df_offline.shape, "\ncolumns:", list(df_offline.columns))
+print("\npage 1 text preview:\n", df_offline.iloc[0]["text"][:400])
+```
+
+---
+
+## 2. Multimodal Ingestion via Hosted NIMs
+## 2. 通过托管 NIM 进行多模态摄取
+
+Next, we securely load the NVIDIA API key and define the hosted NIM endpoints for layout detection, OCR, table extraction, graphic analysis, embedding, reranking, and generation. We create a multimodal ingestion pipeline that extracts text, tables, charts, and infographics, applies token-aware chunking, deduplicates content, generates embeddings, and uploads vectors to a LanceDB table.
+&gt; 接下来，我们安全加载 NVIDIA API 密钥，并定义用于版面检测、OCR、表格提取、图形分析、嵌入、重排和生成的托管 NIM 端点。我们构建了一个多模态摄取管道，用于提取文本、表格、图表和信息图，应用基于 Token 感知的分块，对内容去重，生成向量嵌入，并将向量上传到 LanceDB 表中。
+
+```python
+from getpass import getpass
+if not os.environ.get("NVIDIA_API_KEY"):
+   try:
+       from google.colab import userdata
+       os.environ["NVIDIA_API_KEY"] = userdata.get("NVIDIA_API_KEY")
+   except Exception:
+       os.environ["NVIDIA_API_KEY"] = getpass("NVIDIA_API_KEY (nvapi-...): ").strip()
+API_KEY = os.environ.get("NVIDIA_API_KEY", "").strip()
+HAVE_KEY = API_KEY.startswith("nvapi-")
+print("API key present:", HAVE_KEY)
+PAGE_ELEMENTS_URL   = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-page-elements-v3"
+OCR_URL             = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v1"
+TABLE_STRUCT_URL    = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-table-structure-v1"
+GRAPHIC_ELEM_URL    = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-graphic-elements-v1"
+EMBED_URL           = "https://integrate.api.nvidia.com/v1/embeddings"
+RERANK_URL          = "https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking"
+CHAT_URL            = "https://integrate.api.nvidia.com/v1"
+EMBED_MODEL  = "nvidia/llama-nemotron-embed-1b-v2"
+RERANK_MODEL = "nvidia/llama-nemotron-rerank-vl-1b-v2"
+LLM_MODEL    = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+LANCEDB_URI, TABLE = "./lancedb", "colab_demo"
+df = df_offline
+if HAVE_KEY:
+   print("\n=== STAGE 2: multimodal ingest via hosted NIMs ===")
+   ing = (
+       create_ingestor(
+           run_mode="inprocess",
+           allow_no_gpu=True,
+           error_policy="collect",
+       )
+       .files(DOCS)
+       .extract(
+           extract_text=True,
+           extract_tables=True,
+           extract_charts=True,
+           extract_infographics=True,
+           extract_images=False,
+           method="pdfium",
+           dpi=200,
+           table_output_format="markdown",
+           page_elements_invoke_url=PAGE_ELEMENTS_URL,
+           ocr_invoke_url=OCR_URL,
+           table_structure_invoke_url=TABLE_STRUCT_URL,
+           graphic_elements_invoke_url=GRAPHIC_ELEM_URL,
+           api_key=API_KEY,
+           request_timeout_s=120.0,
+           split_config={"text": {"max_tokens": 512, "overlap_tokens": 64}},
+       )
+       .dedup(content_hash=True, bbox_iou=True, iou_threshold=0.45)
+       .embed(
+           embedding_endpoint=EMBED_URL,
+           model_name=EMBED_MODEL,
+           embed_model_name=EMBED_MODEL,
+           api_key=API_KEY,
+           input_type="passage",
+           inference_batch_size=16,
+           nim_http_max_concurrent=8,
+       )
+       .vdb_upload(
+           vdb_op="lancedb",
+           vdb_kwargs={
+               "uri": LANCEDB_URI,
+               "table_name": TABLE,
+               "overwrite": True,
+               "create_index": True,
+               "index_type": "IVF_HNSW_SQ",
+               "metric": "l2",
+           },
+       )
+   )
+   t0 = time.time()
+   df = ing.ingest(show_progress=True)
+   print(f"ingested in {time.time()-t0:.1f}s -&gt; {df.shape}")
+```
+
+---
+
+## 3. Dense Retrieval &amp; Extraction Inspection
+## 3. 稠密检索与提取检查
+
+We inspect the extracted elements, convert the document to page-level and full Markdown, and set up a dense retriever to search the LanceDB vector index.
+&gt; 我们检查提取出的元素，将文档转换为按页及全文的 Markdown 格式，并设置稠密检索器来搜索 LanceDB 向量索引。
+
+```python
+print("\n=== Extraction inspection ===")
+for col in ["tables", "charts", "infographics", "images"]:
+   if col in df.columns:
+       n = int(df[col].apply(lambda v: len(v) if isinstance(v, (list, tuple)) else 0).sum())
+       print(f"  {col:&lt;14} {n}")
+pages = to_markdown_by_page(df)
+print("\npages rendered to markdown:", list(pages.keys()))
+print("\n--- page 1 markdown (first 900 chars) ---\n", pages[min(pages)][:900])
+full_md = to_markdown(df)
+if full_md:
+   with open("extracted.md", "w") as f:
+       f.write(full_md)
+   print("\nfull document markdown -&gt; extracted.md")
+if HAVE_KEY:
+   print("\n=== STAGE 3: dense retrieval ===")
+   retriever = Retriever(
+       run_mode="service",
+       top_k=5,
+       rerank=False,
+       vdb_kwargs={"uri": LANCEDB_URI, "table_name": TABLE},
+       embed_kwargs={
+           "embedding_endpoint": EMBED_URL,
+           "model_name": EMBED_MODEL,
+           "embed_model_name": EMBED_MODEL,
+           "api_key": API_KEY,
+           "input_type": "query",
+       },
+   )
+   QUERIES = [
+       "Given their activities, which animal is responsible for the typos in my documents?",
+       "What is the most expensive gadget and how much does it cost?",
+       "Which animal is at the beach?",
+   ]
+   def show(hits, label=""):
+       print(f"\n--- {label} ---")
+       for i, h in enumerate(hits, 1):
+           meta = h.get("metadata")
+           if isinstance(meta, str):
+               try: meta = json.loads(meta)
+               except Exception: meta = {}
+           page = (meta or {}).get("page_number", "?")
+           score = h.get("_distance", h.get("rerank_score", ""))
+           body = " ".join(str(h.get("text", "")).split())[:180]
+           print(f" {i}. p{page} score={score}  {body}")
+   show(retriever.query(QUERIES[0]), "single query")
+   for q, hits in zip(QUERIES, retriever.queries(QUERIES, top_k=3)):
+       show(hits, q[:60])
+```
+
+---
+
+## 4. Vision-Language Reranking and Filtered Retrieval
+## 4. 视觉语言重排与过滤检索
+
+We introduce a vision-language reranking pipeline to reorder retrieval results by semantic relevance and apply text-based filters to pinpoint specific document chunks.
+&gt; 我们引入了视觉语言重排管道，根据语义相关性对检索结果进行重新排序，并应用基于文本的过滤器来精确定位特定的文档块。
+
+```python
+if HAVE_KEY:
+   print("\n=== STAGE 4: retrieve + VL rerank ===")
+   reranking = Retriever(
+       run_mode="service",
+       top_k=5,
+       rerank=True,
+       vdb_kwargs={"uri": LANCEDB_URI, "table_name": TABLE},
+       embed_kwargs={
+           "embedding_endpoint": EMBED_URL, "model_name": EMBED_MODEL,
+           "embed_model_name": EMBED_MODEL, "api_key": API_KEY, "input_type": "query",
+       },
+       rerank_kwargs={
+           "model_name": RERANK_MODEL,
+           "invoke_url": RERANK_URL,
+           "api_key": API_KEY,
+           "refine_factor": 4,
+           "batch_size": 16,
+       },
+   )
+   try:
+       show(reranking.query(QUERIES[0]), "reranked")
+   except Exception as e:
+       print("rerank unavailable, dense results stand:", type(e).__name__, str(e)[:160])
+if HAVE_KEY:
+   print("\n=== STAGE 5: filtered retrieval ===")
+   try:
+       hits = retriever.query(
+           "gadget costs",
+           top_k=5,
+           vdb_kwargs={"where": "text LIKE '%Cost%'"},
+       )
+       show(hits, "where: text LIKE '%Cost%'")
+   except Exception as e:
+       print("filter push-down failed:", type(e).__name__, str(e)[:160])
+   import lancedb
+   tbl = lancedb.connect(LANCEDB_URI).open_table(TABLE)
+   print("\nrows in LanceDB:", tbl.count_rows())
+   print(tbl.to_pandas()[["text"]].head(3).to_string())
+```
+
+---
+
+## 5. Grounded RAG Generation and Evaluation
+## 5. 基于溯源的 RAG 生成与评估
+
+We use a hosted Nemotron language model to generate answers grounded strictly in the supplied context, accompanied by citations and page metadata. Finally, we measure retrieval effectiveness using a recall-at-k evaluation.
+&gt; 我们使用托管的 Nemotron 语言模型来生成严格基于所提供上下文的答案，并附带引用和页面元数据。最后，我们使用 recall-at-k 评估指标来衡量检索的有效性。
+
+```python
+if HAVE_KEY:
+   print("\n=== STAGE 6: RAG answer ===")
+   from openai import OpenAI
+   client = OpenAI(base_url=CHAT_URL, api_key=API_KEY)
+   def rag(question, k=5):
+       hits = retriever.query(question, top_k=k)
+       ctx = []
+       for i, h in enumerate(hits, 1):
+           meta = h.get("metadata")
+           if isinstance(meta, str):
+               try: meta = json.loads(meta)
+               except Exception: meta = {}
+           ctx.append(f"[{i}] (page {(meta or {}).get('page_number','?')})\n{h.get('text','')}")
+       prompt = textwrap.dedent(f"""\
+           Answer the question using ONLY the numbered context below.
+           Cite the sources you used as [1], [2], etc. If the context is
+           insufficient, say so plainly.
+           Context:
+           {chr(10).join(ctx)}
+           Question: {question}
+           """)
+       r = client.chat.completions.create(
+           model=LLM_MODEL,
+           messages=[{"role": "user", "content": prompt}],
+           temperature=0.0, max_tokens=512,
+       )
+       return r.choices[0].message.content, hits
+   for q in QUERIES[:2]:
+       try:
+           ans, _ = rag(q)
+           print(f"\nQ: {q}\nA: {ans}\n" + "-" * 70)
+       except Exception as e:
+           print("generation failed:", type(e).__name__, str(e)[:200])
+if HAVE_KEY:
+   print("\n=== Recall@k check ===")
+   GOLD = [
+       ("which animal is jumping onto a laptop", "Cat"),
+       ("what does the chart show", "Gadgets"),
+       ("which animal is at the beach", "Giraffe"),
+   ]
+   K = 5
+   hit_lists = retriever.queries([q for q, _ in GOLD], top_k=K)
+   got = sum(
+       any(exp.lower() in str(h.get("text", "")).lower() for h in hits)
+       for (_, exp), hits in zip(GOLD, hit_lists)
+   )
+   print(f"recall@{K} = {got}/{len(GOLD)} = {got/len(GOLD):.2f}")
+print("\nDone. Artifacts: ./lancedb (vector table), ./extracted.md (markdown).")
+```
+
+---
+
+## Conclusion
+## 结论
+
+By completing this workflow, we established a reusable foundation for building document intelligence applications that process text, tables, charts, and visual elements through a unified retrieval pipeline. NeMo Retriever coordinates extraction, deduplication, chunking, embedding, vector database indexing, retrieval, and reranking, while hosted NVIDIA NIM services keep resource requirements lightweight.
+&gt; 通过完成此工作流，我们为构建文档智能应用程序奠定了可复用的基础，能够通过统一的检索管道处理文本、表格、图表和视觉元素。NeMo Retriever 协调了提取、去重、分块、嵌入、向量数据库索引、检索和重排，而托管的 NVIDIA NIM 服务则使资源需求保持在轻量级水平。
+
+---
+
+**Check out the [FULL CODES here](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/LLM%2520Projects/nvidia_nemo_retriever_advanced_multimodal_rag_Marktechpost.ipynb).** 
+&gt; **点击此处查看[完整代码](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/LLM%2520Projects/nvidia_nemo_retriever_advanced_multimodal_rag_Marktechpost.ipynb)。**
+
+Also, feel free to follow us on **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** and don’t forget to join our **[150k+ ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**, Subscribe to **[our Newsletter](https://www.aidevsignals.com/)**, and join us on **[Telegram](https://t.me/machinelearningresearchnews)**.
+&gt; 此外，欢迎在 **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** 上关注我们，加入我们拥有超 15万名成员的 **[ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**，订阅 **[我们的新闻通讯](https://www.aidevsignals.com/)**，并加入我们的 **[Telegram 频道](https://t.me/machinelearningresearchnews)**。
+
+Need to partner with us for promoting your GitHub Repo, Hugging Face Page, Product Release, or Webinar? **[Connect with us](https://forms.gle/wbash1wF6efRj8G58)**.
+&gt; 如果您需要与我们合作推广您的 GitHub 仓库、Hugging Face 页面、产品发布或网络研讨会，请**[与我们联系](https://forms.gle/wbash1wF6efRj8G58)**。
+
+*The post [Building a Multimodal RAG Pipeline with NVIDIA NeMo Retriever, Hosted NIMs, LanceDB, Reranking, and Grounded Generation](https://www.marktechpost.com/2026/08/07/building-a-multimodal-rag-pipeline-with-nvidia-nemo-retriever-hosted-nims-lancedb-reranking-and-grounded-generation/) appeared first on [MarkTechPost](https://www.marktechpost.com).*
+&gt; *本文首发于 [MarkTechPost](https://www.marktechpost.com)，原标题为[使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](https://www.marktechpost.com/2026/08/07/building-a-multimodal-rag-pipeline-with-nvidia-nemo-retriever-hosted-nims-lancedb-reranking-and-grounded-generation/)*</description>
+    </item>
+    <item>
+      <title>2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-09/Meta：推出 Muse Code 与 Muse Spark 1.2/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-09/Meta：推出 Muse Code 与 Muse Spark 1.2/</guid>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 GMT</pubDate>
+      <description>Meta 推出了搭载其最新、最强模型 Muse Spark 1.2 的终端编码代理——Muse Code（测试版）。该系统专为处理大型代码库中的复杂软件工程任务而设计，通过异步后台代理、精确重放（replay-exact）的运行时设计以及内置技能，能够自主规划、编写和验证代码。
+
+与此同时，Muse Spark 1.2 在代码编写、复杂调试和长周期（long-horizon）任务方面带来了重大升级，并通过严格的评估以及如高性能 GPU 内核调优等真实世界的优化得到了验证。此次发布标志着 Meta 在构建更智能、更具自主性的软件工程 AI 助手方面迈出了重要一步。
+
+---
+
+## Table of Contents
+- [概述](#概述)
+- [Muse Code 功能特长](#muse-code-功能特长)
+  - [异步后台代理](#异步后台代理)
+  - [运行时设计](#运行时设计)
+  - [内置技能](#内置技能)
+- [Muse Spark 1.2 的核心能力](#muse-spark-12-的核心能力)
+  - [与 Muse Code 协同训练](#与-muse-code-协同训练)
+  - [长周期任务处理](#长周期任务处理)
+  - [自我改进机制](#自我改进机制)
+- [案例研究：内核优化](#案例研究内核优化)
+- [可用性](#可用性)
+
+---
+
+## 概述
+
+我们很高兴发布 **Muse Code (beta)**，这是一个由我们的最新模型 **Muse Spark 1.2** 驱动的终端编码代理。这标志着我们向技术前沿迈出了下一步，更大、能力更强的模型也正在研发中。
+
+&gt; We're excited to release **Muse Code (beta)**, a terminal coding agent powered by **Muse Spark 1.2**, our newest model. This marks our next step toward the frontier, with larger and much more capable models on the way.
+
+Muse Code 能够处理大型代码库中的复杂软件工程任务：规划变更、编写代码以及验证结果。它可以为每个任务协调多个持久化子代理，以更高、更准确的效率解决难题，并减少人工干预。
+
+&gt; Muse Code takes on complex software engineering tasks across large repositories: planning changes, writing code, and validating the results. It can coordinate multiple persistent subagents for each task, solving difficult problems faster, more accurately, and with less intervention.
+
+---
+
+## Muse Code</description>
+    </item>
+    <item>
+      <title>2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-09/Maxis 的生平与时代，第三部分：《模拟人生》/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-09/Maxis 的生平与时代，第三部分：《模拟人生》/</guid>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本文是《Maxis 的生平与时代》系列文章的第三部分，深入探讨了《模拟人生》（The Sims）这款历史上最畅销的盒装电脑游戏的诞生、演变及其深远文化影响。游戏的灵感源于创始人威尔·莱特（Will Wright）在 1991 年奥克兰大火中遭遇的悲剧。历经八年半的打磨，这款游戏从最初受克里斯托弗·亚历山大（Christopher Alexander）著作《建筑模式语言》启发、偏向建筑设计的玩具（《玩偶之家》），演变成为了对人类需求与行为前所未有的宏大模拟。
+
+在 Maxis 多元化团队的共同努力下，并在电子艺界（Electronic Arts）及管理者吕克·巴尔泰莱（Luc Barthelet）的大力推动下，《模拟人生》打破了行业原有的条条框框。它通过资料片开创了“游戏即服务”（games-as-a-service）的商业模式，将大众玩家引入电子游戏领域，使同性恋关系在主流文化中得到正常化认可，并巩固了威尔·莱特作为历史上最具创新精神的玩具制造者和设计大师之一的不朽传奇。
+
+---
+
+&gt; *"I don’t think people realize how much tactical and strategic forethought goes into their daily lives. There’s a whole subconscious time-efficiency layer in our lives. In essence, real-time strategy is our lives."*
+&gt; 
+&gt; — **Will Wright**
+
+&gt; *“我觉得人们并没有意识到，他们的日常生活投入了多少战术和战略上的深谋远虑。在我们的生活中，存在着一整层潜意识的时间效率机制。从本质上讲，即时战略就是我们的人生。”*
+&gt; 
+&gt; — **威尔·莱特（Will Wright）**
+
+&lt;img fetchpriority="high" decoding="async" src="./images/a63d27ed8801.jpg" alt="" width="600" height="398" /&gt;
+
+---
+
+## Executive Summary
+## 执行摘要
+
+Part 3 of **The Life and Times of Maxis** explores the creation, evolution, and cultural impact of *The Sims*, the best-selling line of boxed computer games in history. Triggered by Will Wright's brush with tragedy during the Oakland Firestorm of 1991, the game evolved over eight and a half years from an architectural design toy (*Dollhouse*) inspired by Christopher Alexander’s *A Pattern Language* into an unprecedented simulation of human needs and behaviors. 
+
+&gt; 《Maxis 的生平与时代》第三部分探讨了《模拟人生》（The Sims）的创作、演变及其文化影响，该系列是史上最畅销的盒装电脑游戏。受威尔·莱特在 1991 年奥克兰大火中死里逃生的悲剧启发，这款游戏历经八年半的演变，从一个受克里斯托弗·亚历山大（Christopher Alexander）的《建筑模式语言》（*A Pattern Language*）启发的建筑设计玩具（《玩偶之家》），最终变成了一个对人类需求与行为进行空前模拟的游戏。
+
+Shaped by a diverse team at Maxis—and later supercharged by Electronic Arts and manager Luc Barthelet—*The Sims* broke industry molds. It pioneered the "games-as-a-service" model via expansion packs, introduced mainstream audiences to video games, normalized same-sex relationships, and cemented Will Wright's legacy as one of the most innovative toy-makers and designers in history.
+
+&gt; 在 Maxis 多元化团队的塑造下——后来又得到了电子艺界（Electronic Arts）及其管理者吕克·巴尔泰莱（Luc Barthelet）的大力加持——《模拟人生》打破了行业的陈规。它通过资料片开创了“游戏即服务”（games-as-a-service）模式，将大众玩家引入了电子游戏世界，使同性恋关系趋于日常化，并巩固了威尔·莱特作为历史上最具创新精神的玩具制造商和设计大师之一的传奇地位。
+
+---
+
+## From the Ashes of Oakland
+## 战后奥克兰的废墟
+
+On the morning of October 19, 1991, two weeks after finishing *SimAnt*, Will Wright awoke to the smell of smoke in the Oakland Hills. Within hours, a rapidly advancing grass fire forced Wright, his wife Joell, and their five-year-old daughter Cassidy to flee for their lives. They narrowly escaped the disaster that would become known as the **Oakland Firestorm of 1991**.
+
+&gt; 1991 年 10 月 19 日清晨，在完成《模拟蚂蚁》（*SimAnt*）两周后，威尔·莱特在奥克兰山（Oakland Hills）浓烟的气味中醒来。几个小时内，迅速蔓延的草地大火迫使莱特、他的妻子乔尔（Joell）以及他们五岁的女儿卡西迪（Cassidy）仓皇逃生。他们险些未能逃脱那场后来被称为“1991年奥克兰大火”的灾难。
+
+Returning a week later to the charred remnants of his home, Wright found his material possessions entirely destroyed—yet he felt a strange sense of liberation. Stripped to bare essentials, he began to view his life from a macro perspective:
+
+&gt; 一周后，当他回到被烧焦的家园废墟时，莱特发现自己的物质财产全数化为灰烬——但他却感到了一种奇怪的解放感。在被剥夺至仅剩最基本的生活必需品后，他开始从宏观视角审视自己的人生：
+
+&gt; *"What is life made of? Rarely do you do that in your real life. When something like this happens you get a big picture. Where do I want to live? What sort of things do I need to buy? You see your life almost as a project in process..."*
+
+&gt; *“生活是由什么构成的？你在现实生活中很少会去思考这个问题。当这样的事情发生时，你会对全局有一个宏观的认识。我想住在哪里？我需要买什么样的东西？你几乎把自己的生活看作是一个正在进行中的项目……”*
+
+A systems thinker at heart, Wright wondered if there was a simulation lurking in the process of assembling the material components of day-to-day life from scratch. Back at Maxis, he began asking whether he could simulate the spaces and clutter of individual lives, just as he had simulated cities (*SimCity*), planets (*SimEarth*), and ant colonies (*SimAnt*). 
+
+&gt; 骨子里是个系统思考者的莱特开始琢磨，从零开始拼凑日常生活的物质组件这一过程背后，是否潜藏着某种可以被模拟的机制。回到 Maxis 后，他开始思考自己是否能够模拟个人生活的空间和杂物，就像他曾经模拟城市（《模拟城市》）、星球（《模拟地球》）和蚂蚁群（《模拟蚂蚁》）那样。
+
+It would take him eight and a half years to answer that question with *The Sims*.
+
+&gt; 他花了八年半的时间，用《模拟人生》回答了这个问题。
+
+&lt;img decoding="async" src="./images/6bfd022851ce.jpg" alt="" width="501" height="600" /&gt;
+
+---
+
+## The Evolution of *Dollhouse*
+## 《玩偶之家》的演变
+
+The creation of *The Sims* is often mythologized as a lone genius battling corporate suits for a decade. In reality, the project evolved organically and accidentally over years, shifting focus radically from architecture to human behavior.
+
+&gt; 《模拟人生》的诞生常常被神话为一个孤独的天才与公司高管斗争十年的传奇。而在现实中，这个项目在数年间是通过有机且偶然的方式发展起来的，其核心焦点也从建筑发生了根本性的转变，转向了人类行为。</description>
+    </item>
+    <item>
       <title>2026-08-08-cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-08/cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-08/cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术/</guid>
@@ -3292,315 +4013,6 @@ Nunchaku Lite 模型库的功能与标准 Diffusers 库完全一致。transforme
 *   **v2:** 2026年4月10日
 *   **v3:** 2026年8月4日
 *   **v4:** 2026年8月6日</description>
-    </item>
-    <item>
-      <title>2026-08-07-大语言模型中思维链推理的平均场动力学</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/大语言模型中思维链推理的平均场动力学/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/大语言模型中思维链推理的平均场动力学/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>近年来，具备思维链（CoT）推理能力的大语言模型（LLMs）得到了广泛应用，深入探究其行为背后的理论解释有助于深化我们对其机制的理解并指导模型优化。本文提出了一种全新的理论框架，旨在探寻大语言模型推理过程中的统计规律和理论解释，同时避免了对模型架构的简化或对现有物理系统的生硬类比。
-
-作者将大语言模型的推理过程建模为“线索图”（clue graph）上的引导式发现过程，并通过平均场近似推导出一个用于预测已发现线索比例的一维常微分方程。在实验验证中，研究人员通过学生模型对教师模型输出的归一化困惑度（normalized surprisal）来识别线索 Token，并通过对大量推理思维链进行平均来获取统计规律。实验表明，所得的统计规律在同一数据集内具有高度可复现性，并且能够通过求解所提出的理论方程进行精确拟合。
-
----
-
-## 摘要 (Summary)
-
-&gt; This paper introduces a theoretical framework to analyze the chain-of-thought (CoT) reasoning behaviors of Large Language Models (LLMs) without relying on simplified model architectures or physical analogies. By modeling LLM reasoning as a guided discovery process on a "clue graph," the author applies the mean-field approximation to derive a one-dimensional ordinary differential equation that predicts the fraction of discovered clues. Experimental validation demonstrates that these statistical regularities are reproducible and align closely with the proposed theoretical model.
-
-本文引入了一个理论框架，用于分析大语言模型（LLMs）的思维链（CoT）推理行为，且不依赖于简化的模型架构或物理类比。通过将大语言模型的推理建模为“线索图”上的引导式发现过程，作者应用平均场近似推导出了一个一维常微分方程，用于预测已发现线索的比例。实验验证表明，这些统计规律具有可复现性，且与所提出的理论模型高度吻合。
-
----
-
-## 文档元数据 (Document Metadata)
-
-&gt; * **arXiv Identifier:** [arXiv:2608.05152](https://arxiv.org/abs/2608.05152) [cs.CL]
-&gt; * **Title:** Mean-Field Dynamics of Chain-of-Thought Reasoning in Large Language Models
-&gt; * **Author:** Hao Ai
-&gt; * **Primary Subject:** Computation and Language (`cs.CL`)
-&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Submitted On:** 20 May 2026
-&gt; * **DOI:** [10.48550/arXiv.2608.05152](https://doi.org/10.48550/arXiv.2608.05152)
-
-* **arXiv 标识符：** [arXiv:2608.05152](https://arxiv.org/abs/2608.05152) [cs.CL]
-* **标题：** 大语言模型中思维链推理的平均场动力学 (Mean-Field Dynamics of Chain-of-Thought Reasoning in Large Language Models)
-* **作者：** Hao Ai
-* **主要主题：** 计算与语言 (`cs.CL`)
-* **次要主题：** 人工智能 (`cs.AI`)
-* **提交时间：** 2026年5月20日
-* **DOI：** [10.48550/arXiv.2608.05152](https://doi.org/10.48550/arXiv.2608.05152)
-
----
-
-## 摘要详述 (Abstract)
-
-&gt; Large language models (LLMs) with chain-of-thought reasoning have been widely applied in recent years, and theoretical explanations of their behavior may help deepen our understanding and guide model optimization. 
-
-近年来，具备思维链推理的大语言模型（LLMs）得到了广泛应用，对其行为的理论解释有助于深化我们对其理解并指导模型优化。
-
-&gt; In this study, we introduce a framework that seeks statistical regularities and theoretical interpretations in LLM reasoning without simplifying the model architecture or making analogies to existing physical systems. We formulate LLM reasoning as a guided discovery process on a clue graph, and derive a one-dimensional ordinary differential equation for the fraction of discovered clues using the mean-field approximation. 
-
-在这项研究中，我们引入了一个框架，旨在探寻 LLM 推理中的统计规律和理论解释，同时不简化模型架构，也不与现有物理系统进行类比。我们将 LLM 推理构想为线索图上的引导式发现过程，并利用平均场近似推导出了描述已发现线索比例的一维常微分方程。
-
-&gt; Experimentally, clue tokens are identified using the normalized surprisal of a student LLM on the outputs of a teacher LLM, and statistical regularities are obtained by averaging over many reasoning chains of thought. Our experiments show that the resulting statistical regularities are reproducible within the same dataset and can be fitted by solving the proposed theoretical equation.
-
-在实验方面，线索 Token 是通过学生 LLM 对教师 LLM 输出的归一化困惑度来识别的，统计规律则是通过对多个推理思维链进行平均得到的。我们的实验表明，由此产生的统计规律在同一数据集内是可复现的，并且可以通过求解所提出的理论方程来拟合。
-
----
-
-## 访问与全文资源 (Access &amp; Full-Text Resources)
-
-&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2608.05152)
-&gt; * **HTML Version:** [HTML (experimental)](https://arxiv.org/html/2608.05152v1)
-&gt; * **Source Code/Files:** [TeX Source](https://arxiv.org/src/2608.05152)
-&gt; * **License:** [View License](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)
-
-* **PDF 版本：** [查看 PDF](https://arxiv.org/pdf/2608.05152)
-* **HTML 版本：** [HTML（实验性）](https://arxiv.org/html/2608.05152v1)
-* **源代码/文件：** [TeX 源码](https://arxiv.org/src/2608.05152)
-* **许可证：** [查看许可证](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)
-
----
-
-## 外部参考与工具 (External References &amp; Tools)
-
-&gt; * **Bibliographic Databases:**
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.05152)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.05152)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.05152)
-&gt; * **Code &amp; Discovery Platforms:**
-&gt;   * [Hugging Face](https://huggingface.co/huggingface)
-&gt;   * [CatalyzeX Code Finder](https://www.catalyzex.com)
-&gt;   * [Connected Papers](https://www.connectedpapers.com/about)
-&gt;   * [alphaXiv](https://alphaxiv.org/)
-
-* **文献数据库：**
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.05152)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.05152)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.05152)
-* **代码与发现平台：**
-  * [Hugging Face](https://huggingface.co/huggingface)
-  * [CatalyzeX Code Finder](https://www.catalyzex.com)
-  * [Connected Papers](https://www.connectedpapers.com/about)
-  * [alphaXiv](https://alphaxiv.org/)</description>
-    </item>
-    <item>
-      <title>2026-08-07-基准测试的基准：评估对话智能体评测集</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/基准测试的基准：评估对话智能体评测集/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/基准测试的基准：评估对话智能体评测集/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在任务导向型对话智能体的开发中，基准测试（Benchmarks）是衡量模型性能的核心工具。然而，目前学术界和工业界往往忽视了对这些基准测试本身质量的评估。如果基准测试存在任务逻辑不一致、场景过于简单或策略覆盖范围有限等问题，将直接导致模型评估结果的不可靠。
-
-本文提出了一种无需参考答案（Reference-free）的评估框架，利用大语言模型（LLM）作为裁判，对基准测试的逻辑一致性、复杂度及策略覆盖度进行全面评估，并提供可操作的诊断建议。该研究通过与人类标注结果对比、评估不同能力LLM生成的基准，以及对基准进行受控质量扰动实验，验证了该框架的有效性。这一成果为评估合成及人工构建的对话智能体基准测试提供了一种实用且可靠的方法。
-
----
-
-## 论文元数据 (Paper Metadata)
-
-* **arXiv ID:** [arXiv:2608.06329](https://arxiv.org/abs/2608.06329) [cs.CL]
-* **学科分类:** 计算与语言 (`cs.CL`)；人工智能 (`cs.AI`)
-* **提交日期:** 2026年8月6日
-* **篇幅:** 15页
-* **作者:** 
-  * Noam Koren
-  * Roy Bar-Haim
-  * Abigail Goldsteen
-
----
-
-## 摘要 (Abstract)
-
-任务导向型对话智能体通常使用人工策划或自动生成的基准进行评估，但基准本身的质量却很少受到评估。质量低劣的基准可能包含不一致的任务、过于简单的场景或有限的策略覆盖，从而导致评估结果不可靠。我们引入了一个无需参考答案的框架，利用大语言模型（LLM）裁判来评估基准的一致性、复杂度和策略覆盖度，同时提供针对弱点的可操作诊断。我们通过证明其与独立人类标注的一致性，以及评估由不同能力LLM生成的基准和经过受控质量降级扰动的基准，验证了该框架。在不同领域和裁判模型中，所提出的指标始终能够区分基准的质量水平。我们进一步证明了该框架对人工策划基准的适用性。我们的框架为评估合成及人工策划的对话智能体基准提供了一种实用的方法。
-
-&gt; Task-oriented conversational agents are evaluated using curated or automatically generated benchmarks, yet benchmark quality is rarely assessed. Poor benchmarks may contain inconsistent tasks, simplistic scenarios, or limited policy coverage, leading to unreliable evaluations. We introduce a reference-free framework that uses LLM judges to assess benchmark consistency, complexity, and policy coverage, while providing actionable diagnostics of weaknesses. We validate the framework by demonstrating agreement with independent human annotations and by evaluating benchmarks generated by LLMs of varying capabilities, as well as benchmarks subjected to controlled quality-degrading perturbations. Across domains and judge models, the proposed metrics consistently distinguish between benchmark quality levels. We further demonstrate the framework's applicability to manually curated benchmarks. Our framework offers a practical approach for evaluating synthetic and manually curated conversational-agent benchmarks.
-
----
-
-## 链接与资源 (Links &amp; Resources)
-
-* **全文访问:** 
-  * [查看 PDF](https://arxiv.org/pdf/2608.06329)
-  * [TeX 源码](https://arxiv.org/src/2608.06329)
-  * [DOI 链接](https://doi.org/10.48550/arXiv.2608.06329)
-* **外部引用:** 
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.06329)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.06329)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.06329)</description>
-    </item>
-    <item>
-      <title>2026-08-07-基于深度引导的拥挤场景视频目标计数</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/基于深度引导的拥挤场景视频目标计数/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/基于深度引导的拥挤场景视频目标计数/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在拥挤且存在严重遮挡的动态视频场景中进行精确的目标计数，一直是计算机视觉领域的一大技术难题。传统的视频目标计数方法主要依赖纯 RGB 图像信息，这在面对密集遮挡和复杂空间关系时往往表现出极大的局限性。为了突破这一瓶颈，本文提出了一种全新的深度引导检测器（DG-Det），通过引入多尺度 RGB-D 交叉注意力机制和显式遮挡预测，大幅增强了模型对三维空间结构的理解能力。
-
-除了核心的检测器架构外，本文还创新性地设计了一个统一的去重框架，有效消除了跨帧之间的重复计数冗余，并推出了首个包含深度信息及多目标类别的 RGB-D 视频目标计数数据集。实验结果表明，与现有的基线方法相比，该方法将平均绝对误差（MAE）显著降低了 62.01%，并在均方根误差（RMSE）指标上取得了持续的性能提升，为拥挤场景下的多模态感知研究奠定了坚实的基础。
-
----
-
-## Depth-Guided Video Object Counting in Crowded Scenes
-
-## Summary
-&gt; This paper introduces a novel approach to video object counting in crowded and occluded environments, moving beyond traditional RGB-only limitations. The authors propose the **Depth-Guided Detector (DG-Det)**, which integrates depth cues using multi-scale RGB-D cross-attention alongside explicit occlusion prediction to enhance spatial understanding. Additionally, the paper presents a unified de-duplication framework to eliminate cross-frame redundant counting and introduces a new RGB-D Video Object Counting dataset. Experimental results demonstrate a significant **62.01% reduction in MAE** compared to existing baselines.
-
----
-
-## Paper Information
-
-&gt; * **arXiv Identifier:** [arXiv:2608.06236](https://arxiv.org/abs/2608.06236) [cs.CV]
-&gt; * **Accepted at:** ACM Multimedia 2026
-&gt; * **Submission Date:** August 6, 2026
-&gt; * **Subjects:** Computer Vision and Pattern Recognition (`cs.CV`); Artificial Intelligence (`cs.AI`)
-&gt; * **DOI:** [10.48550/arXiv.2608.06236](https://doi.org/10.48550/arXiv.2608.06236)
-&gt; * **Related DOI:** [10.1145/3767308.3835482](https://doi.org/10.1145/3767308.3835482)
-
----
-
-## Authors
-
-&gt; * Yuanjing Xu
-&gt; * Xinyan Liu
-&gt; * Weidong Chen
-&gt; * Zixuan Zou
-&gt; * Linhao Zhang
-&gt; * Zhuangzhe Meng
-&gt; * Antoni B. Chan
-&gt; * Weigang Zhang
-
----
-
-## Abstract
-我们的主要目标是推进拥挤场景下的视频目标计数研究，旨在根据给定的文本或视觉提示，稳健地统计目标类别的所有实例。现有方法依赖于 RGB 信息，这限制了它们在拥挤和遮挡条件下的判别能力。为了解决这一问题，我们提出了一种深度引导检测器（DG-Det）以及通用的后处理流程。通过将深度线索与多尺度 RGB-D 交叉注意力机制和显式遮挡预测相结合，我们的方法增强了空间理解能力，并在拥挤和遮挡场景中实现了稳健的检测。此外，我们引入了一个统一的去重框架，以消除跨帧冗余计数。为了促进未来的研究，我们还发布了一个全新的 RGB-D 视频目标计数数据集，其中包含深度信息以及每个序列的多个目标类别。大量实验表明，与现有基线相比，我们的方法在 MAE 上实现了 62.01% 的减少，并且在 RMSE 上也带来了持续的改进。
-
-&gt; Our primary objective is to advance video object counting in crowded scenes, aiming to robustly count all instances of a target category based on given text or visual prompts. Existing methods rely on RGB information, limiting their discriminative ability in crowded and occluded conditions. To address this, we propose a Depth-Guided Detector (DG-Det) along with a general post-processing pipeline. By integrating depth cues with multi-scale RGB-D cross-attention and explicit occlusion prediction, our method enhances spatial understanding and achieves robust detection in crowded and occluded scenes. Furthermore, we introduce a unified de-duplication framework to eliminate cross-frame redundant counting. To facilitate future research, we also release a new RGB-D Video Object Counting dataset featuring depth information and multiple object categories per sequence. Extensive experiments demonstrate that our method achieves a 62.01% reduction in MAE compared to existing baselines, and also produces consistent improvements in RMSE. 
-
----
-
-## Resources &amp; Links
-* **查看 PDF：** [arXiv PDF](https://arxiv.org/pdf/2608.06236)
-* **源代码：** [GitHub 仓库 (DG-Net)](https://github.com/streamer-AP/DG-Net)
-* **数据集：** [Hugging Face 数据集 (RGBD-VideoCount)](https://huggingface.co/datasets/aerospace123/RGBD-VideoCount)
-
-&gt; * **View PDF:** [arXiv PDF](https://arxiv.org/pdf/2608.06236)
-&gt; * **Source Code:** [GitHub Repository (DG-Net)](https://github.com/streamer-AP/DG-Net)
-&gt; * **Dataset:** [Hugging Face Dataset (RGBD-VideoCount)](https://huggingface.co/datasets/aerospace123/RGBD-VideoCount)
-
----
-
-## License
-* **许可详情：** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/)  
-  &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; * **License Details:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/)  
-&gt;   &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>2026-08-07-基于大语言模型的智能体化软件缺陷修复：综述</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/基于大语言模型的智能体化软件缺陷修复：综述/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/基于大语言模型的智能体化软件缺陷修复：综述/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本文探讨了人工智能与软件工程的前沿交叉领域，聚焦于用于自动化软件缺陷修复（Software Issue Resolution）的**基于大语言模型（LLM）的智能体系统**。随着大模型在推理和生成能力上的飞跃，如何利用AI处理现实世界中的软件维护任务已成为行业焦点。
-
-通过对近期 242 篇相关研究的系统性梳理，该综述深入分析了智能体框架如何通过长程推理（long-horizon reasoning）、迭代式探索以及基于反馈的决策机制，突破传统单步LLM交互的局限。文章建立了一个包含基准测试（Benchmarks）、核心技术（Techniques）和实证研究（Empirical Studies）三个维度的分类体系，凸显了强化学习在软件工程智能体训练中的重要地位，并指出了该领域的未来挑战与发展方向。
-
----
-
-## 执行摘要 / Executive Summary
-
-本综述探讨了人工智能与软件工程的前沿交叉领域，重点关注旨在实现自动化软件缺陷修复的**基于LLM的智能体系统**。通过分析 242 项最新研究，本文考察了智能体框架如何超越传统的单步LLM交互，通过整合长程推理、迭代式探索和基于反馈的决策机制，来应对复杂的现实世界软件维护任务。
-
-&gt; This survey explores the cutting-edge intersection of artificial intelligence and software engineering, focusing on **LLM-based agentic systems** designed for automated software issue resolution. Analyzing 242 recent studies, the paper examines how agentic frameworks move beyond traditional single-step LLM interactions by incorporating long-horizon reasoning, iterative exploration, and feedback-driven decision-making to tackle complex real-world software maintenance tasks.
-
----
-
-## 文章详情 / Article Details
-
-* **arXiv 标识符：** [arXiv:2512.22256](https://arxiv.org/abs/2512.22256) [cs.SE]
-* **学科分类：** 软件工程 (`cs.SE`)；人工智能 (`cs.AI`)
-* **作者：** 
-  * Zhonghao Jiang
-  * David Lo
-  * Zhongxin Liu
-* **时间线：** 
-  * 提交时间：2025年12月24日 (v1)
-  * 最后修订：2026年8月6日 (v2)
-* **DOI：** [10.48550/arXiv.2512.22256](https://doi.org/10.48550/arXiv.2512.22256)
-
-&gt; * **arXiv Identifier:** [arXiv:2512.22256](https://arxiv.org/abs/2512.22256) [cs.SE]
-&gt; * **Subjects:** Software Engineering (`cs.SE`); Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** 
-&gt;   * Zhonghao Jiang
-&gt;   * David Lo
-&gt;   * Zhongxin Liu
-&gt; * **Timeline:** 
-&gt;   * Submitted: 24 December 2025 (v1)
-&gt;   * Last Revised: 6 August 2026 (v2)
-&gt; * **DOI:** [10.48550/arXiv.2512.22256](https://doi.org/10.48550/arXiv.2512.22256)
-
----
-
-## 摘要 / Abstract
-
-软件缺陷修复旨在根据用户提供的自然语言描述，解决软件代码库中的现实问题，它是软件维护的关键环节。随着大语言模型（LLM）在推理和生成能力方面的迅猛发展，基于LLM的方法在自动化软件缺陷修复方面取得了显著进展。
-
-然而，解决现实世界的软件缺陷本质上十分复杂，需要长程推理、迭代式探索以及基于反馈的决策机制，这些都对超越传统单步方法的智能体能力提出了要求。近年来，基于LLM的智能体系统已成为软件缺陷修复领域一个充满前景的研究方向，相关文献也随之呈现爆发式增长。
-
-智能体化软件缺陷修复的进展不仅能极大地提升软件维护的效率和质量，还能为评估智能体系统的推理、规划和执行能力提供一个逼真的环境，从而将人工智能与软件工程紧密连结起来。
-
-本工作对处于LLM驱动的智能体化软件缺陷修复研究最前沿的 **242 项最新研究** 进行了系统性综述。文章概述了该任务的一般工作流程，并从以下三个维度建立了一个分类体系：
-1. **基准测试（Benchmarks）**
-2. **核心技术（Techniques）**
-3. **实证研究（Empirical Studies）**
-
-此外，文章强调了强化学习作为软件工程中智能体系统日益重要的训练范式，最后总结了关键挑战以及对未来研究充满希望的方向。
-
-&gt; Software issue resolution aims to address real-world issues in software repositories based on natural language descriptions provided by users, and represents a key aspect of software maintenance. With the rapid development of large language models (LLMs) in reasoning and generation, LLM-based approaches have made significant progress in automated software issue resolution. 
-&gt; 
-&gt; However, resolving real-world software issues is inherently complex and requires long-horizon reasoning, iterative exploration, and feedback-driven decision-making, which demand agentic capabilities beyond conventional single-step approaches. Recently, LLM-based agentic systems have emerged as a promising research direction for software issue resolution, accompanied by rapid growth in the relevant literature. 
-&gt; 
-&gt; Advances in agentic software issue resolution can not only greatly improve the efficiency and quality of software maintenance, but also provide a realistic environment for evaluating the reasoning, planning, and execution capabilities of agentic systems, thereby bridging artificial intelligence and software engineering. 
-&gt; 
-&gt; This work presents a systematic survey of **242 recent studies** at the forefront of research on LLM-based agentic software issue resolution. It outlines the general workflow of the task and establishes a taxonomy across three dimensions:
-&gt; 1. **Benchmarks**
-&gt; 2. **Techniques**
-&gt; 3. **Empirical Studies**
-&gt; 
-&gt; Furthermore, it highlights reinforcement learning as an increasingly important training paradigm for agentic systems in software engineering, concluding with a summary of key challenges and promising directions for future research.
-
----
-
-## 访问与资源 / Access &amp; Resources
-* **全文选项：** 
-  * [查看 PDF](https://arxiv.org/pdf/2512.22256)
-  * [HTML 版本（实验性）](https://arxiv.org/html/2512.22256v2)
-  * [TeX 源码](https://arxiv.org/src/2512.22256)
-* **引用与研究工具：**
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2512.22256)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2512.22256)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2512.22256)
-
-&gt; * **Full-Text Options:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2512.22256)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2512.22256v2)
-&gt;   * [TeX Source](https://arxiv.org/src/2512.22256)
-&gt; * **Citation &amp; Research Tools:**
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2512.22256)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2512.22256)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2512.22256)</description>
-    </item>
-    <item>
-      <title>2026-08-07-基于可微分D-vine Copula的局部化异常检测</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/基于可微分D-vine Copula的局部化异常检测/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/基于可微分D-vine Copula的局部化异常检测/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>Vine Copula（藤Copula）通过将复杂的多元分布层级分解为双变量成对Copula（pair-copulas），为建模复杂多元分布提供了一个灵活的框架。然而，传统的拟合过程依赖于顺序贪婪决策，容易导致全局拟合陷入次优解。为了突破这一局限，本文引入了一种全新的估计框架，将基于梯度的最大似然估计（通过完全可微分的实现方式）与束搜索（beam-search）策略相结合。
-
-基于拟合出的D-vine模型，研究所提出的框架借助孟德斯鸠共形预测（Mondrian conformal prediction）实现了具有统计保证的局部化异常检测，从而能够识别全局异常以及针对特定变量关系的边级别（edge-level）解释。这项工作为可解释的异常检测和不确定性量化提供了强有力的工具，在基准数据集和真实世界数据集上均表现出卓越的有效性。
-
----
-
-## 局部化异常检测与可微分D-vine Copulas
-## Localized Anomaly Detection via Differentiable D-vine Copulas</description>
     </item>
   </channel>
 </rss>
