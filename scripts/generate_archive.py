@@ -30,7 +30,7 @@ def main():
         if not fm or 'date' not in fm:
             continue
             
-        date_str = str(fm['date'])
+        date_str = str(fm['date'])[:10]
         title = fm.get('title', filename.replace('.md', ''))
         
         posts.append((date_str, title, filename))
