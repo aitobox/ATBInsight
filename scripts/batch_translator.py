@@ -57,7 +57,14 @@ def translate_article_file(filepath: str, output_dir: str = "docs/blog/posts") -
         # Extract Chinese title from frontmatter
         title_match = re.search(r'title:\s*"([^"]+)"', translated_md) or re.search(r"title:\s*'([^']+)'", translated_md) or re.search(r"title:\s*(.+)$", translated_md, re.MULTILINE)
         if title_match:
-            ch_title = title_match.group(1).strip().replace("/", "-").replace("\\", "-").replace(":", "-").replace("?", "")
+            ch_title = title_match.group(1).strip()
+            # Clean title for YAML frontmatter if it contains invalid escape characters or quotes
+            clean_yaml_title = ch_title.replace("\\", "").replace('"', "'")
+            translated_md = re.sub(r'title:\s*".*?"', f'title: "{clean_yaml_title}"', translated_md, count=1)
+            
+            # Clean title for filename (remove special chars $, !, (, ), :, ?, etc.)
+            ch_title = re.sub(r'[\$\\()!:"\'\?\/\%\*]', '-', ch_title).strip('-')
+            ch_title = re.sub(r'-+', '-', ch_title)
         else:
             ch_title = f"article_{os.path.splitext(filename)[0]}"
 
