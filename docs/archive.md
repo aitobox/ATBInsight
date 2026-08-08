@@ -4,6 +4,11 @@
 
 ## 2026-08
 
+- **2026-08-09**: [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
+- **2026-08-09**: [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
+- **2026-08-09**: [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
+- **2026-08-09**: [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
+- **2026-08-09**: [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
 - **2026-08-08**: [cos(200!) 的计算奥秘：为什么大数的三角函数需要高精度算术](blog/posts/2026-08-08-cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术.md)
 - **2026-08-07**: [Zig 的 Io.Threaded 设计精妙](blog/posts/2026-08-07-Zig-的-Io-Threaded-设计精妙.md)
 - **2026-08-07**: [构建仅在宿主套间内起效的伪敏捷包装器（第四部分）](blog/posts/2026-08-07-构建仅在宿主套间内起效的伪敏捷包装器（第四部分）.md)

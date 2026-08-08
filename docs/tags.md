@@ -179,6 +179,10 @@ title: 标签浏览
 
 - [在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上](blog/posts/2026-08-07-在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上.md)
 
+## GPU内核优化
+
+- [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
+
 ## GRPO
 
 - [LC-GRPO：通过朗之万修正弥合基于流的 GRPO 训练与推理差距](blog/posts/2026-08-07-LC-GRPO：通过朗之万修正弥合基于流的 GRPO 训练与推理差距.md)
@@ -251,6 +255,10 @@ title: 标签浏览
 
 - [vLLM 原生速度 Transformers 模型后端](blog/posts/2026-08-07-vLLM 原生速度 Transformers 模型后端.md)
 
+## LanceDB
+
+- [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
+
 ## LeRobot
 
 - [Grabette：用于录制机器人操作数据的开源系统](blog/posts/2026-08-07-Grabette：用于录制机器人操作数据的开源系统.md)
@@ -290,6 +298,14 @@ title: 标签浏览
 
 - [Hugging Face 模型现已登陆 Foundry Managed Compute](blog/posts/2026-08-07-Hugging Face 模型现已登陆 Foundry Managed Compute.md)
 
+## Maxis
+
+- [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
+
+## Meta
+
+- [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
+
 ## Microsoft Foundry
 
 - [Hugging Face 模型现已登陆 Foundry Managed Compute](blog/posts/2026-08-07-Hugging Face 模型现已登陆 Foundry Managed Compute.md)
@@ -302,14 +318,31 @@ title: 标签浏览
 
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
 
+## Muse Code
+
+- [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
+
+## Muse Spark
+
+- [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
+
+## NP完全问题
+
+- [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
+
 ## NVIDIA
 
 - [NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人](blog/posts/2026-08-07-NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人.md)
 - [使用 NVIDIA NeMo AutoModel 加速 Transformer 微调](blog/posts/2026-08-07-使用 NVIDIA NeMo AutoModel 加速 Transformer 微调.md)
+- [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 
 ## NeMo
 
 - [使用 NVIDIA NeMo AutoModel 加速 Transformer 微调](blog/posts/2026-08-07-使用 NVIDIA NeMo AutoModel 加速 Transformer 微调.md)
+
+## NeMo Retriever
+
+- [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 
 ## Nunchaku
 
@@ -355,6 +388,8 @@ title: 标签浏览
 
 - [结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布](blog/posts/2026-08-07-结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布.md)
 - [cos(200!) 的计算奥秘：为什么大数的三角函数需要高精度算术](blog/posts/2026-08-08-cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术.md)
+- [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
+- [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
 
 ## RAG
 
@@ -362,6 +397,7 @@ title: 标签浏览
 - [超越 Top-K：用可解释的智能体操作替代黑盒检索](blog/posts/2026-08-07-超越 Top-K：用可解释的智能体操作替代黑盒检索.md)
 - [使用 Sentence Transformers 构建多模态嵌入与重排模型](blog/posts/2026-08-07-使用 Sentence Transformers 构建多模态嵌入与重排模型.md)
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
+- [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 
 ## RGB-D
 
@@ -457,6 +493,10 @@ title: 标签浏览
 
 - [如何在 Chrome 扩展程序中使用 Transformers.js](blog/posts/2026-08-07-如何在 Chrome 扩展程序中使用 Transformers.js.md)
 
+## Will Wright
+
+- [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
+
 ## WinRT
 
 - [创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）](blog/posts/2026-08-07-创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）.md)
@@ -529,6 +569,10 @@ title: 标签浏览
 ## 云计算
 
 - [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
+
+## 交互式证明
+
+- [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
 
 ## 人工智能
 
@@ -749,6 +793,10 @@ title: 标签浏览
 
 - [Otter：一款具备时间感知与历史上下文的人类国际象棋 AI](blog/posts/2026-08-07-Otter：一款具备时间感知与历史上下文的人类国际象棋 AI.md)
 
+## 图论
+
+- [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
+
 ## 在线学习
 
 - [当草稿模型在进化：投机解码与在线学习的完美结合](blog/posts/2026-08-07-当草稿模型在进化：投机解码与在线学习的完美结合.md)
@@ -791,6 +839,7 @@ title: 标签浏览
 
 - [使用 Sentence Transformers 构建多模态嵌入与重排模型](blog/posts/2026-08-07-使用 Sentence Transformers 构建多模态嵌入与重排模型.md)
 - [使用 Sentence Transformers 训练和微调多模态嵌入与重排模型](blog/posts/2026-08-07-使用 Sentence Transformers 训练和微调多模态嵌入与重排模型.md)
+- [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 
 ## 多模态上下文
 
@@ -1170,9 +1219,17 @@ title: 标签浏览
 
 - [随机性并非难点：先决条件有向无环图（DAG）教学序列中的归约与复杂性](blog/posts/2026-08-07-随机性并非难点：先决条件有向无环图（DAG）教学序列中的归约与复杂性.md)
 
+## 数值计算
+
+- [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
+
 ## 数学
 
 - [cos(200!) 的计算奥秘：为什么大数的三角函数需要高精度算术](blog/posts/2026-08-08-cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术.md)
+
+## 数学原理
+
+- [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
 
 ## 数学推理
 
@@ -1446,6 +1503,10 @@ title: 标签浏览
 
 - [Dream-MPC：基于潜在想象的梯度模型预测控制](blog/posts/2026-08-07-Dream-MPC：基于潜在想象的梯度模型预测控制.md)
 
+## 模拟人生
+
+- [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
+
 ## 模拟器基座
 
 - [面向工业因果推理的模拟器基座大语言模型：污水处理决策支持中的工具调用、结构化注入与厂间可移植检索](blog/posts/2026-08-07-面向工业因果推理的模拟器基座大语言模型：污水处理决策支持中的工具调用、结构化注入与厂间可移植检索.md)
@@ -1496,6 +1557,10 @@ title: 标签浏览
 
 - [cos(200!) 的计算奥秘：为什么大数的三角函数需要高精度算术](blog/posts/2026-08-08-cos-200-的计算奥秘-为什么大数的三角函数需要高精度算术.md)
 
+## 浮点数精度
+
+- [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
+
 ## 深度伪造检测
 
 - [DeepForgeSeal：利用对抗性强化学习进行深度伪造检测的潜空间驱动半脆弱水印技术](blog/posts/2026-08-07-DeepForgeSeal：利用对抗性强化学习进行深度伪造检测的潜空间驱动半脆弱水印技术.md)
@@ -1518,6 +1583,10 @@ title: 标签浏览
 ## 深度引导
 
 - [基于深度引导的拥挤场景视频目标计数](blog/posts/2026-08-07-基于深度引导的拥挤场景视频目标计数.md)
+
+## 游戏历史
+
+- [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
 
 ## 漏洞分析
 
@@ -1662,6 +1731,10 @@ title: 标签浏览
 
 - [大语言模型生成式推理中层剪枝的局限性探究](blog/posts/2026-08-07-大语言模型生成式推理中层剪枝的局限性探究.md)
 
+## 算法陷阱
+
+- [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
+
 ## 精准农业
 
 - [如你所愿：在精准农业中结合大语言模型与形式化验证的任务规划](blog/posts/2026-08-07-如你所愿：在精准农业中结合大语言模型与形式化验证的任务规划.md)
@@ -1686,6 +1759,14 @@ title: 标签浏览
 ## 线性时序逻辑
 
 - [如你所愿：在精准农业中结合大语言模型与形式化验证的任务规划](blog/posts/2026-08-07-如你所愿：在精准农业中结合大语言模型与形式化验证的任务规划.md)
+
+## 终端编码代理
+
+- [Meta：推出 Muse Code 与 Muse Spark 1.2](blog/posts/2026-08-09-Meta：推出 Muse Code 与 Muse Spark 1.2.md)
+
+## 经典回顾
+
+- [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
 
 ## 经验研究
 
@@ -1980,6 +2061,10 @@ title: 标签浏览
 ## 隐式需求估计器
 
 - [调用还是不调用：评估与优化大语言模型工具调用的框架](blog/posts/2026-08-07-调用还是不调用：评估与优化大语言模型工具调用的框架.md)
+
+## 零知识证明
+
+- [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
 
 ## 音素驱动
 
