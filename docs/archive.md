@@ -4,6 +4,7 @@
 
 ## 2026-08
 
+- **2026-08-10**: [追踪一个 Zsh 历史记录数据丢失漏洞 🐞](blog/posts/2026-08-10-追踪一个 Zsh 历史记录数据丢失漏洞 🐞.md)
 - **2026-08-09**: [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
 - **2026-08-09**: [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 - **2026-08-09**: [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
