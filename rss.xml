@@ -5,6 +5,84 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>加载 4000 行历史记录（用于 Ctrl+R 向后搜索），但保存 O(∞) 条</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-10/追踪一个 Zsh 历史记录数据丢失漏洞 🐞/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-10/追踪一个 Zsh 历史记录数据丢失漏洞 🐞/</guid>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 GMT</pubDate>
+      <description>多年来，作者一直饱受一个神秘数据丢失问题的困扰：Zsh 历史记录文件 (`~/.zsh_history`) 中较新的条目会凭空消失，仅残留极旧的历史数据。通过结合文件监控工具（`inotify`、`fatrace`）、高性能 eBPF 追踪工具（`bpftrace`）、通过自定义源码补丁强制触发崩溃，以及利用 GDB 调试核心转储（core dumps），作者最终揭开了根本原因：Zsh 的历史记录文件压缩函数（`savehistfile`）在执行时未能检查用户中断信号（`SIGINT`）。当用户在连续快速按下 `Ctrl+C` 和 `Ctrl+D` 的同时退出 Shell 时，`readhistfile` 会由于中断标志而提前短路返回，而随后的 `savehistfile` 却会盲目地将这些不完整、被截断的数据重写覆盖到历史文件中。
+
+本文生动记录了作者从表象到工具排查、从源码修补到根因剖析的全过程，并探讨了利用 AI 智能体（Agent）排查该漏洞的效果，为开发者提供了一篇极具参考价值的底层调试实战指南。
+
+---
+
+## 目录
+1. [好消息在前](#好消息在前)
+2. [故障现象](#故障现象)
+3. [我的 Zsh 历史记录配置](#我的-zsh-历史记录配置)
+4. [追踪行为](#追踪行为)
+   * [inotify](#inotify)
+   * [fatrace](#fatrace)
+   * [strace](#strace)
+   * [bpftrace](#bpftrace)
+5. [让它崩溃！](#让它崩溃)
+6. [究竟是什么 Bug？](#究竟是什么-bug)
+7. [结论](#结论)
+8. [附录 A：隐藏的坑：导出的 HISTFILE](#附录-a隐藏的坑导出的-histfile)
+9. [附录 B：附加问题：AI 能找到这个 Bug 吗？](#附录-b附加问题ai-能找到这个-bug-吗)
+
+---
+
+## 好消息在前
+
+Zsh 5.9.2（发布于 2026 年 7 月 12 日）包含针对此问题的修复 —— 建议在读完这篇调查报告后再去查看，以免剧透！
+
+&gt; **剧透：上游修复链接**
+&gt; [Zsh 修复 53454](https://github.com/zsh-users/zsh/commit/a6760226c75c8a13e78f8b4c7163f1256322531a)
+
+---
+
+## 故障现象
+
+偶尔，我会发现前一天*明明执行过*的命令在 Shell 历史记录中找不到了，这意味着按下 `Ctrl+R` 进行向后历史搜索时没有任何结果。每当我注意到这一点时，我的 Shell 历史文件里**只剩下非常旧**的条目，近几年的新条目全部不翼而飞。
+
+前几次遇到这种情况时，我只是从日常备份中恢复了 Shell 历史记录，并没有深究。但这个问题却反复出现。
+
+我注意到 `.zsh_history` 文件表面上并没有损坏（没有不可打印字符或不完整的文本行），并且文件中的行数也并非每次都固定。
+
+当时我不清楚是 Zsh 本身、其他程序，还是多个 [`zsh(1)`](https://manpages.debian.org/zsh.1) 进程组合使用时引发了这个问题。
+
+---
+
+## 我的 Zsh 历史配置
+
+我在 `~/.zshrc` 中设置了以下与历史记录相关的选项：
+
+```bash
+# 加载 4000 行历史记录（用于 Ctrl+R 向后搜索），但保存 O(∞) 条
+HISTSIZE=4000
+HISTFILE=~/.zsh_history
+SAVEHIST=10000000
+
+# 不保存（相邻的）重复条目
+setopt HIST_IGNORE_DUPS
+
+# 当命令运行时，将历史条目追加到 `~/.zsh_history` 中。
+setopt INC_APPEND_HISTORY
+# ……但不同步历史记录（NixOS 的 /etc/zshrc 中默认启用）。
+unsetopt SHARE_HISTORY
+```
+
+在实际应用中，这意味着我的各个 Shell 是独立的会话，它们将各自的命令流式写入共享的 `~/.zsh_history` 中。历史记录故意不进行自动共享，因此当我想要访问其他 Shell 写入的条目时，我会显式运行 `exec zsh`。
+
+---
+
+## 追踪行为
+
+当我于 [2024 年 12 月在 Mastodon 上求助](https://mas.to/@zekjur/113646459245348009)时（主要希望有人已经遇到并诊断过这个问题），收到的建议之一是使用文件系统更改监控机制（如 `inotify` 或 `fsevents`）来找出截断（或更改？）Zsh 历史记录文件的罪魁祸首。
+
+接下来的几个小节将介绍我在 Linux 上尝试过的方法。</description>
+    </item>
+    <item>
       <title>Shared between prover, verifier</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-09/零知识证明浅析/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-09/零知识证明浅析/</guid>
@@ -3934,85 +4012,6 @@ Nunchaku Lite 模型库的功能与标准 Diffusers 库完全一致。transforme
 &gt; Before diving in, a quick scope note: I will not go deep on the React UI layer or Vite build configuration. The focus here is the high-level architecture decisions: what runs in each Chrome runtime and how those pieces are orchestrated.
 &gt;
 &gt; If Manifest V3 is new to you, read this short overview first: [What is Manifest V3?](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3).</description>
-    </item>
-    <item>
-      <title>On the Limits of Layer Pruning for Generative Reasoning in Large Language Models</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-07/大语言模型生成式推理中层剪枝的局限性探究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-07/大语言模型生成式推理中层剪枝的局限性探究/</guid>
-      <pubDate>Fri, 07 Aug 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型（LLM）的轻量化与压缩一直是AI领域的核心研究方向之一。层剪枝（Layer Pruning）作为一种经典的结构化压缩技术，此前在分类任务中表现优异，往往无需微调或仅需微调即可保留大部分性能。然而，由 Safal Shrestha 等人发表的这篇最新研究表明，层剪枝在面对生成式推理任务（如数学推理 GSM8K、代码生成 HumanEval+）时，会导致模型性能出现灾难性下降。
-
-论文的核心发现指出，层剪枝不仅仅造成了表面文本生成的退化，更导致了底层关键“算法能力”的根本性丢失，例如精确的算术计算和结构化语法（如括号匹配）的生成。通过在现实的后训练约束（如单张 80GB GPU）下进行广泛实验，作者发现即使采用任务对齐的微调策略，或者在剪枝后使用近 1000 亿个 Token 进行训练，这种性能差距依然无法弥补。该研究为我们在受限的后训练范式下如何有效运用深度缩减技术提供了重要的警示与指导。
-
----
-
-# On the Limits of Layer Pruning for Generative Reasoning in Large Language Models
-
-**arXiv:** [2602.01997](https://arxiv.org/abs/2602.01997)  
-**Authors:** Safal Shrestha, Anubhav Shrestha, Aadim Nepal, Minwu Kim, Keith Ross  
-**Subjects:** Machine Learning (cs.LG); Artificial Intelligence (cs.AI)  
-**Submitted:** 2 Feb 2026 (v1); Last Revised: 6 Aug 2026 (v4)
-
-&gt; **arXiv:** [2602.01997](https://arxiv.org/abs/2602.01997)  
-&gt; **Authors:** Safal Shrestha, Anubhav Shrestha, Aadim Nepal, Minwu Kim, Keith Ross  
-&gt; **Subjects:** Machine Learning (cs.LG); Artificial Intelligence (cs.AI)  
-&gt; **Submitted:** 2 Feb 2026 (v1); Last Revised: 6 Aug 2026 (v4)
-
----
-
-## Summary
-
-&gt; 摘要
-&gt; While layer pruning is a successful strategy for compressing Large Language Models (LLMs) in classification tasks, this paper demonstrates that it significantly degrades performance in **generative reasoning tasks** (e.g., GSM8K, HumanEval+). The authors find that pruning causes a fundamental loss of algorithmic capabilities—such as arithmetic computation and structural syntax generation—that cannot be easily recovered through standard fine-tuning. Even when using task-aligned recovery or training on large post-pruning datasets, the performance gap persists, suggesting inherent limitations in depth-reduction techniques for complex reasoning.
-
-尽管层剪枝是压缩大语言模型（LLM）用于分类任务的成功策略，但本文证明它显著降低了**生成式推理任务**（例如 GSM8K、HumanEval+）的性能。作者发现，剪枝会导致算法能力的根本性丧失——例如算术计算和结构化语法生成——而这些能力无法通过标准微调轻易恢复。即使在使用任务对齐的恢复方法或在大型剪枝后数据集上进行训练时，性能差距依然存在，这表明深度缩减技术在处理复杂推理时存在内在局限性。
-
----
-
-## Abstract
-
-&gt; 摘要
-&gt; Recent work has show that layer pruning can effectively compress large language models (LLMs) while retaining strong performance on classification benchmarks, often with little or no finetuning. In contrast, generative reasoning tasks, such as GSM8K and HumanEval\textsuperscript{+}, exhibit substantially weaker recovery. 
-
-近期的研究表明，层剪枝可以有效压缩大语言模型（LLM），同时在分类基准测试中保持强劲的性能，通常只需很少甚至不需要微调。相比之下，诸如 GSM8K 和 HumanEval\textsuperscript{+} 等生成式推理任务展现出的恢复能力则要弱得多。
-
-&gt; We show that beyond surface-level text degradation, pruning leads to a loss of key algorithmic capabilities, including arithmetic computation and balanced parenthesis generation. Under realistic post-training constraints, using a single 80GB GPU and without access to pretraining-scale data or compute, we evaluate a simple recovery strategy based on supervised finetuning with self-generated responses. This approach recovers up to 90\% of baseline performance on classification tasks, but recovery for generative reasoning remains limited. 
-
-我们表明，除了表面层面的文本退化之外，剪枝还会导致关键算法能力的丧失，包括算术计算和平衡括号生成。在现实的后训练约束下（使用单张 80GB GPU，且无法获取预训练规模的数据或算力），我们评估了一种基于使用自生成响应进行监督微调的简单恢复策略。这种方法在分类任务上恢复了高达 90% 的基线性能，但对生成式推理的恢复仍然十分有限。
-
-&gt; We further find that this gap persists even under a favorable task-aligned recovery setting, where pruned models are fully finetuned on self-generated GSM8K responses, suggesting that the degradation is not merely due to generic instruction data or parameter-efficient tuning. As complementary evidence, we analyze a depth-pruned model trained with nearly 100B post-pruning tokens and find that deficits persist even on simple arithmetic tasks that do not require multi-step generation. Overall, we characterize practical recovery limits of layer pruning for generative reasoning and provide guidance on when depth reduction is effective under constrained post-training regimes.
-
-我们进一步发现，即使在有利的任务对齐恢复设置下（其中剪枝模型在自生成的 GSM8K 响应上进行了完全微调），这种差距依然存在，这表明性能退化不仅仅是因为通用的指令数据或参数高效微调。作为补充证据，我们分析了一个使用近 1000 亿个剪枝后 Token 训练的深度剪枝模型，发现即使在不需要多步生成的简单算术任务上，缺陷依然存在。总体而言，我们刻画了层剪枝用于生成式推理的实际恢复极限，并为在受限后训练机制下何时有效进行深度缩减提供了指导。
-
----
-
-## Accessing the Paper
-
-&gt; 获取论文
-&gt; *   **[View PDF](https://arxiv.org/pdf/2602.01997)**
-&gt; *   **[HTML (Experimental)](https://arxiv.org/html/2602.01997v4)**
-&gt; *   **[TeX Source](https://arxiv.org/src/2602.01997)**
-&gt; *   **DOI:** [https://doi.org/10.48550/arXiv.2602.01997](https://doi.org/10.48550/arXiv.2602.01997)
-
-*   **[查看 PDF](https://arxiv.org/pdf/2602.01997)**
-*   **[HTML（实验性）](https://arxiv.org/html/2602.01997v4)**
-*   **[TeX 源码](https://arxiv.org/src/2602.01997)**
-*   **DOI:** [https://doi.org/10.48550/arXiv.2602.01997](https://doi.org/10.48550/arXiv.2602.01997)
-
----
-
-## Submission History
-
-&gt; 提交历史
-&gt; *   **v1:** 2 Feb 2026
-&gt; *   **v2:** 10 Apr 2026
-&gt; *   **v3:** 4 Aug 2026
-&gt; *   **v4:** 6 Aug 2026
-
-*   **v1:** 2026年2月2日
-*   **v2:** 2026年4月10日
-*   **v3:** 2026年8月4日
-*   **v4:** 2026年8月6日</description>
     </item>
   </channel>
 </rss>
