@@ -1,0 +1,800 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-11-%E6%8A%9B%E5%BC%83%E9%94%9A%E7%82%B9%EF%BC%9A%E9%80%9A%E8%BF%87%20Pulsar%20Attention%20%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E7%9A%84%E7%BB%9F%E8%AE%A1%E4%B8%8A%E4%B8%8B%E6%96%87%E6%91%98%E8%A6%81/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>抛弃锚点：通过 Pulsar Attention 实现分布式系统的统计上下文摘要 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              抛弃锚点：通过 Pulsar Attention 实现分布式系统的统计上下文摘要
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#document-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Document Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文档元数据
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-text-external-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Full-Text &amp; External Resources
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Full-Text &amp; External Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#external-citations-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        External Citations &amp; Tools
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        全文与外部资源
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="全文与外部资源">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        外部引用与工具
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">抛弃锚点：通过 Pulsar Attention 实现分布式系统的统计上下文摘要</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在处理长序列时，大语言模型（LLM）的自注意力机制由于其二次方的计算复杂度，导致推理成本极高。传统的分布式分块方法（如 Star Attention）通过将上下文分片到不同主机来降低成本，但它们依赖于在每个主机的前端预置一个静态的、与内容无关的第一块拷贝（即锚点），这往往会损害模型的性能或效率。</p>
+<p>为了解决这一痛点，本文引入了一种名为 <strong>Pulsar Attention</strong> 的新型内容感知分布式分块方法。它抛弃了传统的静态锚点，转而采用两个轻量级的内容感知组件：一个是用于稳定 softmax 的小型注意力沉淀前缀（attention-sink prefix），另一个是通过基于 Max-IDF 启发式算法构建的紧凑跨块摘要（选择包含全局稀有标记的块）。</p>
+<p>在实验部分，通过在 Llama-3.1-8B-Instruct 模型上对 RULER 基准测试进行评估，结果表明：Pulsar Attention 在高达 128K 长度的序列上表现超越了 Star Attention，同时在大多数任务中保持了与稠密注意力基线（dense attention baselines）相竞争的性能，在特定任务上实现了高达 4.7% 的绝对性能提升，并将第一阶段（Phase 1）的单 GPU 浮点运算量（FLOPs）降低了最多 3.3 倍，且 KV 缓存占用保持不变。</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>This paper introduces <strong>Pulsar Attention</strong>, a novel, content-aware distributed blockwise method designed to optimize Large Language Model (LLM) inference on long sequences. By replacing the static, content-blind anchor blocks used in traditional methods like Star Attention with a lightweight attention-sink prefix and Max-IDF-based cross-block summaries, Pulsar Attention reduces Phase 1 per-GPU FLOPs by up to 3.3× while maintaining an identical KV cache footprint. Evaluations on the RULER benchmark using Llama-3.1-8B-Instruct demonstrate that Pulsar Attention outperforms Star Attention across sequence lengths up to 128K tokens and remains competitive with dense attention baselines, achieving task-dependent absolute gains of up to 4.7%.</p>
+<blockquote>
+<p>本文介绍了 <strong>Pulsar Attention</strong>，这是一种新颖的、具备内容感知能力的分布式分块方法，旨在优化大语言模型（LLM）在长序列上的推理。通过用轻量级的注意力沉淀前缀（attention-sink prefix）和基于 Max-IDF 的跨块摘要，替代了传统方法（如 Star Attention）中使用的静态且与内容无关的锚块，Pulsar Attention 将第一阶段的单 GPU 浮点运算量（FLOPs）降低了最多 3.3 倍，同时保持了相同的 KV 缓存占用。在使用 Llama-3.1-8B-Instruct 的 RULER 基准测试评估中表明，Pulsar Attention 在高达 128K 标记的序列长度上表现优于 Star Attention，并与稠密注意力基线保持竞争力，实现了高达 4.7% 的任务相关绝对增益。</p>
+</blockquote>
+<hr />
+<h2 id="document-metadata">Document Metadata</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Title</strong></td>
+<td style="text-align: left;">Dropping the Anchor: Statistical Context Summarization for Distributed Systems via Pulsar Attention</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Authors</strong></td>
+<td style="text-align: left;">Aryan Sood, Shantanu Acharya, Gaurav Kumar Nayak</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Subject</strong></td>
+<td style="text-align: left;">Computation and Language (<code>cs.CL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Secondary Subjects</strong></td>
+<td style="text-align: left;">Artificial Intelligence (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arXiv ID</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2607.20457"><code>arXiv:2607.20457</code></a> [cs.CL]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2607.20457">10.48550/arXiv.2607.20457</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Submission History</strong></td>
+<td style="text-align: left;"><strong>[v1]</strong> Thu, 14 May 2026<br><strong>[v2]</strong> Fri, 7 Aug 2026 (This version)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<h2 id="_2">文档元数据</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">字段</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>标题</strong></td>
+<td style="text-align: left;">Dropping the Anchor: Statistical Context Summarization for Distributed Systems via Pulsar Attention</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>作者</strong></td>
+<td style="text-align: left;">Aryan Sood, Shantanu Acharya, Gaurav Kumar Nayak</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>主要学科</strong></td>
+<td style="text-align: left;">计算与语言 (<code>cs.CL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>次要学科</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>arXiv ID</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2607.20457"><code>arXiv:2607.20457</code></a> [cs.CL]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2607.20457">10.48550/arXiv.2607.20457</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交历史</strong></td>
+<td style="text-align: left;"><strong>[v1]</strong> 2026年5月14日 (星期四)<br><strong>[v2]</strong> 2026年8月7日 (星期五) (当前版本)</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>Inference with large language models (LLMs) on long sequences is computationally expensive due to the quadratic complexity of self-attention. Distributed blockwise methods such as Star Attention reduce this cost by sharding context across hosts, but rely on prepending a static, content-blind copy of the first block to every host. </p>
+<p>We propose <strong>Pulsar Attention</strong>, which replaces the static anchor with two lightweight, content-aware components: 
+1. A small attention-sink prefix that stabilizes softmax.
+2. Compact cross-block summaries built via a Max-IDF heuristic that selects chunks containing globally rare tokens. </p>
+<p>This reduces the Phase 1 per-GPU FLOPs by up to <strong>3.3×</strong> over Star Attention while retaining an identical KV cache footprint. On RULER with Llama-3.1-8B-Instruct, Pulsar Attention outperforms Star Attention at sequence lengths up to 128K tokens and remains competitive with dense attention across most tasks, with task-dependent absolute gains of up to <strong>4.7%</strong> over the dense baseline.</p>
+<blockquote>
+<h2 id="_3">摘要</h2>
+<p>由于自注意力机制具有二次方的复杂度，大语言模型（LLM）在长序列上的推理计算开销非常大。诸如 Star Attention 等分布式分块方法通过在主机之间对上下文进行分片来降低这种成本，但它们依赖于在每个主机前预置第一块的静态、与内容无关的拷贝。</p>
+<p>我们提出了 <strong>Pulsar Attention</strong>，它用两个轻量级的内容感知组件替代了静态锚点：
+1. 一个用于稳定 softmax 的小型注意力沉淀前缀（attention-sink prefix）。
+2. 通过 Max-IDF 启发式算法构建的紧凑跨块摘要，该算法选择包含全局稀有标记的块。</p>
+<p>与 Star Attention 相比，这在保持相同 KV 缓存占用的同时，将第一阶段的单 GPU 浮点运算量（FLOPs）降低了最多 <strong>3.3 倍</strong>。在搭载 Llama-3.1-8B-Instruct 的 RULER 测试中，Pulsar Attention 在高达 128K 标记的序列长度上表现优于 Star Attention，并在大多数任务中与稠密注意力保持竞争力，相比稠密基线实现了高达 <strong>4.7%</strong> 的任务相关绝对增益。</p>
+</blockquote>
+<hr />
+<h2 id="full-text-external-resources">Full-Text &amp; External Resources</h2>
+<ul>
+<li><strong>PDF Version:</strong> <a href="https://arxiv.org/pdf/2607.20457">View PDF</a></li>
+<li><strong>HTML Version:</strong> <a href="https://arxiv.org/html/2607.20457v2">arXiv HTML (Experimental)</a></li>
+<li><strong>TeX Source:</strong> <a href="https://arxiv.org/src/2607.20457">Download Source</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"></li>
+</ul>
+<h3 id="external-citations-tools">External Citations &amp; Tools</h3>
+<ul>
+<li><strong>Academic Databases:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2607.20457">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2607.20457">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2607.20457">NASA ADS</a></li>
+<li><strong>Code &amp; Exploration Finders:</strong> <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a> | <a href="https://huggingface.co/">Hugging Face</a> | <a href="https://alphaxiv.org/">alphaXiv</a></li>
+</ul>
+<blockquote>
+<h2 id="_4">全文与外部资源</h2>
+<ul>
+<li><strong>PDF 版本：</strong> <a href="https://arxiv.org/pdf/2607.20457">查看 PDF</a></li>
+<li><strong>HTML 版本：</strong> <a href="https://arxiv.org/html/2607.20457v2">arXiv HTML (实验性)</a></li>
+<li><strong>TeX 源码：</strong> <a href="https://arxiv.org/src/2607.20457">下载源码</a></li>
+<li><strong>许可证：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0</a> <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"></li>
+</ul>
+<h3 id="_5">外部引用与工具</h3>
+<ul>
+<li><strong>学术数据库：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2607.20457">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2607.20457">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2607.20457">NASA ADS</a></li>
+<li><strong>代码与探索工具：</strong> <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a> | <a href="https://huggingface.co/">Hugging Face</a> | <a href="https://alphaxiv.org/">alphaXiv</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">注意力机制</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">分布式推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">长文本处理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">键值缓存</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
