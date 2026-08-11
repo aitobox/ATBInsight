@@ -1,0 +1,819 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-12-%E5%A4%8D%E7%8E%B0%E4%B8%8E%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86%E5%8F%AF%E9%9D%A0%E6%80%A7%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E6%B3%95%EF%BC%9A%E6%8E%A8%E7%90%86%E6%9C%9F%E6%A6%82%E7%8E%87%E8%81%9A%E5%90%88%E4%B8%8E%E9%80%BB%E8%BE%91%E8%A1%A8%E5%BE%81%E7%BC%96%E8%BE%91/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>复现与压力测试大模型推理可靠性的两种方法：推理期概率聚合与逻辑表征编辑 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              复现与压力测试大模型推理可靠性的两种方法：推理期概率聚合与逻辑表征编辑
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        复现与压力测试大模型推理可靠性的两种方法：推理期概率聚合与逻辑表征编辑
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="复现与压力测试大模型推理可靠性的两种方法：推理期概率聚合与逻辑表征编辑">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        执行摘要 (Executive Summary)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-1-introduction-and-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 引言与动机 (1. Introduction and Motivation)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-2-methodology-stress-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 方法论与压力测试 (2. Methodology &amp; Stress-Testing)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. 方法论与压力测试 (2. Methodology &amp; Stress-Testing)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        方法一：推理期概率聚合 (RPC)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#approach-1-test-time-probability-aggregation-rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Approach 1: Test-Time Probability Aggregation (RPC)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        方法二：逻辑表征编辑 (LCF)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#approach-2-logic-representation-editing-lcf" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Approach 2: Logic-Representation Editing (LCF)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-3-metadata-additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 元数据与附加资源 (3. Metadata &amp; Additional Resources)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型（LLM）的发展过程中，如何提升其推理可靠性一直是核心痛点。近期涌现出了许多旨在增强推理稳定性的创新技术，例如结合自洽性的推理期概率聚合（RPC）以及分离逻辑子空间的逻辑表征编辑（LCF）。然而，此类方法往往仅由原作者团队进行评估，且常常缺乏开源代码，这引发了业界的“复现鸿沟”。为了验证这些方法的泛化性与真实有效性，本文作者对 RPC 和 LCF 进行了独立复现与严格的压力测试。</p>
+<p>研究团队将 RPC 迁移至新的任务域和模型（如 <em>Qwen3-8B</em>），并在四个 7-8B 参数量模型上重新实现了 LCF 的全套干预流水线。测试结果表明，原本声称有效的技术在更广泛的场景下遇到了严峻挑战：RPC 的性能优势在新领域中消失，甚至在扩大采样规模时出现负向反转；而 LCF 的“逻辑有效性方向”表征微弱，干预效果不仅没有统计学意义上的显著提升，反而经常导致模型性能下降。这项研究对评估 LLM 推理可靠性方法提供了宝贵的批判性视角与实证基准。</p>
+<hr />
+<h1 id="_2">复现与压力测试大模型推理可靠性的两种方法：推理期概率聚合与逻辑表征编辑</h1>
+<p><strong>作者：</strong> Minhan Cho, Jimin Kweon<br />
+<strong>ArXiv ID：</strong> <a href="https://arxiv.org/abs/2608.08514">arXiv:2608.08514 [cs.AI]</a><br />
+<strong>提交时间：</strong> 2026年8月9日<br />
+<strong>链接：</strong> <a href="https://arxiv.org/pdf/2608.08514">查看 PDF</a> | <a href="https://github.com/rabqatab/llm-reasoning-reliability-reproduction">GitHub 仓库（含代码、数据与日志）</a></p>
+<hr />
+<h2 id="executive-summary">执行摘要 (Executive Summary)</h2>
+<p>本文独立复现并严格压力测试了两种旨在提升大语言模型（LLM）推理可靠性的主流方法：
+1. <strong>RPC（推理期概率聚合，Test-Time Probability Aggregation）：</strong> 在推理阶段结合词元概率（token probabilities）与自洽性（self-consistency）。
+2. <strong>LCF（逻辑表征编辑，Logic-Representation Editing）：</strong> 训练投影器将隐藏状态（hidden states）分离为“内容”和“逻辑”子空间，并将逻辑组件引导至有效区域。</p>
+<p>此前的评估通常完全由原作者独自完成（且往往未开源代码，如 LCF 的情况），而本研究将这两种方法扩展到了新的领域与模型中（在四个新任务域中测试了基于 <em>Qwen3-8B</em> 的 RPC，并在四个 7–8B 参数模型上测试了 LCF）。</p>
+<p><strong>核心发现：</strong>
+* <strong>RPC：</strong> 尽管它在原作者发布的测试路径上复现了原有结果，但在新领域中，它相比标准自洽性的性能优势消失殆尽（差异微乎其微或打平）。此外，扩大样本量甚至会完全逆转边际收益。
+* <strong>LCF：</strong> 研究表明，提出的“逻辑有效性方向”与语义基线相比非常弱，其干预流水线在很大程度上未能对模型概率产生具有统计显著性的正面影响（<span class="arithmatex">\(\Delta\text{Prob}\)</span>），并且在所测试的架构中经常导致性能下降。</p>
+<blockquote>
+<p>This paper independently reproduces and rigorously stress-tests two prominent methods designed to improve the reasoning reliability of Large Language Models (LLMs):
+1. <strong>RPC (Test-Time Probability Aggregation):</strong> Combines token probabilities and self-consistency at inference time.
+2. <strong>LCF (Logic-Representation Editing):</strong> Trains projectors to separate hidden states into "content" and "logic" subspaces, steering the logical components toward a valid region.</p>
+<p>While previous evaluations were exclusively conducted by the original authors (often without public code releases, as was the case with LCF), this study extends both methods across new domains and models (testing RPC with <em>Qwen3-8B</em> four new task domains, and LCF across four 7–8B parameter models). </p>
+<p><strong>Key Findings:</strong>
+* <strong>RPC:</strong> While it reproduces the original results on the authors' published paths, its performance edge over standard self-consistency vanishes on new domains (yielding negligible differences or ties). Furthermore, scaling sample sizes can completely reverse marginal gains.
+* <strong>LCF:</strong> The proposed "logic-validity direction" is shown to be weak compared to semantic baselines, and its intervention pipeline largely fails to produce statistically significant positive impacts on model probability (<span class="arithmatex">\(\Delta\text{Prob}\)</span>), frequently reducing performance across tested architectures.</p>
+</blockquote>
+<hr />
+<h2 id="1-1-introduction-and-motivation">1. 引言与动机 (1. Introduction and Motivation)</h2>
+<p>验证关于 LLM 推理可靠性的声明至关重要，然而绝大多数现有技术仅由其创造者进行评估。这造成了一条复现鸿沟，尤其是在缺乏参考实现的情况下（例如 LCF）。</p>
+<p>作者着手独立开展以下工作：
+* 重新运行 RPC 已发布的聚合路径。
+* 重新实现 LCF 的投影器、对比数据集以及干预机制。
+* 在严格的下游任务上对两个流水线进行压力测试：<strong>文本转 SQL（text-to-SQL）</strong>、<strong>法律信息抽取</strong>、<strong>谬误识别</strong>以及<strong>判例分级</strong>。
+* 直接探查内部表征，以验证是否存在清晰可分的“内容”和“逻辑”子空间。</p>
+<blockquote>
+<p>Validating claims of LLM reasoning reliability is critical, yet most existing techniques are evaluated solely by their creators. This creates a reproducibility gap, particularly when reference implementations are unavailable (e.g., LCF). </p>
+<p>The authors set out to independently:
+* Re-run RPC's published aggregation path.
+* Re-implement LCF’s projector, contrastive dataset, and intervention mechanisms.
+* Stress-test both pipelines on rigorous downstream tasks: <strong>text-to-SQL</strong>, <strong>legal extraction</strong>, <strong>fallacy identification</strong>, and <strong>precedent grading</strong>.
+* Probe internal representations directly to verify whether cleanly separable "content" and "logic" subspaces actually exist.</p>
+</blockquote>
+<hr />
+<h2 id="2-2-methodology-stress-testing">2. 方法论与压力测试 (2. Methodology &amp; Stress-Testing)</h2>
+<h3 id="rpc">方法一：推理期概率聚合 (RPC)</h3>
+<ul>
+<li><strong>机制：</strong> 在推理过程中，将词元级概率与自洽性指标进行聚合。</li>
+<li><strong>评估：</strong> 使用 <em>Qwen3-8B</em> 模型在四个全新的任务域中进行测试。</li>
+<li><strong>发现：</strong> </li>
+<li>在给定的路径上成功复现了原作者的基准网格。</li>
+<li>在四个新领域中，RPC 相比基础自洽性<strong>没有表现出统计学意义上的显著优势</strong>（配对 <span class="arithmatex">\(p \ge 0.28\)</span>）。</li>
+<li>在 <em>BIRD</em> 数据集上——该数据集改变了预算规模（<span class="arithmatex">\(K\)</span>）——在较少样本下观察到的初始增益（<span class="arithmatex">\(K=32\)</span>，准确率提升 <span class="arithmatex">\(+2.5\)</span>，<span class="arithmatex">\(p=0.16\)</span>）在样本量扩大至 <span class="arithmatex">\(n=200\)</span> 时，<strong>实际上反转为了 <span class="arithmatex">\(-0.25\)</span></strong>。</li>
+</ul>
+<blockquote>
+<h3 id="approach-1-test-time-probability-aggregation-rpc">Approach 1: Test-Time Probability Aggregation (RPC)</h3>
+<ul>
+<li><strong>Mechanism:</strong> Aggregates token-level probabilities alongside self-consistency metrics during inference.</li>
+<li><strong>Evaluation:</strong> Tested across four novel task domains using the <em>Qwen3-8B</em> model.</li>
+<li><strong>Findings:</strong> </li>
+<li>Replicated the original authors' benchmark grids successfully on provided paths.</li>
+<li>Across four new domains, RPC showed <strong>no statistically significant edge</strong> over basic self-consistency (paired <span class="arithmatex">\(p \ge 0.28\)</span>).</li>
+<li>On the <em>BIRD</em> dataset—where budget scale (<span class="arithmatex">\(K\)</span>) was varied—initial gains observed at lower samples (<span class="arithmatex">\(K=32\)</span>, <span class="arithmatex">\(+2.5\)</span> accuracy bump, <span class="arithmatex">\(p=0.16\)</span>) actually <strong>reversed to <span class="arithmatex">\(-0.25\)</span></strong> when the sample size was enlarged to <span class="arithmatex">\(n=200\)</span>.</li>
+</ul>
+</blockquote>
+<h3 id="lcf">方法二：逻辑表征编辑 (LCF)</h3>
+<ul>
+<li><strong>机制：</strong> 采用训练好的投影器将隐藏状态隔离为内容特征和逻辑特征，并对逻辑组件应用方向性编辑。</li>
+<li><strong>评估：</strong> 在四个不同的 7B–8B 模型上实现了完整的对比与干预流水线。</li>
+<li><strong>发现：</strong></li>
+<li>所识别的“逻辑有效性方向”异常薄弱，在表现最好的单一子层上也仅表现出 <strong>0.82 的可分性</strong>（相比之下，语义属性控制基线的可分性为 <strong>0.95</strong>）。</li>
+<li>对于唯一表现出正向偏移的模型（<span class="arithmatex">\(Qwen3\)</span>），其干预效应（<span class="arithmatex">\(\Delta\text{Prob}\)</span>）在统计学上并不显著（<span class="arithmatex">\(p=0.56\)</span>）。</li>
+<li>在其他三个被测试的模型中，LCF 干预显著降低了性能（<span class="arithmatex">\(\Delta\text{Prob}\)</span>）。</li>
+</ul>
+<blockquote>
+<h3 id="approach-2-logic-representation-editing-lcf">Approach 2: Logic-Representation Editing (LCF)</h3>
+<ul>
+<li><strong>Mechanism:</strong> Employs trained projectors to isolate hidden states into content and logic features, applying directional edits to the logic components.</li>
+<li><strong>Evaluation:</strong> Implemented the full contrastive and intervention pipeline across four distinct 7B–8B models.</li>
+<li><strong>Findings:</strong></li>
+<li>The identified "logic-validity direction" is exceptionally weak, demonstrating only <strong>0.82 separability</strong> at its single best sub-layer (compared to <strong>0.95</strong> for a semantic-attribute control baseline).</li>
+<li>Intervention effects (<span class="arithmatex">\(\Delta\text{Prob}\)</span>) were statistically insignificant for the sole model showing a positive shift (<span class="arithmatex">\(Qwen3\)</span>, <span class="arithmatex">\(p=0.56\)</span>).</li>
+<li>Across three other tested models, LCF intervention significantly degraded performance (<span class="arithmatex">\(\Delta\text{Prob}\)</span>).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="3-3-metadata-additional-resources">3. 元数据与附加资源 (3. Metadata &amp; Additional Resources)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">类别 (Category)</th>
+<th style="text-align: left;">详情 (Details)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>主要学科 (Primary Subject)</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ACM 类别 (ACM Classes)</strong></td>
+<td style="text-align: left;">I.2.7; I.2.6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>文档规格 (Document Specs)</strong></td>
+<td style="text-align: left;">16 页，3 幅图，9 个表</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>许可协议 (License)</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" style="display:none;" /></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Category</th>
+<th style="text-align: left;">Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Subject</strong></td>
+<td style="text-align: left;">Artificial Intelligence (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ACM Classes</strong></td>
+<td style="text-align: left;">I.2.7; I.2.6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Document Specs</strong></td>
+<td style="text-align: left;">16 pages, 3 figures, 9 tables</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>License</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" style="display:none;" /></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<p><em>有关完整的源代码、执行日志和评估工件，请参考官方 <a href="https://github.com/rabqatab/llm-reasoning-reliability-reproduction">GitHub 仓库</a>。</em></p>
+<blockquote>
+<p><em>For full source code, execution logs, and evaluation artifacts, refer to the official <a href="https://github.com/rabqatab/llm-reasoning-reliability-reproduction">GitHub Repository</a>.</em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大模型推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">可靠性验证</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型重现</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">逻辑表征编辑</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理期概率聚合</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

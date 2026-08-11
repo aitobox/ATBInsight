@@ -1,0 +1,727 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-12-%E5%BD%93%E9%9A%90%E7%A9%BA%E9%97%B4%E9%81%97%E5%BF%98%E5%83%8F%E7%B4%A0%EF%BC%9A%E6%81%A2%E5%A4%8D%E6%89%A9%E6%95%A3Transformer%E8%B6%85%E5%88%86%E8%BE%A8%E7%8E%87%E4%B8%AD%E7%9A%84%E4%BF%9D%E7%9C%9F%E5%BA%A6/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 执行摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔍 核心洞察与隐空间扩散的问题所在
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pgsr" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🛠️ 提出方法：像素基础超分辨率 (PGSR)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛠️ 提出方法：像素基础超分辨率 (PGSR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#efficiency-scalability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Efficiency &amp; Scalability
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        效率与可扩展性
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📊 结果与性能
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 链接与资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大型生成模型显著提升图像超分辨率（SR）感知质量的同时，如何保持对低分辨率（LR）观测结果的真实保真度依然是一个持续存在的难题。本文指出，基于隐空间表征构建的扩散Transformer（DiT）存在一个关键局限性：变分自编码器（VAE）的压缩瓶颈削弱了细粒度空间信息，导致模型产生缺乏输入图像依据的“幻觉”细节。</p>
+<p>为了解决这一问题，作者引入了像素基础超分辨率（Pixel-Grounded Super-Resolution, PGSR）框架。通过提取并重用VAE编码前的像素证据，PGSR在无需重新训练庞大预训练骨干网络的情况下，实现了更出色的真实感与保真度平衡。该研究为基于扩散的图像恢复任务提供了轻量且高效的改进思路。</p>
+<h1 id="transformer">当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度</h1>
+<p><strong>作者：</strong> Yu Shi, Yuyao Zhang, Yu-wing Tai<br />
+<strong>机构 / 学科领域：</strong> 计算机视觉与模式识别 (<code>cs.CV</code>)、人工智能 (<code>cs.AI</code>)<br />
+<strong>arXiv ID：</strong> <a href="https://arxiv.org/abs/2608.09133">arXiv:2608.09133 [cs.CV]</a><br />
+<strong>提交时间：</strong> 2026年8月10日  </p>
+<hr />
+<h2 id="_2">📌 执行摘要</h2>
+<blockquote>
+<p>While large generative models have significantly improved the perceptual quality of image super-resolution (SR), maintaining true fidelity to low-resolution (LR) observations remains a persistent hurdle. </p>
+<p>This paper identifies a critical limitation in Diffusion Transformers (DiTs) built on latent representations: <strong>the compression bottleneck of the Variational Autoencoder (VAE) weakens fine-grained spatial information</strong>, leading to hallucinated details that lack grounding in the input image. To address this, the authors introduce the <strong>Pixel-Grounded Super-Resolution (PGSR)</strong> framework. By extracting and reusing pre-VAE pixel evidence, PGSR achieves a superior realism-fidelity trade-off without retraining massive pretrained backbones.</p>
+</blockquote>
+<p>虽然大型生成模型显著提升了图像超分辨率（SR）的感知质量，但保持对低分辨率（LR）观测结果的真正保真度依然是一个长期的障碍。本文指出了基于隐空间表征构建的扩散Transformer（DiT）的一个关键局限性：<strong>变分自编码器（VAE）的压缩瓶颈削弱了细粒度空间信息</strong>，导致模型产生缺乏输入图像依据的幻觉细节。为了解决这一问题，作者引入了<strong>像素基础超分辨率（PGSR）</strong>框架。通过提取并重用VAE编码前的像素证据，PGSR在无需重新训练庞大预训练骨干网络的前提下，实现了更优的真实感与保真度权衡。</p>
+<hr />
+<h2 id="_3">🔍 核心洞察与隐空间扩散的问题所在</h2>
+<blockquote>
+<ul>
+<li><strong>The Compression Bottleneck:</strong> Standard latent diffusion models rely on VAEs to compress images into latent space. During this process, high-frequency spatial details are often lost, causing the model to "forget" precise pixel configurations.</li>
+<li><strong>Weakly Grounded Hallucinations:</strong> As a result, subsequent generation steps introduce fine details that look visually appealing but do not accurately reflect the original LR observation.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>压缩瓶颈：</strong> 标准的隐空间扩散模型依赖VAE将图像压缩到隐空间中。在此过程中，高频空间细节往往会丢失，导致模型“遗忘”精确的像素配置。</li>
+<li><strong>弱基础的幻觉：</strong> 因此，后续的生成步骤会引入一些看起来视觉效果不错、但并未准确反映原始LR观测结果的精细细节。</li>
+</ul>
+<hr />
+<h2 id="pgsr">🛠️ 提出方法：像素基础超分辨率 (PGSR)</h2>
+<blockquote>
+<p>The PGSR framework re-evaluates generative SR from a representation perspective. Instead of relying exclusively on compressed latent conditions, it preserves pre-VAE pixel evidence from the upsampled LR image and integrates it across two crucial stages:</p>
+<ol>
+<li><strong>Condition-Side Trajectory Guidance:</strong> Fuses LR-derived pixel evidence directly with the latent LR condition to steer the latent restoration trajectory.</li>
+<li><strong>Decoder-Side Pixel Grounding:</strong> Injects multi-scale pixel features straight into the frozen VAE decoder, firmly grounding the final image rendering in authentic, LR-observed cues.</li>
+</ol>
+<h3 id="efficiency-scalability">Efficiency &amp; Scalability</h3>
+<p>To make adaptation practical for large pretrained DiT models:
+* The core latent autoencoder and the main flow-matching backbone are kept <strong>completely frozen</strong>.
+* Only lightweight restoration modules are trained.
+* An efficient <strong>local-window attention variant</strong> is introduced to boost high-resolution efficiency and scalability.</p>
+</blockquote>
+<p>PGSR框架从表征视角重新评估了生成式超分辨率。它没有单纯依赖压缩后的隐空间条件，而是保留了来自上采样LR图像的VAE编码前像素证据，并将其整合到两个关键阶段中：</p>
+<ol>
+<li><strong>条件侧轨迹引导：</strong> 将LR导出的像素 evidence（证据）直接与隐空间LR条件相融合，以引导隐空间恢复轨迹。</li>
+<li><strong>解码器侧像素基础化：</strong> 将多尺度像素特征直接注入到冻结的VAE解码器中，将最终的图像渲染牢牢锚定在真实的LR观测线索上。</li>
+</ol>
+<h3 id="_4">效率与可扩展性</h3>
+<p>为了使这种适配方案对大型预训练DiT模型切实可行：
+* 核心的隐空间自编码器和主要的流匹配（flow-matching）骨干网络保持<strong>完全冻结</strong>。
+* 仅训练轻量级的恢复模块。
+* 引入了高效的<strong>局部窗口注意力变体</strong>，以提升高分辨率下的效率和可扩展性。</p>
+<hr />
+<h2 id="_5">📊 结果与性能</h2>
+<blockquote>
+<p>Extensive empirical evaluations show that <strong>PGSR</strong> effectively balances realism and fidelity, consistently outperforming existing latent generative SR methods by producing sharper, more visually convincing, and faithful results.</p>
+</blockquote>
+<p>广泛的实证评估表明，<strong>PGSR</strong> 有效地平衡了真实感与保真度，通过生成更锐利、视觉上更具说服力且忠于原图的结果，始终优于现有的隐空间生成式超分辨率方法。</p>
+<hr />
+<h2 id="_6">🔗 链接与资源</h2>
+<blockquote>
+<ul>
+<li><strong>Paper:</strong> <a href="https://arxiv.org/abs/2608.09133">arXiv:2608.09133</a></li>
+<li><strong>PDF Download:</strong> <a href="https://arxiv.org/pdf/2608.09133">Direct PDF Link</a></li>
+<li><strong>HTML Version:</strong> <a href="https://arxiv.org/html/2608.09133v1">arXiv HTML (Experimental)</a></li>
+<li><strong>Citations &amp; Metrics:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.09133">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.09133">Semantic Scholar</a></li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>论文地址：</strong> <a href="https://arxiv.org/abs/2608.09133">arXiv:2608.09133</a></li>
+<li><strong>PDF 下载：</strong> <a href="https://arxiv.org/pdf/2608.09133">PDF 直链</a></li>
+<li><strong>HTML 版本：</strong> <a href="https://arxiv.org/html/2608.09133v1">arXiv HTML (实验性)</a></li>
+<li><strong>引用与指标：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.09133">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.09133">Semantic Scholar</a></li>
+</ul>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">扩散模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">超分辨率</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">计算机视觉</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">变分自编码器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">图像生成</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
