@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-08-13**: [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
 - **2026-08-12**: [考虑使用 ACE？我们能用更少的 Token 实现它](blog/posts/2026-08-12-考虑使用 ACE？我们能用更少的 Token 实现它.md)
 - **2026-08-11**: [构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制](blog/posts/2026-08-11-构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制.md)
 - **2026-08-10**: [追踪一个 Zsh 历史记录数据丢失漏洞 🐞](blog/posts/2026-08-10-追踪一个 Zsh 历史记录数据丢失漏洞 🐞.md)

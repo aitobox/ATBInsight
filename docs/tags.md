@@ -36,6 +36,11 @@ title: 标签浏览
 
 - [大模型引导的仿真轨迹启发式设计：动态生产与AGV调度案例研究](blog/posts/2026-08-12-大模型引导的仿真轨迹启发式设计：动态生产与AGV调度案例研究.md)
 
+## AI
+
+- [Postgres 中的自动向量嵌入](blog/posts/2026-08-13-Postgres 中的自动向量嵌入.md)
+- [database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库](blog/posts/2026-08-13-database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库.md)
+
 ## AI Agent
 
 - [智能体资源发现：让智能体自行搜索工具、技能与其他智能体](blog/posts/2026-08-07-智能体资源发现：让智能体自行搜索工具、技能与其他智能体.md)
@@ -67,6 +72,10 @@ title: 标签浏览
 ## AI代理
 
 - [无法追责的授权、日渐衰退的技能：绘制职场AI代理的风险图谱](blog/posts/2026-08-12-无法追责的授权、日渐衰退的技能：绘制职场AI代理的风险图谱.md)
+
+## AI助手
+
+- [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
 
 ## AI基准测试
 
@@ -136,6 +145,11 @@ title: 标签浏览
 
 - [考虑使用 ACE？我们能用更少的 Token 实现它](blog/posts/2026-08-12-考虑使用 ACE？我们能用更少的 Token 实现它.md)
 
+## API
+
+- [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
+- [PostgREST 聚合函数使用指南](blog/posts/2026-08-13-PostgREST 聚合函数使用指南.md)
+
 ## ARD
 
 - [智能体资源发现：让智能体自行搜索工具、技能与其他智能体](blog/posts/2026-08-07-智能体资源发现：让智能体自行搜索工具、技能与其他智能体.md)
@@ -169,6 +183,8 @@ title: 标签浏览
 ## Apache Iceberg
 
 - [智能压实：通过湖仓表元数据预测压实效用](blog/posts/2026-08-12-智能压实：通过湖仓表元数据预测压实效用.md)
+- [开放数据标准：Postgres、OTel 与 Iceberg](blog/posts/2026-08-13-开放数据标准：Postgres、OTel 与 Iceberg.md)
+- [Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）](blog/posts/2026-08-13-Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）.md)
 
 ## AutoML
 
@@ -189,6 +205,10 @@ title: 标签浏览
 ## Benchmark
 
 - [HarnessSafe：评估智能体外壳中持久化载体的安全性](blog/posts/2026-08-11-HarnessSafe：评估智能体外壳中持久化载体的安全性.md)
+
+## Brick
+
+- [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
 
 ## C++
 
@@ -211,10 +231,12 @@ title: 标签浏览
 ## CI/CD
 
 - [结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布](blog/posts/2026-08-07-结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布.md)
+- [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
 
 ## CLI
 
 - [将 hf CLI 设计为面向智能体的 Hub 交互优化工具](blog/posts/2026-08-07-将 hf CLI 设计为面向智能体的 Hub 交互优化工具.md)
+- [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
 
 ## COLM
 
@@ -239,9 +261,17 @@ title: 标签浏览
 
 - [面向大规模 GPU 推理的 KV Cache 预测性多层内存管理](blog/posts/2026-08-11-面向大规模 GPU 推理的 KV Cache 预测性多层内存管理.md)
 
+## Cal.com
+
+- [使用 Postgres 外表封装器 (FDW) 实现日历集成](blog/posts/2026-08-13-使用 Postgres 外表封装器 -FDW- 实现日历集成.md)
+
 ## Chain-of-Thought
 
 - [深思熟虑，一语中的：ReLIT，一种递归潜在隐式 Transformer 框架](blog/posts/2026-08-12-深思熟虑，一语中的：ReLIT，一种递归潜在隐式 Transformer 框架.md)
+
+## ChatGPT
+
+- [使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用](blog/posts/2026-08-13-使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用.md)
 
 ## Chrome扩展
 
@@ -279,9 +309,21 @@ title: 标签浏览
 
 - [NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人](blog/posts/2026-08-07-NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人.md)
 
+## Cron
+
+- [使用 Edge Functions、Cron 和队列处理大规模任务](blog/posts/2026-08-13-使用 Edge Functions、Cron 和队列处理大规模任务.md)
+
+## DBOS
+
+- [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
+
 ## DSL
 
 - [并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架](blog/posts/2026-08-11-并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架.md)
+
+## DevOps
+
+- [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
 
 ## DiDPO
 
@@ -303,9 +345,25 @@ title: 标签浏览
 
 - [以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法](blog/posts/2026-08-11-以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法.md)
 
+## Edge Functions
+
+- [使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用](blog/posts/2026-08-13-使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用.md)
+- [使用 Edge Functions、Cron 和队列处理大规模任务](blog/posts/2026-08-13-使用 Edge Functions、Cron 和队列处理大规模任务.md)
+- [Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持](blog/posts/2026-08-13-Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持.md)
+
 ## EnvACE
 
 - [EnvACE：通过世界彩排将环境动力学内化用于智能体强化学习](blog/posts/2026-08-07-EnvACE：通过世界彩排将环境动力学内化用于智能体强化学习.md)
+
+## Expo
+
+- [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
+
+## FDW
+
+- [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
+- [使用 Postgres 外表封装器 (FDW) 实现日历集成](blog/posts/2026-08-13-使用 Postgres 外表封装器 -FDW- 实现日历集成.md)
+- [在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）](blog/posts/2026-08-13-在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）.md)
 
 ## FastAPI
 
@@ -318,6 +376,10 @@ title: 标签浏览
 ## FlashAttention
 
 - [PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析](blog/posts/2026-08-07-PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析.md)
+
+## Flutter
+
+- [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
 
 ## Fortran
 
@@ -483,6 +545,10 @@ title: 标签浏览
 
 - [考虑使用 ACE？我们能用更少的 Token 实现它](blog/posts/2026-08-12-考虑使用 ACE？我们能用更少的 Token 实现它.md)
 
+## LSP
+
+- [Postgres 语言服务器：初始版本正式发布](blog/posts/2026-08-13-Postgres 语言服务器：初始版本正式发布.md)
+
 ## LanceDB
 
 - [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
@@ -496,6 +562,10 @@ title: 标签浏览
 
 - [异构注意力内存的运行时可观测性](blog/posts/2026-08-07-异构注意力内存的运行时可观测性.md)
 - [P^3：用于验证代码生成的联合程序与证明规划](blog/posts/2026-08-12-P^3：用于验证代码生成的联合程序与证明规划.md)
+
+## Legend-State
+
+- [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
 
 ## Linux
 
@@ -518,6 +588,10 @@ title: 标签浏览
 - [CosmosAlign：适配世界基础模型以实现生成式交通视频预测](blog/posts/2026-08-12-CosmosAlign：适配世界基础模型以实现生成式交通视频预测.md)
 - [轻量级微调下的路由器敏感性识别混合专家模型中的可剪枝专家](blog/posts/2026-08-12-轻量级微调下的路由器敏感性识别混合专家模型中的可剪枝专家.md)
 
+## Local-first
+
+- [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
+
 ## Logit Lens
 
 - [相同的注意力，不同的真相：结合 Logit-Lens 与视觉注意力来检测和缓解 LVLM 对象幻觉](blog/posts/2026-08-11-相同的注意力，不同的真相：结合 Logit-Lens 与视觉注意力来检测和缓解 LVLM 对象幻觉.md)
@@ -527,6 +601,8 @@ title: 标签浏览
 - [截图还是工具？混合 GUI-MCP 计算机操作智能体中的工具调用与多模态上下文管理](blog/posts/2026-08-07-截图还是工具？混合 GUI-MCP 计算机操作智能体中的工具调用与多模态上下文管理.md)
 - [智能体资源发现：让智能体自行搜索工具、技能与其他智能体](blog/posts/2026-08-07-智能体资源发现：让智能体自行搜索工具、技能与其他智能体.md)
 - [为 Reachy Mini 添加 MCP 工具支持](blog/posts/2026-08-07-为 Reachy Mini 添加 MCP 工具支持.md)
+- [安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南](blog/posts/2026-08-13-安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南.md)
+- [使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用](blog/posts/2026-08-13-使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用.md)
 
 ## MILP
 
@@ -565,6 +641,10 @@ title: 标签浏览
 
 - [Hugging Face 模型现已登陆 Foundry Managed Compute](blog/posts/2026-08-07-Hugging Face 模型现已登陆 Foundry Managed Compute.md)
 
+## MapLibre
+
+- [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
+
 ## Maxis
 
 - [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
@@ -592,6 +672,10 @@ title: 标签浏览
 ## ModernBERT
 
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
+
+## Multigres
+
+- [Multigres v0.1 Alpha：Postgres 的操作系统](blog/posts/2026-08-13-Multigres v0.1 Alpha：Postgres 的操作系统.md)
 
 ## Muon
 
@@ -673,6 +757,12 @@ title: 标签浏览
 
 - [OpenForgeRL：在任意环境中训练 Harness 原生智能体](blog/posts/2026-08-11-OpenForgeRL：在任意环境中训练 Harness 原生智能体.md)
 
+## OpenTelemetry
+
+- [Supabase Storage：性能、安全性与可靠性的重大更新](blog/posts/2026-08-13-Supabase Storage：性能、安全性与可靠性的重大更新.md)
+- [OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机](blog/posts/2026-08-13-OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机.md)
+- [开放数据标准：Postgres、OTel 与 Iceberg](blog/posts/2026-08-13-开放数据标准：Postgres、OTel 与 Iceberg.md)
+
 ## OptiDSL
 
 - [并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架](blog/posts/2026-08-11-并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架.md)
@@ -686,6 +776,11 @@ title: 标签浏览
 - [超越LoRA：你能打败最流行的微调技术吗？](blog/posts/2026-08-07-超越LoRA：你能打败最流行的微调技术吗？.md)
 - [LoCA：视觉基础模型的空间感知低秩卷积自适应](blog/posts/2026-08-11-LoCA：视觉基础模型的空间感知低秩卷积自适应.md)
 - [谱奇异值揭示了Transformer注意力机制中占主导地位的学习结构](blog/posts/2026-08-12-谱奇异值揭示了Transformer注意力机制中占主导地位的学习结构.md)
+
+## PGlite
+
+- [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
+- [database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库](blog/posts/2026-08-13-database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库.md)
 
 ## PIC
 
@@ -702,6 +797,39 @@ title: 标签浏览
 ## PolyMath
 
 - [推理型大语言模型中的隐藏语言一致性现象](blog/posts/2026-08-12-推理型大语言模型中的隐藏语言一致性现象.md)
+
+## PostGIS
+
+- [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
+
+## PostgREST
+
+- [PostgREST 聚合函数使用指南](blog/posts/2026-08-13-PostgREST 聚合函数使用指南.md)
+
+## PostgreSQL
+
+- [何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）](blog/posts/2026-08-13-何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）.md)
+- [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
+- [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
+- [使用 Postgres 外表封装器 (FDW) 实现日历集成](blog/posts/2026-08-13-使用 Postgres 外表封装器 -FDW- 实现日历集成.md)
+- [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
+- [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
+- [PostgREST 聚合函数使用指南](blog/posts/2026-08-13-PostgREST 聚合函数使用指南.md)
+- [在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）](blog/posts/2026-08-13-在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）.md)
+- [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
+- [Postgres 角色与权限管理指南](blog/posts/2026-08-13-Postgres 角色与权限管理指南.md)
+- [使用范围列（Range Columns）简化基于时间的查询](blog/posts/2026-08-13-使用范围列（Range Columns）简化基于时间的查询.md)
+
+## Postgres
+
+- [Multigres v0.1 Alpha：Postgres 的操作系统](blog/posts/2026-08-13-Multigres v0.1 Alpha：Postgres 的操作系统.md)
+- [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
+- [Supabase 2025 年度安全回顾](blog/posts/2026-08-13-Supabase 2025 年度安全回顾.md)
+- [开放数据标准：Postgres、OTel 与 Iceberg](blog/posts/2026-08-13-开放数据标准：Postgres、OTel 与 Iceberg.md)
+- [Postgres 中的自动向量嵌入](blog/posts/2026-08-13-Postgres 中的自动向量嵌入.md)
+- [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
+- [Postgres 语言服务器：初始版本正式发布](blog/posts/2026-08-13-Postgres 语言服务器：初始版本正式发布.md)
+- [database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库](blog/posts/2026-08-13-database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库.md)
 
 ## Profiler
 
@@ -755,6 +883,11 @@ title: 标签浏览
 
 - [基于深度引导的拥挤场景视频目标计数](blog/posts/2026-08-07-基于深度引导的拥挤场景视频目标计数.md)
 
+## RLS
+
+- [Supabase 2025 年度安全回顾](blog/posts/2026-08-13-Supabase 2025 年度安全回顾.md)
+- [Supabase Realtime：广播与在线状态的授权机制](blog/posts/2026-08-13-Supabase Realtime：广播与在线状态的授权机制.md)
+
 ## RLVR
 
 - [提升多模态 RLVR 的泛化鲁棒性](blog/posts/2026-08-12-提升多模态 RLVR 的泛化鲁棒性.md)
@@ -775,6 +908,14 @@ title: 标签浏览
 
 - [为 Reachy Mini 添加 MCP 工具支持](blog/posts/2026-08-07-为 Reachy Mini 添加 MCP 工具支持.md)
 
+## React Native
+
+- [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
+
+## Realtime
+
+- [Supabase Realtime：广播与在线状态的授权机制](blog/posts/2026-08-13-Supabase Realtime：广播与在线状态的授权机制.md)
+
 ## RecSys
 
 - [塑造你的信息流：基于大语言模型的对话式推荐智能体系统](blog/posts/2026-08-11-塑造你的信息流：基于大语言模型的对话式推荐智能体系统.md)
@@ -794,6 +935,12 @@ title: 标签浏览
 ## Rosetta
 
 - [仅凭数值重构元数据：恢复无文档数据仓库中的列语义](blog/posts/2026-08-12-仅凭数值重构元数据：恢复无文档数据仓库中的列语义.md)
+
+## Rust
+
+- [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
+- [Postgres 语言服务器：初始版本正式发布](blog/posts/2026-08-13-Postgres 语言服务器：初始版本正式发布.md)
+- [在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）](blog/posts/2026-08-13-在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）.md)
 
 ## SA-PPG
 
@@ -819,6 +966,16 @@ title: 标签浏览
 ## SQL
 
 - [InferQ：面向量子电路模拟的数据库基准测试](blog/posts/2026-08-07-InferQ：面向量子电路模拟的数据库基准测试.md)
+- [Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）](blog/posts/2026-08-13-Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）.md)
+- [Postgres 语言服务器：初始版本正式发布](blog/posts/2026-08-13-Postgres 语言服务器：初始版本正式发布.md)
+
+## SQLite
+
+- [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
+
+## SQL优化
+
+- [使用范围列（Range Columns）简化基于时间的查询](blog/posts/2026-08-13-使用范围列（Range Columns）简化基于时间的查询.md)
 
 ## SQL生成
 
@@ -862,6 +1019,37 @@ title: 标签浏览
 ## SmartNIC
 
 - [LGNNIC：利用智能网卡（SmartNIC）加速大规模图神经网络（GNN）训练](blog/posts/2026-08-12-LGNNIC：利用智能网卡（SmartNIC）加速大规模图神经网络（GNN）训练.md)
+
+## Storage
+
+- [Supabase Storage：性能、安全性与可靠性的重大更新](blog/posts/2026-08-13-Supabase Storage：性能、安全性与可靠性的重大更新.md)
+
+## Supabase
+
+- [何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）](blog/posts/2026-08-13-何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）.md)
+- [Supabase Storage：性能、安全性与可靠性的重大更新](blog/posts/2026-08-13-Supabase Storage：性能、安全性与可靠性的重大更新.md)
+- [Supabase 2025 年度安全回顾](blog/posts/2026-08-13-Supabase 2025 年度安全回顾.md)
+- [安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南](blog/posts/2026-08-13-安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南.md)
+- [使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用](blog/posts/2026-08-13-使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用.md)
+- [使用 Edge Functions、Cron 和队列处理大规模任务](blog/posts/2026-08-13-使用 Edge Functions、Cron 和队列处理大规模任务.md)
+- [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
+- [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
+- [Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）](blog/posts/2026-08-13-Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）.md)
+- [Postgres 中的自动向量嵌入](blog/posts/2026-08-13-Postgres 中的自动向量嵌入.md)
+- [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
+- [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
+- [使用 Postgres 外表封装器 (FDW) 实现日历集成](blog/posts/2026-08-13-使用 Postgres 外表封装器 -FDW- 实现日历集成.md)
+- [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
+- [Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持](blog/posts/2026-08-13-Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持.md)
+- [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
+- [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
+- [Supabase Realtime：广播与在线状态的授权机制](blog/posts/2026-08-13-Supabase Realtime：广播与在线状态的授权机制.md)
+- [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
+- [在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）](blog/posts/2026-08-13-在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）.md)
+
+## Supabase Wrappers
+
+- [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
 
 ## TEPA
 
@@ -922,6 +1110,7 @@ title: 标签浏览
 
 - [在 Transformers.js 中体验提议中的跨域存储 API](blog/posts/2026-08-07-在 Transformers.js 中体验提议中的跨域存储 API.md)
 - [如何在 Chrome 扩展程序中使用 Transformers.js](blog/posts/2026-08-07-如何在 Chrome 扩展程序中使用 Transformers.js.md)
+- [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
 
 ## Transpiler
 
@@ -940,6 +1129,10 @@ title: 标签浏览
 - [LeRobot v0.6.0：想象、评估、改进](blog/posts/2026-08-07-LeRobot v0.6.0：想象、评估、改进.md)
 - [WAM-Diff2：用于高效率自动驾驶VLA的分层自回归到扩散蒸馏](blog/posts/2026-08-11-WAM-Diff2：用于高效率自动驾驶VLA的分层自回归到扩散蒸馏.md)
 
+## Vacuum
+
+- [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
+
 ## Volve油田
 
 - [基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型](blog/posts/2026-08-07-基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型.md)
@@ -948,6 +1141,12 @@ title: 标签浏览
 
 - [在 Transformers.js 中体验提议中的跨域存储 API](blog/posts/2026-08-07-在 Transformers.js 中体验提议中的跨域存储 API.md)
 
+## WebAssembly
+
+- [使用 Postgres 外表封装器 (FDW) 实现日历集成](blog/posts/2026-08-13-使用 Postgres 外表封装器 -FDW- 实现日历集成.md)
+- [database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库](blog/posts/2026-08-13-database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库.md)
+- [在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）](blog/posts/2026-08-13-在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）.md)
+
 ## WebGPU
 
 - [如何在 Chrome 扩展程序中使用 Transformers.js](blog/posts/2026-08-07-如何在 Chrome 扩展程序中使用 Transformers.js.md)
@@ -955,6 +1154,10 @@ title: 标签浏览
 ## WebRider
 
 - [WebRider：面向实时网页辅助的个性化意图控制器](blog/posts/2026-08-11-WebRider：面向实时网页辅助的个性化意图控制器.md)
+
+## WebSocket
+
+- [Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持](blog/posts/2026-08-13-Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持.md)
 
 ## Whisper
 
@@ -1004,6 +1207,17 @@ title: 标签浏览
 ## openPangu
 
 - [openPangu模型在昇腾NPU上的量化实证研究](blog/posts/2026-08-11-openPangu模型在昇腾NPU上的量化实证研究.md)
+
+## pgRouting
+
+- [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
+
+## pgvector
+
+- [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
+- [Postgres 中的自动向量嵌入](blog/posts/2026-08-13-Postgres 中的自动向量嵌入.md)
+- [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
+- [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
 
 ## vLLM
 
@@ -1430,6 +1644,7 @@ title: 标签浏览
 
 - [创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）](blog/posts/2026-08-07-创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）.md)
 - [面向大规模 GPU 推理的 KV Cache 预测性多层内存管理](blog/posts/2026-08-11-面向大规模 GPU 推理的 KV Cache 预测性多层内存管理.md)
+- [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
 
 ## 内容分发网络
 
@@ -1488,6 +1703,10 @@ title: 标签浏览
 ## 分布式训练
 
 - [AWS 上的基础模型训练与推理构建模块](blog/posts/2026-08-07-AWS 上的基础模型训练与推理构建模块.md)
+
+## 分析存储
+
+- [Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）](blog/posts/2026-08-13-Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）.md)
 
 ## 前向微调
 
@@ -1676,6 +1895,7 @@ title: 标签浏览
 ## 可观测性
 
 - [TelemetrySuffBench：智能体遥测数据是否足以进行故障根源诊断？](blog/posts/2026-08-12-TelemetrySuffBench：智能体遥测数据是否足以进行故障根源诊断？.md)
+- [OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机](blog/posts/2026-08-13-OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机.md)
 
 ## 可视化分析
 
@@ -1723,6 +1943,14 @@ title: 标签浏览
 
 - [长 SKILL 合规性作为逻辑推理：基于闭包扎根检测与缩放引导的策略内蒸馏](blog/posts/2026-08-12-长 SKILL 合规性作为逻辑推理：基于闭包扎根检测与缩放引导的策略内蒸馏.md)
 
+## 后端开发
+
+- [Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持](blog/posts/2026-08-13-Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持.md)
+
+## 后端架构
+
+- [使用 Edge Functions、Cron 和队列处理大规模任务](blog/posts/2026-08-13-使用 Edge Functions、Cron 和队列处理大规模任务.md)
+
 ## 后训练量化
 
 - [PTQ4SNN：面向脉冲神经网络的膜电位感知后训练量化技术](blog/posts/2026-08-11-PTQ4SNN：面向脉冲神经网络的膜电位感知后训练量化技术.md)
@@ -1735,10 +1963,16 @@ title: 标签浏览
 ## 向量嵌入
 
 - [InsightEmb：学习用于智能体洞察检索的动作-意图嵌入](blog/posts/2026-08-07-InsightEmb：学习用于智能体洞察检索的动作-意图嵌入.md)
+- [Postgres 中的自动向量嵌入](blog/posts/2026-08-13-Postgres 中的自动向量嵌入.md)
+
+## 向量搜索
+
+- [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
 
 ## 向量数据库
 
 - [AkasicDB：基于统一向量-图-关系型 DBMS 演示全能检索增强生成（Omni RAG）](blog/posts/2026-08-12-AkasicDB：基于统一向量-图-关系型 DBMS 演示全能检索增强生成（Omni RAG）.md)
+- [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
 
 ## 向量检索
 
@@ -1821,6 +2055,7 @@ title: 标签浏览
 ## 图数据库
 
 - [AkasicDB：基于统一向量-图-关系型 DBMS 演示全能检索增强生成（Omni RAG）](blog/posts/2026-08-12-AkasicDB：基于统一向量-图-关系型 DBMS 演示全能检索增强生成（Omni RAG）.md)
+- [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
 
 ## 图神经网络
 
@@ -2230,6 +2465,10 @@ title: 标签浏览
 
 - [MathShikkha：针对孟加拉语数学推理的小型语言模型中“仅答案”与“思维链”监督的对照研究](blog/posts/2026-08-12-MathShikkha：针对孟加拉语数学推理的小型语言模型中“仅答案”与“思维链”监督的对照研究.md)
 
+## 安全
+
+- [Supabase 2025 年度安全回顾](blog/posts/2026-08-13-Supabase 2025 年度安全回顾.md)
+
 ## 安全代理
 
 - [面向模块化大模型安全代理的事后轨迹风险认证](blog/posts/2026-08-07-面向模块化大模型安全代理的事后轨迹风险认证.md)
@@ -2242,6 +2481,10 @@ title: 标签浏览
 ## 安全性
 
 - [所有大语言模型都能感知自身是否在输出有害内容吗？针对模型家族潜在空间安全探测器的可复现性研究](blog/posts/2026-08-12-所有大语言模型都能感知自身是否在输出有害内容吗？针对模型家族潜在空间安全探测器的可复现性研究.md)
+
+## 安全授权
+
+- [Supabase Realtime：广播与在线状态的授权机制](blog/posts/2026-08-13-Supabase Realtime：广播与在线状态的授权机制.md)
 
 ## 安全检测
 
@@ -2258,6 +2501,10 @@ title: 标签浏览
 ## 安全认证
 
 - [SigV4 认证：意料之外的复杂性](blog/posts/2026-08-07-SigV4 认证：意料之外的复杂性.md)
+
+## 实时应用
+
+- [Supabase Realtime：广播与在线状态的授权机制](blog/posts/2026-08-13-Supabase Realtime：广播与在线状态的授权机制.md)
 
 ## 实时生成
 
@@ -2318,6 +2565,10 @@ title: 标签浏览
 
 - [基准测试的基准：评估对话智能体评测集](blog/posts/2026-08-07-基准测试的基准：评估对话智能体评测集.md)
 
+## 对象存储
+
+- [开放数据标准：Postgres、OTel 与 Iceberg](blog/posts/2026-08-13-开放数据标准：Postgres、OTel 与 Iceberg.md)
+
 ## 对象幻觉
 
 - [相同的注意力，不同的真相：结合 Logit-Lens 与视觉注意力来检测和缓解 LVLM 对象幻觉](blog/posts/2026-08-11-相同的注意力，不同的真相：结合 Logit-Lens 与视觉注意力来检测和缓解 LVLM 对象幻觉.md)
@@ -2333,6 +2584,10 @@ title: 标签浏览
 ## 导管追踪
 
 - [心脏介入手术中增强型实时六自由度扩展现实导管追踪技术](blog/posts/2026-08-12-心脏介入手术中增强型实时六自由度扩展现实导管追踪技术.md)
+
+## 小米
+
+- [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
 
 ## 层剪枝
 
@@ -2363,6 +2618,10 @@ title: 标签浏览
 ## 工业物联网
 
 - [基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型](blog/posts/2026-08-07-基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型.md)
+
+## 工作流引擎
+
+- [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
 
 ## 工具使用
 
@@ -2417,6 +2676,7 @@ title: 标签浏览
 ## 延迟优化
 
 - [模型路由看似简单，实则不然](blog/posts/2026-08-07-模型路由看似简单，实则不然.md)
+- [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
 
 ## 延迟归因
 
@@ -2446,6 +2706,7 @@ title: 标签浏览
 
 - [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
+- [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
 
 ## 开源AI
 
@@ -2468,6 +2729,10 @@ title: 标签浏览
 - [它够具智能体特性吗？在自有工具上对开源模型进行基准测试](blog/posts/2026-08-07-它够具智能体特性吗？在自有工具上对开源模型进行基准测试.md)
 - [开源权重模型在金融文本理解领域能否与闭源模型一较高下？](blog/posts/2026-08-12-开源权重模型在金融文本理解领域能否与闭源模型一较高下？.md)
 
+## 开源治理
+
+- [OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机](blog/posts/2026-08-13-OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机.md)
+
 ## 开源硬件
 
 - [Grabette：用于录制机器人操作数据的开源系统](blog/posts/2026-08-07-Grabette：用于录制机器人操作数据的开源系统.md)
@@ -2489,6 +2754,10 @@ title: 标签浏览
 ## 异步处理
 
 - [在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上](blog/posts/2026-08-07-在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上.md)
+
+## 异步流式传输
+
+- [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
 
 ## 弱到强泛化
 
@@ -2618,6 +2887,10 @@ title: 标签浏览
 - [LGNNIC：利用智能网卡（SmartNIC）加速大规模图神经网络（GNN）训练](blog/posts/2026-08-12-LGNNIC：利用智能网卡（SmartNIC）加速大规模图神经网络（GNN）训练.md)
 - [我们能否优化性能与碳排放的盈亏平衡点？探索更绿色的大语言模型](blog/posts/2026-08-12-我们能否优化性能与碳排放的盈亏平衡点？探索更绿色的大语言模型.md)
 - [无攻击者的游戏：选择压力下大模型驱动搜索中的基准测试指纹识别](blog/posts/2026-08-12-无攻击者的游戏：选择压力下大模型驱动搜索中的基准测试指纹识别.md)
+- [何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）](blog/posts/2026-08-13-何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）.md)
+- [Supabase Storage：性能、安全性与可靠性的重大更新](blog/posts/2026-08-13-Supabase Storage：性能、安全性与可靠性的重大更新.md)
+- [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
+- [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
 
 ## 性能剖析
 
@@ -2667,6 +2940,10 @@ title: 标签浏览
 ## 扎兰基维奇问题
 
 - [两个有限前沿切片上的扎兰基维奇精确值](blog/posts/2026-08-12-两个有限前沿切片上的扎兰基维奇精确值.md)
+
+## 扩展开发
+
+- [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
 
 ## 扩展现实
 
@@ -2743,6 +3020,10 @@ title: 标签浏览
 
 - [绕过 Krum：联邦学习中的感知选择性后门攻击](blog/posts/2026-08-11-绕过 Krum：联邦学习中的感知选择性后门攻击.md)
 
+## 持久化
+
+- [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
+
 ## 持久化威胁
 
 - [HarnessSafe：评估智能体外壳中持久化载体的安全性](blog/posts/2026-08-11-HarnessSafe：评估智能体外壳中持久化载体的安全性.md)
@@ -2801,6 +3082,7 @@ title: 标签浏览
 - [并非真正的无障碍：Android辅助功能如何将移动端AI智能体暴露于间接提示词注入风险中](blog/posts/2026-08-12-并非真正的无障碍：Android辅助功能如何将移动端AI智能体暴露于间接提示词注入风险中.md)
 - [提示词注入的解构：一种用于结构化分析的组件模型](blog/posts/2026-08-12-提示词注入的解构：一种用于结构化分析的组件模型.md)
 - [抵御知识投毒与提示词注入的检索增强型入侵检测防御机制](blog/posts/2026-08-12-抵御知识投毒与提示词注入的检索增强型入侵检测防御机制.md)
+- [安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南](blog/posts/2026-08-13-安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南.md)
 
 ## 插件开发
 
@@ -2870,6 +3152,11 @@ title: 标签浏览
 
 - [MARS：用于奖励建模的边界与语义感知数据增强](blog/posts/2026-08-07-MARS：用于奖励建模的边界与语义感知数据增强.md)
 
+## 数据安全
+
+- [Supabase Storage：性能、安全性与可靠性的重大更新](blog/posts/2026-08-13-Supabase Storage：性能、安全性与可靠性的重大更新.md)
+- [安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南](blog/posts/2026-08-13-安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南.md)
+
 ## 数据工程
 
 - [SiriusDeliver：腾讯数仓交付自动化技术实践](blog/posts/2026-08-12-SiriusDeliver：腾讯数仓交付自动化技术实践.md)
@@ -2878,6 +3165,40 @@ title: 标签浏览
 
 - [InferQ：面向量子电路模拟的数据库基准测试](blog/posts/2026-08-07-InferQ：面向量子电路模拟的数据库基准测试.md)
 - [ScaleSense：阿里巴巴 AnalyticDB 中基于学习型资源评估的成本智能扩展框架](blog/posts/2026-08-12-ScaleSense：阿里巴巴 AnalyticDB 中基于学习型资源评估的成本智能扩展框架.md)
+- [何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）](blog/posts/2026-08-13-何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）.md)
+- [Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）](blog/posts/2026-08-13-Supabase 推出支持 Iceberg 的分析存储桶（Analytics Buckets）.md)
+- [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
+- [database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库](blog/posts/2026-08-13-database.build（前身 postgres.new）：配备 AI 交互界面的浏览器端 Postgres 数据库.md)
+
+## 数据库优化
+
+- [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
+
+## 数据库安全
+
+- [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
+- [PostgREST 聚合函数使用指南](blog/posts/2026-08-13-PostgREST 聚合函数使用指南.md)
+- [Postgres 角色与权限管理指南](blog/posts/2026-08-13-Postgres 角色与权限管理指南.md)
+
+## 数据库开发
+
+- [Postgres 语言服务器：初始版本正式发布](blog/posts/2026-08-13-Postgres 语言服务器：初始版本正式发布.md)
+
+## 数据库扩展
+
+- [Multigres v0.1 Alpha：Postgres 的操作系统](blog/posts/2026-08-13-Multigres v0.1 Alpha：Postgres 的操作系统.md)
+
+## 数据库维护
+
+- [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
+
+## 数据库设计
+
+- [使用范围列（Range Columns）简化基于时间的查询](blog/posts/2026-08-13-使用范围列（Range Columns）简化基于时间的查询.md)
+
+## 数据库调优
+
+- [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
 
 ## 数据管理
 
@@ -3212,6 +3533,11 @@ title: 标签浏览
 
 - [上下文不等于权限：金融市场智能体的结构化运行时治理](blog/posts/2026-08-12-上下文不等于权限：金融市场智能体的结构化运行时治理.md)
 
+## 权限管理
+
+- [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
+- [Postgres 角色与权限管理指南](blog/posts/2026-08-13-Postgres 角色与权限管理指南.md)
+
 ## 材料科学
 
 - [AutoMOOSE：用于自主相场模拟的智能体AI](blog/posts/2026-08-11-AutoMOOSE：用于自主相场模拟的智能体AI.md)
@@ -3229,6 +3555,8 @@ title: 标签浏览
 - [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 - [SigV4 认证：意料之外的复杂性](blog/posts/2026-08-07-SigV4 认证：意料之外的复杂性.md)
 - [gradio.Server：结合 Gradio 后端与任意自定义前端](blog/posts/2026-08-07-gradio.Server：结合 Gradio 后端与任意自定义前端.md)
+- [何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）](blog/posts/2026-08-13-何时选择只读副本（Read Replicas）与更大计算资源（Bigger Compute）.md)
+- [开放数据标准：Postgres、OTel 与 Iceberg](blog/posts/2026-08-13-开放数据标准：Postgres、OTel 与 Iceberg.md)
 
 ## 样本效率
 
@@ -3424,6 +3752,7 @@ title: 标签浏览
 - [基准测试的基准：评估对话智能体评测集](blog/posts/2026-08-07-基准测试的基准：评估对话智能体评测集.md)
 - [零差距不等同于恢复：基准测试污染的分层逐题概率评估与逐步缓解策略](blog/posts/2026-08-11-零差距不等同于恢复：基准测试污染的分层逐题概率评估与逐步缓解策略.md)
 - [追求 SOTA：时间序列预测必须采用分类特定的评估方法以消除虚假增益](blog/posts/2026-08-11-追求 SOTA：时间序列预测必须采用分类特定的评估方法以消除虚假增益.md)
+- [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
 
 ## 模型评测
 
@@ -3552,6 +3881,10 @@ title: 标签浏览
 
 - [在线推理校准：测试时训练赋能可泛化的共形大模型推理](blog/posts/2026-08-07-在线推理校准：测试时训练赋能可泛化的共形大模型推理.md)
 
+## 浏览器AI
+
+- [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
+
 ## 浏览器缓存
 
 - [在 Transformers.js 中体验提议中的跨域存储 API](blog/posts/2026-08-07-在 Transformers.js 中体验提议中的跨域存储 API.md)
@@ -3639,6 +3972,10 @@ title: 标签浏览
 ## 深度算子网络
 
 - [两步式 MV-DeepONet：由随机输入场驱动的不确定性传播概率算子学习](blog/posts/2026-08-12-两步式 MV-DeepONet：由随机输入场驱动的不确定性传播概率算子学习.md)
+
+## 深度防御
+
+- [安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南](blog/posts/2026-08-13-安全使用 Supabase MCP 与大语言模型：防范提示词注入与深度防御指南.md)
 
 ## 混合专家模型
 
@@ -3818,6 +4155,10 @@ title: 标签浏览
 
 - [AutoMOOSE：用于自主相场模拟的智能体AI](blog/posts/2026-08-11-AutoMOOSE：用于自主相场模拟的智能体AI.md)
 
+## 矢量瓦片
+
+- [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
+
 ## 知识图谱
 
 - [抽象事件因果规则：归纳与应用](blog/posts/2026-08-07-抽象事件因果规则：归纳与应用.md)
@@ -3901,6 +4242,10 @@ title: 标签浏览
 - [点火指数：衡量语言模型中的全局工作空间动力学](blog/posts/2026-08-07-点火指数：衡量语言模型中的全局工作空间动力学.md)
 - [ReLU 网络中隐藏规范对特征专业化的控制](blog/posts/2026-08-11-ReLU 网络中隐藏规范对特征专业化的控制.md)
 
+## 离线优先
+
+- [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
+
 ## 离线强化学习
 
 - [从专家演示中进行奖励分配的最小化要素](blog/posts/2026-08-11-从专家演示中进行奖励分配的最小化要素.md)
@@ -3953,6 +4298,10 @@ title: 标签浏览
 
 - [Capek 0.5：面向具身智能的以执行为中心的视觉语言模型](blog/posts/2026-08-11-Capek 0.5：面向具身智能的以执行为中心的视觉语言模型.md)
 - [大语言多模态模型模态转换：自主地理信息系统（GIS）代理的先决条件](blog/posts/2026-08-11-大语言多模态模型模态转换：自主地理信息系统（GIS）代理的先决条件.md)
+
+## 空间数据库
+
+- [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
 
 ## 空间结构
 
@@ -4007,6 +4356,7 @@ title: 标签浏览
 ## 算法
 
 - [一种简单的归约区间方法](blog/posts/2026-08-11-一种简单的归约区间方法.md)
+- [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
 
 ## 算法优化
 
@@ -4223,6 +4573,10 @@ title: 标签浏览
 
 - [绕过 Krum：联邦学习中的感知选择性后门攻击](blog/posts/2026-08-11-绕过 Krum：联邦学习中的感知选择性后门攻击.md)
 
+## 聚合函数
+
+- [PostgREST 聚合函数使用指南](blog/posts/2026-08-13-PostgREST 聚合函数使用指南.md)
+
 ## 聚合物模拟
 
 - [面向聚合物自动化粗粒化分子动力学的多智能体框架](blog/posts/2026-08-11-面向聚合物自动化粗粒化分子动力学的多智能体框架.md)
@@ -4395,6 +4749,10 @@ title: 标签浏览
 
 - [FI-TW：用于芬兰铁路晚点分析的开放列车天气数据集](blog/posts/2026-08-07-FI-TW：用于芬兰铁路晚点分析的开放列车天气数据集.md)
 
+## 范围类型
+
+- [使用范围列（Range Columns）简化基于时间的查询](blog/posts/2026-08-13-使用范围列（Range Columns）简化基于时间的查询.md)
+
 ## 荧光显微镜
 
 - [λSplit：用于荧光显微成像的自监督内容感知光谱解混模型](blog/posts/2026-08-07-λSplit：用于荧光显微成像的自监督内容感知光谱解混模型.md)
@@ -4483,6 +4841,10 @@ title: 标签浏览
 - [针对深度 OCR 系统的对抗性攻击](blog/posts/2026-08-12-针对深度 OCR 系统的对抗性攻击.md)
 - [从恢复到断崖：动作后训练如何削弱视觉语言模型（VLM）的深层深度可解码性](blog/posts/2026-08-12-从恢复到断崖：动作后训练如何削弱视觉语言模型（VLM）的深层深度可解码性.md)
 
+## 视频修复
+
+- [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
+
 ## 视频推理
 
 - [我在视频中寻找你：面向以人为中心视频推理的身份条件化查询](blog/posts/2026-08-11-我在视频中寻找你：面向以人为中心视频推理的身份条件化查询.md)
@@ -4498,6 +4860,10 @@ title: 标签浏览
 ## 视频预测
 
 - [CosmosAlign：适配世界基础模型以实现生成式交通视频预测](blog/posts/2026-08-12-CosmosAlign：适配世界基础模型以实现生成式交通视频预测.md)
+
+## 角色
+
+- [Postgres 角色与权限管理指南](blog/posts/2026-08-13-Postgres 角色与权限管理指南.md)
 
 ## 角色扮演
 
@@ -4552,6 +4918,7 @@ title: 标签浏览
 - [面向细粒度广义类别发现的傅里叶自监督方法](blog/posts/2026-08-12-面向细粒度广义类别发现的傅里叶自监督方法.md)
 - [SignLlama：通过优先处理视觉特征增强无词汇表手语翻译](blog/posts/2026-08-12-SignLlama：通过优先处理视觉特征增强无词汇表手语翻译.md)
 - [当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度](blog/posts/2026-08-12-当隐空间遗忘像素：恢复扩散Transformer超分辨率中的保真度.md)
+- [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
 
 ## 计算机辅助证明
 
@@ -4794,6 +5161,10 @@ title: 标签浏览
 
 - [我在视频中寻找你：面向以人为中心视频推理的身份条件化查询](blog/posts/2026-08-11-我在视频中寻找你：面向以人为中心视频推理的身份条件化查询.md)
 
+## 身份验证
+
+- [Supabase 2025 年度安全回顾](blog/posts/2026-08-13-Supabase 2025 年度安全回顾.md)
+
 ## 车辆路径问题
 
 - [利用深度强化学习解决车辆路径问题：工业卡车规划案例研究](blog/posts/2026-08-11-利用深度强化学习解决车辆路径问题：工业卡车规划案例研究.md)
@@ -4817,6 +5188,11 @@ title: 标签浏览
 - [RepoProbe：使用检查表评估架构感知的代码库理解能力](blog/posts/2026-08-07-RepoProbe：使用检查表评估架构感知的代码库理解能力.md)
 - [编程智能体的在线监控与纠偏导向](blog/posts/2026-08-11-编程智能体的在线监控与纠偏导向.md)
 - [PACE：用于自动化算法设计的原语感知代码演进](blog/posts/2026-08-11-PACE：用于自动化算法设计的原语感知代码演进.md)
+- [OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机](blog/posts/2026-08-13-OpenTelemetry 进展受阻：一场关于稳定性、规模与维护者的危机.md)
+
+## 软件开发
+
+- [使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用](blog/posts/2026-08-13-使用 Supabase Edge Functions 和 mcp-use 构建 ChatGPT 应用.md)
 
 ## 软体机器人
 
@@ -4831,6 +5207,8 @@ title: 标签浏览
 
 - [一图胜千Token：视觉语言模型如何在大幅降低AI能耗的同时提升准确率](blog/posts/2026-08-11-一图胜千Token：视觉语言模型如何在大幅降低AI能耗的同时提升准确率.md)
 - [TransSLR：用于手语识别的轻量级 Transformer](blog/posts/2026-08-11-TransSLR：用于手语识别的轻量级 Transformer.md)
+- [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
+- [Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持](blog/posts/2026-08-13-Supabase Edge Functions 重磅更新：引入后台任务、临时存储与 WebSocket 支持.md)
 
 ## 边际价值估计
 
@@ -4872,6 +5250,10 @@ title: 标签浏览
 ## 进化算法
 
 - [孟德尔哥德尔机：通过比较进化实现递归自我改进的编码智能体](blog/posts/2026-08-12-孟德尔哥德尔机：通过比较进化实现递归自我改进的编码智能体.md)
+
+## 连接池
+
+- [Multigres v0.1 Alpha：Postgres 的操作系统](blog/posts/2026-08-13-Multigres v0.1 Alpha：Postgres 的操作系统.md)
 
 ## 连续度量场
 
@@ -4935,6 +5317,10 @@ title: 标签浏览
 
 - [TelemetrySuffBench：智能体遥测数据是否足以进行故障根源诊断？](blog/posts/2026-08-12-TelemetrySuffBench：智能体遥测数据是否足以进行故障根源诊断？.md)
 
+## 配置即代码
+
+- [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
+
 ## 重心有理插值
 
 - [BRACE：通过重心有理预测驯服尖锐不规则性，实现快速扩散 Transformer 推理](blog/posts/2026-08-12-BRACE：通过重心有理预测驯服尖锐不规则性，实现快速扩散 Transformer 推理.md)
@@ -4993,6 +5379,10 @@ title: 标签浏览
 
 - [DocMemo：基于概率记忆引导检索的多模态文档理解动态证据发现](blog/posts/2026-08-11-DocMemo：基于概率记忆引导检索的多模态文档理解动态证据发现.md)
 
+## 长期记忆
+
+- [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
+
 ## 长视频问答
 
 - [REVEAL：用于长视频问答中显式证据充分性验证的评分标准引导智能体](blog/posts/2026-08-12-REVEAL：用于长视频问答中显式证据充分性验证的评分标准引导智能体.md)
@@ -5008,6 +5398,10 @@ title: 标签浏览
 ## 问题生成
 
 - [Ask-E：用于校准问题生成的环境](blog/posts/2026-08-11-Ask-E：用于校准问题生成的环境.md)
+
+## 队列
+
+- [使用 Edge Functions、Cron 和队列处理大规模任务](blog/posts/2026-08-13-使用 Edge Functions、Cron 和队列处理大规模任务.md)
 
 ## 阿尔茨海默病
 
@@ -5115,6 +5509,10 @@ title: 标签浏览
 ## 骨科诊断
 
 - [使用深度学习图像分割和几何建模从零回波时间 MRI 中自动提取的测量结果与专家手工读数高度一致](blog/posts/2026-08-11-使用深度学习图像分割和几何建模从零回波时间 MRI 中自动提取的测量结果与专家手工读数高度一致.md)
+
+## 高可用
+
+- [Multigres v0.1 Alpha：Postgres 的操作系统](blog/posts/2026-08-13-Multigres v0.1 Alpha：Postgres 的操作系统.md)
 
 ## 高性能计算
 
