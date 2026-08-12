@@ -1,0 +1,754 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E5%9C%A8%E6%B2%A1%E6%9C%89%E8%B6%85%E7%BA%A7%E7%94%A8%E6%88%B7%E6%9D%83%E9%99%90%E7%9A%84%E6%83%85%E5%86%B5%E4%B8%8B%E4%BD%BF%E7%94%A8%20PostgreSQL%20%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E5%99%A8/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>在没有超级用户权限的情况下使用 PostgreSQL 事件触发器 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              在没有超级用户权限的情况下使用 PostgreSQL 事件触发器
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        特权角色
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        特权升级问题
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        跳过事件触发器
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        实战中的用户事件触发器
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Postgres 内核的未来
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        立即体验
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="立即体验">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        脚注
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">在没有超级用户权限的情况下使用 PostgreSQL 事件触发器</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>PostgreSQL 中的事件触发器（Event Triggers）是实现数据库自动化的强大工具，但传统上它们仅限于超级用户（superuser）使用。在托管云环境中，用户通常无法获得这种高权限。本文探讨了 <code>supautils</code> 扩展如何利用 PostgreSQL 钩子（hooks），使普通用户能够安全地创建事件触发器，同时有效防止潜在的特权升级攻击。</p>
+<p>通过引入“特权角色（privileged role）”作为代理，并结合 <code>ProcessUtility_hook</code> 和 <code>fmgr_hook</code> 拦截机制，<code>supautils</code> 成功在权限控制与灵活性之间取得了平衡，允许开发者在无需完整超级用户权限的情况下安全地使用事件触发器。</p>
+<hr />
+<h2 id="_2">特权角色</h2>
+<p>The core of <code>supautils</code> is the "privileged role"—a proxy that provides a safe subset of superuser capabilities to regular users. </p>
+<blockquote>
+<p><code>supautils</code> 的核心是“特权角色”（privileged role）——它是一个代理，能够向普通用户提供超级用户功能的的安全子集。</p>
+</blockquote>
+<p>When a user with this role executes <code>CREATE EVENT TRIGGER</code>, the <code>ProcessUtility_hook</code> intercepts the statement. The extension temporarily elevates the session to superuser to perform the creation in the PostgreSQL core, then immediately downgrades the session and assigns ownership of the trigger to the original user <a href="../这允许终端用户修改或删除该事件触发器。">^1</a>.</p>
+<blockquote>
+<p>当具有该角色的用户执行 <code>CREATE EVENT TRIGGER</code> 时，<code>ProcessUtility_hook</code> 会拦截该语句。该扩展会临时将当前会话提升为超级用户，以便在 PostgreSQL 内核中完成创建，随后立即降低会话权限并将触发器的所有权分配给原始用户 <a href="../这允许终端用户修改或删除该事件触发器。">^1</a>。</p>
+</blockquote>
+<h2 id="_3">特权升级问题</h2>
+<p>The privilege escalation problem
+Simply allowing users to create event triggers is dangerous. Because event triggers execute with the privileges of the user performing the DDL command, a malicious user could create a trigger that elevates their own status:</p>
+<blockquote>
+<p>简单地允许用户创建事件触发器是危险的。由于事件触发器是以执行 DDL 命令的用户的权限来运行的，恶意用户可能会创建一个提升自身权限的触发器：</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">replace</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">become_super</span><span class="p">()</span>
+<span class="w">    </span><span class="k">returns</span><span class="w"> </span><span class="n">event_trigger</span>
+<span class="w">    </span><span class="k">language</span><span class="w"> </span><span class="n">plpgsql</span><span class="w"> </span><span class="k">as</span>
+<span class="err">$$</span>
+<span class="k">begin</span>
+<span class="w">    </span><span class="k">alter</span><span class="w"> </span><span class="k">role</span><span class="w"> </span><span class="n">malicious</span><span class="w"> </span><span class="n">SUPERUSER</span><span class="p">;</span>
+<span class="k">end</span><span class="p">;</span>
+<span class="err">$$</span><span class="p">;</span>
+
+<span class="k">create</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">bad_event_trigger</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">ddl_command_end</span>
+<span class="k">execute</span><span class="w"> </span><span class="k">procedure</span><span class="w"> </span><span class="n">become_super</span><span class="p">();</span>
+</code></pre></div>
+If a superuser performs any DDL command, this trigger would fire with superuser privileges, granting the malicious user permanent superuser access.</p>
+<blockquote>
+<p>如果超级用户执行任何 DDL 命令，该触发器将以超级用户权限触发，从而授予恶意用户永久的超级用户访问权限。</p>
+</blockquote>
+<h2 id="_4">跳过事件触发器</h2>
+<p>Skipping Event Triggers
+To prevent this, <code>supautils</code> uses the <code>fmgr_hook</code> to intercept function execution. When a superuser or a "reserved role" (used by services like <code>pgbouncer</code>) triggers an event, the extension intercepts the event trigger function and replaces it with a "noop" (using the <code>version()</code> function). This ensures that user-defined triggers never execute when a privileged account performs DDL operations <a href="../这些都是可配置的。您可以点击[此处](https://supabase.com/blog/roles-postgres-hooks)阅读更多关于保留角色的信息。">^3</a>.</p>
+<blockquote>
+<p>为了防止这种情况，<code>supautils</code> 使用 <code>fmgr_hook</code> 来拦截函数执行。当超级用户或“保留角色”（如 <code>pgbouncer</code> 等服务使用的角色）触发事件时，该扩展会拦截事件触发器函数，并将其替换为一个“空操作（noop）”（通过使用 <code>version()</code> 函数）。这确保了当特权账户执行 DDL 操作时，用户定义的触发器永远不会执行 <a href="../这些都是可配置的。您可以点击[此处](https://supabase.com/blog/roles-postgres-hooks)阅读更多关于保留角色的信息。">^3</a>。</p>
+</blockquote>
+<h2 id="_5">实战中的用户事件触发器</h2>
+<p>User Event Triggers in Action
+With these safeguards, users can safely create event triggers without needing full superuser access:</p>
+<blockquote>
+<p>有了这些安全保障，用户无需完整的超级用户权限即可安全地创建事件触发器：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Use the privileged role</span>
+<span class="k">set</span><span class="w"> </span><span class="k">role</span><span class="w"> </span><span class="n">postgres</span><span class="p">;</span>
+
+<span class="c1">-- Create the event trigger</span>
+<span class="k">create</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">show_current_user</span><span class="p">()</span>
+<span class="k">returns</span><span class="w"> </span><span class="n">event_trigger</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="err">$$</span>
+<span class="k">begin</span>
+<span class="w">  </span><span class="n">raise</span><span class="w"> </span><span class="n">notice</span><span class="w"> </span><span class="s1">&#39;the event trigger is executed for %&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">current_user</span><span class="p">;</span>
+<span class="k">end</span><span class="p">;</span>
+<span class="err">$$</span><span class="w"> </span><span class="k">language</span><span class="w"> </span><span class="n">plpgsql</span><span class="p">;</span>
+
+<span class="k">create</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">myevtrig</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">ddl_command_end</span>
+<span class="k">execute</span><span class="w"> </span><span class="k">procedure</span><span class="w"> </span><span class="n">show_current_user</span><span class="p">();</span>
+
+<span class="c1">-- Test the trigger</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">foo</span><span class="p">();</span>
+<span class="c1">-- NOTICE:  the event trigger is executed for postgres</span>
+</code></pre></div>
+<h2 id="postgres">Postgres 内核的未来</h2>
+<p>Future in Postgres Core
+The team is actively working to bring this functionality into the PostgreSQL core, with patches currently under discussion in the community. Note that any implementation in the core will likely be more restrictive than the current <code>supautils</code> version.</p>
+<blockquote>
+<p>该团队正积极致力于将此功能引入 PostgreSQL 内核中，相关补丁目前正在社区中讨论。请注意，内核中的任何实现可能都会比当前的 <code>supautils</code> 版本更加严格。</p>
+</blockquote>
+<h2 id="_6">立即体验</h2>
+<p>Try it out
+User Event Triggers are available for new projects on the Supabase platform. You can also find the source code at the <a href="https://github.com/supabase/supautils/">supautils GitHub repository</a>.</p>
+<blockquote>
+<p>Supabase 平台上的新项目现已支持用户事件触发器。您还可以在 <a href="https://github.com/supabase/supautils/">supautils GitHub 仓库</a> 中找到源代码。</p>
+</blockquote>
+<hr />
+<h3 id="_7">脚注</h3>
+<p>Footnotes
+<a href="../这允许终端用户修改或删除该事件触发器。">^1</a>: This allows the event trigger to be altered or dropped by end users.</p>
+<blockquote></blockquote>
+<p>[^2]: This is not true if you mark the event trigger function as <code>security definer</code>, then it will run with the privileges of the function owner. However, this is not standard practice, as triggers usually aim to preserve the context of the current user.</p>
+<blockquote>
+<p>[^2]: 如果将事件触发器函数标记为 <code>security definer</code>，则情况并非如此，此时它将以函数所有者的权限运行。然而，这并不是标准做法，因为触发器的通常目的是保留当前用户的上下文。</p>
+</blockquote>
+<p><a href="../这些都是可配置的。您可以点击[此处](https://supabase.com/blog/roles-postgres-hooks)阅读更多关于保留角色的信息。">^3</a>: These are configurable. You can read more about reserved roles <a href="https://supabase.com/blog/roles-postgres-hooks">here</a>.</p>
+<blockquote></blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库安全</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">扩展开发</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">权限管理</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

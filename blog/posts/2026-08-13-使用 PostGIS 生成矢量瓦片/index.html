@@ -1,0 +1,963 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E4%BD%BF%E7%94%A8%20PostGIS%20%E7%94%9F%E6%88%90%E7%9F%A2%E9%87%8F%E7%93%A6%E7%89%87/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>使用 PostGIS 生成矢量瓦片 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              使用 PostGIS 生成矢量瓦片
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        目录
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="目录">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        你将学到什么
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overture-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用 Overture Maps 下载开放地图数据
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#geojson-sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        将 GeoJSON 转换为 SQL
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supabase" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        将位置数据导入 Supabase
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="将位置数据导入 Supabase">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        启用 RLS 并创建公共读取策略
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用 PostGIS 生成矢量瓦片
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supabase-js-maplibre-gl" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用 supabase-js 从 MapLibre GL 客户端获取矢量瓦片
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        按需获取额外的 JSON 元数据
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        总结
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supabase_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        更多 Supabase 资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">使用 PostGIS 生成矢量瓦片</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本指南详细介绍了如何利用 <strong>PostGIS</strong> 从 Postgres 数据库中直接编程生成 Mapbox 矢量瓦片（Mvt），并结合 <strong>MapLibre GL</strong> 与 <strong>Supabase JS</strong> 在网页端实现高效渲染。通过引入 <strong>Overture Maps Foundation</strong> 的开放地图数据，你将学会如何下载地理数据集、将其导入 Supabase、进行坐标转换，并在按需获取丰富元数据的同时，实时提供矢量瓦片服务。</p>
+<p>这种方法充分发挥了空间数据库的强大计算能力，显著减少了前端的网络传输负载，为构建高性能、可交互的地理空间应用开辟了新途径。</p>
+<hr />
+<h2 id="_2">目录</h2>
+<ul>
+<li><a href="#使用-overture-maps-下载开放地图数据">使用 Overture Maps 下载开放地图数据</a></li>
+<li><a href="#将-geojson-转换为-sql">将 GeoJSON 转换为 SQL</a></li>
+<li><a href="#将位置数据导入-supabase">将位置数据导入 Supabase</a></li>
+<li><a href="#启用-rls-并创建公共读取策略">启用 RLS 并创建公共读取策略</a></li>
+<li><a href="#使用-postgis-生成矢量瓦片">使用 PostGIS 生成矢量瓦片</a></li>
+<li><a href="#使用-supabase-js-from-maplibre-gl-客户端获取矢量瓦片">使用 supabase-js 从 MapLibre GL 客户端获取矢量瓦片</a></li>
+<li><a href="#按需获取额外的-json-元数据">按需获取额外的 JSON 元数据</a></li>
+<li><a href="#总结">总结</a></li>
+<li><a href="#更多-supabase-资源">更多 Supabase 资源</a></li>
+</ul>
+<hr />
+<blockquote>
+<p>[!NOTE]
+- 喜欢视听学习？<a href="https://supabase.link/supa-gis-yt-docs">观看视频指南！</a>
+- 或者直接通过 <a href="https://github.com/bdon/supabase-vector-tile">GitHub</a> 查看代码。</p>
+</blockquote>
+<p><a href="https://overturemaps.org/">Overture Maps Foundation</a> 是由亚马逊、Meta、微软和 TomTom 联合发起的项目，旨在创建可靠、易于使用且可互操作的开放地图数据。</p>
+<p>借助 Overture Maps，我们可以将开放地图数据（例如兴趣点）下载为 <a href="https://geojson.org/">GeoJSON</a> 格式，将其转换为 SQL，并导入到 Supabase 上的 Postgres 数据库中。然后，通过 PostGIS，我们可以编程生成矢量瓦片，并通过 <code>supabase-js</code> 将其提供给 MapLibre GL 客户端。</p>
+<blockquote>
+<p>[!NOTE]
+<strong>什么是矢量瓦片？</strong>
+矢量瓦片是将地理数据打包成预定义、近似正方形的“瓦片”数据包，以便在网络上传输。客户端请求地图数据时，只需请求对应特定大小和位置的正方形区域的一组瓦片。</p>
+<p>特别是对于大型数据集，这极大地减少了数据传输量，因为只需获取当前视口和当前缩放级别内的数据。</p>
+</blockquote>
+<h3 id="_3">你将学到什么</h3>
+<ul>
+<li>使用 Overture Maps 下载 GeoJSON 格式的开放地图位置数据。</li>
+<li>使用 GDAL (<code>ogr2ogr</code>) 将 GeoJSON 转换为 SQL 语句。</li>
+<li>使用 <code>psql</code> 将位置数据和 JSON 元数据导入 Supabase Postgres 数据库。</li>
+<li>使用 PostGIS 的 <code>ST_AsMVT</code> 将对应瓦片图层的一组行聚合成二进制矢量瓦片表示。</li>
+<li>使用 MapLibre 的 <code>addProtocol</code> 通过 <code>supabase-js</code> 发起远程过程调用（RPC），可视化大型 PostGIS 表。</li>
+<li>使用 <code>supabase-js</code> 按需获取额外的 JSON 元数据。</li>
+</ul>
+<hr />
+<h2 id="overture-maps">使用 Overture Maps 下载开放地图数据</h2>
+<p>Overture Maps 提供了一个 <a href="https://docs.overturemaps.org/getting-data/overturemaps-py/">Python 命令行工具</a>，用于下载感兴趣区域内的数据并将其转换为几种常见的地理空间文件格式。</p>
+<p>运行以下命令将新加坡的地点下载到 GeoJSON 文件中：</p>
+<div class="highlight"><pre><span></span><code>overturemaps<span class="w"> </span>download<span class="w"> </span>--bbox<span class="o">=</span><span class="m">103</span>.570233,1.125077,104.115855,1.490957<span class="w"> </span>-f<span class="w"> </span>geojson<span class="w"> </span>--type<span class="o">=</span>place<span class="w"> </span>-o<span class="w"> </span>places.geojson
+</code></pre></div>
+<p><em>(注意：根据边界框的大小，此下载可能需要一些时间。)</em></p>
+<hr />
+<h2 id="geojson-sql">将 GeoJSON 转换为 SQL</h2>
+<p>接下来，使用 <a href="https://gdal.org/programs/ogr2ogr.html">GDAL ogr2ogr</a> 将 GeoJSON 文件转换为与 PostGIS 兼容的 SQL 文件。</p>
+<p>你可以通过 Homebrew 安装 <code>GDAL</code>（<code>brew install gdal</code>）或按照<a href="https://gdal.org/download.html">官方下载说明</a>进行安装。</p>
+<div class="highlight"><pre><span></span><code><span class="nv">PG_USE_COPY</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span>ogr2ogr<span class="w"> </span>-f<span class="w"> </span>pgdump<span class="w"> </span>places.sql<span class="w"> </span>places.geojson
+</code></pre></div>
+<hr />
+<h2 id="supabase">将位置数据导入 Supabase</h2>
+<p>在 Supabase 数据库中专门的 <code>gis</code> 架构（schema）内启用 PostGIS 扩展。你可以通过导航到 <a href="/dashboard/project/_/sql/new">SQL 编辑器</a> 并运行以下脚本来完成此操作，也可以从 <a href="/dashboard/project/_/database/extensions">数据库扩展设置</a> 中管理扩展。</p>
+<blockquote>
+<p><strong>建议：</strong> 由于 PostGIS 的计算开销较大，我们建议在专用的架构（例如命名为 <code>gis</code>）中启用它。</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="ss">&quot;gis&quot;</span><span class="p">;</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="ss">&quot;postgis&quot;</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="ss">&quot;gis&quot;</span><span class="p">;</span>
+</code></pre></div>
+<p>通过命令行将开放地图数据导入 Supabase 中的 <code>places</code> 表：</p>
+<div class="highlight"><pre><span></span><code>psql<span class="w"> </span>-h<span class="w"> </span>aws-0-us-west-1.pooler.supabase.com<span class="w"> </span>-p<span class="w"> </span><span class="m">5432</span><span class="w"> </span>-d<span class="w"> </span>postgres<span class="w"> </span>-U<span class="w"> </span>postgres.project-ref<span class="w"> </span>&lt;<span class="w"> </span>places.sql
+</code></pre></div>
+<p><em>(你可以在 Supabase 仪表板的<a href="https://supabase.link/supa-gis-yt-docs">项目连接页面</a>上找到你的连接凭据。)</em></p>
+<h3 id="rls">启用 RLS 并创建公共读取策略</h3>
+<p>为了使地点数据可供公开查询，请配置行级安全性（RLS）策略以启用公共读取访问权限。在 Supabase <a href="/dashboard/project/_/sql/new">SQL 编辑器</a> 中运行以下代码：</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="ss">&quot;public&quot;</span><span class="p">.</span><span class="ss">&quot;places&quot;</span><span class="w"> </span><span class="n">ENABLE</span><span class="w"> </span><span class="k">ROW</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">SECURITY</span><span class="p">;</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="n">POLICY</span><span class="w"> </span><span class="ss">&quot;Enable read access for all users&quot;</span><span class="w"> </span>
+<span class="k">ON</span><span class="w"> </span><span class="ss">&quot;public&quot;</span><span class="p">.</span><span class="ss">&quot;places&quot;</span><span class="w"> </span>
+<span class="k">FOR</span><span class="w"> </span><span class="k">SELECT</span><span class="w"> </span>
+<span class="k">USING</span><span class="w"> </span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
+</code></pre></div>
+<hr />
+<h2 id="postgis">使用 PostGIS 生成矢量瓦片</h2>
+<p>为了在客户端请求时编程生成矢量瓦片，需要创建一个可以通过<a href="/docs/reference/javascript/rpc">远程过程调用 (RPC)</a> 调用的 Postgres 函数。</p>
+<p>在你的 SQL 编辑器中运行此脚本：</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">OR</span><span class="w"> </span><span class="k">REPLACE</span><span class="w"> </span><span class="k">FUNCTION</span><span class="w"> </span><span class="n">mvt</span><span class="p">(</span><span class="n">z</span><span class="w"> </span><span class="nb">integer</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="nb">integer</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="nb">integer</span><span class="p">)</span>
+<span class="k">RETURNS</span><span class="w"> </span><span class="nb">text</span>
+<span class="k">LANGUAGE</span><span class="w"> </span><span class="n">plpgsql</span>
+<span class="k">AS</span><span class="w"> </span><span class="err">$$</span>
+<span class="k">DECLARE</span>
+<span class="w">    </span><span class="n">mvt_output</span><span class="w"> </span><span class="nb">text</span><span class="p">;</span>
+<span class="k">BEGIN</span>
+<span class="w">    </span><span class="k">WITH</span>
+<span class="w">    </span><span class="c1">-- Define the bounds of the tile using the provided Z, X, Y coordinates</span>
+<span class="w">    </span><span class="n">bounds</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="k">SELECT</span><span class="w"> </span><span class="n">ST_TileEnvelope</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">geom</span>
+<span class="w">    </span><span class="p">),</span>
+<span class="w">    </span><span class="c1">-- Transform geometries from EPSG:4326 to EPSG:3857 and clip to bounds</span>
+<span class="w">    </span><span class="n">mvtgeom</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="k">SELECT</span>
+<span class="w">            </span><span class="c1">-- Include name and ID only at zoom &gt; 13 to keep low-zoom tiles lightweight</span>
+<span class="w">            </span><span class="k">CASE</span>
+<span class="w">            </span><span class="k">WHEN</span><span class="w"> </span><span class="n">z</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">13</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="n">id</span>
+<span class="w">            </span><span class="k">ELSE</span><span class="w"> </span><span class="k">NULL</span>
+<span class="w">            </span><span class="k">END</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">id</span><span class="p">,</span>
+<span class="w">            </span><span class="k">CASE</span>
+<span class="w">            </span><span class="k">WHEN</span><span class="w"> </span><span class="n">z</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">13</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="k">names</span><span class="p">::</span><span class="n">json</span><span class="o">-&gt;&gt;</span><span class="s1">&#39;primary&#39;</span>
+<span class="w">            </span><span class="k">ELSE</span><span class="w"> </span><span class="k">NULL</span>
+<span class="w">            </span><span class="k">END</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">primary_name</span><span class="p">,</span>
+<span class="w">            </span><span class="n">categories</span><span class="p">::</span><span class="n">json</span><span class="o">-&gt;&gt;</span><span class="s1">&#39;main&#39;</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">main_category</span><span class="p">,</span>
+<span class="w">            </span><span class="n">ST_AsMVTGeom</span><span class="p">(</span>
+<span class="w">                </span><span class="n">ST_Transform</span><span class="p">(</span><span class="n">wkb_geometry</span><span class="p">,</span><span class="w"> </span><span class="mi">3857</span><span class="p">),</span><span class="w"> </span><span class="c1">-- Transform to Web Mercator</span>
+<span class="w">                </span><span class="n">bounds</span><span class="p">.</span><span class="n">geom</span><span class="p">,</span>
+<span class="w">                </span><span class="mi">4096</span><span class="p">,</span><span class="w"> </span><span class="c1">-- Tile extent in pixels (commonly 256 or 4096)</span>
+<span class="w">                </span><span class="mi">0</span><span class="p">,</span><span class="w">    </span><span class="c1">-- Buffer around the tile in pixels</span>
+<span class="w">                </span><span class="k">true</span><span class="w">  </span><span class="c1">-- Clip geometries to the tile extent</span>
+<span class="w">            </span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">geom</span>
+<span class="w">        </span><span class="k">FROM</span>
+<span class="w">            </span><span class="n">places</span><span class="p">,</span><span class="w"> </span><span class="n">bounds</span>
+<span class="w">        </span><span class="k">WHERE</span>
+<span class="w">            </span><span class="n">ST_Intersects</span><span class="p">(</span><span class="n">ST_Transform</span><span class="p">(</span><span class="n">wkb_geometry</span><span class="p">,</span><span class="w"> </span><span class="mi">3857</span><span class="p">),</span><span class="w"> </span><span class="n">bounds</span><span class="p">.</span><span class="n">geom</span><span class="p">)</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="c1">-- Generate the MVT from the clipped geometries and encode as base64</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">mvt_output</span><span class="w"> </span><span class="n">encode</span><span class="p">(</span><span class="n">ST_AsMVT</span><span class="p">(</span><span class="n">mvtgeom</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;places&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">4096</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;geom&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;base64&#39;</span><span class="p">)</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">mvtgeom</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">RETURN</span><span class="w"> </span><span class="n">mvt_output</span><span class="p">;</span>
+<span class="k">END</span><span class="p">;</span>
+<span class="err">$$</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="supabase-js-maplibre-gl">使用 supabase-js 从 MapLibre GL 客户端获取矢量瓦片</h2>
+<p>你可以在 <a href="https://github.com/bdon/supabase-vector-tile/blob/main/index.html">GitHub</a> 上找到 <code>index.html</code> 的完整源代码。以下是如何在 MapLibre GL 中注册自定义协议，以便通过 <code>supabase-js</code> 获取 base64 编码的二进制矢量瓦片：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">supabase</span><span class="p">.</span><span class="nx">createClient</span><span class="p">(</span><span class="s1">&#39;your-supabase-api-url&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;your-supabase-anon-key&#39;</span><span class="p">)</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">base64ToArrayBuffer</span><span class="p">(</span><span class="nx">base64</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">var</span><span class="w"> </span><span class="nx">binaryString</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">atob</span><span class="p">(</span><span class="nx">base64</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">var</span><span class="w"> </span><span class="nx">bytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Uint8Array</span><span class="p">(</span><span class="nx">binaryString</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">var</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">binaryString</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">bytes</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">binaryString</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">bytes</span>
+<span class="p">}</span>
+
+<span class="nx">maplibregl</span><span class="p">.</span><span class="nx">addProtocol</span><span class="p">(</span><span class="s1">&#39;supabase&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">params</span><span class="p">,</span><span class="w"> </span><span class="nx">abortController</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">re</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">RegExp</span><span class="p">(</span><span class="sr">/supabase:\/\/(.+)\/(\d+)\/(\d+)\/(\d+)/</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">params</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">re</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">rpc</span><span class="p">(</span><span class="s1">&#39;mvt&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">result</span><span class="p">[</span><span class="mf">2</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">result</span><span class="p">[</span><span class="mf">3</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">result</span><span class="p">[</span><span class="mf">4</span><span class="p">],</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">encoded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">base64ToArrayBuffer</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="nx">encoded</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="sb">`Tile fetch error`</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>注册了自定义协议后，将其实际添加到 MapLibre GL 的数据源（sources）中——例如，叠加在来自 <a href="https://protomaps.com/">Protomaps</a> 的底图之上：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">map</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">maplibregl</span><span class="p">.</span><span class="nb">Map</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">hash</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">container</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;map&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">style</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="mf">8</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">glyphs</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">sources</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">supabase</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;vector&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">tiles</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;supabase://boston/{z}/{x}/{y}&#39;</span><span class="p">],</span>
+<span class="w">        </span><span class="nx">attribution</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;© &lt;a href=&quot;https://overturemaps.org&quot;&gt;Overture Maps Foundation&lt;/a&gt;&#39;</span><span class="p">,</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">protomaps</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;vector&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;https://api.protomaps.com/tiles/v3.json?key=your-protomaps-api-key&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">attribution</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Basemap © &lt;a href=&quot;https://openstreetmap.org&quot;&gt;OpenStreetMap&lt;/a&gt;&#39;</span><span class="p">,</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="p">})</span>
+</code></pre></div>
+<hr />
+<h2 id="json">按需获取额外的 JSON 元数据</h2>
+<p>为了减小网络负载大小，我们避免将繁重的元数据直接嵌入到矢量瓦片中。相反，我们配置了一个 <code>onclick</code> 处理程序，当用户打开 MapLibre GL 弹出窗口（popup）时异步获取额外的元数据：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">popup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">maplibregl</span><span class="p">.</span><span class="nx">Popup</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">closeButton</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">closeOnClick</span><span class="o">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">maxWidth</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;none&#39;</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">loadDetails</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">element</span><span class="p">.</span><span class="nx">innerHTML</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;loading...&#39;</span>
+<span class="w">  </span><span class="nx">client</span>
+<span class="w">    </span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="s1">&#39;places&#39;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="sb">`</span>
+<span class="sb">          websites,</span>
+<span class="sb">          socials,</span>
+<span class="sb">          phones,</span>
+<span class="sb">          addresses,</span>
+<span class="sb">          source: sources-&gt;0-&gt;dataset</span>
+<span class="sb">        `</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">single</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="nx">then</span><span class="p">(({</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>
+<span class="w">      </span><span class="nx">element</span><span class="p">.</span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">innerHTML</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sb">`&lt;pre&gt;</span><span class="si">${</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span><span class="si">}</span><span class="sb">&lt;/pre&gt;`</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="p">}</span>
+
+<span class="nx">map</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;overture-pois-text&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">features</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">feature</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">features</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">popup</span><span class="p">.</span><span class="nx">setHTML</span><span class="p">(</span><span class="sb">`</span>
+<span class="sb">      &lt;table style=&quot;font-size:12px&quot;&gt;</span>
+<span class="sb">          &lt;tr&gt;</span>
+<span class="sb">              &lt;td&gt;id:&lt;/td&gt;</span>
+<span class="sb">              &lt;td&gt;</span><span class="si">${</span><span class="nx">feature</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">id</span><span class="si">}</span><span class="sb">&lt;/td&gt;</span>
+<span class="sb">          &lt;/tr&gt;</span>
+<span class="sb">          &lt;tr&gt;</span>
+<span class="sb">              &lt;td&gt;name:&lt;/td&gt;</span>
+<span class="sb">              &lt;td&gt;</span><span class="si">${</span><span class="nx">feature</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">primary_name</span><span class="si">}</span><span class="sb">&lt;/td&gt;</span>
+<span class="sb">          &lt;/tr&gt;</span>
+<span class="sb">          &lt;tr&gt;</span>
+<span class="sb">              &lt;td&gt;main_category:&lt;/td&gt;</span>
+<span class="sb">              &lt;td&gt;</span><span class="si">${</span><span class="nx">feature</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">main_category</span><span class="si">}</span><span class="sb">&lt;/td&gt;</span>
+<span class="sb">          &lt;/tr&gt;</span>
+<span class="sb">          &lt;tr&gt;</span>
+<span class="sb">              &lt;td&gt;details:&lt;/td&gt;</span>
+<span class="sb">              &lt;td&gt;</span>
+<span class="sb">                &lt;span onclick=&quot;loadDetails(this, &#39;</span><span class="si">${</span><span class="nx">feature</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">id</span><span class="si">}</span><span class="sb">&#39;)&quot;&gt;</span>
+<span class="sb">                  load details</span>
+<span class="sb">                &lt;/span&gt;</span>
+<span class="sb">              &lt;/td&gt;</span>
+<span class="sb">          &lt;/tr&gt;</span>
+<span class="sb">      &lt;/table&gt;</span>
+<span class="sb">    `</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">popup</span><span class="p">.</span><span class="nx">setLngLat</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">lngLat</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">popup</span><span class="p">.</span><span class="nx">addTo</span><span class="p">(</span><span class="nx">map</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">})</span>
+</code></pre></div>
+<hr />
+<h2 id="_4">总结</h2>
+<p>PostGIS 异常强大，它使你能够直接从存储在 Postgres 中的表行编程生成矢量瓦片。结合 Supabase 自动生成的 API 以及 <code>supabase-js</code> 客户端库，构建高性能、可交互的地理空间应用程序从未如此简单。</p>
+<hr />
+<h2 id="supabase_1">更多 Supabase 资源</h2>
+<ul>
+<li><a href="https://supabase.link/supa-gis-yt-docs">观看视频指南</a></li>
+<li><a href="https://github.com/bdon/supabase-vector-tile">在 GitHub 上查找代码</a></li>
+<li><a href="https://supabase.link/protomaps-storage-yt">使用 Protomaps 在 Supabase Storage 上自托管地图</a></li>
+<li><a href="https://supabase.link/postgis-quickstart-yt">PostGIS 入门指南</a></li>
+<li><a href="/docs/guides/database/extensions/postgis">官方 PostGIS 文档指南</a></li>
+</ul>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostGIS</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">MapLibre</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">空间数据库</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">矢量瓦片</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

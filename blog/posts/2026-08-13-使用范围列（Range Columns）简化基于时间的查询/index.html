@@ -1,0 +1,878 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E4%BD%BF%E7%94%A8%E8%8C%83%E5%9B%B4%E5%88%97%EF%BC%88Range%20Columns%EF%BC%89%E7%AE%80%E5%8C%96%E5%9F%BA%E4%BA%8E%E6%97%B6%E9%97%B4%E7%9A%84%E6%9F%A5%E8%AF%A2/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>使用范围列（Range Columns）简化基于时间的查询 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              使用范围列（Range Columns）简化基于时间的查询
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        传统日期列存在的问题
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        引入范围类型
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="引入范围类型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        查询范围列
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        在范围列上添加约束
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="在范围列上添加约束">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 全局重叠预防
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-global-overlap-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Global Overlap Prevention
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 多资源重叠预防（特定表）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-multi-resource-overlap-prevention-table-specific" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Multi-Resource Overlap Prevention (Table-Specific)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        更多资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Additional Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">使用范围列（Range Columns）简化基于时间的查询</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在开发预订系统或日历应用时，管理事件的开始与结束时间是核心需求。传统方案通常使用两个独立的列（<code>start_at</code> 和 <code>end_at</code>）来存储时间段，这种做法不仅会导致查询逻辑冗长且易出错，还难以在数据库层面强制执行防重叠约束。</p>
+<p>本文介绍了 PostgreSQL 的“范围类型”（Range Types）功能，它允许将时间跨度视为单个数据点（如 <code>tstzrange</code>）。通过使用内置的重叠运算符（<code>&amp;&amp;</code>）和排除约束（Exclusion Constraints），开发者可以显著简化查询逻辑，并从数据库底层确保数据的一致性与完整性，从而构建出更加健壮的调度系统。</p>
+<hr />
+<h2 id="_2">传统日期列存在的问题</h2>
+<p>传统上，开发者使用两个独立的列来表示时间段：</p>
+<blockquote>
+<p>Traditionally, developers represent periods using two independent columns:</p>
+<div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">start_at</span><span class="w"> </span><span class="n">timestamptz</span><span class="p">,</span>
+<span class="w">  </span><span class="n">end_at</span><span class="w"> </span><span class="n">timestamptz</span>
+<span class="p">);</span>
+</code></pre></div>
+</blockquote>
+<p>虽然这种方法可行，但存在两个主要缺点：
+1. <strong>查询复杂性：</strong> 查找重叠事件或在特定时间范围内受限的事件，需要编写冗长且容易出错的条件逻辑。
+2. <strong>数据完整性：</strong> 在数据库层面防止重复预订或重叠预订非常困难。</p>
+<blockquote>
+<p>While functional, this approach presents two major drawbacks:
+1. <strong>Querying Complexity:</strong> Finding overlapping events or events constrained within a specific timeframe requires verbose and error-prone conditional logic.
+2. <strong>Data Integrity:</strong> Preventing double-bookings or overlapping reservations is difficult to guarantee at the database level.</p>
+</blockquote>
+<hr />
+<h2 id="_3">引入范围类型</h2>
+<p>Postgres 范围类型将范围的开始和结束存储在单个列中。
+* 基类型 <code>int4</code> <span class="arithmatex">\(\rightarrow\)</span> <code>int4range</code>
+* 基类型 <code>timestamptz</code> <span class="arithmatex">\(\rightarrow\)</span> <code>tstzrange</code>
+* 基类型 <code>date</code> <span class="arithmatex">\(\rightarrow\)</span> <code>daterange</code></p>
+<p>范围使用方括号 <code>[]</code>（包含）或圆括号 <code>()</code>（不包含）来表示边界。例如，<code>int4range</code> 的 <code>[2,5)</code> 表示从 2（包含）到 5（不包含）的整数，即：<strong>2、3 和 4</strong>。</p>
+<blockquote>
+<p>Postgres range types store the beginning and end of a range within a single column. 
+* Base type <code>int4</code> <span class="arithmatex">\(\rightarrow\)</span> <code>int4range</code>
+* Base type <code>timestamptz</code> <span class="arithmatex">\(\rightarrow\)</span> <code>tstzrange</code>
+* Base type <code>date</code> <span class="arithmatex">\(\rightarrow\)</span> <code>daterange</code></p>
+<p>Ranges use boundaries denoted by brackets <code>[]</code> (inclusive) or parentheses <code>()</code> (exclusive). For example, an <code>int4range</code> of <code>[2,5)</code> represents integers starting at 2 (inclusive) up to 5 (exclusive)—namely: <strong>2, 3, and 4</strong>.</p>
+</blockquote>
+<h3 id="_4">查询范围列</h3>
+<p>重构我们的架构以使用范围列（<code>duration</code>）：</p>
+<blockquote>
+<p>Refactoring our schema to use a range column (<code>duration</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">duration</span><span class="w"> </span><span class="n">tstzrange</span>
+<span class="p">);</span>
+</code></pre></div>
+</blockquote>
+<p>使用 <code>tstzrange</code>，我们可以使用重叠运算符（<code>&amp;&amp;</code>）无缝查询重叠条目：</p>
+<blockquote>
+<p>Using <code>tstzrange</code>, we can seamlessly query for overlapping entries using the overlap operator (<code>&amp;&amp;</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span>
+<span class="k">from</span><span class="w"> </span><span class="n">reservations</span>
+<span class="k">where</span><span class="w"> </span><span class="n">duration</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 16:00, 2024-07-04 19:00)&#39;</span><span class="p">;</span>
+</code></pre></div>
+</blockquote>
+<ul>
+<li><strong>匹配：</strong> 跨度为 <code>[2024-07-04 18:00, 2024-07-04 21:00)</code> 的预订（重叠）。</li>
+<li><strong>不匹配：</strong> 跨度为 <code>[2024-07-04 20:00, 2024-07-04 22:00)</code> 的预订（无重叠）。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Matches:</strong> A reservation spanning <code>[2024-07-04 18:00, 2024-07-04 21:00)</code> (overlaps).</li>
+<li><strong>Does not match:</strong> A reservation spanning <code>[2024-07-04 20:00, 2024-07-04 22:00)</code> (no overlap).</li>
+</ul>
+</blockquote>
+<p><em>（有关更多运算符，请查阅官方 <a href="https://www.postgresql.org/docs/9.3/functions-range.html">PostgreSQL 范围函数文档</a>。）</em></p>
+<blockquote>
+<p><em>(For more operators, consult the official <a href="https://www.postgresql.org/docs/9.3/functions-range.html">PostgreSQL Range Functions Documentation</a>.)</em></p>
+</blockquote>
+<hr />
+<h2 id="_5">在范围列上添加约束</h2>
+<h3 id="1">1. 全局重叠预防</h3>
+<p>为了确保表中没有任何预订在全局范围内重叠，我们可以添加一个排除约束：</p>
+<blockquote>
+<h3 id="1-global-overlap-prevention">1. Global Overlap Prevention</h3>
+<p>To ensure <em>no</em> reservations overlap globally across the table, we can add an exclusion constraint:</p>
+<div class="highlight"><pre><span></span><code><span class="k">alter</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">reservations</span>
+<span class="w">  </span><span class="k">add</span><span class="w"> </span><span class="k">constraint</span><span class="w"> </span><span class="n">exclude_duration</span><span class="w"> </span><span class="n">exclude</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">gist</span><span class="w"> </span><span class="p">(</span><span class="n">duration</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="p">)</span>
+</code></pre></div>
+</blockquote>
+<p>现在，尝试插入重叠的预订将导致数据库错误：</p>
+<blockquote>
+<p>Attempting to insert an overlapping reservation will now result in a database error:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Add a first reservation (Succeeds)</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Tyler Dinner&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 18:00, 2024-07-04 21:00)&#39;</span><span class="p">);</span>
+
+<span class="c1">-- The following insert fails because the duration overlaps</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Thor Dinner&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 20:00, 2024-07-04 22:00)&#39;</span><span class="p">);</span>
+</code></pre></div>
+</blockquote>
+<h3 id="2">2. 多资源重叠预防（特定表）</h3>
+<p>在现实世界中，一家餐厅有多张桌子。预订一张桌子不应阻塞整个餐厅。我们可以通过外键标识符（<code>table_id</code>）和范围一起使用，将排除约束的作用范围限定在特定资源上。</p>
+<p>首先，更新架构并确保启用了 <a href="https://www.postgresql.org/docs/current/btree-gist.html"><code>btree_gist</code></a> 扩展：</p>
+<blockquote>
+<h3 id="2-multi-resource-overlap-prevention-table-specific">2. Multi-Resource Overlap Prevention (Table-Specific)</h3>
+<p>In the real world, a single restaurant has multiple tables. Booking one table should not block out the entire establishment. We can scope our exclusion constraint to match specific resources using a foreign identifier (<code>table_id</code>) alongside the range.</p>
+<p>First, update the schema and ensure the <a href="https://www.postgresql.org/docs/current/btree-gist.html"><code>btree_gist</code></a> extension is enabled:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Enable the btree_gist index required for multi-column constraints</span>
+<span class="k">create</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="n">btree_gist</span><span class="p">;</span>
+
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">table_id</span><span class="w"> </span><span class="n">int4</span><span class="p">,</span>
+<span class="w">  </span><span class="n">duration</span><span class="w"> </span><span class="n">tstzrange</span>
+<span class="p">);</span>
+
+<span class="c1">-- Add a constraint to prevent overlaps only when the table_id matches</span>
+<span class="k">alter</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">reservations</span>
+<span class="w">  </span><span class="k">add</span><span class="w"> </span><span class="k">constraint</span><span class="w"> </span><span class="n">exclude_duration</span>
+<span class="w">  </span><span class="n">exclude</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="n">gist</span><span class="w"> </span><span class="p">(</span><span class="n">table_id</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="o">=</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="p">);</span>
+</code></pre></div>
+</blockquote>
+<p>现在，只要重叠发生在不同的桌子上，就允许重叠的时间：</p>
+<blockquote>
+<p>Now, overlapping times are permitted <strong>as long as they occur on different tables</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Add a first reservation for Table 1</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">table_id</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Tyler Dinner&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 18:00, 2024-07-04 21:00)&#39;</span><span class="p">);</span>
+
+<span class="c1">-- Insert fails because Table 1 is already booked during this timeframe</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">table_id</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Thor Dinner&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 20:00, 2024-07-04 22:00)&#39;</span><span class="p">);</span>
+
+<span class="c1">-- Insert succeeds because Table 2 is available</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">reservations</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">table_id</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Thor Dinner&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;[2024-07-04 20:00, 2024-07-04 22:00)&#39;</span><span class="p">);</span>
+</code></pre></div>
+</blockquote>
+<hr />
+<h2 id="_6">结论</h2>
+<p>PostgreSQL 范围列为处理时间数据和区间数据提供了一种简洁、稳健的解决方案。通过使用 <code>&amp;&amp;</code> 等专用运算符简化查询逻辑，并通过排除约束保证绝对的数据完整性，开发者可以用更少的应用代码构建出防弹级别的调度和预订系统。</p>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+<p>PostgreSQL range columns offer a clean, robust solution for handling temporal and interval data. By simplifying query logic with specialized operators like <code>&amp;&amp;</code> and guaranteeing absolute data integrity via exclusion constraints, developers can build bulletproof scheduling and reservation systems with significantly less application code.</p>
+</blockquote>
+<hr />
+<h2 id="_7">更多资源</h2>
+<ul>
+<li>📺 <a href="https://youtu.be/eG_9lZrrbEY?si=MtTQsKZrzMinU536">观看范围列视频指南</a></li>
+<li>📺 <a href="https://youtu.be/hjrQb029LEE?si=wJ8ztryZP6K6EKmW">查看约束视频指南</a></li>
+<li>🗺️ <a href="https://supabase.link/protomaps-storage-yt">使用 Protomaps 在 Supabase 存储上自托管地图</a></li>
+<li>🔒 <a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Supabase 行级安全性 (RLS) 指南</a></li>
+</ul>
+<blockquote>
+<h2 id="additional-resources">Additional Resources</h2>
+<ul>
+<li>📺 <a href="https://youtu.be/eG_9lZrrbEY?si=MtTQsKZrzMinU536">Watch the video guide for range columns</a></li>
+<li>📺 <a href="https://youtu.be/hjrQb029LEE?si=wJ8ztryZP6K6EKmW">Check constraint video guide</a></li>
+<li>🗺️ <a href="https://supabase.link/protomaps-storage-yt">Self-host Maps on Supabase Storage with Protomaps</a></li>
+<li>🔒 <a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Supabase Row Level Security (RLS) Guide</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库设计</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">范围类型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">SQL优化</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,919 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E5%9C%A8%20Postgres%20%E4%B8%AD%E4%BD%BF%E7%94%A8%20Wasm%20%E5%A4%96%E9%83%A8%E6%95%B0%E6%8D%AE%E5%8C%85%E8%A3%85%E5%99%A8%EF%BC%88Foreign%20Data%20Wrappers%EF%BC%89/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers） - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是外部数据包装器？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webassembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么选择 WebAssembly？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        架构
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        数据获取
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wasm-fdw" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        开发你自己的 Wasm FDW
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supabase" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        立即在 Supabase 上体验
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="立即在 Supabase 上体验">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-wasm-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 启用 Wasm Wrappers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-paddle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 获取你的 Paddle 凭据
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 保存凭据并创建外部服务器
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 设置外部表
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-postgres-paddle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. 从 Postgres 查询 Paddle
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        感谢我们的社区贡献者
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">在 Postgres 中使用 Wasm 外部数据包装器（Foreign Data Wrappers）</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>Supabase 近期为其开源的 Rust 框架 Wrappers 引入了 <strong>WebAssembly (Wasm)</strong> 支持，该框架用于创建 PostgreSQL 外部数据包装器（FDW）。这项新功能使开发者能够安全、模块化且高效地将 Postgres 连接到外部第三方服务，并像查询本地原生表一样对其进行查询。Wasm 包装器可以轻松打包并通过 GitHub 或 AWS S3 等可通过 URL 访问的存储进行分发，而无需深入了解复杂的 Postgres 内部 API。目前，该功能已在所有新建的 Supabase 项目中推出公开 Alpha 版本，并附带针对 Snowflake 和 Paddle 等平台的内置模板与集成。</p>
+<hr />
+<h2 id="_2">什么是外部数据包装器？</h2>
+<blockquote>
+<p><a href="https://wiki.postgresql.org/wiki/Foreign_data_wrappers">Foreign Data Wrappers (FDWs)</a> are a powerful feature of Postgres that allows you to connect to and query external data sources as if they were regular tables. </p>
+</blockquote>
+<p><a href="https://wiki.postgresql.org/wiki/Foreign_data_wrappers">外部数据包装器（FDWs）</a>是 Postgres 的一项强大功能，允许你连接并查询外部数据源，就像它们是常规数据表一样。</p>
+<blockquote>
+<p><a href="https://github.com/supabase/wrappers">Wrappers</a> is an open-source project that simplifies the creation of Postgres Foreign Data Wrappers using <a href="https://www.rust-lang.org/">Rust</a>.</p>
+</blockquote>
+<p><a href="https://github.com/supabase/wrappers">Wrappers</a> 是一个开源项目，它简化了使用 <a href="https://www.rust-lang.org/">Rust</a> 创建 Postgres 外部数据包装器的过程。</p>
+<hr />
+<h2 id="webassembly">为什么选择 WebAssembly？</h2>
+<blockquote>
+<p><a href="https://webassembly.org/">WebAssembly (Wasm)</a> is a binary instruction format that enables secure and high-performance execution of code. Originally designed for web browsers, it can now be utilized in server-side environments like Postgres.</p>
+</blockquote>
+<p><a href="https://webassembly.org/">WebAssembly (Wasm)</a> 是一种二进制指令格式，能够实现安全且高性能的代码执行。它最初是为网页浏览器设计的，现在已被应用到诸如 Postgres 等服务器端环境中。</p>
+<blockquote>
+<p>Key benefits of Wasm FDWs include:
+* <strong>Improved Security:</strong> Wasm's sandboxed execution runtime with minimal interfaces enhances the security of FDWs.
+* <strong>Simplified Development:</strong> Developers can use <a href="https://www.rust-lang.org/">Rust</a> to create complex FDWs without diving deep into internal Postgres APIs.
+* <strong>Simplified Distribution:</strong> Easily distribute your Wasm FDW through any URL-accessible storage (such as GitHub or S3).
+* <strong>Enhanced Performance:</strong> Wasm's near-native speed ensures FDWs operate with minimal overhead.
+* <strong>Increased Modularity:</strong> Each Wasm FDW is an isolated package that is dynamically loaded and executed individually by Wrappers.</p>
+</blockquote>
+<p>Wasm FDW 的核心优势包括：
+* <strong>更高的安全性：</strong> Wasm 的沙盒化执行运行时具有最简接口，增强了 FDW 的安全性。
+* <strong>简化开发：</strong> 开发者可以使用 <a href="https://www.rust-lang.org/">Rust</a> 构建复杂的 FDW，而无需深入研究 Postgres 内部 API。
+* <strong>简化分发：</strong> 通过任何可通过 URL 访问的存储（如 GitHub 或 S3）轻松分发你的 Wasm FDW。
+* <strong>性能增强：</strong> Wasm 接近原生运行的速度确保了 FDW 在极低的开销下运行。
+* <strong>提高模块化：</strong> 每个 Wasm FDW 都是一个独立的包，由 Wrappers 动态加载和独立执行。</p>
+<hr />
+<h2 id="_3">架构</h2>
+<blockquote>
+<p>The architecture of Wasm FDWs consists of the following key components:</p>
+</blockquote>
+<p>Wasm FDW 的架构包含以下核心组件：</p>
+<blockquote>
+<ol>
+<li><strong>Supabase Wrappers Extension (Host):</strong> Runs within Postgres and includes:</li>
+<li><strong>Wasm Runtime:</strong> Provides the environment to execute the Wasm FDW package.</li>
+<li><strong>HTTP Interface:</strong> Manages communication with external data sources through HTTP.</li>
+<li><strong>Utilities:</strong> Helper tools and functions to support FDW operations.</li>
+<li><strong>Additional Modules:</strong> Specific functionalities such as JWT and stats.</li>
+<li><strong>Wasm FDWs (Guests):</strong> Isolated, dynamically loaded Wasm packages that fetch and process data in a sandboxed environment (e.g., Snowflake Wasm FDW, Paddle Wasm FDW).</li>
+<li><strong>Web Storage:</strong> External storage services like GitHub or S3 where Wasm packages are stored publicly.</li>
+<li><strong>External Data Source:</strong> External systems accessed via RESTful APIs (e.g., Snowflake, Paddle).</li>
+</ol>
+</blockquote>
+<ol>
+<li><strong>Supabase Wrappers 扩展（宿主机）：</strong> 运行在 Postgres 内部，包含：</li>
+<li><strong>Wasm 运行时：</strong> 提供执行 Wasm FDW 包的环境。</li>
+<li><strong>HTTP 接口：</strong> 通过 HTTP 管理与外部数据源的通信。</li>
+<li><strong>实用工具：</strong> 支持 FDW 操作的辅助工具和函数。</li>
+<li><strong>附加模块：</strong> 如 JWT 和统计信息等特定功能。</li>
+<li><strong>Wasm FDW（客体机）：</strong> 隔离的、动态加载的 Wasm 包，在沙盒环境中获取和处理数据（例如 Snowflake Wasm FDW、Paddle Wasm FDW）。</li>
+<li><strong>网络存储：</strong> 存放 Wasm 包的外部存储服务（如公开存储在 GitHub 或 S3 上）。</li>
+<li><strong>外部数据源：</strong> 通过 RESTful API 访问的外部系统（例如 Snowflake、Paddle）。</li>
+</ol>
+<hr />
+<h2 id="_4">数据获取</h2>
+<blockquote>
+<p>Wasm FDWs are loaded dynamically when the first request is made. The interaction flow follows these steps:</p>
+</blockquote>
+<p>Wasm FDW 在发起第一次请求时会被动态加载。其交互流程如下：</p>
+<blockquote>
+<ol>
+<li><strong>Wasm Download:</strong> The package is dynamically downloaded from web storage (like GitHub or S3) and cached locally the first time a <code>SELECT</code> statement is initiated.</li>
+<li><strong>Initialization and Execution:</strong> The Wasm FDW runs within an embedded, sandboxed runtime environment isolated from the main Postgres system.</li>
+<li><strong>Data Fetching via RESTful API:</strong> Wasm FDWs interact with external data sources using RESTful APIs.</li>
+<li><strong>Query Handling and Integration:</strong> Postgres invokes the appropriate Wasm FDW, fetches and processes the data, and integrates it back into the query execution pipeline.</li>
+</ol>
+</blockquote>
+<ol>
+<li><strong>Wasm 下载：</strong> 当首次执行 <code>SELECT</code> 语句时，该包会从网络存储（如 GitHub 或 S3）中动态下载并缓存在本地。</li>
+<li><strong>初始化与执行：</strong> Wasm FDW 在独立于主 Postgres 系统的嵌入式沙盒运行时环境中运行。</li>
+<li><strong>通过 RESTful API 获取数据：</strong> Wasm FDW 使用 RESTful API 与外部数据源进行交互。</li>
+<li><strong>查询处理与集成：</strong> Postgres 调用相应的 Wasm FDW，获取并处理数据，然后将其重新集成到查询执行管道中。</li>
+</ol>
+<blockquote>
+<blockquote>
+<p><strong>Note:</strong> The Wasm FDW currently only supports data sources with HTTP(S)-based JSON APIs. Other sources, such as TCP/IP-based DBMS or local files, are not yet supported.</p>
+</blockquote>
+<p><strong>注意：</strong> Wasm FDW 目前仅支持基于 HTTP(S) 的 JSON API 数据源。其他来源（如基于 TCP/IP 的 DBMS 或本地文件）暂不支持。</p>
+</blockquote>
+<hr />
+<h2 id="wasm-fdw">开发你自己的 Wasm FDW</h2>
+<blockquote>
+<p>A major benefit of Wasm FDW is the ability to build and deploy custom wrappers. To get started, clone the [Postgres Wasm FDW <a href="https://github.com/supabase-community/postgres-wasm-fdw">Template</a>]. </p>
+</blockquote>
+<p>Wasm FDW 的一大优势是能够构建和部署自定义包装器。要开始使用，请克隆 <a href="https://github.com/supabase-community/postgres-wasm-fdw">Postgres Wasm FDW 模板</a>。</p>
+<blockquote>
+<p>Visit the <a href="https://fdw.dev/guides/create-wasm-wrapper/">Wrappers docs and guides</a> to learn more.</p>
+</blockquote>
+<p>访问 <a href="https://fdw.dev/guides/create-wasm-wrapper/">Wrappers 文档与指南</a>以了解更多信息。</p>
+<blockquote>
+<p>[!NOTE]
+As Wasm FDWs can access external data sources, you should <strong>never</strong> install Wasm Wrappers from untrusted sources. Always use official Supabase FDWs or trusted sources with full visibility and control.</p>
+<p>[!NOTE]
+由于 Wasm FDW 可以访问外部数据源，你<strong>绝不应该</strong>从不受信任的来源安装 Wasm Wrappers。请务必使用官方的 Supabase FDW 或具有完全可见性和控制权的受信任来源。</p>
+</blockquote>
+<hr />
+<h2 id="supabase">立即在 Supabase 上体验</h2>
+<blockquote>
+<p>The Wasm FDW feature is available today on the Supabase platform, featuring built-in support for <a href="https://supabase.com/docs/guides/database/extensions/wrappers/snowflake">Snowflake</a> and <a href="https://supabase.com/docs/guides/database/extensions/wrappers/paddle">Paddle</a>.</p>
+</blockquote>
+<p>Wasm FDW 功能现已在 Supabase 平台上架，并内置了对 <a href="https://supabase.com/docs/guides/database/extensions/wrappers/snowflake">Snowflake</a> 和 <a href="https://supabase.com/docs/guides/database/extensions/wrappers/paddle">Paddle</a> 的支持。</p>
+<h3 id="1-wasm-wrappers">1. 启用 Wasm Wrappers</h3>
+<blockquote>
+<p>Inside the <a href="https://supabase.com/dashboard/project/_/sql/new">SQL editor</a>, enable the feature:</p>
+</blockquote>
+<p>在 <a href="https://supabase.com/dashboard/project/_/sql/new">SQL 编辑器</a> 中启用该功能：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- install Wrappers extension</span>
+<span class="k">create</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">exists</span><span class="w"> </span><span class="n">wrappers</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="k">schema</span><span class="w"> </span><span class="n">extensions</span><span class="p">;</span>
+
+<span class="c1">-- create Wasm foreign data wrapper</span>
+<span class="k">create</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">data</span><span class="w"> </span><span class="n">wrapper</span><span class="w"> </span><span class="n">wasm_wrapper</span>
+<span class="w">  </span><span class="k">handler</span><span class="w"> </span><span class="n">wasm_fdw_handler</span>
+<span class="w">  </span><span class="k">validator</span><span class="w"> </span><span class="n">wasm_fdw_validator</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="2-paddle">2. 获取你的 Paddle 凭据</h3>
+<blockquote>
+<p>Sign up for <a href="https://developer.paddle.com/api-reference/overview#base-url">a sandbox account</a> and generate an API key via the <a href="https://sandbox-vendors.paddle.com/authentication-v2">Paddle sandbox dashboard</a>.</p>
+</blockquote>
+<p>注册一个<a href="https://developer.paddle.com/api-reference/overview#base-url">沙盒账户</a>，并通过 <a href="https://sandbox-vendors.paddle.com/authentication-v2">Paddle 沙盒控制面板</a>生成 API 密钥。</p>
+<h3 id="3">3. 保存凭据并创建外部服务器</h3>
+<blockquote>
+<p>Create a Paddle server in Postgres using the Wasm FDW:</p>
+</blockquote>
+<p>使用 Wasm FDW 在 Postgres 中创建一个 Paddle 服务器：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- create Paddle foreign server</span>
+<span class="k">create</span><span class="w"> </span><span class="n">server</span><span class="w"> </span><span class="n">paddle_server</span>
+<span class="w">  </span><span class="k">foreign</span><span class="w"> </span><span class="k">data</span><span class="w"> </span><span class="n">wrapper</span><span class="w"> </span><span class="n">wasm_wrapper</span>
+<span class="w">  </span><span class="k">options</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="c1">-- check all available versions at</span>
+<span class="w">    </span><span class="c1">-- https://fdw.dev/catalog/paddle/#available-versions</span>
+<span class="w">    </span><span class="n">fdw_package_url</span><span class="w"> </span><span class="s1">&#39;https://github.com/supabase/wrappers/releases/download/wasm_paddle_fdw_v0.1.1/paddle_fdw.wasm&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">fdw_package_name</span><span class="w"> </span><span class="s1">&#39;supabase:paddle-fdw&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">fdw_package_version</span><span class="w"> </span><span class="s1">&#39;0.1.1&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">fdw_package_checksum</span><span class="w"> </span><span class="s1">&#39;c5ac70bb2eef33693787b7d4efce9a83cde8d4fa40889d2037403a51263ba657&#39;</span><span class="p">,</span>
+
+<span class="w">    </span><span class="c1">-- save your Paddle credentials</span>
+<span class="w">    </span><span class="n">api_url</span><span class="w"> </span><span class="s1">&#39;https://sandbox-api.paddle.com&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">api_key</span><span class="w"> </span><span class="s1">&#39;&lt;your Paddle sandbox API key&gt;&#39;</span>
+<span class="w">  </span><span class="p">);</span>
+</code></pre></div>
+<h3 id="4">4. 设置外部表</h3>
+<blockquote>
+<p>Create a dedicated schema and table for your Paddle data:</p>
+</blockquote>
+<p>为你的 Paddle 数据创建一个专用的架构和表：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- create dedicated schema for Paddle foreign tables</span>
+<span class="k">create</span><span class="w"> </span><span class="k">schema</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">exists</span><span class="w"> </span><span class="n">paddle</span><span class="p">;</span>
+
+<span class="c1">-- create foreign table</span>
+<span class="k">create</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">paddle</span><span class="p">.</span><span class="n">customers</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">name</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">email</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">status</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">custom_data</span><span class="w"> </span><span class="n">jsonb</span><span class="p">,</span>
+<span class="w">  </span><span class="n">created_at</span><span class="w"> </span><span class="k">timestamp</span><span class="p">,</span>
+<span class="w">  </span><span class="n">updated_at</span><span class="w"> </span><span class="k">timestamp</span><span class="p">,</span>
+<span class="w">  </span><span class="n">attrs</span><span class="w"> </span><span class="n">jsonb</span>
+<span class="p">)</span>
+<span class="n">server</span><span class="w"> </span><span class="n">paddle_server</span>
+<span class="k">options</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="k">object</span><span class="w"> </span><span class="s1">&#39;customers&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">rowid_column</span><span class="w"> </span><span class="s1">&#39;id&#39;</span>
+<span class="p">);</span>
+</code></pre></div>
+<h3 id="5-postgres-paddle">5. 从 Postgres 查询 Paddle</h3>
+<blockquote>
+<p>Query the foreign table directly from SQL:</p>
+</blockquote>
+<p>直接通过 SQL 查询外部表：</p>
+<div class="highlight"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">email</span><span class="p">,</span><span class="w"> </span><span class="n">status</span>
+<span class="k">from</span><span class="w"> </span><span class="n">paddle</span><span class="p">.</span><span class="n">customers</span><span class="p">;</span>
+</code></pre></div>
+<blockquote>
+<p>For more detailed guides, check out the <a href="https://fdw.dev/">Supabase Wrappers documentation</a>.</p>
+</blockquote>
+<p>有关更详细的指南，请查看 <a href="https://fdw.dev/">Supabase Wrappers 文档</a>。</p>
+<hr />
+<h2 id="_5">感谢我们的社区贡献者</h2>
+<blockquote>
+<p>This innovation was made possible by the relentless efforts of our vibrant community. Special thanks to:
+* <a href="https://github.com/AayushyaVajpayee">Aayushya Vajpayee</a>
+* <a href="https://github.com/romaingrx">Romain Graux</a></p>
+</blockquote>
+<p>这项创新离不开充满活力的社区成员们的不懈努力。特别感谢：
+* <a href="https://github.com/AayushyaVajpayee">Aayushya Vajpayee</a>
+* <a href="https://github.com/romaingrx">Romain Graux</a></p>
+<blockquote>
+<p>Want to join the Supabase Wrappers community contributors? <a href="https://fdw.dev/contributing/core/">Check out the contribution docs</a>.</p>
+</blockquote>
+<p>想要加入 Supabase Wrappers 社区贡献者的行列？<a href="https://fdw.dev/contributing/core/">请查看贡献文档</a>。</p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">WebAssembly</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">FDW</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

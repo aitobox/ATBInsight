@@ -1,0 +1,824 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E4%B8%BA%20Postgres%20%E5%A4%96%E9%83%A8%E6%95%B0%E6%8D%AE%E5%8C%85%E8%A3%85%E5%99%A8%EF%BC%88FDW%EF%BC%89%E6%B7%BB%E5%8A%A0%E5%BC%82%E6%AD%A5%E6%B5%81%E5%BC%8F%E4%BC%A0%E8%BE%93%E6%94%AF%E6%8C%81/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>为 Postgres 外部数据包装器（FDW）添加异步流式传输支持 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              为 Postgres 外部数据包装器（FDW）添加异步流式传输支持
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fdw" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        传统 FDW 的工作原理
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rust" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        我们构建的成果：Rust 中的异步流式传输
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么它在 Postgres 生态系统中独一无二
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        工作原理
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        这对开发者意味着什么
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        下一步计划
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">为 Postgres 外部数据包装器（FDW）添加异步流式传输支持</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>传统的 Postgres 外部数据包装器（FDW）长期受限于同步、基于拉取（pull-based）的模型，往往需要获取完整的结果集或固定大小的批处理数据，这会导致巨大的内存压力以及后端进程的空闲等待。通过 <strong>Supabase Wrappers</strong>，一套用 Rust 构建的全新异步流式架构成功在 Postgres 与现代分析型数据库（如 ClickHouse、BigQuery、Snowflake）之间架起了桥梁。</p>
+<p>通过将 I/O 操作卸载至异步运行时，并让数据行通过有界且限流的通道（channel）进行传递，Wrappers 在遵循 Postgres 同步执行模型的同时，实现了可预测的受控内存占用以及显著更快的首条结果返回速度。本文深入探讨了这一架构的设计理念、底层实现方式及其对现代开发者构建高效数据管道的重要意义。</p>
+<hr />
+<h2 id="fdw">传统 FDW 的工作原理</h2>
+<p>大多数 FDW（包括 <code>postgres_fdw</code> 和 <code>mysql_fdw</code>）均运行在<strong>同步、基于拉取的模型</strong>下：</p>
+<ol>
+<li>在远程数据源上执行查询。</li>
+<li><strong>一次性获取所有</strong>行或通过<strong>固定大小的批次</strong>（例如使用游标）获取行。</li>
+<li>在等待每个批次到达时阻塞 Postgres 后端。</li>
+<li>在继续之前，将获取到的行转换为 Postgres 元组。</li>
+</ol>
+<blockquote>
+<p>Most FDWs, including <code>postgres_fdw</code> and <code>mysql_fdw</code>, operate in a <strong>synchronous, pull-based model</strong>:</p>
+<ol>
+<li>Execute a query on the remote source.</li>
+<li>Fetch rows either <strong>all at once</strong> or in <strong>fixed-size batches</strong> (e.g., using cursors).</li>
+<li>Block the Postgres backend while waiting for each batch to arrive.</li>
+<li>Convert the fetched rows into Postgres tuples before continuing.</li>
+</ol>
+</blockquote>
+<p>虽然分批获取避免了一开始将所有数据加载到内存中，但在 I/O 期间 Postgres 仍然处于阻塞状态，并且在每个批次完全接收并处理完毕之前，执行器无法继续运行。对于针对 ClickHouse 等旨在扫描数十亿行系统的分析型工作负载而言，这会导致：</p>
+<ul>
+<li><strong>高内存压力</strong> — 尤其是在批处理大小较大或无边界的情况下。</li>
+<li><strong>糟糕的交互性</strong> — 用户必须等待第一个批次返回后才能看到第一行数据。</li>
+<li><strong>低效的资源利用率</strong> — 后端在网络等待期间处于空闲状态。</li>
+</ul>
+<p>简而言之，传统的 FDW 是专为<strong>批处理式集成</strong>而设计的，而不是<strong>流式数据管道</strong>。它们缺乏真正的非阻塞 I/O，并且在远程数据开始流动之前无法开始返回结果——即便开始流动后，它们也会在批次之间停顿。</p>
+<blockquote>
+<p>While batched fetching avoids loading all data into memory upfront, Postgres still blocks during I/O, and the executor can’t proceed until each batch is fully received and processed. For analytical workloads against systems like ClickHouse, designed to scan billions of rows, this leads to:</p>
+<ul>
+<li><strong>High memory pressure</strong> — especially if batch sizes are large or unbounded.</li>
+<li><strong>Poor interactivity</strong> — users wait for the first row until the first batch returns.</li>
+<li><strong>Inefficient resource usage</strong> — the backend is idle during network waits.</li>
+</ul>
+<p>In short, traditional FDWs were designed for <strong>batch-oriented integration</strong>, not <strong>streaming data pipelines</strong>. They lack true non-blocking I/O and can’t start returning results until remote data begins flowing—and even then, they stall between batches.</p>
+</blockquote>
+<hr />
+<h2 id="rust">我们构建的成果：Rust 中的异步流式传输</h2>
+<p>我们最新版本的 ClickHouse FDW 引入了<strong>异步流式传输（asynchronous streaming）</strong>，即使面对海量结果集，也能实现高效、内存安全的查询。</p>
+<p>运作方式如下：</p>
+<ol>
+<li>后台异步任务随着数据通过网络到达，从 ClickHouse 增量获取数据行。</li>
+<li>这些行通过一个<strong>有界、限容的通道</strong>（默认容量：1024 行）传递给 Postgres 后端。</li>
+<li>FDW 逐个消费该通道中的数据行，将其转换为 Postgres 的格式并发出，<strong>而无需在内存中完整缓冲整个结果集</strong>。</li>
+</ol>
+<blockquote>
+<p>The latest version of our ClickHouse FDW introduces <strong>asynchronous streaming</strong>, enabling efficient, memory-safe queries, even over massive result sets.</p>
+<p>Here’s how it works:</p>
+<ol>
+<li>A background async task fetches rows from ClickHouse incrementally, as they arrive over the network.</li>
+<li>These rows are passed to the Postgres backend through a <strong>bounded, size-limited channel</strong> (default capacity: 1024 rows).</li>
+<li>The FDW consumes rows from this channel one at a time, converting and emitting them to Postgres <strong>without buffering the full result set in memory</strong>.</li>
+</ol>
+</blockquote>
+<p>这意味着只要第一批数据可用，Postgres 就可以开始返回结果，从而大大降低内存压力并提高查询响应速度，即使对于海量的分析工作负载也是如此。</p>
+<p>通过将 Rust 的内存安全性和异步运行时功能与 Postgres 的 FDW 接口相结合，Wrappers 在尊重 Postgres 同步执行模型的同时，实现了真正的流式传输语义。</p>
+<blockquote>
+<p>This means Postgres can start returning results <strong>as soon as the first rows are available</strong>, dramatically reducing memory pressure and improving query responsiveness, even for massive analytical workloads.</p>
+<p>By combining Rust’s memory safety and async runtime capabilities with Postgres’s FDW interface, Wrappers delivers true streaming semantics while respecting Postgres’s synchronous execution model.</p>
+</blockquote>
+<hr />
+<h2 id="postgres">为什么它在 Postgres 生态系统中独一无二</h2>
+<p>这种流式传输能力不仅仅是 ClickHouse 的专属功能；它是内置于 Wrappers 中的可复用模式的首个实现。</p>
+<p>与在 Postgres 同步模型中运行的传统 C 语言 FDW 不同——它们通常会加载完整的结果集或在批量获取期间阻塞——Wrappers 允许 FDW 从远程源增量流式传输数据。通过将 I/O 卸载到 Rust 的异步运行时，并通过有界通道向 Postgres 提供数据，它带来了：</p>
+<ul>
+<li>可预测、有界的内存使用量 —— 即使对于十亿行级别的扫描。</li>
+<li>更快的首个结果返回时间。</li>
+<li>跨 BigQuery、Snowflake、S3 和 REST API 等各种后端的一致性能。</li>
+</ul>
+<p>借助 Wrappers，FDW 可以安全、高效地将 Postgres 连接到现代数据栈，而不会牺牲稳定性或可扩展性。</p>
+<blockquote>
+<p>This streaming capability isn’t just a ClickHouse feature; it’s the first implementation of a reusable pattern built into Wrappers.</p>
+<p>Unlike traditional C-based FDWs that operate within Postgres’s synchronous model—often loading full result sets or blocking during batched fetches—Wrappers enables FDWs to stream data incrementally from remote sources. By offloading I/O to Rust’s async runtime and feeding rows to Postgres through a bounded channel, it delivers:</p>
+<ul>
+<li>Predictable, bounded memory usage—even for billion-row scans.</li>
+<li>Faster time-to-first-result.</li>
+<li>Consistent performance across diverse backends like BigQuery, Snowflake, S3, and REST APIs.</li>
+</ul>
+<p>With Wrappers, FDWs can safely and efficiently bridge Postgres to the modern data stack without compromising stability or scalability.</p>
+</blockquote>
+<hr />
+<h2 id="_2">工作原理</h2>
+<p>以往，FDW 会预先获取整个结果集或固定的批次：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Old approach: load all rows into memory</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">).</span><span class="n">fetch_all</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">writer</span><span class="p">.</span><span class="n">write_row</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>现在，数据通过异步任务和有界通道进行增量流式传输：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// New approach: stream rows with bounded buffering</span>
+<span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">sender</span><span class="p">,</span><span class="w"> </span><span class="n">receiver</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bounded_channel</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>
+
+<span class="n">spawn_async_task</span><span class="p">(</span><span class="k">async</span><span class="w"> </span><span class="k">move</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">).</span><span class="n">stream</span><span class="p">().</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">next</span><span class="p">().</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sender</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">row</span><span class="p">).</span><span class="k">await</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// Postgres consumes rows as they arrive</span>
+<span class="k">while</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">receiver</span><span class="p">.</span><span class="n">blocking_recv</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">writer</span><span class="p">.</span><span class="n">write_row</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p><strong>注意：</strong> 这是简化的伪代码。实际实现使用了 Wrappers 的内部异步运行时和错误处理机制。</p>
+<p>Previously, the FDW fetched the entire result set or fixed batches upfront:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Old approach: load all rows into memory</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">).</span><span class="n">fetch_all</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">writer</span><span class="p">.</span><span class="n">write_row</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Now, data is streamed incrementally using an async task and a bounded channel:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// New approach: stream rows with bounded buffering</span>
+<span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">sender</span><span class="p">,</span><span class="w"> </span><span class="n">receiver</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bounded_channel</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>
+
+<span class="n">spawn_async_task</span><span class="p">(</span><span class="k">async</span><span class="w"> </span><span class="k">move</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">).</span><span class="n">stream</span><span class="p">().</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">next</span><span class="p">().</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sender</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">row</span><span class="p">).</span><span class="k">await</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// Postgres consumes rows as they arrive</span>
+<span class="k">while</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">receiver</span><span class="p">.</span><span class="n">blocking_recv</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">writer</span><span class="p">.</span><span class="n">write_row</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> This is simplified pseudocode. The actual implementation uses Wrappers’ internal async runtime and error handling.</p>
+</blockquote>
+</blockquote>
+<p>FDW 会生成一个异步任务，随着远程源的数据可用，将其拉取并发送到<strong>大小受限的通道</strong>中。然后，主要的 Postgres 后端<strong>以同步但增量的方式</strong>从该通道读取数据，确保内存使用保持在有界范围内，并且能够快速到达第一批结果——即使对于海量扫描也是如此。</p>
+<p>这种混合模型尊重了 Postgres 的同步执行模型，同时通过 Rust 的异步功能解锁了高效的流式数据访问。</p>
+<blockquote>
+<p>The FDW spawns an async task that pulls rows from the remote source as they become available and sends them through a <strong>size-limited channel</strong>. The main Postgres backend then reads from this channel <strong>synchronously but incrementally</strong>, ensuring memory usage stays bounded and the first results arrive quickly—even for massive scans.</p>
+<p>This hybrid model respects Postgres’s synchronous execution model while unlocking efficient, streaming data access through Rust’s async capabilities.</p>
+</blockquote>
+<hr />
+<h2 id="_3">这对开发者意味着什么</h2>
+<p>如果您正在使用 Supabase Wrappers 进行开发，您可以：</p>
+<ul>
+<li>创建能够流式传输海量结果集且具有有界内存的 FDW。</li>
+<li>安全地将 Postgres 连接到分析系统（如 ClickHouse、BigQuery、Snowflake）、云存储（S3）以及各种 API（Stripe、Airtable、Notion 等）。</li>
+<li>利用 Rust 的异步生态系统构建快速、安全且可维护的集成——无需编写 C 语言或进行手动内存管理。</li>
+</ul>
+<p>这种流式传输模式将 FDW 转变为真正的数据管道组件，让 Postgres 能够参与到现代分析工作流中——同时将所有操作保持在 SQL 语法之内。</p>
+<blockquote>
+<p>If you’re building with Supabase Wrappers, you can:</p>
+<ul>
+<li>Create FDWs that stream massive result sets with bounded memory.</li>
+<li>Safely connect Postgres to analytical systems (like ClickHouse, BigQuery, Snowflake), cloud storage (S3), and APIs (Stripe, Airtable, Notion, and more).</li>
+<li>Leverage Rust’s async ecosystem to build fast, safe, and maintainable integrations—without writing C or manual memory management.</li>
+</ul>
+<p>This streaming pattern turns FDWs into true data pipeline components, letting Postgres participate in modern analytics workflows—while keeping everything in SQL.</p>
+</blockquote>
+<hr />
+<h2 id="_4">下一步计划</h2>
+<p>我们正将异步流式传输逐步推广到整个 Wrappers 生态系统中。针对 BigQuery、Snowflake、S3、Stripe 等连接器将采用相同的流式传输架构——使 Postgres 能够大规模查询远程数据源，并具备低延迟和受控的内存消耗。</p>
+<p>通过 Wrappers，Postgres 成为真正通用的数据网关：一个连接分析型数仓、云存储、SaaS API 和实时数据库的单一 SQL 接口。现在，借助异步流式传输，即使数据量达到数十亿行，它也能高效完成任务。</p>
+<ul>
+<li><strong>探索 Wrappers：</strong> <a href="https://github.com/supabase/wrappers">github.com/supabase/wrappers</a></li>
+<li><strong>构建您自己的 FDW：</strong> <a href="https://fdw.dev/">fdw.dev</a></li>
+</ul>
+<blockquote>
+<p>We’re rolling out async streaming across the Wrappers ecosystem. Connectors for BigQuery, Snowflake, S3, Stripe, and more will adopt the same streaming architecture—enabling Postgres to query remote data sources at scale, with low latency and bounded memory usage.</p>
+<p>With Wrappers, Postgres becomes a true universal data gateway: one SQL interface to analytical warehouses, cloud storage, SaaS APIs, and real-time databases. And now, thanks to async streaming, it can do it efficiently—even when the data runs into billions of rows.</p>
+<ul>
+<li><strong>Explore Wrappers:</strong> <a href="https://github.com/supabase/wrappers">github.com/supabase/wrappers</a></li>
+<li><strong>Build your own FDW:</strong> <a href="https://fdw.dev/">fdw.dev</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Postgres</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase Wrappers</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">FDW</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">异步流式传输</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

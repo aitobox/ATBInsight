@@ -1,0 +1,999 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E4%BD%BF%E7%94%A8%20DBOS%20%E5%9C%A8%20Postgres%20%E4%B8%AD%E8%BF%90%E8%A1%8C%E6%8C%81%E4%B9%85%E5%8C%96%E5%B7%A5%E4%BD%9C%E6%B5%81/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>使用 DBOS 在 Postgres 中运行持久化工作流 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              使用 DBOS 在 Postgres 中运行持久化工作流
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是持久化工作流引擎？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-a-durable-workflow-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What's a Durable Workflow Engine?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dbos" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是 DBOS？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-dbos" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is DBOS?
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is DBOS?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用装饰器创建工作流
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-workflows-with-decorators" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Creating Workflows with Decorators
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        在 Postgres 中存储函数状态
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storing-function-state-in-postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Storing Function State in Postgres
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        工作流逻辑
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflow-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Workflow Logic
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        错误逻辑与恢复
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-logic-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Error Logic &amp; Recovery
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgres_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        使用 Postgres 的优势
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-benefits-of-using-postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Benefits of Using Postgres
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Benefits of Using Postgres">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 性能
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Performance
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-exactly-once-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 精确一次执行（Exactly-Once Execution）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-exactly-once-execution_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Exactly-Once Execution
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 幂等性
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Idempotency
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 熟悉的 Postgres 工具链
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-familiar-postgres-tooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Familiar Postgres Tooling
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        快速开始
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Get Started
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">使用 DBOS 在 Postgres 中运行持久化工作流</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文介绍了由 Postgres 发明者、图灵奖得主 Michael Stonebraker 携手斯坦福大学和麻省理工学院研究人员共同开发的轻量级、高性能持久化工作流引擎 —— <strong>DBOS</strong>。该引擎直接构建于 Postgres 之上，允许开发者通过 Python 或 TypeScript 中的简单装饰器，将各个工作流步骤的状态保存到数据库中，就像电子游戏里的“存档点”一样。</p>
+<p>凭借近期与 <strong>Supabase</strong> 的深度集成，开发者可以极其轻松地利用现有的 Postgres 集群运行强健的工作流。这种设计彻底摆脱了外部协调器的依赖，带来了高达 <strong>25 倍的性能提升</strong>，并具备内置的幂等性、事务保证，以及诸如备份和图形界面等熟悉的 Postgres 原生工具支持。</p>
+<hr />
+<h2 id="_2">什么是持久化工作流引擎？</h2>
+<blockquote>
+<h2 id="whats-a-durable-workflow-engine">What's a Durable Workflow Engine?</h2>
+</blockquote>
+<p>让我们来看一个常见的电商场景，其中订单需要经过多个步骤：</p>
+<blockquote>
+<p>Let's look at a common e-commerce scenario where an order goes through multiple steps:</p>
+</blockquote>
+<ol>
+<li><strong>扣除信用卡金额 (Charge Credit Card)</strong></li>
+<li><strong>检查库存 (Check Inventory)</strong></li>
+<li><strong>发货 (Ship Order)</strong></li>
+</ol>
+<p>由于各种边缘情况的存在，编写一个能够应对意外的强健程序可能会异常困难：</p>
+<blockquote>
+<p>Writing a robust program for this can be surprisingly difficult due to edge cases:
+* <strong>延迟：</strong> 如果你执行到第 2 步（“检查库存”）发现商品缺货，你可能需要等待 24 小时以等待新库存到货。此时该步骤需要“休眠”一天。
+* <strong>Delays:</strong> If you reach step 2 ("Check Inventory") and find the item is out of stock, you may need to wait 24 hours for new inventory to arrive. The step needs to "sleep" for a day.
+* <strong>崩溃：</strong> 如果程序在第 3 步（“发货”）期间崩溃，且没有记录库存已发货的状态，你可能会不小心重复发送相同的订单。
+* <strong>Crashes:</strong> If your program crashes during step 3 ("Ship Order") without recording that the inventory was shipped, you might accidentally send the same order twice.</p>
+</blockquote>
+<p><strong>持久化工作流引擎 (Durable Workflow Engine)</strong> 能够完美解决这些问题。尽管目前存在诸如 <a href="https://oban.pro/">Oban</a>、<a href="https://trigger.dev/">Trigger.dev</a>、<a href="https://www.inngest.com/">Inngest</a>、<a href="https://www.windmill.dev">Windmill</a>、<a href="https://temporal.io/">Temporal</a> 以及 <a href="https://aws.amazon.com/step-functions/">AWS Step Functions</a> 等解决方案，但 DBOS 通过直接将状态存储在你自己的 Postgres 数据库中，提供了一种独特且深度集成的方案。</p>
+<blockquote>
+<p>A <strong>Durable Workflow Engine</strong> solves these problems. While solutions like <a href="https://oban.pro/">Oban</a>, <a href="https://trigger.dev/">Trigger.dev</a>, <a href="https://www.inngest.com/">Inngest</a>, <a href="https://www.windmill.dev">Windmill</a>, <a href="https://temporal.io/">Temporal</a>, and <a href="https://aws.amazon.com/step-functions/">AWS Step Functions</a> exist, DBOS offers a uniquely integrated approach by storing state directly inside your own Postgres database.</p>
+</blockquote>
+<hr />
+<h2 id="dbos">什么是 DBOS？</h2>
+<blockquote>
+<h2 id="what-is-dbos">What is DBOS?</h2>
+</blockquote>
+<p><a href="https://www.dbos.dev/">DBOS</a> 是一个平台，允许你使用 <a href="https://docs.dbos.dev/python/programming-guide">Python</a> 或 <a href="https://docs.dbos.dev/typescript/programming-guide">TypeScript</a> 将应用逻辑编写为无服务器函数（类似于 Supabase Edge Functions）。</p>
+<blockquote>
+<p><a href="https://www.dbos.dev/">DBOS</a> is a platform where you can write application logic as serverless functions (similar to Supabase Edge Functions) in either <a href="https://docs.dbos.dev/python/programming-guide">Python</a> or <a href="https://docs.dbos.dev/typescript/programming-guide">TypeScript</a>.</p>
+</blockquote>
+<h3 id="_3">使用装饰器创建工作流</h3>
+<blockquote>
+<h3 id="creating-workflows-with-decorators">Creating Workflows with Decorators</h3>
+</blockquote>
+<p>与标准的 Supabase Edge Functions 不同，DBOS 允许你通过 <code>DBOS.step()</code> 和 <code>DBOS.workflow()</code> 为函数添加装饰器。</p>
+<blockquote>
+<p>Unlike standard Supabase Edge Functions, DBOS allows you to add decorators to your functions using <code>DBOS.step()</code> and <code>DBOS.workflow()</code>. </p>
+</blockquote>
+<p>当你这样做时，DBOS 会自动将每个步骤的状态存储在 Postgres 中。如果你是个游戏玩家，可以把它想象成代码的 <strong>“存档点”</strong>：如果某个函数失败了，一个新的函数可以启动并从上一个检查点断点续传。</p>
+<blockquote>
+<p>When you do this, DBOS automatically stores the state of every step in Postgres. If you are a gamer, think of this as a <strong>"save point"</strong> for your code: if a function fails, a new function can spin up and pick up right where the last checkpoint left off.</p>
+</blockquote>
+<h3 id="postgres">在 Postgres 中存储函数状态</h3>
+<blockquote>
+<h3 id="storing-function-state-in-postgres">Storing Function State in Postgres</h3>
+</blockquote>
+<p>当你初始化一个 DBOS 应用程序时，它会在你的 Postgres 集群中、紧邻应用数据的位置创建一个新的专用数据库。以官方的“Widget Store”示例为例：</p>
+<blockquote>
+<p>When you initialize a DBOS application, it creates a new dedicated database inside your Postgres cluster alongside your app data. Taking their "Widget Store" example:
+1. <code>widget_store</code>：用于存储常规应用程序数据。
+1. <code>widget_store</code>: Used for storing regular application data.
+2. <code>widget_store_dbos_sys</code>：用于存储工作流状态。
+2. <code>widget_store_dbos_sys</code>: Used for storing the workflow state.</p>
+</blockquote>
+<h3 id="_4">工作流逻辑</h3>
+<blockquote>
+<h3 id="workflow-logic">Workflow Logic</h3>
+</blockquote>
+<p>DBOS 工作流引擎的核心执行机制如下：</p>
+<blockquote>
+<p>The core execution mechanics of the DBOS workflow engine operate as follows:
+1. 当工作流启动时，它会生成一个唯一 ID，并将其及其输入记录到 Postgres 的 <code>workflow_status</code> 表中，状态为 <code>PENDING</code>（挂起）。
+1. When a workflow starts, it generates a unique ID and records it in a Postgres <code>workflow_status</code> table with a <code>PENDING</code> status, along with its inputs.
+2. 每当一个步骤完成时，其输出会被记录到 Postgres 的 <code>operation_outputs</code> 表中。
+2. Each time a step completes, its output is logged in a Postgres <code>operation_outputs</code> table.
+3. 工作流结束后，<code>workflow_status</code> 表中的状态将更新为 <code>SUCCESS</code>（如果发生未捕获的异常则为 <code>ERROR</code>）。
+3. Once the workflow finishes, its status in the <code>workflow_status</code> table updates to <code>SUCCESS</code> (or <code>ERROR</code> if an uncaught exception occurred).</p>
+</blockquote>
+<h3 id="_5">错误逻辑与恢复</h3>
+<blockquote>
+<h3 id="error-logic-recovery">Error Logic &amp; Recovery</h3>
+</blockquote>
+<p>如果程序中断，DBOS 库会在重新启动时启动一个后台线程，从未完成工作流最后完成的状态处恢复它们：</p>
+<blockquote>
+<p>If a program is interrupted, the DBOS library launches a background thread on restart to resume incomplete workflows from their last completed state:
+1. 它会查询 Postgres 中所有处于 <code>PENDING</code> 状态的工作流，并使用原始输入重新调用工作流函数。
+1. It queries Postgres for all <code>PENDING</code> workflows and re-invokes the workflow function using its original inputs.
+2. 随着工作流重新执行，它会在尝试执行每个步骤之前检查 Postgres。如果该步骤的输出已经存在，它将跳过执行并直接复用存储的输出。
+2. As the workflow re-executes, it checks Postgres before attempting each step. If the step's output already exists, it skips execution and reuses the stored output.
+3. 工作流将在第一个尚未将其输出存储到 Postgres 的步骤处恢复全新执行。
+3. The workflow resumes fresh execution at the very first step whose output isn't yet stored in Postgres.</p>
+</blockquote>
+<p>由于工作流具有确定性，它们可以可靠地重放存储的步骤输出，从而恢复到中断前的准确状态。</p>
+<blockquote>
+<p>Because workflows are deterministic, they can reliably replay stored step outputs to recover their exact pre-interruption state.</p>
+</blockquote>
+<hr />
+<h2 id="postgres_1">使用 Postgres 的优势</h2>
+<blockquote>
+<h2 id="the-benefits-of-using-postgres">The Benefits of Using Postgres</h2>
+</blockquote>
+<p>相比 AWS Step Functions 或 Temporal 等外部工作流引擎，DBOS 具有几个明显的优势：</p>
+<blockquote>
+<p>DBOS offers several distinct advantages over external workflow engines like AWS Step Functions or Temporal:</p>
+</blockquote>
+<h3 id="1">1. 性能</h3>
+<blockquote>
+<h3 id="1-performance">1. Performance</h3>
+<p>由于步骤转换只是局部的 Postgres 写入（约 1 毫秒），而不是向外部协调器发送异步调度（约 100 毫秒），因此 <strong>DBOS 的速度比 AWS Step Functions 快 25 倍</strong>。
+Because step transitions are just local Postgres writes (~1ms) rather than async dispatches to an external orchestrator (~100ms), DBOS is <a href="https://www.dbos.dev/blog/dbos-vs-aws-step-functions-benchmark">25x faster than AWS Step Functions</a>.</p>
+</blockquote>
+<h3 id="2-exactly-once-execution">2. 精确一次执行（Exactly-Once Execution）</h3>
+<blockquote>
+<h3 id="2-exactly-once-execution_1">2. Exactly-Once Execution</h3>
+<p>DBOS 提供了一个特殊的 <code>@DBOS.Transaction</code> 装饰器，可以在原生 Postgres 事务中运行整个步骤，从而保证数据库事务步骤的精确一次执行。
+DBOS features a special <code>@DBOS.Transaction</code> decorator that runs an entire step inside a native Postgres transaction, guaranteeing exactly-once execution for database-transactional steps.</p>
+</blockquote>
+<h3 id="3">3. 幂等性</h3>
+<blockquote>
+<h3 id="3-idempotency">3. Idempotency</h3>
+<p>你可以为工作流分配一个幂等键，从而保证即使使用相同的键被意外多次调用，它也只会执行一次。其底层原理非常简单，就是将工作流的唯一 ID 映射到你的幂等键上。
+You can assign an idempotency key to a workflow, guaranteeing that it only executes once even if accidentally called multiple times with the same key. Under the hood, this simply maps the workflow's unique ID to your idempotency key.</p>
+</blockquote>
+<h3 id="4-postgres">4. 熟悉的 Postgres 工具链</h3>
+<blockquote>
+<h3 id="4-familiar-postgres-tooling">4. Familiar Postgres Tooling</h3>
+<p>由于所有内容都存储在 Postgres 中，你现有的工具链——包括备份、图形界面（GUI）、命令行实用程序和监控——都可以直接开箱即用。
+Because everything lives in Postgres, your existing tooling—backups, GUIs, CLI utilities, and monitoring—just works out of the box.</p>
+</blockquote>
+<hr />
+<h2 id="_6">快速开始</h2>
+<blockquote>
+<h2 id="get-started">Get Started</h2>
+</blockquote>
+<p>准备好尝试了吗？请查看官方集成指南：</p>
+<blockquote>
+<p>Ready to try it out? Check out the official integration guide:</p>
+</blockquote>
+<p><a href="https://docs.dbos.dev/integrations/supabase">在 Supabase 中使用 DBOS →</a></p>
+<blockquote>
+<p><a href="https://docs.dbos.dev/integrations/supabase">Use DBOS With Supabase →</a></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">DBOS</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Postgres</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">工作流引擎</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">持久化</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

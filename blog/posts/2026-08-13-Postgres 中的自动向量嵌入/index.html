@@ -1,0 +1,1156 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-Postgres%20%E4%B8%AD%E7%9A%84%E8%87%AA%E5%8A%A8%E5%90%91%E9%87%8F%E5%B5%8C%E5%85%A5/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Postgres 中的自动向量嵌入 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Postgres 中的自动向量嵌入
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Executive Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-external-embedding-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Problem: External Embedding Pipelines
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Problem: External Embedding Pipelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-failure-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common Failure Points
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        问题：外部嵌入流水线
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="问题：外部嵌入流水线">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        常见故障点
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-automatic-embeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What Are Automatic Embeddings?
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What Are Automatic Embeddings?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Benefits
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是自动向量嵌入？
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="什么是自动向量嵌入？">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心优势
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-patterns-for-generating-embeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Design Patterns for Generating Embeddings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Patterns for Generating Embeddings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-generated-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Generated Columns
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-trigger-based-asynchronous-embeddings-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Trigger-Based Asynchronous Embeddings (Recommended)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        生成嵌入的设计模式
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="生成嵌入的设计模式">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-generated-columns_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 生成列 (Generated Columns)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 基于触发器的异步嵌入（推荐）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-use-automatic-embeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How to Use Automatic Embeddings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How to Use Automatic Embeddings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-set-up-the-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Set Up the Table
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-embedding-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Create the Embedding Pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-insert-and-query-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Insert and Query Data
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        如何使用自动向量嵌入
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="如何使用自动向量嵌入">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 设置表结构
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 创建嵌入流水线
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 插入和查询数据
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">Postgres 中的自动向量嵌入</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>Supabase 近期发布了<strong>自动向量嵌入（Automatic Embeddings）</strong>功能，这是一项能够在 Postgres 内部直接自动化生成和更新向量嵌入的强大新特性。通过将 Supabase Vector (<code>pgvector</code>)、队列 (<code>pgmq</code>)、定时任务 (<code>pg_cron</code>)、<code>pg_net</code> 以及 Edge Functions 相结合，开发人员可以彻底摆脱外部同步流水线的束缚。这种原生方法确保了数据和向量嵌入的完美同步，同时避免了管理独立后台工作线程的复杂性、数据漂移问题，以及对数据库写入操作带来的阻塞延迟。</p>
+<p>本文详细剖析了传统外部嵌入流水线的痛点，对比了不同的架构设计模式，并重点介绍了基于触发器的异步嵌入推荐方案。通过具体的 SQL 代码示例和实现步骤，文章展示了如何在 Supabase 环境下优雅地构建自动化的向量嵌入流水线，助力开发者更高效地实现 RAG、语义搜索和推荐等高级 AI 功能。</p>
+<hr />
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Supabase has released <strong>Automatic Embeddings</strong>, a powerful new capability that automates the generation and updating of vector embeddings directly inside Postgres. By combining Supabase Vector (<code>pgvector</code>), Queues (<code>pgmq</code>), Cron (<code>pg_cron</code>), <code>pg_net</code>, and Edge Functions, developers can eliminate external synchronization pipelines. This native approach ensures data and embeddings stay perfectly in sync without the complexity of managing separate background workers, dealing with data drift, or adding blocking latency to database writes.</p>
+<blockquote>
+<p>Supabase 发布了<strong>自动向量嵌入（Automatic Embeddings）</strong>，这是一项强大的新功能，可在 Postgres 内部直接自动生成和更新向量嵌入。通过结合 Supabase Vector (<code>pgvector</code>)、队列 (<code>pgmq</code>)、Cron (<code>pg_cron</code>)、<code>pg_net</code> 和 Edge Functions，开发人员可以消除外部同步流水线。这种原生方法确保数据和嵌入保持完美同步，而无需管理单独的后台工作线程、处理数据漂移或向数据库写入添加阻塞延迟的复杂性。</p>
+</blockquote>
+<hr />
+<h2 id="the-problem-external-embedding-pipelines">The Problem: External Embedding Pipelines</h2>
+<p>Implementing semantic features (like RAG, semantic search, and recommendations) traditionally requires building and maintaining an external synchronization pipeline:</p>
+<ol>
+<li>Store source content (documents, tickets, articles).</li>
+<li>Generate an embedding via an external model API.</li>
+<li>Store the vector result in the database.</li>
+<li>Re-run jobs whenever content changes.</li>
+<li>Handle retries for timeouts and model failures.</li>
+</ol>
+<h3 id="common-failure-points">Common Failure Points</h3>
+<ul>
+<li><strong>Data Drift:</strong> Forgetting to re-embed updated content degrades search quality over time.</li>
+<li><strong>Latency:</strong> Synchronous API calls on the write path add unnecessary delay.</li>
+<li><strong>Lack of Resilience:</strong> Background worker crashes or queue failures can go unnoticed until features break.</li>
+<li><strong>Schema Duplication:</strong> Application code ends up duplicating logic that belongs in the database schema.</li>
+</ul>
+<blockquote>
+<h2 id="_2">问题：外部嵌入流水线</h2>
+<p>实现语义功能（如 RAG、语义搜索和推荐）传统上需要构建和维护外部同步流水线：</p>
+<ol>
+<li>存储源内容（文档、工单、文章）。</li>
+<li>通过外部模型 API 生成嵌入。</li>
+<li>将向量结果存储在数据库中。</li>
+<li>每当内容更改时重新运行任务。</li>
+<li>处理超时和模型故障的重试。</li>
+</ol>
+<h3 id="_3">常见故障点</h3>
+<ul>
+<li><strong>数据漂移：</strong> 忘记对更新的内容重新嵌入，会导致搜索质量随时间下降。</li>
+<li><strong>延迟：</strong> 写入路径上的同步 API 调用会增加不必要的延迟。</li>
+<li><strong>缺乏弹性：</strong> 后台工作线程崩溃或队列故障可能在功能损坏之前一直不被察觉。</li>
+<li><strong>架构重复：</strong> 应用程序代码最终重复了本应属于数据库架构的逻辑。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="what-are-automatic-embeddings">What Are Automatic Embeddings?</h2>
+<p>Automatic embeddings shift the coordination of vector generation directly into Postgres. While inference still happens via an external model, the lifecycle management is handled via native database primitives.</p>
+<p>When a row is inserted or updated, Postgres automatically enqueues a transactional background job. This job runs asynchronously, handles retries, and writes the resulting vector back to the database.</p>
+<h3 id="key-benefits">Key Benefits</h3>
+<ul>
+<li><strong>No Drift:</strong> Embeddings update automatically alongside source content.</li>
+<li><strong>Bring Your Own Model:</strong> Compatible with any API endpoint that returns a vector.</li>
+<li><strong>Pure SQL Interface:</strong> Enqueue, inspect, and retry embedding jobs entirely within SQL.</li>
+</ul>
+<blockquote>
+<h2 id="_4">什么是自动向量嵌入？</h2>
+<p>自动嵌入将向量生成的协调工作直接转移到了 Postgres 内部。虽然推理仍然通过外部模型进行，但生命周期管理是通过本地数据库原语处理的。</p>
+<p>当插入或更新行时，Postgres 会自动将事务性后台任务加入队列。该任务异步运行，处理重试，并将生成的向量写回数据库。</p>
+<h3 id="_5">核心优势</h3>
+<ul>
+<li><strong>无数据漂移：</strong> 嵌入与源内容一起自动更新。</li>
+<li><strong>自带模型（BYOM）：</strong> 兼容任何返回向量的 API 端点。</li>
+<li><strong>纯 SQL 接口：</strong> 完全在 SQL 中对嵌入任务进行入队、检查和重试。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="design-patterns-for-generating-embeddings">Design Patterns for Generating Embeddings</h2>
+<h3 id="1-generated-columns">1. Generated Columns</h3>
+<p><div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="n">uuid</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">content</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">embedding</span><span class="w"> </span><span class="n">vector</span><span class="p">(</span><span class="mi">1536</span><span class="p">)</span><span class="w"> </span><span class="k">generated</span><span class="w"> </span><span class="n">always</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="p">(</span><span class="n">embed</span><span class="p">(</span><span class="n">content</span><span class="p">))</span><span class="w"> </span><span class="n">stored</span>
+<span class="p">);</span>
+</code></pre></div>
+* <strong>Pros:</strong> Declarative and automatic.
+* <strong>Cons:</strong> Only practical for local, fast models. Utilizing an external API via <code>embed()</code> on write blocks the write path and fails to scale.</p>
+<h3 id="2-trigger-based-asynchronous-embeddings-recommended">2. Trigger-Based Asynchronous Embeddings (Recommended)</h3>
+<p>The Supabase approach leverages a robust stack of Postgres extensions:
+* <strong>SQL Triggers:</strong> Detect inserts and updates.
+* <strong><code>pgmq</code>:</strong> Enqueues embedding jobs inside a transactional message queue.
+* <strong><code>pg_net</code>:</strong> Sends asynchronous HTTP requests to Edge Functions (and downstream embedding providers like OpenAI).
+* <strong><code>pg_cron</code>:</strong> Runs background workers to process the queue reliably.
+* <strong><code>pgvector</code>:</strong> Stores and indexes the resulting embeddings.</p>
+<blockquote>
+<h2 id="_6">生成嵌入的设计模式</h2>
+<h3 id="1-generated-columns_1">1. 生成列 (Generated Columns)</h3>
+<p><div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="n">uuid</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">content</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">embedding</span><span class="w"> </span><span class="n">vector</span><span class="p">(</span><span class="mi">1536</span><span class="p">)</span><span class="w"> </span><span class="k">generated</span><span class="w"> </span><span class="n">always</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="p">(</span><span class="n">embed</span><span class="p">(</span><span class="n">content</span><span class="p">))</span><span class="w"> </span><span class="n">stored</span>
+<span class="p">);</span>
+</code></pre></div>
+* <strong>优点：</strong> 声明式且自动化。
+* <strong>缺点：</strong> 仅对本地快速模型实用。在写入时通过 <code>embed()</code> 利用外部 API 会阻塞写入路径且无法扩展。</p>
+<h3 id="2">2. 基于触发器的异步嵌入（推荐）</h3>
+<p>Supabase 的方法利用了一套强大的 Postgres 扩展栈：
+* <strong>SQL 触发器：</strong> 检测插入和更新。
+* <strong><code>pgmq</code>：</strong> 在事务性消息队列中对嵌入任务进行入队。
+* <strong><code>pg_net</code>：</strong> 向 Edge Functions（以及下游嵌入提供商如 OpenAI）发送异步 HTTP 请求。
+* <strong><code>pg_cron</code>：</strong> 运行后台工作线程以可靠地处理队列。
+* <strong><code>pgvector</code>：</strong> 存储和索引生成的嵌入。</p>
+</blockquote>
+<hr />
+<h2 id="how-to-use-automatic-embeddings">How to Use Automatic Embeddings</h2>
+<h3 id="1-set-up-the-table">1. Set Up the Table</h3>
+<p>Create a <code>documents</code> table equipped with an indexing strategy for vector search:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Table to store documents with embeddings</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">integer</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="k">generated</span><span class="w"> </span><span class="n">always</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="k">identity</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<span class="w">  </span><span class="n">content</span><span class="w"> </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<span class="w">  </span><span class="n">embedding</span><span class="w"> </span><span class="n">halfvec</span><span class="p">(</span><span class="mi">1536</span><span class="p">),</span>
+<span class="w">  </span><span class="n">created_at</span><span class="w"> </span><span class="k">timestamp</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="k">time</span><span class="w"> </span><span class="k">zone</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="n">now</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">-- Index for vector search over document embeddings</span>
+<span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="n">hnsw</span><span class="w"> </span><span class="p">(</span><span class="n">embedding</span><span class="w"> </span><span class="n">halfvec_cosine_ops</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="2-create-the-embedding-pipeline">2. Create the Embedding Pipeline</h3>
+<p>Define an <code>embedding_input</code> function to configure how source columns are concatenated for the embedding model:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Customize the input for embedding generation</span>
+<span class="c1">-- e.g. Concatenate title and content with a markdown header</span>
+<span class="k">create</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">replace</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">embedding_input</span><span class="p">(</span><span class="n">doc</span><span class="w"> </span><span class="n">documents</span><span class="p">)</span>
+<span class="k">returns</span><span class="w"> </span><span class="nb">text</span>
+<span class="k">language</span><span class="w"> </span><span class="n">plpgsql</span>
+<span class="k">immutable</span>
+<span class="k">as</span><span class="w"> </span><span class="err">$$</span>
+<span class="k">begin</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s1">&#39;# &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">title</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">E</span><span class="s1">&#39;\n\n&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">content</span><span class="p">;</span>
+<span class="k">end</span><span class="p">;</span>
+<span class="err">$$</span><span class="p">;</span>
+</code></pre></div>
+<p>Next, add triggers for insert and update events to queue jobs asynchronously:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Trigger for insert events</span>
+<span class="k">create</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">embed_documents_on_insert</span>
+<span class="w">  </span><span class="k">after</span><span class="w"> </span><span class="k">insert</span>
+<span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="k">each</span><span class="w"> </span><span class="k">row</span>
+<span class="w">  </span><span class="k">execute</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">util</span><span class="p">.</span><span class="n">queue_embeddings</span><span class="p">(</span><span class="s1">&#39;embedding_input&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;embedding&#39;</span><span class="p">);</span>
+
+<span class="c1">-- Trigger for update events</span>
+<span class="k">create</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">embed_documents_on_update</span>
+<span class="w">  </span><span class="k">after</span><span class="w"> </span><span class="k">update</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="c1">-- must match the columns in embedding_input()</span>
+<span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="k">each</span><span class="w"> </span><span class="k">row</span>
+<span class="w">  </span><span class="k">execute</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">util</span><span class="p">.</span><span class="n">queue_embeddings</span><span class="p">(</span><span class="s1">&#39;embedding_input&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;embedding&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>The background Edge Function coordinates with your chosen inference provider (e.g., OpenAI):</p>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Generates an embedding for the given text.</span>
+<span class="cm"> */</span>
+<span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">generateEmbedding</span><span class="p">(</span><span class="nx">text</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">openai</span><span class="p">.</span><span class="nx">embeddings</span><span class="p">.</span><span class="nx">create</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;text-embedding-3-small&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">input</span><span class="o">:</span><span class="w"> </span><span class="kt">text</span><span class="p">,</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">data</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">data</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="s1">&#39;failed to generate embedding&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">embedding</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="3-insert-and-query-data">3. Insert and Query Data</h3>
+<p>Insert a new record into your table:</p>
+<div class="highlight"><pre><span></span><code><span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Understanding Vector Databases&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Vector databases are specialized...&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>If queried immediately, the <code>embedding</code> column will be temporarily null while the Edge Function processes the queue in the background. Within seconds, the background worker completes inference, populates the column, and ensures your data remains fully synchronized for vector search.</p>
+<blockquote>
+<h2 id="_7">如何使用自动向量嵌入</h2>
+<h3 id="1">1. 设置表结构</h3>
+<p>创建一个配备向量搜索索引策略的 <code>documents</code> 表：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Table to store documents with embeddings</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">integer</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="k">generated</span><span class="w"> </span><span class="n">always</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="k">identity</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<span class="w">  </span><span class="n">content</span><span class="w"> </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<span class="w">  </span><span class="n">embedding</span><span class="w"> </span><span class="n">halfvec</span><span class="p">(</span><span class="mi">1536</span><span class="p">),</span>
+<span class="w">  </span><span class="n">created_at</span><span class="w"> </span><span class="k">timestamp</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="k">time</span><span class="w"> </span><span class="k">zone</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="n">now</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">-- Index for vector search over document embeddings</span>
+<span class="k">create</span><span class="w"> </span><span class="k">index</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="n">hnsw</span><span class="w"> </span><span class="p">(</span><span class="n">embedding</span><span class="w"> </span><span class="n">halfvec_cosine_ops</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="2_1">2. 创建嵌入流水线</h3>
+<p>定义一个 <code>embedding_input</code> 函数来配置如何为嵌入模型拼接源列：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Customize the input for embedding generation</span>
+<span class="c1">-- e.g. Concatenate title and content with a markdown header</span>
+<span class="k">create</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">replace</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">embedding_input</span><span class="p">(</span><span class="n">doc</span><span class="w"> </span><span class="n">documents</span><span class="p">)</span>
+<span class="k">returns</span><span class="w"> </span><span class="nb">text</span>
+<span class="k">language</span><span class="w"> </span><span class="n">plpgsql</span>
+<span class="k">immutable</span>
+<span class="k">as</span><span class="w"> </span><span class="err">$$</span>
+<span class="k">begin</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="s1">&#39;# &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">title</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">E</span><span class="s1">&#39;\n\n&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">content</span><span class="p">;</span>
+<span class="k">end</span><span class="p">;</span>
+<span class="err">$$</span><span class="p">;</span>
+</code></pre></div>
+<p>接下来，添加用于插入和更新事件的触发器，以异步方式将任务排队：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Trigger for insert events</span>
+<span class="k">create</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">embed_documents_on_insert</span>
+<span class="w">  </span><span class="k">after</span><span class="w"> </span><span class="k">insert</span>
+<span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="k">each</span><span class="w"> </span><span class="k">row</span>
+<span class="w">  </span><span class="k">execute</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">util</span><span class="p">.</span><span class="n">queue_embeddings</span><span class="p">(</span><span class="s1">&#39;embedding_input&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;embedding&#39;</span><span class="p">);</span>
+
+<span class="c1">-- Trigger for update events</span>
+<span class="k">create</span><span class="w"> </span><span class="k">trigger</span><span class="w"> </span><span class="n">embed_documents_on_update</span>
+<span class="w">  </span><span class="k">after</span><span class="w"> </span><span class="k">update</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="c1">-- must match the columns in embedding_input()</span>
+<span class="w">  </span><span class="k">on</span><span class="w"> </span><span class="n">documents</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="k">each</span><span class="w"> </span><span class="k">row</span>
+<span class="w">  </span><span class="k">execute</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="n">util</span><span class="p">.</span><span class="n">queue_embeddings</span><span class="p">(</span><span class="s1">&#39;embedding_input&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;embedding&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>后台 Edge Function 与您选择的推理提供商（例如 OpenAI）进行协调：</p>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Generates an embedding for the given text.</span>
+<span class="cm"> */</span>
+<span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">generateEmbedding</span><span class="p">(</span><span class="nx">text</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">openai</span><span class="p">.</span><span class="nx">embeddings</span><span class="p">.</span><span class="nx">create</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;text-embedding-3-small&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">input</span><span class="o">:</span><span class="w"> </span><span class="kt">text</span><span class="p">,</span>
+<span class="w">  </span><span class="p">})</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">data</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">data</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="s1">&#39;failed to generate embedding&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">embedding</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="3">3. 插入和查询数据</h3>
+<p>向表中插入一条新记录：</p>
+<div class="highlight"><pre><span></span><code><span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Understanding Vector Databases&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Vector databases are specialized...&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>如果立即进行查询，<code>embedding</code> 列将暂时为 <code>null</code>，因为 Edge Function 正在后台处理队列。几秒钟内，后台工作线程将完成推理、填充该列，并确保您的数据完全同步，可用于向量搜索。</p>
+</blockquote>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<p>Get started with automatic embeddings today:
+* <a href="https://supabase.com/docs/guides/ai/automatic-embeddings">Read the full implementation details</a> in the official docs.
+* <a href="https://supabase.com/dashboard/sign-in?returnTo=%2Fprojects">Sign in to Supabase</a> to try it out in your project.</p>
+<blockquote>
+<h2 id="_8">结论</h2>
+<p>立即开始使用自动向量嵌入：
+* 在<a href="https://supabase.com/docs/guides/ai/automatic-embeddings">官方文档</a>中阅读完整的实现细节。
+* <a href="https://supabase.com/dashboard/sign-in?returnTo=%2Fprojects">登录 Supabase</a>并在您的项目中进行试用。</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Supabase</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Postgres</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">pgvector</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">向量嵌入</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">AI</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

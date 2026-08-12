@@ -1,0 +1,1036 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-Multigres%20v0.1%20Alpha%EF%BC%9APostgres%20%E7%9A%84%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Multigres v0.1 Alpha：Postgres 的操作系统 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Multigres v0.1 Alpha：Postgres 的操作系统
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multigres-v01-alpha-an-operating-system-for-postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Multigres v0.1 Alpha: An Operating System for Postgres
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multigres v0.1 Alpha: An Operating System for Postgres">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multigres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是 Multigres？
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-multigres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is Multigres?
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multigres-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Multigres 运营商（Operator）
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-multigres-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Multigres Operator
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        高可用性
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="高可用性">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        高可用性推荐阅读
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#high-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        High Availability
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High Availability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-reading-on-ha" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recommended Reading on HA
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        连接池
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="连接池">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        连接池推荐阅读
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Connection Pooling
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connection Pooling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-reading-on-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recommended Reading on Pooling
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        备份
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="备份">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        引导推荐阅读
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backups
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-reading-on-bootstrapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recommended Reading on Bootstrapping
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        “Alpha”意味着什么
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-alpha-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What "Alpha" Means
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multigres_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        立即体验 Multigres
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-multigres-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Try Multigres Today
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>Multigres 发布了其首个公开开源里程碑版本 —— <strong>v0.1 Alpha</strong>，为 Postgres 带来了 Vitess 级别的水平扩展、高可用性和操作简便性。作为专为 Postgres 设计的可扩展操作系统，该初始版本引入了高级连接 pooling（连接池）、基于共识的自动故障转移以及 Kubernetes 运营商（Operator），为未来的分片（sharding）功能奠定了基础。（注：针对 Supabase 的专属版本即将推出）。</p>
+<hr />
+<h1 id="multigres-v01-alpha-an-operating-system-for-postgres">Multigres v0.1 Alpha: An Operating System for Postgres</h1>
+<blockquote>
+<p><strong>Summary:</strong> Multigres has released its first public open-source milestone—<strong>v0.1 Alpha</strong>—bringing Vitess-grade horizontal scaling, high availability, and operational simplicity to Postgres. Designed as a scalable operating system for Postgres, this initial release introduces advanced connection pooling, automatic consensus-based failovers, and a Kubernetes operator, laying the groundwork for future sharding capabilities. <em>(Note: A dedicated release for Supabase is coming soon).</em></p>
+</blockquote>
+<hr />
+<h2 id="multigres">什么是 Multigres？</h2>
+<p>Multigres 是一个用于 Postgres 的可扩展操作系统，能够整体管理数据库实例，并提供内置的：
+* 分片（即将推出的旗舰功能）
+* 连接池
+* 自动故障转移
+* 备份编排</p>
+<p>大规模运行 Postgres 会带来显著的运营复杂性，包括管理只读副本、故障转移、连接限制和备份。Multigres 将这些繁琐工作作为一个统一的整体系统进行处理，使您能够在需要时将数据库水平扩展。</p>
+<p><strong>v0.1 Alpha</strong> 具体引入了：
+* 高级连接池
+* 自动故障转移
+* 用于部署的 Kubernetes 运营商（Operator）</p>
+<blockquote>
+<h2 id="what-is-multigres">What is Multigres?</h2>
+<p>Multigres is a scalable operating system for Postgres that holistically manages your database instances, providing built-in:
+* Sharding (upcoming flagship feature)
+* Connection pooling
+* Automatic failover
+* Backup orchestration</p>
+<p>Running Postgres at scale introduces significant operational complexity, including the management of read replicas, failovers, connection limits, and backups. Multigres handles these chores as a single cohesive system, empowering you to scale your database horizontally when needed.</p>
+<p>The <strong>v0.1 Alpha</strong> specifically introduces:
+* Advanced connection pooling
+* Automatic failovers
+* A Kubernetes operator for deployment</p>
+</blockquote>
+<hr />
+<h2 id="multigres-operator">Multigres 运营商（Operator）</h2>
+<p>Kubernetes Multigres Operator 允许您在 Kubernetes 上原生部署和管理 Multigres 集群。</p>
+<ul>
+<li><strong>前提条件：</strong> 要<a href="https://multigres.com/blog/deploying-the-multigres-operator">开始使用</a>，您需要一个 Kubernetes 集群和一个配置好的备份存储位置（例如共享文件系统或云存储桶，如 AWS S3）。</li>
+<li><strong>本地测试：</strong> 您也可以在 Kind 集群上本地运行 Multigres。</li>
+<li><strong>可用性：</strong> 运行 Multigres 所需的所有容器镜像均已公开可用。</li>
+</ul>
+<blockquote>
+<h2 id="the-multigres-operator">The Multigres Operator</h2>
+<p>The Kubernetes Multigres Operator allows you to deploy and manage Multigres clusters natively on Kubernetes. </p>
+<ul>
+<li><strong>Prerequisites:</strong> To <a href="https://multigres.com/blog/deploying-the-multigres-operator">get started</a>, you need a Kubernetes cluster and a configured location for backups (such as a shared file system or a cloud storage bucket like AWS S3).</li>
+<li><strong>Local Testing:</strong> You can also run Multigres locally on a Kind cluster.</li>
+<li><strong>Availability:</strong> All necessary container images for running Multigres are publicly available.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_2">高可用性</h2>
+<p>Multigres 将高可用性（HA）视为一个共识问题，在不丢失成功提交的前提下成功解决了脑裂（split-brain）场景。其协议构建于通用共识之上，提供了独特的灵活性：</p>
+<ul>
+<li><strong>基于未经修改的 Postgres 复制：</strong> 使用标准 Postgres 复制满足基于共识系统的一切严格一致性要求。</li>
+<li><strong>用户定义的持久性策略：</strong> 定义任意复杂的持久性策略，而不受限制性多数派法定人数（majority quorum）规则的约束。例如，您可以强制要求跨可用区（cross-zone）持久性，同时将备用节点部署在三个以上的可用区中。</li>
+<li><strong>动态副本：</strong> 在集群运行时安全地向上和向下扩展副本，而不会损害性能或正确性。</li>
+</ul>
+<h3 id="_3">高可用性推荐阅读</h3>
+<ul>
+<li><a href="https://multigres.com/blog/high-availability-from-first-principles">从第一原理看高可用</a></li>
+<li><a href="https://multigres.com/blog/handling-edge-cases-using-consensus">使用共识处理边缘情况</a></li>
+</ul>
+<blockquote>
+<h2 id="high-availability">High Availability</h2>
+<p>Multigres treats High Availability (HA) as a consensus problem, successfully resolving split-brain scenarios without losing successful commits. Its protocol is built on generalized consensus, offering unique flexibility:</p>
+<ul>
+<li><strong>Built on Unmodified Postgres Replication:</strong> Satisfies all strict consistency requirements of a consensus-based system using standard Postgres replication.</li>
+<li><strong>User-Defined Durability Policies:</strong> Define arbitrarily complex durability policies without being constrained by restrictive majority quorum rules. For example, you can mandate cross-zone durability while deploying standbys across more than three zones.</li>
+<li><strong>Dynamic Replicas:</strong> Safely scale replicas up and down while the cluster is running without hurting performance or correctness.</li>
+</ul>
+<h3 id="recommended-reading-on-ha">Recommended Reading on HA</h3>
+<ul>
+<li><a href="https://multigres.com/blog/high-availability-from-first-principles">High availability from first principles</a></li>
+<li><a href="https://multigres.com/blog/handling-edge-cases-using-consensus">Handling edge cases using consensus</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">连接池</h2>
+<p>Multigres 采用基于双服务架构的自定义连接池解决方案：
+1. <strong>Multigateway：</strong> 接受客户端连接并路由查询。
+2. <strong>Multipooler：</strong> 管理后端数据库连接。</p>
+<p>与传统的单进程连接池相比，这种架构具有几个明显的优势：</p>
+<ul>
+<li><strong>智能流量路由：</strong> 与 HA 系统无缝集成，将连接路由到当前的主要是节点（primary）。在故障转移期间，它可以暂缓请求，直到提升新的主节点，从而将错误降至最低。它还支持跨多个副本的读负载均衡。</li>
+<li><strong>上下文感知连接池：</strong> 具有内置的解析器，能够理解请求的影响，从而无需选择僵化的连接池模式（如事务级或会话级）。有状态的请求（如事务）会被固定到专用连接，直到完成。</li>
+<li><strong>按用户划分的连接池：</strong> 为每个用户维护单独的、公平共享的连接池，无需共享池或 <code>SET ROLE</code> 模拟。</li>
+<li><strong>预编译语句合并（Prepared Statement Consolidation）：</strong> 跨网关对预编译语句进行去重，因此 Postgres 对给定语句只需进行一次解析、计划和缓存。</li>
+</ul>
+<h3 id="_5">连接池推荐阅读</h3>
+<ul>
+<li><a href="https://multigres.com/blog/pooling-without-choosing-a-mode">无需选择模式的连接池</a></li>
+<li><a href="https://multigres.com/blog/per-user-pools-that-share-fairly">公平共享的按用户连接池</a></li>
+<li><a href="https://multigres.com/blog/two-jobs-two-processes">双职能、双进程：为什么 Multigres 有自己的连接池</a></li>
+</ul>
+<blockquote>
+<h2 id="connection-pooling">Connection Pooling</h2>
+<p>Multigres features a custom connection pooling solution built on a two-service architecture:
+1. <strong>Multigateway:</strong> Accepts client connections and routes queries.
+2. <strong>Multipooler:</strong> Manages backend database connections.</p>
+<p>This architecture delivers several distinct advantages over traditional single-process poolers:</p>
+<ul>
+<li><strong>Intelligent Traffic Routing:</strong> Seamlessly integrates with the HA system to route connections to the current primary. During failovers, it can hold requests until a new primary is promoted, minimizing errors. It also supports read-load balancing across multiple replicas.</li>
+<li><strong>Context-Aware Pooling:</strong> Features a built-in parser that understands request effects, eliminating the need to choose rigid pooling modes (like transaction or session-level). Stateful requests (like transactions) are pinned to a dedicated connection until complete.</li>
+<li><strong>Per-User Pools:</strong> Maintains separate, fairly shared connection pools per user without shared pools or <code>SET ROLE</code> impersonation.</li>
+<li><strong>Prepared Statement Consolidation:</strong> Deduplicates prepared statements across gateways so Postgres only parses, plans, and caches a given statement once.</li>
+</ul>
+<h3 id="recommended-reading-on-pooling">Recommended Reading on Pooling</h3>
+<ul>
+<li><a href="https://multigres.com/blog/pooling-without-choosing-a-mode">Pooling without choosing a mode</a></li>
+<li><a href="https://multigres.com/blog/per-user-pools-that-share-fairly">Per-user pools that share fairly</a></li>
+<li><a href="https://multigres.com/blog/two-jobs-two-processes">Two jobs, two processes: why Multigres has its own connection pooler</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_6">备份</h2>
+<p>Multigres 利用 <strong>pgBackRest</strong> 进行可靠的备份，主要从副本执行备份，以避免给主数据库带来负载。</p>
+<ul>
+<li><strong>三种备份类型：</strong></li>
+<li><strong>完全备份（Full）：</strong> 在检查点复制整个数据目录。</li>
+<li><strong>增量备份（Incremental）：</strong> 仅复制自上次备份以来更改的文件。</li>
+<li><strong>差异备份（Differential）：</strong> 复制自上次完全备份以来的更改。</li>
+<li><strong>按需与定时：</strong> CLI 允许您列出备份、触发手动备份以及启动恢复。通过集群规范实现的定时备份即将推出。</li>
+<li><strong>自动引导（Automated Bootstrap）：</strong> 自动识别主节点，执行备份，并使用它来初始化其他副本，无需人工干预即可启动准备就绪的集群。</li>
+</ul>
+<h3 id="_7">引导推荐阅读</h3>
+<ul>
+<li><a href="https://multigres.com/blog/multigres-cluster-bootstrap">Multigres 集群是如何引导的</a></li>
+</ul>
+<blockquote>
+<h2 id="backups">Backups</h2>
+<p>Multigres leverages <strong>pgBackRest</strong> for reliable backups, executing them primarily from replicas to avoid putting load on the primary database.</p>
+<ul>
+<li><strong>Three Backup Types:</strong></li>
+<li><strong>Full:</strong> Copies the entire data directory at a checkpoint.</li>
+<li><strong>Incremental:</strong> Copies only files changed since the previous backup.</li>
+<li><strong>Differential:</strong> Copies changes since the last full backup.</li>
+<li><strong>On-Demand and Scheduled:</strong> The CLI allows you to list backups, trigger manual backups, and initiate restores. Scheduled backups via the cluster spec are arriving soon.</li>
+<li><strong>Automated Bootstrap:</strong> Automatically identifies a primary, performs a backup, and uses it to initialize other replicas, bringing up a ready-to-run cluster without manual intervention.</li>
+</ul>
+<h3 id="recommended-reading-on-bootstrapping">Recommended Reading on Bootstrapping</h3>
+<ul>
+<li><a href="https://multigres.com/blog/multigres-cluster-bootstrap">How a Multigres Cluster Bootstraps</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="alpha">“Alpha”意味着什么</h2>
+<p>版本 0.1 已经足够稳定以供实验和反馈，但<strong>尚未准备好用于生产环境的工作负载</strong>。请牢记以下几点：</p>
+<ul>
+<li>还有一些<a href="https://github.com/multigres/multigres/issues">已知问题</a>需要解决。</li>
+<li><strong>分片</strong>未包含在此版本中（v0.1 是一个具有 HA 和连接池功能的单分片集群）。</li>
+<li><strong>不保证</strong>未来版本能够向后兼容。</li>
+<li>自定义资源（CR）API 不稳定，在 v1.0 之前可能会发生更改。</li>
+<li>性能基准测试目前正在进行中，将在后续文章中发布。</li>
+</ul>
+<blockquote>
+<h2 id="what-alpha-means">What "Alpha" Means</h2>
+<p>Version 0.1 is stable enough for experimentation and feedback, but <strong>not yet ready for production workloads</strong>. Keep the following in mind:</p>
+<ul>
+<li>There are <a href="https://github.com/multigres/multigres/issues">known issues</a> that still need to be addressed.</li>
+<li><strong>Sharding</strong> is not included in this release (v0.1 is a single-shard cluster with HA and pooling).</li>
+<li>Future releases are <strong>not guaranteed to be backward compatible</strong>.</li>
+<li>The Custom Resource (CR) API is unstable and subject to change before v1.0.</li>
+<li>Performance benchmarks are currently in progress and will be published in a follow-up post.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="multigres_1">立即体验 Multigres</h2>
+<ol>
+<li><strong><a href="https://multigres.com/blog/deploying-the-multigres-operator">部署您的第一个集群</a>：</strong> 使用自定义资源搭建一个最小的 3 节点 HA 集群。</li>
+<li><strong>加入社区：</strong> </li>
+<li>在 <a href="https://github.com/multigres/multigres">GitHub</a> 上提交问题并请求新功能。</li>
+<li>在 <a href="https://github.com/multigres/multigres/discussions">GitHub 讨论区</a>中讨论功能并获取帮助。</li>
+</ol>
+<blockquote>
+<h2 id="try-multigres-today">Try Multigres Today</h2>
+<ol>
+<li><strong><a href="https://multigres.com/blog/deploying-the-multigres-operator">Deploy your first cluster</a>:</strong> Stand up a minimal 3-node HA cluster using a custom resource.</li>
+<li><strong>Join the community:</strong> </li>
+<li>File issues and request features on <a href="https://github.com/multigres/multigres">GitHub</a>.</li>
+<li>Discuss features and get help in <a href="https://github.com/multigres/multigres/discussions">GitHub Discussions</a>.</li>
+</ol>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Postgres</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Multigres</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库扩展</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">高可用</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">连接池</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

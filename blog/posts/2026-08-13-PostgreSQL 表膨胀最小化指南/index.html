@@ -1,0 +1,1060 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-PostgreSQL%20%E8%A1%A8%E8%86%A8%E8%83%80%E6%9C%80%E5%B0%8F%E5%8C%96%E6%8C%87%E5%8D%97/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>PostgreSQL 表膨胀最小化指南 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PostgreSQL 表膨胀最小化指南
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-data-of-postgres-tables-stored" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Data of Postgres Tables Stored
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgres" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Postgres 表中的数据是如何存储的
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-does-the-vacuum-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Does the Vacuum Work?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vacuum" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        清理（Vacuum）是如何工作的？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cleaning-relation-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cleaning Relation Files
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        清理关系文件
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-bloating-and-autovacuum" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Table Bloating and Autovacuum
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#autovacuum" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        表膨胀与自动清理（Autovacuum）
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="表膨胀与自动清理（Autovacuum）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#autovacuum-hasnt-started-for-a-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Autovacuum Hasn’t Started for a Table
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autovacuum_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        表的 Autovacuum 尚未启动
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autovacuum-started-but-couldnt-succeed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Autovacuum Started but Couldn’t Succeed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autovacuum_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Autovacuum 已启动但无法成功完成
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-vacuum-optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Other Vacuum Optimizations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vacuum_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        其他 Vacuum 优化措施
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="结论">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reference Links
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        参考链接
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">PostgreSQL 表膨胀最小化指南</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在 PostgreSQL 数据库的日常运行中，表膨胀（Table Bloat）是一个常见但容易被忽视的性能杀手。当表经历大量的更新（UPDATE）和删除（DELETE）操作时，旧的行版本（Tuple）会残留在数据页中，导致物理文件占用空间不断膨胀，进而降低查询效率。虽然 PostgreSQL 提供了 <code>VACUUM</code> 和 <code>autovacuum</code> 机制来自动清理这些死元组，但由于长事务阻塞、严格锁冲突或默认阈值不合理，自动清理机制往往会失效。</p>
+<p>本文深入探讨了 PostgreSQL 底层的数据存储方式（Heap 结构与 8KB 数据页）、<code>VACUUM</code> 的工作原理，以及导致表膨胀的常见核心原因。文章结合实用的 SQL 命令与 Supabase CLI 工具，详细介绍了如何监控死元组、调整 <code>autovacuum</code> 阈值、处理长事务与锁冲突，并提供了使用 <code>VACUUM FULL</code> 和 <code>pg_repack</code> 回收文件系统空间的最佳实践，帮助开发者和DBA打造健康高效的数据库环境。</p>
+<hr />
+<h2 id="how-data-of-postgres-tables-stored">How Data of Postgres Tables Stored</h2>
+<h2 id="postgres">Postgres 表中的数据是如何存储的</h2>
+<p>By default, all table data in Postgres are physically stored using the "heap" method. So every database is a set of 1GB files ("segments") and each file is logically split into 8KB pages. Actual table rows are put into any page with enough free space.</p>
+<blockquote>
+<p>默认情况下，Postgres 中的所有表数据都使用“堆（heap）”方法进行物理存储。因此，每个数据库都是一组 1GB 大小的文件（称为“段”），并且每个文件在逻辑上被分割为 8KB 大小的页面。实际的表行被放置在任何具有足够空闲空间的页面中。</p>
+</blockquote>
+<p>When the row data is updated, a new version of a whole row is constructed and written (to any free space). The old one remains because, at the time of the update, the transaction is not completed and can be rolled back in the future. When the transaction is completed we’ll have two or several versions of the same row in the table. Cleaning old ones is done by an asynchronous process called vacuum (and autovacuum).</p>
+<blockquote>
+<p>当行数据被更新时，会构建整行的一个新版本并将其写入（任何有空闲空间的地方）。旧版本之所以保留，是因为在更新时事务尚未完成，未来可能还会回滚。当事务完成后，表中就会出现同一行的两个或多个版本。清理旧版本的工作由一个称为清理（vacuum 和 autovacuum）的异步进程来完成。</p>
+</blockquote>
+<hr />
+<h2 id="how-does-the-vacuum-work">How Does the Vacuum Work?</h2>
+<h2 id="vacuum">清理（Vacuum）是如何工作的？</h2>
+<p>Vacuum goes through all table files looking for row versions that were updated or deleted by already completed transactions and frees the space on the pages.</p>
+<blockquote>
+<p>Vacuum 会遍历所有的表文件，寻找已被已完成事务所更新或删除的行版本，并释放页面上的空间。</p>
+</blockquote>
+<p>Then it updates the table’s free-space-map to reflect that some page has a certain amount of free space for row inserts.</p>
+<blockquote>
+<p>随后，它会更新表的空闲空间映射（free-space-map），以反映某些页面拥有特定数量的空闲空间，可用于插入新行。</p>
+</blockquote>
+<p>It also updates the visibility map for a page. It marks that all remaining rows are visible. So index scans can skip visibility checks, which is not the case for the modified page before vacuuming. This significantly increases the speed of queries using indexes.</p>
+<blockquote>
+<p>它还会更新页面的可见性映射（visibility map），标记出所有剩余的行都是可见的。因此，索引扫描可以跳过可见性检查（在 vacuum 之前，被修改的页面并非如此）。这显著提高了使用索引的查询速度。</p>
+</blockquote>
+<p>In many cases, vacuum runs automatically, cleans everything, and requires little care. But in some scenarios, we need to go deeper and tune the autovacuum parameters or run the vacuum manually.</p>
+<blockquote>
+<p>在许多情况下，vacuum 会自动运行，清理所有内容，几乎不需要人工干预。但在某些场景下，我们需要深入了解并调整 autovacuum 参数，或者手动运行 vacuum。</p>
+</blockquote>
+<hr />
+<h2 id="cleaning-relation-files">Cleaning Relation Files</h2>
+<h2 id="_2">清理关系文件</h2>
+<p>Vacuum marks space in a relation file as free to use for future row inserts or updates. And it’s not a problem unless we insert many rows, delete many rows at once, and then don’t make any inserts or updates. Space remains reserved in a file but we don’t use it.</p>
+<blockquote>
+<p>Vacuum 会将关系文件中的空间标记为可供将来行插入或更新使用的空闲空间。这本身不是问题，除非我们插入了许多行、一次性删除了大量行，之后又没有任何插入或更新操作。此时，空间仍然在文件中被保留，但我们却没有使用它。</p>
+</blockquote>
+<p>In this case, we could free actual filesystem space by running a more aggressive mode:</p>
+<blockquote>
+<p>在这种情况下，我们可以通过运行更激进的模式来释放实际的文件系统空间：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">VACUUM</span><span class="w"> </span><span class="k">FULL</span><span class="w"> </span><span class="n">mytable</span><span class="p">;</span>
+</code></pre></div>
+<p>It will rebuild the table from live rows and they will be placed compactly so that filesystem space will be freed. The downside is that it needs an exclusive lock and you won’t be able to modify the table while <code>VACUUM FULL</code> does its work. It’s wise to execute that process when the database is least accessed, e.g., at night.</p>
+<blockquote>
+<p>它将根据存活的行重建表，并使它们紧凑地排列，从而释放文件系统空间。缺点是它需要排他锁（exclusive lock），并且在 <code>VACUUM FULL</code> 工作期间你将无法修改该表。明智的做法是在数据库访问量最少的时候（例如夜间）执行此过程。</p>
+</blockquote>
+<p>An alternative way that doesn’t need full locks is using the <code>pg_repack</code> extension:</p>
+<blockquote>
+<p>另一种不需要完全锁的替代方法是使用 <code>pg_repack</code> 扩展：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>pg_repack<span class="w"> </span>--table<span class="w"> </span>mytable<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<p><code>pg_repack</code> operates similarly to <code>VACUUM FULL</code> for the database <code>test</code> and table <code>mytable</code>.</p>
+<blockquote>
+<p>对于数据库 <code>test</code> 和表 <code>mytable</code>，<code>pg_repack</code> 的运行方式与 <code>VACUUM FULL</code> 类似。</p>
+</blockquote>
+<hr />
+<h2 id="table-bloating-and-autovacuum">Table Bloating and Autovacuum</h2>
+<h2 id="autovacuum">表膨胀与自动清理（Autovacuum）</h2>
+<p>To see database bloat via the <a href="https://supabase.com/docs/guides/cli/getting-started">Supabase CLI</a> run:</p>
+<blockquote>
+<p>要通过 <a href="https://supabase.com/docs/guides/cli/getting-started">Supabase CLI</a> 查看数据库膨胀情况，请运行：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>supabase<span class="w"> </span>inspect<span class="w"> </span>db<span class="w"> </span>bloat
+</code></pre></div>
+<p>Or query the metrics directly:</p>
+<blockquote>
+<p>或者直接查询指标：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Number of dead rows</span>
+<span class="c1">-- 死元组数量</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">n_dead_tup</span>
+<span class="k">FROM</span>
+<span class="w">    </span><span class="n">pg_stat_user_tables</span>
+<span class="k">WHERE</span>
+<span class="w">    </span><span class="n">relname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;mytable&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Number of live rows</span>
+<span class="c1">-- 存活行数</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span>
+<span class="k">FROM</span>
+<span class="w">    </span><span class="n">mytable</span><span class="p">;</span>
+</code></pre></div>
+<p>If the numbers differ by more than 2x, chances are that the autovacuum didn’t start or hasn’t completed for a table. There could be several legitimate reasons for this.</p>
+<blockquote>
+<p>如果这两个数字相差超过 2 倍，那么该表的 autovacuum 很可能没有启动，或者尚未完成。这背后可能有几个合法的原由。</p>
+</blockquote>
+<p>You can view information for the last successful autovacuum by running:</p>
+<blockquote>
+<p>你可以通过运行以下命令查看最后一次成功执行 autovacuum 的信息：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>supabase<span class="w"> </span>inspect<span class="w"> </span>db<span class="w"> </span>vacuum-stats
+</code></pre></div>
+<p>Or via SQL:</p>
+<blockquote>
+<p>或者通过 SQL 查询：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span>
+<span class="w">    </span><span class="n">last_vacuum</span><span class="p">,</span>
+<span class="w">    </span><span class="n">last_autovacuum</span>
+<span class="k">FROM</span>
+<span class="w">    </span><span class="n">pg_stat_user_tables</span>
+<span class="k">WHERE</span>
+<span class="w">    </span><span class="n">relname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;mytable&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>Let’s turn on autovacuum logging so that all autovacuum events land in the log:</p>
+<blockquote>
+<p>让我们开启 autovacuum 日志记录，以便所有 autovacuum 事件都被记录到日志中：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">mytable</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">log_autovacuum_min_duration</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</code></pre></div>
+<p>There are two primary reasons you might encounter table bloat:
+* Autovacuum hasn’t started.
+* Autovacuum did start (possibly multiple times) but never succeeded.</p>
+<blockquote>
+<p>你可能会遇到表膨胀的两个主要原因：
+* Autovacuum 尚未启动。
+* Autovacuum 已经启动（可能多次），但从未成功完成。</p>
+</blockquote>
+<hr />
+<h3 id="autovacuum-hasnt-started-for-a-table">Autovacuum Hasn’t Started for a Table</h3>
+<h3 id="autovacuum_1">表的 Autovacuum 尚未启动</h3>
+<p>Autovacuum starts based on several configuration parameters like timeout and patterns of access to a particular table. Its execution depends on these thresholds:</p>
+<blockquote>
+<p>Autovacuum 的启动取决于若干配置参数（如超时时间）以及对特定表的访问模式。它的执行取决于以下阈值：</p>
+</blockquote>
+<ul>
+<li><code>autovacuum_vacuum_threshold</code> — Number of rows updated or deleted in a table to invoke autovacuum.</li>
+<li><code>autovacuum_vacuum_insert_threshold</code> — Number of rows inserted into a table to invoke autovacuum.</li>
+<li><code>autovacuum_vacuum_scale_factor</code> — A fraction of the table modified by updates or deletes to invoke autovacuum.</li>
+<li><code>autovacuum_vacuum_insert_scale_factor</code> — A fraction of the table modified by inserts to invoke autovacuum.</li>
+</ul>
+<blockquote>
+<ul>
+<li><code>autovacuum_vacuum_threshold</code> — 触发 autovacuum 所需的表中更新或删除的行数。</li>
+<li><code>autovacuum_vacuum_insert_threshold</code> — 触发 autovacuum 所需的表中插入的行数。</li>
+<li><code>autovacuum_vacuum_scale_factor</code> — 触发 autovacuum 所需的被更新或删除修改的表行数比例。</li>
+<li><code>autovacuum_vacuum_insert_scale_factor</code> — 触发 autovacuum 所需的被插入修改的表行数比例。</li>
+</ul>
+</blockquote>
+<p>With all these parameters set, autovacuum will start if the number of rows updated or deleted exceeds:</p>
+<blockquote>
+<p>在设置了所有这些参数后，如果更新或删除的行数超过以下公式计算的值，autovacuum 就会启动：</p>
+</blockquote>
+<div class="arithmatex">\[\text{autovacuum\_vacuum\_scale\_factor} \times \text{size\_of\_table} + \text{autovacuum\_vacuum\_threshold}\]</div>
+<p>The same logic applies to inserts. Default scale factors are 20% of a table, which could be too high for big tables. If we want autovacuum to occur on large tables more frequently and take less time per run, decrease the default values for these tables, e.g.:</p>
+<blockquote>
+<p>插入操作也遵循相同的逻辑。默认的比例因子是表的 20%，对于大表来说，这个值可能太高了。如果我们希望在大表上更频繁地触发 autovacuum 且每次运行耗时更短，可以减小这些表的默认值，例如：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">mytable</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="p">(</span><span class="n">autovacuum_vacuum_scale_factor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">05</span><span class="p">);</span>
+</code></pre></div>
+<ul>
+<li><code>autovacuum_naptime</code> (default 1 min) — Every 1 minute, the autovacuum daemon checks the state of all tables in the database and decides whether to start autovacuum for a table. Most often, this parameter does not need to be modified.<blockquote>
+<ul>
+<li><code>autovacuum_naptime</code>（默认 1 分钟）— 每隔 1 分钟，autovacuum 守护进程会检查数据库中所有表的状态，并决定是否为某个表启动 autovacuum。大多数情况下，不需要修改此参数。</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<p>To see global vacuum settings for your cluster, run:</p>
+<blockquote>
+<p>要查看集群的全局 vacuum 设置，请运行：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_settings</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">category</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;Autovacuum&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>To see current settings for a table (which override global settings), run:</p>
+<blockquote>
+<p>要查看表的当前设置（它会覆盖全局设置），请运行：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">relname</span><span class="p">,</span><span class="w"> </span><span class="n">reloptions</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_class</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">relname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;mytable&#39;</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h3 id="autovacuum-started-but-couldnt-succeed">Autovacuum Started but Couldn’t Succeed</h3>
+<h3 id="autovacuum_2">Autovacuum 已启动但无法成功完成</h3>
+<p>The most common reason autovacuum doesn’t succeed is long-running open transactions that access old row versions. In that case, Postgres recognizes that the row versions are still needed, meaning any row versions created after that point cannot be marked as dead. One common cause is interactive sessions left open by accident. When tuples can’t be marked as dead, the database begins to bloat.</p>
+<blockquote>
+<p>autovacuum 无法成功的最常见原因是有访问旧行版本的长期运行的未提交事务。在这种情况下，Postgres 识别到这些行版本仍然被需要，这意味着在该时间点之后创建的任何行版本都不能被标记为死元组。一个常见的原因是交互式会话被意外保持打开状态。当元组无法被标记为死元组时，数据库便开始膨胀。</p>
+</blockquote>
+<p>To see all open transactions, run:</p>
+<blockquote>
+<p>要查看所有打开的事务，请运行：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">xact_start</span><span class="p">,</span><span class="w"> </span><span class="k">state</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_activity</span><span class="p">;</span>
+</code></pre></div>
+<p>To close transactions found to be idling:</p>
+<blockquote>
+<p>要关闭发现处于闲置状态的事务：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_cancel_backend</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_activity</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">xact_start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;&lt;value from previous query&gt;&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>For automatically closing idle transactions in a session:</p>
+<blockquote>
+<p>若要自动关闭会话中处于闲置状态的事务：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="n">idle_in_transaction_session_timeout</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="s1">&#39;10000s&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>This parameter can also be set per role or database as needed.</p>
+<blockquote>
+<p>根据需要，也可以按角色或按数据库设置此参数。</p>
+</blockquote>
+<p>Another, less likely, possibility is that autovacuum can’t succeed due to locks. If some of your processes take the <code>SHARE UPDATE EXCLUSIVE</code> lock (e.g., via an <code>ALTER TABLE</code> clause), this lock will prevent vacuum from processing a table. Lock conflicts in your ordinary transactions could cause <code>SHARE UPDATE EXCLUSIVE</code> to be held for a long time. A good recipe when this happens is to cancel all open transactions and run <code>VACUUM</code> for the table manually (or wait until the next autovacuum cycle):</p>
+<blockquote>
+<p>另一种可能性（较小）是由于锁的原因导致 autovacuum 无法成功。如果你的某些进程获取了 <code>SHARE UPDATE EXCLUSIVE</code> 锁（例如通过 <code>ALTER TABLE</code> 子句），该锁将阻止 vacuum 处理表。常规事务中的锁冲突可能会导致 <code>SHARE UPDATE EXCLUSIVE</code> 被长时间持有。发生这种情况时的一个有效对策是取消所有打开的事务，并手动为该表运行 <code>VACUUM</code>（或者等待下一个 autovacuum 周期）：</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_cancel_backend</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_activity</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;active&#39;</span><span class="p">;</span>
+<span class="k">VACUUM</span><span class="w"> </span><span class="n">mytable</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="other-vacuum-optimizations">Other Vacuum Optimizations</h2>
+<h2 id="vacuum_1">其他 Vacuum 优化措施</h2>
+<p>There could be too few autovacuum workers, or each worker could operate slowly due to a low <code>autovacuum_work_mem</code> setting.</p>
+<blockquote>
+<p>可能是 autovacuum 工作进程（workers）太少，或者由于 <code>autovacuum_work_mem</code> 设置过低导致每个工作进程运行缓慢。</p>
+</blockquote>
+<ul>
+<li><code>autovacuum_max_workers</code> (default 3) — Number of parallel workers performing autovacuum for tables. When you have enough CPU cores, increasing the default value is worthwhile. Note that this will decrease the number of available backends or regular parallel workers running at a time.</li>
+<li><code>autovacuum_work_mem</code> (default equal to <code>maintenance_work_mem</code> or 64MB) — Work memory used per autovacuum worker. If logs indicate that autovacuum starts for tables but takes a long time, increasing this value can speed it up. This parameter can only be modified in the configuration file (<code>postgresql.conf</code>).</li>
+</ul>
+<blockquote>
+<ul>
+<li><code>autovacuum_max_workers</code>（默认 3）— 为表执行 autovacuum 的并行工作进程数量。当你拥有足够的 CPU 核心时，增加默认值是值得的。请注意，这会减少同时运行的可用后端进程或常规并行工作进程的数量。</li>
+<li><code>autovacuum_work_mem</code>（默认等于 <code>maintenance_work_mem</code> 或 64MB）— 每个 autovacuum 工作进程使用的内存。如果日志表明 autovacuum 在表上启动但耗时很长，增加该值可以加速其运行。此参数只能在配置文件（<code>postgresql.conf</code>）中进行修改。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<h2 id="_3">结论</h2>
+<p>Vacuum and autovacuum are efficient tools for maintaining tables without bloat, featuring several parameters that allow for granular tuning. Understanding how the database operates can help prevent issues where autovacuum becomes problematic and bloat increases, such as:</p>
+<blockquote>
+<p>Vacuum 和 autovacuum 是用于维护表免受膨胀影响的高效工具，它们具有多个允许进行精细调优的参数。了解数据库的运作方式有助于防止出现 autovacuum 发生故障和膨胀加剧的问题，例如：</p>
+</blockquote>
+<ul>
+<li>Long open transactions</li>
+<li>Stuck locks</li>
+<li>Insufficient resources allocated to vacuuming</li>
+<li>Space not freed at the filesystem level after massive table modifications</li>
+</ul>
+<blockquote>
+<ul>
+<li>长时间运行的未提交事务</li>
+<li>锁阻塞</li>
+<li>为清理分配的资源不足</li>
+<li>大规模修改表后，文件系统层面的空间未被释放</li>
+</ul>
+</blockquote>
+<h3 id="reference-links">Reference Links</h3>
+<h3 id="_4">参考链接</h3>
+<ul>
+<li><a href="https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-BASICS">Full official documentation for vacuum</a></li>
+<li><a href="https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS">Per-table vacuum parameters</a></li>
+<li><a href="https://www.postgresql.org/docs/current/runtime-config-autovacuum.html">Global autovacuum parameters</a> <em>(most require modifying <code>postgresql.conf</code>, but can be overridden by per-table parameters)</em></li>
+<li><a href="https://supabase.com/docs/reference/cli/global-flags">Supabase CLI reference</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-BASICS">Vacuum 官方完整文档</a></li>
+<li><a href="https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS">按表设置的 vacuum 参数</a></li>
+<li><a href="https://www.postgresql.org/docs/current/runtime-config-autovacuum.html">全局 autovacuum 参数</a> <em>（大多数需要修改 <code>postgresql.conf</code>，但可以被表级参数覆盖）</em></li>
+<li><a href="https://supabase.com/docs/reference/cli/global-flags">Supabase CLI 参考</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库调优</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Vacuum</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库维护</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

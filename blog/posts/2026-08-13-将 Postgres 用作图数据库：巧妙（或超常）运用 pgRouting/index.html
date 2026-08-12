@@ -1,0 +1,1050 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-13-%E5%B0%86%20Postgres%20%E7%94%A8%E4%BD%9C%E5%9B%BE%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%9A%E5%B7%A7%E5%A6%99%EF%BC%88%E6%88%96%E8%B6%85%E5%B8%B8%EF%BC%89%E8%BF%90%E7%94%A8%20pgRouting/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pgrouting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        什么是 pgRouting？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        处理图数据
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pgrouting-gis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        pgRouting 的非 GIS 用例
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pgRouting 的非 GIS 用例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        任务调度
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基于资源分配的反向代理路由
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#youtube" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        类似 YouTube 的推荐系统
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        开始使用
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Get Started
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文探讨了 pgRouting 这一强大的 Postgres 扩展。通常情况下，它与 PostGIS 结合用于地理空间路由。然而除了寻找最短地理路径之外，pgRouting 还可以作为专用图数据库（如 Neo4j）或专用图扩展（如 Apache AGE）的轻量级、灵活替代方案。</p>
+<p>通过对抽象系统进行建模——例如任务依赖关系、网络延迟和推荐系统——开发人员可以直接在 PostgreSQL 中利用内置的图算法（如 Dijkstra 和 A*）。本文通过任务调度、服务器路由和推荐系统等实际案例，展示了如何在非 GIS 场景下充分挖掘 pgRouting 的巨大潜力。</p>
+<hr />
+<h2 id="pgrouting">什么是 pgRouting？</h2>
+<p><a href="https://github.com/pgRouting/pgrouting">pgRouting</a> 是 PostGIS 的一个扩展，提供了地理空间路由功能。你可以使用它来计算最短路径、执行网络分析以及在基于图的结构上解决复杂的路由问题。最常见的情况是，它被用于地理信息系统（GIS）中，以确定两个地点之间的最快路线等任务。</p>
+<blockquote>
+<p><a href="https://github.com/pgRouting/pgrouting">pgRouting</a> is an extension of PostGIS that provides geospatial routing functionality. You can use it to calculate the shortest path, perform network analysis, and solve complex routing problems on a graph-based structure. Most commonly, this is used in Geographic Information Systems (GIS) for tasks like determining the fastest route between two locations.</p>
+</blockquote>
+<hr />
+<h2 id="_2">处理图数据</h2>
+<p>pgRouting 的强大之处在于它能够处理任何结构化为图的数据。图本质上是一个由互相连接的点构成的网络，其中：</p>
+<ul>
+<li><strong>节点（Nodes）</strong>代表实体。</li>
+<li><strong>边（Edges）</strong>代表这些节点之间的关系或路径。</li>
+</ul>
+<p>在地图/<a href="https://en.wikipedia.org/wiki/Geographic_information_system">GIS</a>中，节点和边分别代表交叉路口和道路。然而，这种结构也可以应用于抽象系统，例如社交网络（其中用户是节点，友谊是边）。</p>
+<blockquote>
+<p>The power of pgRouting lies in its ability to work with any data structured as a graph. A graph is essentially a network of interconnected points, where:</p>
+<ul>
+<li><strong>Nodes</strong> represent entities.</li>
+<li><strong>Edges</strong> represent relationships or paths between those nodes.</li>
+</ul>
+<p>In maps / <a href="https://en.wikipedia.org/wiki/Geographic_information_system">GIS</a>, nodes and edges represent intersections and roads respectively. However, this structure can also be applied to abstract systems like a social networks, where users are nodes and friendships are edges.</p>
+</blockquote>
+<hr />
+<h2 id="pgrouting-gis">pgRouting 的非 GIS 用例</h2>
+<p>让我们探讨一下 pgRouting 如何应用于一些非 <a href="https://en.wikipedia.org/wiki/Geographic_information_system">GIS</a> 问题。</p>
+<blockquote>
+<p>Let's explore how pgRouting can be applied to a few non-<a href="https://en.wikipedia.org/wiki/Geographic_information_system">GIS</a> problems.</p>
+</blockquote>
+<h3 id="_3">任务调度</h3>
+<p>在任何项目中，任务之间都存在依赖关系。例如，任务 B 只能在任务 A 完成后开始。这就创建了一个<a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">有向无环图（Directed Acyclic Graph）</a>，其中：</p>
+<ul>
+<li>节点代表任务</li>
+<li>边代表依赖关系</li>
+</ul>
+<p>管理项目最具挑战性的方面之一是确定“关键路径”（Critical Path）——由最长的依赖序列决定的项目总体持续时间。</p>
+<p>使用 pgRouting，你可以对任务的依赖关系进行建模，并使用图算法来寻找关键路径。假设我们有一个表 <code>tasks</code>，其中任务依赖关系被建模为一个图：</p>
+<blockquote>
+<p>In any project, tasks have dependencies. For example, task B can only start after task A is completed. This creates a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">directed acyclic graph</a>, where:</p>
+<ul>
+<li>nodes represent tasks</li>
+<li>edges represent dependencies</li>
+</ul>
+<p>One of the most challenging aspects of managing projects is determining the “critical path” — the project's overall duration, determined by the longest sequence of dependencies.</p>
+<p>Using pgRouting, you can model your task's dependencies, using graph algorithms to find the critical path. Suppose we have a table <code>tasks</code> with task dependencies modeled as a graph:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Create the tasks table with dependencies</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">tasks</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">name</span><span class="w"> </span><span class="nb">text</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span>
+<span class="p">);</span>
+
+<span class="c1">-- insert tasks into the table</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">tasks</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Start Project&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Task A&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Task B&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Task C&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Task D&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;End Project&#39;</span><span class="p">);</span>
+
+<span class="c1">-- create the dependencies table</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">dependencies</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="k">source</span><span class="w"> </span><span class="nb">integer</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="c1">-- task id where the dependency starts</span>
+<span class="w">  </span><span class="n">target</span><span class="w"> </span><span class="nb">integer</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="c1">-- task id where the dependency ends</span>
+<span class="w">  </span><span class="n">duration</span><span class="w"> </span><span class="nb">integer</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="c1">-- duration of the task in days</span>
+<span class="w">  </span><span class="k">constraint</span><span class="w"> </span><span class="n">fk_source</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="k">source</span><span class="p">)</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">tasks</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="k">constraint</span><span class="w"> </span><span class="n">fk_target</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">tasks</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- insert dependencies with durations (directed edges)</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">dependencies</span><span class="w"> </span><span class="p">(</span><span class="k">source</span><span class="p">,</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="c1">-- start project -&gt; task a (3 days)</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span><span class="w"> </span><span class="c1">-- task a -&gt; task b (4 days)</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- task b -&gt; task c (5 days)</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="c1">-- task c -&gt; task d (2 days)</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">);</span><span class="w"> </span><span class="c1">-- task d -&gt; end project (6 days)</span>
+</code></pre></div>
+<p>然后你可以使用 <a href="https://docs.pgrouting.org/latest/en/pgr_dijkstra.html"><code>pgr_dijkstra()</code></a> 函数来查找穿过这些任务的最短（或最长）路径，从而有效地规划出项目进度表：</p>
+<blockquote>
+<p>You can then use the <a href="https://docs.pgrouting.org/latest/en/pgr_dijkstra.html"><code>pgr_dijkstra()</code></a> function to find the shortest (or longest) path through the tasks, allowing you to map out the project schedule effectively:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">schema</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">exists</span><span class="w"> </span><span class="n">extensions</span><span class="p">;</span>
+<span class="k">create</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="n">pgrouting</span><span class="w"> </span><span class="k">schema</span><span class="w"> </span><span class="n">extensions</span><span class="w"> </span><span class="k">cascade</span><span class="p">;</span>
+
+<span class="c1">-- find the longest path using pgr_dijkstra()</span>
+<span class="c1">-- (as it calculates shortest path, use negative weights)</span>
+<span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">extensions</span><span class="p">.</span><span class="n">pgr_dijkstra</span><span class="p">(</span>
+<span class="w">    </span><span class="s1">&#39;select id, source, target, duration as cost from dependencies&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">1</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Start Project (Task ID 1)</span>
+<span class="w">    </span><span class="mi">6</span><span class="w">   </span><span class="c1">-- End Project (Task ID 6)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>这将返回一个表格，显示该项目从开始到结束需要 20 天：</p>
+<blockquote>
+<p>This returns a table showing that this project will take 20 days from start to finish:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>seq</strong></th>
+<th style="text-align: left;"><strong>path_seq</strong></th>
+<th style="text-align: left;"><strong>node</strong></th>
+<th style="text-align: left;"><strong>edge</strong></th>
+<th style="text-align: left;"><strong>cost</strong></th>
+<th style="text-align: left;"><strong>agg_cost</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">12</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">14</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">-1</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">20</td>
+</tr>
+</tbody>
+</table>
+<details>
+<summary>延伸阅读：Dijkstra 算法</summary>
+
+`pgr_dijkstra()` 函数实现了 [Dijkstra 算法](https://en.wikipedia.org/wiki/Dijkstra's_algorithm)，该算法用于寻找图中节点之间的最短路径。根据连接节点的边的成本，该算法可保证从源节点到目标节点（或所有其他节点）的最短路径。
+
+趣闻：Dijkstra 算法由荷兰计算机科学家 Edsger Dijkstra 于 1959 年发表。它是一个“贪婪”算法，意味着它总是选择接下来要探索的最近、最便宜的节点。
+
+</details>
+
+<blockquote>
+<p><details>
+<summary>Tangent: the Dijkstra algorithm</summary></p>
+<p>The <code>pgr_dijkstra()</code> function implements <a href="https://en.wikipedia.org/wiki/Dijkstra's_algorithm">Dijkstra's algorithm</a>, which is used to find the shortest path between nodes in a graph. This algorithm guarantees the shortest path from a source node to a target node (or all other nodes), based on the cost of edges connecting the nodes.</p>
+<p>Fun fact: Dijkstra's algorithm was published in 1959 by Dutch computer scientist Edsger Dijkstra. It's a “greedy” algorithm, meaning it always picks the closest, cheapest node to explore next.</p>
+</details>
+</blockquote>
+<h3 id="_4">基于资源分配的反向代理路由</h3>
+<p>分布式系统通常涉及在节点网络中高效分配资源。每个节点可以代表一个物理位置或计算进程，而边则代表在它们之间移动资源的可用通路。例如，在云基础设施中，pgRouting 可以通过寻找路由数据的最短或拥堵最少的路径，来帮助确定如何在分布式服务器集群中分配计算任务。</p>
+<p>假设你有一个由节点表示的服务器网络，它们的数据库连接在 <code>servers</code> 表中表示为边。</p>
+<blockquote>
+<p>Distributed systems usually involve allocating resources efficiently across a network of nodes. Each node might represent a physical location or a computing process, and the edges represent the available pathways to move resources between them. For example, in a cloud infrastructure, pgRouting could help determine how to allocate compute tasks across a set of distributed servers by finding the shortest or least-congested path to route data.</p>
+<p>Suppose you have a network of servers represented by nodes and their data connections as edges in a table <code>servers</code>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- create the servers table representing the nodes</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">servers</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">name</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">x</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- x coordinate for spatial data (latitude)</span>
+<span class="w">  </span><span class="n">y</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="w"> </span><span class="c1">-- y coordinate for spatial data (longitude)</span>
+<span class="p">);</span>
+
+<span class="c1">-- insert some sample servers</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">servers</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;server a&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;server b&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;server c&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;server d&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">);</span>
+
+<span class="c1">-- create the server_connections table representing the edges</span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">server_latency</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="k">source</span><span class="w"> </span><span class="nb">integer</span><span class="p">,</span>
+<span class="w">  </span><span class="n">target</span><span class="w"> </span><span class="nb">integer</span><span class="p">,</span>
+<span class="w">  </span><span class="n">cost</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- cost could represent latency or bandwidth</span>
+<span class="w">  </span><span class="n">x1</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- x coordinate of source</span>
+<span class="w">  </span><span class="n">y1</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- y coordinate of source</span>
+<span class="w">  </span><span class="n">x2</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- x coordinate of target</span>
+<span class="w">  </span><span class="n">y2</span><span class="w"> </span><span class="n">double</span><span class="w"> </span><span class="k">precision</span><span class="p">,</span><span class="w"> </span><span class="c1">-- y coordinate of target,</span>
+<span class="w">  </span><span class="k">constraint</span><span class="w"> </span><span class="n">fk_source</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="k">source</span><span class="p">)</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">servers</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="k">constraint</span><span class="w"> </span><span class="n">fk_target</span><span class="w"> </span><span class="k">foreign</span><span class="w"> </span><span class="k">key</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">servers</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- insert connections between servers</span>
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">server_latency</span><span class="w"> </span><span class="p">(</span><span class="k">source</span><span class="p">,</span><span class="w"> </span><span class="n">target</span><span class="p">,</span><span class="w"> </span><span class="n">cost</span><span class="p">,</span><span class="w"> </span><span class="n">x1</span><span class="p">,</span><span class="w"> </span><span class="n">y1</span><span class="p">,</span><span class="w"> </span><span class="n">x2</span><span class="p">,</span><span class="w"> </span><span class="n">y2</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">.</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="c1">-- server a -&gt; server b with a cost of 1.5 (could be latency)</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="c1">-- server b -&gt; server c with a cost of 2.0</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">.</span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- server b -&gt; server d with a cost of 1.8</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span><span class="w"> </span><span class="c1">-- server d -&gt; server c with a cost of 1.0</span>
+</code></pre></div>
+<p>然后你可以使用 <a href="https://docs.pgrouting.org/latest/en/pgr_aStar.html"><code>pgr_astar</code></a>() 来寻找数据或计算任务在该网络中穿梭最高效的路径，从而优化速度或负载：</p>
+<blockquote>
+<p>You can then use <a href="https://docs.pgrouting.org/latest/en/pgr_aStar.html"><code>pgr_astar</code></a>() to find the most efficient path for data or compute tasks to travel through this network, optimizing for speed or load:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Query to find the most efficient path (using pgr_astar)</span>
+<span class="k">select</span><span class="w"> </span><span class="o">*</span>
+<span class="k">from</span>
+<span class="w">  </span><span class="n">extensions</span><span class="p">.</span><span class="n">pgr_astar</span><span class="p">(</span>
+<span class="w">    </span><span class="s1">&#39;select id, source, target, cost, x1, y1, x2, y2 from server_latency&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">3</span><span class="w"> </span><span class="c1">-- Start from Server A (id=1) to Server C (id=3)</span>
+<span class="w">  </span><span class="p">);</span>
+</code></pre></div>
+<details>
+<summary>延伸阅读：A* 算法</summary>
+
+`pgr_astar()` 函数是 [A* (A-star) 算法](https://en.wikipedia.org/wiki/A*_search_algorithm)的实现。它用于在图中的两点之间寻找最有效（最短）的路径。A* 常用于导航和路由，因为在许多场景下它比 Dijkstra 算法更高效，特别是当你拥有带坐标的空间数据（例如 X、Y 位置）时。
+
+趣闻：A* 最初是为 20 世纪 60 年代的应用程序以及游戏中的寻路而设计的。如今，它是视频游戏开发中最广泛使用的算法之一，可帮助角色在复杂环境中高效导航。
+
+</details>
+
+<blockquote>
+<p><details>
+<summary>Tangent: the A* algorithm</summary></p>
+<p>The <code>pgr_astar()</code> function is an implementation of the <a href="https://en.wikipedia.org/wiki/A*_search_algorithm">A* (A-star) algorithm</a>. It's used to find the most efficient (shortest) path between two points in a graph. A* is commonly used in navigation and routing because it is more efficient than Dijkstra's algorithm in many scenarios, especially when you have spatial data with coordinates (e.g., X, Y positions).</p>
+<p>Fun fact: A* was originally designed in the 1960s for artificial intelligence applications and pathfinding in games. Today, it's one of the most widely used algorithms in video game development to help characters navigate complex environments efficiently.</p>
+</details>
+</blockquote>
+<h3 id="youtube">类似 YouTube 的推荐系统</h3>
+<p>在使用知识图谱的推荐系统或搜索算法中，pgRouting 可用于建立实体和事件之间的关系。以 YouTube 的推荐算法为例，我们可以将这些数据构造成一个图，其中：</p>
+<ul>
+<li><strong>节点</strong>代表用户、视频或分类等实体。</li>
+<li><strong>边</strong>代表这些实体之间的关系或互动，例如用户喜欢某个视频，或者视频属于同一分类。</li>
+</ul>
+<p>让我们创建一个“节点”列表：</p>
+<blockquote>
+<p>In recommendation engines or search algorithms that use knowledge graphs, pgRouting can be used to build relationships between entities and events. Take YouTube's recommendation algorithm, we can structure this data as a graph where:</p>
+<ul>
+<li><strong>Nodes</strong> represent entities like users, videos, or categories.</li>
+<li><strong>Edges</strong> represent relationships or interactions between those entities, such as a user liking a video or videos being part of the same category.</li>
+</ul>
+<p>Let's create a list of “nodes”:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">categories</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">name</span><span class="w"> </span><span class="nb">text</span>
+<span class="p">);</span>
+
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">categories</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Graph Theory&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;AI &amp; Machine Learning&#39;</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Python Programming&#39;</span><span class="p">);</span>
+
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">id</span><span class="w"> </span><span class="nb">serial</span><span class="w"> </span><span class="k">primary</span><span class="w"> </span><span class="k">key</span><span class="p">,</span>
+<span class="w">  </span><span class="n">title</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">  </span><span class="n">category_id</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">categories</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">category_id</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Intro to Graph Theory&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Advanced Graph Algorithms&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Graph Neural Networks&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Beginner Python Tutorial&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">),</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;Advanced Python Techniques&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+</code></pre></div>
+<p>以及一些“边”：</p>
+<blockquote>
+<p>And some “edges”:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">video_relationships</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">source_video_id</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="n">target_video_id</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="n">relationship_type</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span><span class="w"> </span><span class="c1">-- &#39;same_category&#39;, &#39;watched_by_same_users&#39;, etc.</span>
+<span class="w">  </span><span class="n">weight</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="c1">-- strength of the relationship</span>
+<span class="p">);</span>
+
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">video_relationships</span><span class="w"> </span><span class="p">(</span><span class="n">source_video_id</span><span class="p">,</span><span class="w"> </span><span class="n">target_video_id</span><span class="p">,</span><span class="w"> </span><span class="n">relationship_type</span><span class="p">,</span><span class="w"> </span><span class="n">weight</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;same_category&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;Intro to Graph Theory&quot; and &quot;Advanced Graph Algorithms&quot; are in the same category</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;watched_by_same_users&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;Advanced Graph Algorithms&quot; and &quot;Graph Neural Networks&quot; are often watched together</span>
+<span class="w">  </span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;same_category&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">);</span><span class="w"> </span><span class="c1">-- &quot;Beginner Python Tutorial&quot; and &quot;Advanced Python Techniques&quot;</span>
+
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">interactions</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">user_id</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">auth</span><span class="p">.</span><span class="n">users</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="n">video_id</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">references</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">  </span><span class="n">interaction_type</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span><span class="w"> </span><span class="c1">-- &#39;liked&#39;, &#39;viewed&#39;, etc.</span>
+<span class="w">  </span><span class="n">weight</span><span class="w"> </span><span class="nb">int</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="c1">-- strength of the interaction</span>
+<span class="p">);</span>
+
+<span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">interactions</span><span class="w"> </span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span><span class="w"> </span><span class="n">video_id</span><span class="p">,</span><span class="w"> </span><span class="n">interaction_type</span><span class="p">,</span><span class="w"> </span><span class="n">weight</span><span class="p">)</span>
+<span class="k">values</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;user_01&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;viewed&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;User 01&quot; watched &quot;Intro to Graph Theory&quot; to the end (weight = 5)</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;user_01&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;liked&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;User 01&quot; liked &quot;Advanced Graph Algorithms&quot;</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;user_02&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;viewed&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;User 02&quot; watched &quot;Graph Neural Networks&quot; and bounced halfway through (weight = 2)</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;user_03&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;liked&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="c1">-- &quot;User 03&quot; liked &quot;Beginner Python Tutorial&quot;</span>
+<span class="w">  </span><span class="p">(</span><span class="s1">&#39;user_03&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;viewed&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span><span class="w"> </span><span class="c1">-- &quot;User 03&quot; watched &quot;Advanced Python Techniques&quot; and bounced halfway through (weight = 2)</span>
+</code></pre></div>
+<p>现在我们可以使用 <code>pgr_dijkstra()</code> 函数来寻找用户与新视频之间最短或最相关的路径。例如，让我们结合 <code>user_01</code> 过去的互动记录，寻找与其最相关的视频：</p>
+<blockquote>
+<p>Now we can use the <code>pgr_dijkstra()</code> function to find the shortest or most relevant path between a user and new videos. For example, let's find videos that are most relevant to <code>user_01</code> considering their past interactions:</p>
+</blockquote>
+<details>
+<summary>延伸阅读：对推荐结果进行排序</summary>
+
+既然它“只是 Postgres”，使用 `order by` 子句对结果进行排序就变得非常简单。例如，如果我们把上面的 `pgr_dijkstra()` 结果存储在一个名为“recommendations”的表中，我们可以使用如下查询按最高排名对路径进行排序：
+
+<div class="highlight"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">recommendation_score</span>
+<span class="k">from</span>
+<span class="w">  </span><span class="n">recommendations</span>
+<span class="w">  </span><span class="k">join</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">recommendations</span><span class="p">.</span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">id</span>
+<span class="k">group</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">title</span>
+<span class="k">order</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">recommendation_score</span><span class="w"> </span><span class="k">desc</span><span class="p">;</span>
+</code></pre></div>
+
+</details>
+
+<blockquote>
+<p><details>
+<summary>Tangent: ranking recommendations</summary></p>
+<p>Since it's “just postgres” it's simple enough to rank the results using an <code>order by</code> clause. For example, if we stored the <code>pgr_dijkstra()</code> results above in a table called “recommendations”, we use this a query like this to sort the paths by the highest ranking:</p>
+<div class="highlight"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">recommendation_score</span>
+<span class="k">from</span>
+<span class="w">  </span><span class="n">recommendations</span>
+<span class="w">  </span><span class="k">join</span><span class="w"> </span><span class="n">videos</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">recommendations</span><span class="p">.</span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">id</span>
+<span class="k">group</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">videos</span><span class="p">.</span><span class="n">title</span>
+<span class="k">order</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">recommendation_score</span><span class="w"> </span><span class="k">desc</span><span class="p">;</span>
+</code></pre></div>
+</details>
+</blockquote>
+<hr />
+<h2 id="_5">开始使用</h2>
+<p>pgRouting 是 Postgres 的一个强大扩展，可用于解决广泛的基于图的问题。查看 <a href="https://docs.pgrouting.org/latest/en/index.html">pgRouting 文档</a>了解更多关于如何使用它的信息。你也可以在 Supabase 上使用它：</p>
+<ul>
+<li>文档：<a href="/docs/guides/database/extensions/pgrouting">pgrouting: Geospatial Routing</a></li>
+<li>启动新的 Postgres 数据库：<a href="https://database.new">database.new</a></li>
+</ul>
+<blockquote>
+<h2 id="get-started">Get Started</h2>
+<p>pgRouting is a powerful extension for Postgres that can be used to solve a wide range of graph-based problems. Check out the <a href="https://docs.pgrouting.org/latest/en/index.html">pgRouting docs</a> for more information on how to use it. You can also use it on Supabase:</p>
+<ul>
+<li>Docs: <a href="/docs/guides/database/extensions/pgrouting">pgrouting: Geospatial Routing</a></li>
+<li>Launch a new Postgres database: <a href="https://database.new">database.new</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">pgRouting</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">图数据库</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">算法</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库优化</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
