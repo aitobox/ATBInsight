@@ -2,7 +2,7 @@
 authors:
 - aitoboxrobot
 categories:
-- 研究解读
+- arXiv论文
 date: 2026-08-11
 hide:
 - navigation

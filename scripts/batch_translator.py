@@ -29,7 +29,7 @@ def translate_article_file(filepath: str, output_dir: str = "docs/blog/posts") -
         "title: \"<Chinese Translated Title>\"\n"
         f"date: {date_str}\n"
         "authors: [aitoboxrobot]\n"
-        "categories: [select exactly 1 from: 产品发布, 工具教程, 研究解读, 商业动态, 其他]\n"
+        "categories: [select exactly 1 from: 产品发布, 工具教程, 研究解读, 商业动态, arXiv论文, 其他]\n"
         "tags: [<3-5 relevant tags>]\n"
         "---\n\n"
         "2. BACKGROUND & SUMMARY BLOCK:\n"

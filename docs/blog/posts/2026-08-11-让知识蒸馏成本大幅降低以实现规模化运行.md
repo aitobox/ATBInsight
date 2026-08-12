@@ -2,7 +2,7 @@
 authors:
 - aitoboxrobot
 categories:
-- 工具教程
+- arXiv论文
 date: 2026-08-11
 hide:
 - navigation

@@ -21,7 +21,7 @@ If files exist, you must translate them using the `tech-article-translator` skil
 Since there may be multiple files, **dispatch parallel subagents** (using your `invoke_subagent` tool) for each file or small batches of files, instructing them to:
 1. Act under the `tech-article-translator` skill rules.
 2. Read their assigned file from `bak/origin/YYYY-MM-DD/`.
-3. Add standard YAML Front Matter headers. **CRITICAL**: The `categories` field MUST be selected from the 5 standard site categories: `[产品发布, 工具教程, 研究解读, 商业动态, 其他]` based on article content (DO NOT hardcode single categories).
+3. Add standard YAML Front Matter headers. **CRITICAL**: The `categories` field MUST be selected from the 6 standard site categories: `[产品发布, 工具教程, 研究解读, 商业动态, arXiv论文, 其他]` based on article content (DO NOT hardcode single categories).
 4. Add a Chinese background and summary block (`### 文章背景与核心概要`).
 5. Format text paragraphs into Chinese translation accompanied by original English quote blocks (`>`).
 6. Save the translated file to `docs/blog/posts/` with the filename format: `YYYY-MM-DD-Chinese_Title.md`.
@@ -40,7 +40,7 @@ Execute the following commands sequentially:
    *(Ensures `[博客动态区]` on homepage points to `archive.md`)*
 3. **Auto-classify posts into standard categories**:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && PYTHONPATH=. python scripts/auto_classify.py"`
-   *(Ensures all posts strictly belong to one of `[产品发布, 工具教程, 研究解读, 商业动态, 其他]`)*
+   *(Ensures all posts strictly belong to one of `[产品发布, 工具教程, 研究解读, 商业动态, arXiv论文, 其他]`)*
 4. **Generate category index pages and tags page**:
    `bash -c "source /home/aitobox/miniconda3/bin/activate ATBInsight && python scripts/generate_indexes.py"`
    *(Cleans old category pages and regenerates `docs/tags.md` & `docs/blog/category/*.md`)*
