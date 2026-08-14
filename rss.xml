@@ -5,6 +5,797 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-08-15-我们通过复现2200篇ICML论文学到了什么</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/我们通过复现2200篇ICML论文学到了什么/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/我们通过复现2200篇ICML论文学到了什么/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>为了解现代机器学习文献的大规模可信度，社区于2026年7月举办了一场黑客马拉松。超过1200名参与者利用自主编码智能体（autonomous coding agents），对**ICML 2026录用的2226篇论文**（约占整个会议论文的三分之一）中的核心主张进行了复现。
+
+在已发布的6816份复现日志中，核心发现包括：**51%**的受检论文至少有一项主张通过了独立验证；**23%**的论文至少有一项主张被证伪、存在争议或在独立团队间得出冲突结论。该活动表明，虽然智能体极大加速了实验进程，但人类监督对于捕获逻辑死循环、与规模相关的错误以及定性评估仍然至关重要。
+
+---
+
+## 📌 执行摘要 (Executive Summary)
+
+To understand the reliability of modern machine learning literature at scale, a community hackathon was organized in July 2026. Over 1,200 participants used autonomous coding agents to reproduce claims from **2,226 papers accepted at ICML 2026** (roughly one-third of the entire conference). 
+
+Key findings from the 6,816 published reproduction logbooks include:
+* **51%** of examined papers had at least one claim independently verified.
+* **23%** had at least one claim falsified, contested, or reaching conflicting verdicts across independent teams.
+* **Human-Agent Collaboration:** While agents vastly accelerate experimentation, human oversight remains vital for catching logical loops, scale-dependent errors, and qualitative evaluations.
+
+&gt; 为了解现代机器学习文献在大规模下的可靠性，社区于2026年7月举办了一场黑客马拉松。来自全球的1200多名参与者使用自主编码智能体，对**ICML 2026录用的2,226篇论文**（约占整个会议的三分之一）中的主张进行了复现。
+&gt; 
+&gt; 在已发布的6,816份复现日志中，核心发现包括：
+&gt; * **51%** 的受检论文至少有一项主张通过了独立验证。
+&gt; * **23%** 的论文至少有一项主张被证伪、存在争议，或者在独立团队间得出了相互冲突的结论。
+&gt; * **人机协作：** 尽管智能体极大地加速了实验，但人类的监督对于捕捉逻辑死循环、与规模相关的错误以及定性评估仍然至关重要。
+
+---
+
+## 引言 (Introduction)
+
+Back in July, we ran a [hackathon](https://huggingface.co/ICML-2026-agent-repro) where more than 1,200 community members brought their own coding agents and tried to reproduce the papers published at ICML 2026, claim by claim. In 19 days, participants published [6,816 Trackio logbooks](https://icml-2026-agent-repro-challenge.static.hf.space/gallery.html) reproducing 2,226 papers, about a third of the conference 🤯
+
+In this post, we're sharing what we learned from running this hackathon, and what it suggests about *the role humans will play* when agents are doing the research experiments.
+
+&gt; 7月份的时候，我们举办了一场[黑客马拉松](https://huggingface.co/ICML-2026-agent-repro)。来自社区的1200多名成员带着各自的编码智能体，逐条主张地尝试复现ICML 2026上发表的论文。在19天里，参与者们发布了[6,816份Trackio日志](https://icml-2026-agent-repro-challenge.static.hf.space/gallery.html)，复现了2,226篇论文，约占整个会议的三分之一 🤯
+&gt; 
+&gt; 在这篇文章中，我们将分享举办这次黑客马拉松的收获，以及它对“当智能体负责执行科研实验时，人类将扮演什么角色”这一问题的启示。
+
+---
+
+## 远超任何人审查能力的论文数量 (More Papers Than Anyone Can Review)
+
+Questions about how reproducible AI research really is are older than the current AI wave. But these questions are exacerbated by scale. ICML 2026 received **23,918 submissions and accepted 6,352 papers**, roughly double the previous year, continuing an exponential trend that is at least partly driven by AI agents making it faster to run experiments and write them up.
+
+Reviewing capacity has not doubled along with it. Reviewers at most conferences are volunteers who may not have the time or expertise to fully review a paper. Here is a review of one accepted ICML 2026 spotlight paper, in the reviewer's own words:
+
+[![An OpenReview reviewer admitting the proofs were not checked carefully](./images/e4aea3b4b771.png)](./images/e4aea3b4b771.png)
+
+&gt; 关于AI研究的可复现性到底有多高的问题，其历史甚至比当前的AI浪潮还要悠久。但这些问题在规模化效应下被进一步放大了。ICML 2026收到了**23,918篇投稿，录用了6,352篇**，约为前一年的两倍，延续了指数级的增长趋势。这种趋势至少有一部分是由AI智能体推动的——它们加快了实验运行和论文撰写的速度。
+&gt; 
+&gt; 然而，审稿产能并没有随之翻倍。大多数会议的审稿人都是志愿者，他们可能没有时间或专业知识来全面审查一篇论文。以下是一位审稿人对一篇ICML 2026入选Spotlight（聚光灯）论文的评语原文：
+&gt; 
+&gt; [![An OpenReview reviewer admitting the proofs were not checked carefully](./images/e4aea3b4b771.png)](./images/e4aea3b4b771.png)
+
+&gt; "My low confidence score is because I did not check all the proofs carefully."
+
+&gt; “我给出较低的置信度评分，是因为我没有仔细检查所有的证明。”
+
+Note that **this paper got strong scores and a spotlight**. Keep it in mind, because we will come back to this exact paper later in the post, and to what happened when we finally did check the proofs carefully.
+
+What has changed, though, is that the same technology driving the flood of submissions can also help us keep up with it. Coding agents like Claude Code, Codex, Cursor, and Pi can now read a paper, write the code, launch the experiments, and report back on what they found. Checking a paper carefully used to cost a reviewer a weekend; an agent can attempt it in an afternoon, in parallel, thousands of times over.
+
+So the question we wanted to ask was: **if we actually re-examined a major conference at scale, and tried to reproduce every paper, what would we find?**
+
+&gt; 请注意，**这篇论文获得了很高的评分并入选了聚光灯（spotlight）报告**。请记住这一点，因为我们在后文中还会回到这篇论文，看看当我们最终仔细检查这些证明时会发生什么。
+&gt; 
+&gt; 然而，发生变化的是，推动海量投稿涌现的同一项技术，也能帮助我们跟上审稿的步伐。诸如 Claude Code、Codex、Cursor 和 Pi 等编码智能体现在能够阅读论文、编写代码、启动实验并汇报发现。过去，仔细检查一篇论文需要审稿人搭上整个周末；而现在，智能体可以在一个下午内并行尝试数千次。
+&gt; 
+&gt; 因此，我们想要提出的问题是：**如果我们真正大规模地重新审视一个顶级会议，并尝试复现每一篇论文，我们会发现什么？**
+
+---
+
+## 黑客马拉松（7月15日 - 8月2日） (The Hackathon (July 15 - August 2nd))
+
+Rather than audit papers ourselves, we opened it up to the whole community, with all the diversity of agent frameworks, compute budgets, and scientific taste that brings. From July 15 to August 2, 2026, the [ICML 2026 Open Reproductions challenge](https://huggingface.co/spaces/ICML-2026-agent-repro/challenge) worked like this:
+
+1. **Pick a paper.** We indexed all 6,341 accepted ICML 2026 papers with their abstracts and extracted the core scientific claims of each one, so an agent could start from a concrete, checkable target rather than a 40-page PDF. Multiple people reproducing the same paper was encouraged.
+2. **Bring your own agent.** Participants used Claude Code, Codex, Cursor, OpenResearch's `orx`, and everything in between. We provided a streamlined interface so an agent could pull the paper, its claims, and the challenge instructions with a single command.
+3. **Reproduce, then publish everything.** Every run produced a [Trackio](https://huggingface.co/docs/trackio) logbook: a static Hugging Face Space containing the write-up, the code that ran, the artifacts it produced, and (optionally) the full agent execution trace uploaded as a Hugging Face Dataset. The auditing process itself had to be auditable.
+4. **Get judged.** An automated Logbook Judge (running an open-weights model, GLM-5.2) re-read every logbook and issued a per-claim verdict: **verified**, **falsified**, **toy** (evidence at reduced scale), or **inconclusive**. The judge was explicitly instructed to treat each logbook's self-assessment as untrusted.
+
+Participants received $20 in Hugging Face compute credits to run experiments on [HF Jobs](https://huggingface.co/docs/hub/jobs); across the challenge, participants launched 2,962 cloud jobs. Where a full reproduction was impossible, for example when a paper's dataset was proprietary or its checkpoints unreleased, participants ran toy reproductions on synthetic data mimicking the original's properties.
+
+Here is what a finished reproduction looks like:
+
+[![Anatomy of a reproduction logbook: logbook pages, agent traces, and artifacts](./images/c2c3fe4ec419.png)](./images/c2c3fe4ec419.png)
+
+By the numbers, this hackathon was probably the largest attempted reproduction of a scientific conference:
+* **1,221** community members joined the [organization](https://huggingface.co/ICML-2026-agent-repro)
+* **6,816** reproduction logbooks published
+* **2,226** papers attempted, **34% of the entire conference**, many by several independent teams
+* **35,908** claims judged, with all verdicts frozen in a public dataset at challenge close
+* **2,962** HF Jobs launched; **274** full agent-trace datasets published on Hugging Face
+
+&gt; 我们没有选择自己去审计论文，而是将活动向整个社区开放，从而引入了各种各样的智能体框架、计算预算和科学偏好。在2026年7月15日至8月2日期间，[ICML 2026开源复现挑战赛](https://huggingface.co/spaces/ICML-2026-agent-repro/challenge)按以下方式展开：
+&gt; 
+&gt; 1. **挑选论文。** 我们对所有6,341篇ICML 2026录用论文及其摘要进行了索引，并提取了每篇论文的核心科学主张，以便智能体可以从一个具体、可检查的目标入手，而不是直接面对40页的PDF。我们鼓励多支队伍复现同一篇论文。
+&gt; 2. **自带智能体（Bring your own agent）。** 参与者使用了 Claude Code、Codex、Cursor、OpenResearch 的 `orx` 以及各种其他工具。我们提供了一个精简的接口，智能体只需一条命令即可拉取论文、其主张以及挑战说明。
+&gt; 3. **复现并公开一切。** 每次运行都会产生一本 [Trackio](https://huggingface.co/docs/trackio) 日志册：这是一个静态的 Hugging Face Space，包含文字记录、运行的代码、产生的构件（artifacts），以及（可选的）作为 Hugging Face 数据集上传的完整智能体执行轨迹。审计过程本身必须是可审计的。
+&gt; 4. **接受裁决。** 自动化的日志裁判（运行开源模型 GLM-5.2）会重新阅读每份日志，并针对每一项主张给出判定结果：**已验证（verified）**、**已证伪（falsified）**、**玩具级（toy）**（缩减规模下的证据）或**无定论（inconclusive）**。裁判被明确指示，不得轻信任何日志的自我评估。
+&gt; 
+&gt; 参与者获得了价值20美元的 Hugging Face 计算额度，用于在 [HF Jobs](https://huggingface.co/docs/hub/jobs) 上运行实验；在整个挑战期间，参与者总共启动了2,962个云端任务。在无法进行完整复现的情况下（例如论文的数据集属于专有数据或其检查点未开源），参与者会在模拟原始数据特性的合成数据上运行玩具级复现。
+&gt; 
+&gt; 一份完成的复现日志长这样：
+&gt; 
+&gt; [![Anatomy of a reproduction logbook: logbook pages, agent traces, and artifacts](./images/c2c3fe4ec419.png)](./images/c2c3fe4ec419.png)
+&gt; 
+&gt; 从数据上看，这次黑客马拉松可能是历史上规模最大的科学会议复现尝试：
+&gt; * **1,221** 名社区成员加入了该[组织](https://huggingface.co/ICML-2026-agent-repro)
+&gt; * **6,816** 份复现日志被公开发表
+&gt; * **2,226** 篇论文被尝试复现，占**整个会议的34%**，其中许多论文由多个独立团队共同复现
+&gt; * **35,908** 项主张接受了裁决，所有判定结果在挑战结束时被固化并存入公开数据集
+&gt; * **2,962** 个 HF 任务被启动；**274** 个完整的智能体执行轨迹数据集被发布到 Hugging Face
+
+---
+
+## 我们的发现 (What We Found)
+
+Aggregating the claim-level verdicts per paper:
+
+* **51% of examined papers (1,103) had at least one claim independently verified.** Of those, 266 papers were fully reproduced, with every extracted claim verified, and 632 more were partially reproduced with nothing falsified. In total, 3,978 individual claims were confirmed with real experiments.
+* **23% of examined papers (496) had at least one claim falsified or contested.** That includes 49 papers where all claims were falsified and nothing could be verified, and, maybe most interestingly, 242 papers where independent reproduction teams reached *opposite* verdicts on the same claims. Reproducibility is not binary; it is adversarial.
+
+The remainder sat in the middle: 502 papers with toy-scale evidence only, and 280 where nothing could be established either way (missing artifacts were the most common cause).
+
+&gt; 汇总每篇论文的逐项主张裁决结果：
+&gt; 
+&gt; * **51% 的受检论文（1,103篇）至少有一项主张通过了独立验证。** 其中，266篇论文被完全复现（提取的所有主张均通过验证），另有632篇论文被部分复现（没有被证伪的主张）。总共有3,978项独立主张通过真实实验得到了证实。
+&gt; * **23% 的受检论文（496篇）至少有一项主张被证伪或存在争议。** 这包括49篇所有主张皆被证伪、无一得到验证的论文；更有趣的是，有242篇论文的独立复现团队对同一主张得出了*截然相反*的结论。可复现性并非非黑即白；它是对抗性的。
+&gt; 
+&gt; 其余的论文则处于中间状态：502篇论文仅提供了玩具级规模的证据，还有280篇论文由于各种原因无法确立任何结论（缺失代码或模型构件是最常见的原因）。</description>
+    </item>
+    <item>
+      <title>2026-08-15-在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本文探讨了如何在 Ruby 的 ZJIT 编译器中扩展全局的 `canonicalize`（规范化）优化趟（Pass），从而实现部分静态单信息（Partial Static Single Information, SSI）的好处。继之前关于 SSA 和类型精炼的工作之后，文章展示了如何通过将分支条件常量注入基于支配树（dominator-based）的 `rewrite_map` 中，使基本块能够自动从传入的控制边推断布尔状态，从而成功消除冗余的条件分支。
+
+这种技术允许编译器在更一般的控制流场景中捕获变量的真假状态，而不仅仅依赖于显式的类型精炼指令。通过在基本块入口处根据前驱分支条件“播种”重写映射，ZJIT 能够穿透多个基本块传播常量状态，最终简化复杂的控制流图（CFG），提升生成的机器码质量。
+
+---
+
+## 摘要
+
+This post explores how to extend a global `canonicalize` optimization pass in Ruby's ZJIT compiler to achieve partial Static Single Information (SSI) benefits. Following up on previous work regarding SSA and type refinement, the article demonstrates how seeding a dominator-based `rewrite_map` with branch condition constants allows basic blocks to automatically infer boolean states from incoming control edges, successfully eliminating redundant conditional branches.
+
+&gt; 本文探讨了如何在 Ruby 的 ZJIT 编译器中扩展全局的 `canonicalize`（规范化）优化趟，从而实现部分静态单信息（SSI）的好处。继之前关于 SSA 和类型精炼的工作之后，文章展示了如何通过将分支条件常量注入基于支配树的 `rewrite_map` 中，使基本块能够自动从传入的控制边推断布尔状态，从而成功消除冗余的条件分支。
+
+---
+
+## Context: The Journey to Global Canonicalization
+
+*See [the previous post](https://bernsteinbear.com/blog/partial-ssi/) for context and explanation of SSI.*
+
+After reading [Chris Fallin’s aegraph post](https://cfallin.org/blog/2026/04/09/aegraph/), new ZJIT contributor `dak2` landed a block-local version of the `canonicalize` function in [#16828](https://github.com/ruby/ruby/pull/16828).
+
+The pseudocode of the block-local canonicalize function looks like this:
+
+```python
+for block in function.reverse_post_order():
+    rewrite_map = {}
+    for insn in block.insns:
+        insn.operands.map_in_place(lambda o: rewrite_map.get(o, o))
+        if insn.opcode == "GuardType":
+            rewrite_map[insn.val] = insn
+```
+
+As a refresher, this turns IR like this:
+
+```
+v0:Object = ...
+v1:Int = GuardType v0, Int
+... do something with v1
+
+v2:Int = GuardType v0, Int
+... do something with v2
+```
+
+into this:
+
+```
+v0:Object = ...
+v1:Int = GuardType v0, Int
+... do something with v1
+
+v2:Int = GuardType v1, Int
+... do something with v2
+```
+
+Note that the second use of `v0` has been turned into `v1`. This is important because a later constant-folding pass can observe that the input `v1` of `GuardType v1, Int` is *already an Int* and can therefore replace all uses of `v2` with `v1` and delete the guard.
+
+Because in this local version we make a new `rewrite_map` for each block, we don’t carry any rewrites across blocks (but ZJIT still gained a lot because until recently its IR was in maximal SSA form, so a block-local pass had more global effects).
+
+&gt; ## 背景：迈向全局规范化之旅
+&gt; 
+&gt; *有关 SSI 的背景和解释，请参阅[上一篇文章](https://bernsteinbear.com/blog/partial-ssi/)。*
+&gt; 
+&gt; 在阅读了 [Chris Fallin 的 aegraph 一文](https://cfallin.org/blog/2026/04/09/aegraph/)之后，ZJIT 的新贡献者 `dak2` 在 [#16828](https://github.com/ruby/ruby/pull/16828) 中提交了 `canonicalize` 函数的块级局部版本。
+&gt; 
+&gt; 块级局部规范化函数的伪代码如下所示：
+&gt; 
+&gt; ```python
+&gt; for block in function.reverse_post_order():
+&gt;     rewrite_map = {}
+&gt;     for insn in block.insns:
+&gt;         insn.operands.map_in_place(lambda o: rewrite_map.get(o, o))
+&gt;         if insn.opcode == "GuardType":
+&gt;             rewrite_map[insn.val] = insn
+&gt; ```
+&gt; 
+&gt; 作为复习，这会将这样的 IR：
+&gt; 
+&gt; ```
+&gt; v0:Object = ...
+&gt; v1:Int = GuardType v0, Int
+&gt; ... 对 v1 进行操作
+&gt; 
+&gt; v2:Int = GuardType v0, Int
+&gt; ... 对 v2 进行操作
+&gt; ```
+&gt; 
+&gt; 转化为这样：
+&gt; 
+&gt; ```
+&gt; v0:Object = ...
+&gt; v1:Int = GuardType v0, Int
+&gt; ... 对 v1 进行操作
+&gt; 
+&gt; v2:Int = GuardType v1, Int
+&gt; ... 对 v2 进行操作
+&gt; ```
+&gt; 
+&gt; 请注意，`v0` 的第二次使用已被替换为 `v1`。这一点很重要，因为随后的常量折叠（constant-folding）趟可以观察到 `GuardType v1, Int` 的输入 `v1` *已经是一个 Int*，因此可以用 `v1` 替换 `v2` 的所有使用并删除该保护指令（guard）。
+&gt; 
+&gt; 由于在这个局部版本中，我们为每个基本块都创建了一个新的 `rewrite_map`，因此我们不会将任何重写跨基本块传递（但 ZJIT 仍然获益良多，因为直到最近其 IR 仍处于极大 SSA 形式，所以块级局部的趟也能产生更广泛的全局效果）。
+
+---
+
+## Scaling Up to a Global Canonicalize Pass
+
+About five days later, `dak2` came back with a global version in [#17013](https://github.com/ruby/ruby/pull/17013)! This PR came with a bunch of changes in the name of performance—which I appreciate—but I like doing the silly slow thing first, especially because the PR is so much smaller. We can always refactor it later to be faster and, in the meantime, use the slow but maybe-easier-to-verify thing as a correctness oracle. So I did[^1] the silly slow thing in [#17766](https://github.com/ruby/ruby/pull/17766).
+
+This copy-happy version of canonicalize looks like:
+
+```python
+rewrite_maps = {block: {} for block in blocks}
+dominators = compute_dominators()
+for block in function.reverse_post_order():
+    rewrite_map = rewrite_maps[dominators.idom(block)].clone()
+    for insn in block.insns:
+        insn.operands.map_in_place(lambda o: rewrite_map.get(o, o))
+        if insn.opcode == "GuardType":
+            rewrite_map[insn.val] = insn
+    rewrite_maps[block] = rewrite_map
+```
+
+*(Which you may or may not notice looks a lot like [Maxine’s GVN implementation](https://github.com/beehive-lab/Maxine-VM/blob/e213a842f78983e2ba112ae46de8c64317bc206e/com.sun.c1x/src/com/sun/c1x/opt/GlobalValueNumberer.java). This is not a coincidence.)*
+
+The core stays the same as the block-local version, but now we can cascade rewrites along the dominator tree. I say that, but we’re not actually computing a (top-down walkable) dominator tree—we’re only building a (bottom-up) map of `idom` using [the engineered algorithm](https://bernsteinbear.com/assets/img/dominators-engineered.pdf) (PDF). The rewrites still cascade down the dominator tree because this RPO-walk + idom-clone approach ends up being equivalent to actually walking a dominator tree.
+
+The block iteration order is different (RPO vs domtree pre-order) but the only property we care about maintaining is that we visit dominators before blocks that get dominated, and that is true in both.
+
+&gt; ## 扩展到全局规范化趟
+&gt; 
+&gt; 大约五天后，`dak2` 在 [#17013](https://github.com/ruby/ruby/pull/17013) 中带来了全局版本！这个 PR 包含了一系列为了性能而做的改动——对此我很赞赏——但我喜欢先做那个看起来有点蠢但很慢的版本，特别是当这个版本的代码量要小得多的时候。我们以后随时可以将其重构得更快，在此期间，可以将这个虽慢但或许更容易验证的版本作为正确性的预言机（correctness oracle）。因此，我在 [#17766](https://github.com/ruby/ruby/pull/17766) 中实现了那个略显笨拙但直观的慢版本[^1]。
+&gt; 
+&gt; 这个频繁复制的规范化版本看起来像这样：
+&gt; 
+&gt; ```python
+&gt; rewrite_maps = {block: {} for block in blocks}
+&gt; dominators = compute_dominators()
+&gt; for block in function.reverse_post_order():
+&gt;     rewrite_map = rewrite_maps[dominators.idom(block)].clone()
+&gt;     for insn in block.insns:
+&gt;         insn.operands.map_in_place(lambda o: rewrite_map.get(o, o))
+&gt;         if insn.opcode == "GuardType":
+&gt;             rewrite_map[insn.val] = insn
+&gt;     rewrite_maps[block] = rewrite_map
+&gt; ```
+&gt; 
+&gt; *（你可能会或可能不会注意到，这看起来非常像 [Maxine 的 GVN 实现](https://github.com/beehive-lab/Maxine-VM/blob/e213a842f78983e2ba112ae46de8c64317bc206e/com.sun.c1x/src/com/sun/c1x/opt/GlobalValueNumberer.java)。这绝非巧合。）*
+&gt; 
+&gt; 其核心逻辑与块级局部版本保持一致，但现在我们可以沿着支配树（dominator tree）级联重写。话虽如此，我们实际上并没有去计算一个（自顶向下遍历的）支配树——我们只是使用[经过工程优化的算法](https://bernsteinbear.com/assets/img/dominators-engineered.pdf)（PDF）构建了一个（自底向上的）`idom`（直接支配者）映射。重写仍然会沿支配树向下级联，因为这种“逆后序遍历（RPO-walk）+ idom 克隆”的方法最终等同于实际遍历支配树。
+&gt; 
+&gt; 基本块的遍历顺序有所不同（RPO 与支配树先序遍历），但我们需要维护的唯一属性是：在访问被支配的基本块之前必须先访问支配者，这两种方法都满足该属性。
+
+---
+
+## Applying Canonicalization to Partial SSI
+
+But where was I going with all this?
+
+…
+
+Oh, right. More [partial SSI](https://bernsteinbear.com/blog/partial-ssi/). In the last post, we inserted `RefineType` in SSA construction so that we can infer things about the Ruby type of the conditional. For example:
+
+```
+bb0:
+  v0: Object = ...
+  v1: CBool = Test v0
+  v2: Truthy = RefineType v0, Truthy
+  v3: Falsy = RefineType v0, Falsy
+  CondBranch v1, bb1(v2), bb2(v3)
+
+bb1(v4:Truthy):
+  ...
+
+bb2(v5:Falsy):
+  ...
+```
+
+This is neat when the branch comes from Ruby code, but sometimes we synthesize branches, so we can’t do this in SSA construction. The general case looks like this:
+
+```
+bb0:
+  v0: CBool = ...
+  CondBranch v0, bb1, bb2
+
+bb1:
+  ...
+
+bb2:
+  ...
+```
+
+In this more general case, we still want `bb1` to know that `v0` is `CBool[true]` in that branch and `bb2` to know that `v0` is `CBool[false]` in its branch (and in blocks dominated by `bb1` and `bb2`).
+
+Well, this is another thing we can do in `canonicalize`!
+
+&gt; ## 将规范化应用于部分 SSI
+&gt; 
+&gt; 但是我讲这一切的最终目的是什么呢？
+&gt; 
+&gt; ……
+&gt; 
+&gt; 哦，对。更多关于[部分 SSI](https://bernsteinbear.com/blog/partial-ssi/)的内容。在上一篇文章中，我们在构建 SSA 时插入了 `RefineType`，以便我们可以推断条件表达式的 Ruby 类型。例如：
+&gt; 
+&gt; ```
+&gt; bb0:
+&gt;   v0: Object = ...
+&gt;   v1: CBool = Test v0
+&gt;   v2: Truthy = RefineType v0, Truthy
+&gt;   v3: Falsy = RefineType v0, Falsy
+&gt;   CondBranch v1, bb1(v2), bb2(v3)
+&gt; 
+&gt; bb1(v4:Truthy):
+&gt;   ...
+&gt; 
+&gt; bb2(v5:Falsy):
+&gt;   ...
+&gt; ```
+&gt; 
+&gt; 当分支来自 Ruby 代码时，这非常巧妙，但有时我们会合成一些分支，因此在 SSA 构建阶段无法做到这一点。一般情况如下：
+&gt; 
+&gt; ```
+&gt; bb0:
+&gt;   v0: CBool = ...
+&gt;   CondBranch v0, bb1, bb2
+&gt; 
+&gt; bb1:
+&gt;   ...
+&gt; 
+&gt; bb2:
+&gt;   ...
+&gt; ```
+&gt; 
+&gt; 在这种更一般的情况下，我们仍然希望 `bb1` 知道在该分支中 `v0` 是 `CBool[true]`，并且 `bb2` 知道在其分支中 `v0` 是 `CBool[false]`（以及在被 `bb1` 和 `bb2` 支配的基本块中也是如此）。
+&gt; 
+&gt; 嗯，这是我们可以在 `canonicalize` 中做的另一件事！
+
+---
+
+## Seeding the Rewrite Map
+
+All we need to do is at the beginning of each block `B`:
+
+* Check if `B` has one incoming control edge `E`[^2]
+* Check if the terminator `T` for `E.block` is a conditional branch
+* If `T.iftrue == B`, seed the `rewrite_map` with `T.cond =&gt; Const(CBool[true])`
+* If `T.iffalse == B`, seed the `rewrite_map` with `T.cond =&gt; Const(CBool[false])`
+
+If you plan on running `canonicalize` multiple times, you may end up generating many constant instructions in your IR. To avoid this, you can intern them and, for example, place them in the entry block. This helps make the pass idempotent instead of always allocating new instructions.</description>
+    </item>
+    <item>
+      <title>Record a demonstration and sync it to a bucket.</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/使用 Strands Agents、LeRobot 和 Hugging Face 存储桶在单一平台完成录制、训练与部署/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/使用 Strands Agents、LeRobot 和 Hugging Face 存储桶在单一平台完成录制、训练与部署/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>物理 AI 系统的持续学习循环长期以来一直受困于巨大的网络开销、冗余的数据传输以及割裂的工具链。本文介绍了一种统一的数据流循环方案，该方案结合了 **Strands Robots**、**LeRobot** 以及 **Hugging Face Storage Buckets（存储桶）**。通过使用统一的 `Robot()` 接口，开发者可以无缝录制机器人演示数据，通过基于字节级去重（由 Xet 技术支持）的存储进行高效同步，直接将数据集流式传输到 GPU 进行训练而无需本地下载，并将训练好的策略重新部署到硬件设备上。
+
+这种方法解决了机器人开发中的核心数据瓶颈：当构建持续学习智能体时，收集、上传、下载海量数据集以及将检查点运回硬件往往会消耗大量时间和带宽。本文详细介绍了如何利用 Hugging Face 存储桶无缝打通从日常数据收集到模型训练的整个链路。
+
+---
+
+## 摘要 (Executive Summary)
+
+物理 AI 系统的持续学习循环长期以来一直受困于巨大的网络开销、冗余的数据传输以及割裂的工具链。本文介绍了一种统一的数据流循环方案，该方案结合了 **Strands Robots**、**LeRobot** 以及 **Hugging Face Storage Buckets**。通过使用单一的 `Robot()` 接口，开发者可以无缝录制机器人演示数据，通过字节级去重（Xet 支持的存储）进行高效同步，直接将数据集流式传输到 GPU 进行训练而无需本地下载，并将生成的策略重新部署到硬件上。
+
+&gt; Continuous learning loops for physical AI systems traditionally suffer from massive network overhead, redundant data transfers, and disconnected tooling. This article walks through a unified streaming data loop using **Strands Robots**, **LeRobot**, and **Hugging Face Storage Buckets**. By utilizing a single `Robot()` interface, developers can seamlessly record robot demonstrations, sync them efficiently via byte-level deduplication (Xet-backed storage), stream datasets straight to GPUs for training without local downloads, and deploy the resulting policy back onto hardware.
+
+---
+
+## 引言 (Introduction)
+
+在为机器人构建持续学习智能体时，你最终会遇到一个累积的数据瓶颈。收集片段、上传它们、将庞大的训练集下载到 GPU，以及将检查点运回，都会消耗宝贵的时间和带宽。
+
+本系列的第一篇文章[（首篇博客）](https://huggingface.co/blog/amazon/strands-lerobot-hub-to-hardware)介绍了 **Strands Robots**，这是一个来自 AWS 的开源 SDK（基于 Apache 2.0 许可证），它将机器人抽象、仿真和 [LeRobot](https://github.com/huggingface/lerobot) 栈统一整合为可组合的 AgentTools。
+
+本文重点介绍反向的数据轨迹：使用 **Hugging Face Storage Buckets**（一种可变、无版本控制且由 [Xet](https://huggingface.co/blog/from-files-to-chunks) 支持的对象存储仓库类型，[于 2026 年 3 月宣布](https://huggingface.co/blog/storage-buckets)）从初始录制的帧返回到已部署的策略。存储桶直接在 `hf://` 命名空间内运行，架起了日常数据收集与训练之间的桥梁。
+
+&gt; When building continuous learning agents for robotics, you eventually face a compounding data bottleneck. Collecting episodes, uploading them, downloading massive training sets to GPUs, and shipping checkpoints back out consumes valuable time and bandwidth. 
+&gt; 
+&gt; The [first post in this series](https://huggingface.co/blog/amazon/strands-lerobot-hub-to-hardware) introduced **Strands Robots**, an open-source SDK from AWS (Apache 2.0) that unifies robot abstractions, simulation, and the [LeRobot](https://github.com/huggingface/lerobot) stack into composable AgentTools. 
+&gt; 
+&gt; This post focuses on the reverse data trajectory: moving from the initial recorded frame back to a deployed policy using **Hugging Face Storage Buckets**—a mutable, non-versioned, [Xet](https://huggingface.co/blog/from-files-to-chunks)-backed object-storage repository type [announced in March 2026](https://huggingface.co/blog/storage-buckets). Operating directly within the `hf://` namespace, Storage Buckets bridge the gap between daily data collection and training.
+
+---
+
+## 你将构建什么 (What You'll Build)
+
+该架构将四个不同的阶段连接成一个由单一后端对象管理的统一循环：
+1. **录制 (Record)：** 捕获 LeRobotDataset 片段。
+2. **存储 (Store)：** 通过字节级去重将数据集同步到 Hugging Face 存储桶中。
+3. **训练 (Train)：** 即时将数据直接流式传输到 GPU。
+4. **部署 (Deploy)：** 直接在硬件上执行微调后的策略。
+
+&lt;img alt="The four stages of the Strands Robots data loop, cycling one at a time: record writes a LeRobotDataset, store syncs it to a Hugging Face Bucket, train streams it back to the GPU, and deploy runs the checkpoint on hardware, with each stage lighting the arrow that feeds it around one shared Robot()" src="./images/86a0d7018715.gif" width="100%"/&gt;
+
+**图 1.** *这四个阶段共享一个后端。* `Robot("so100")` *通过共享的* `DatasetRecorder` *录制 LeRobotDataset；* `sync_dataset_to_bucket(...)` *将其同步到存储桶中；* `stream_dataset(...)` *通过 Hub 读取它而无需完全下载；训练好的检查点通过* `mode="real"` *部署到相同的* `Robot` *中。磁盘上的格式与 LeRobot 写入的格式完全一致。*
+
+&gt; The architecture links four distinct phases into a unified loop managed by a single backend object:
+&gt; 1. **Record:** Capture LeRobotDataset episodes.
+&gt; 2. **Store:** Sync datasets into a Hugging Face Bucket with byte-level deduplication.
+&gt; 3. **Train:** Stream data straight to the GPU on-the-fly.
+&gt; 4. **Deploy:** Execute the fine-tuned policy directly on hardware.
+&gt; 
+&gt; &lt;img alt="The four stages of the Strands Robots data loop, cycling one at a time: record writes a LeRobotDataset, store syncs it to a Hugging Face Bucket, train streams it back to the GPU, and deploy runs the checkpoint on hardware, with each stage lighting the arrow that feeds it around one shared Robot()" src="./images/86a0d7018715.gif" width="100%"/&gt;
+&gt; 
+&gt; **Figure 1.** *The four stages share one backend.* `Robot("so100")` *records a LeRobotDataset through the shared* `DatasetRecorder`; `sync_dataset_to_bucket(...)` *syncs it into a Storage Bucket;* `stream_dataset(...)` *reads it back over the Hub with no full download; and the trained checkpoint deploys to the same* `Robot` *with* `mode="real"`. *The on-disk format stays exactly as LeRobot wrote it.*</description>
+    </item>
+    <item>
+      <title>2026-08-15-你的 KV 缓存不是比特问题，而是几何问题</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/你的 KV 缓存不是比特问题，而是几何问题/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/你的 KV 缓存不是比特问题，而是几何问题/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型推理中，KV 缓存（Key-Value Cache）占用了大量的内存带宽和存储空间，因此对其进行量化压缩至关重要。然而，许多工程师和研究人员发现，即使在相同的 2-bit 极低比特精度下，不同的量化轴选择也会导致模型性能从彻底崩塌（基准得分 2.88）到几乎无损（63.53）的天壤之别。
+
+本文深入探讨了为什么 Key（键）和 Value（值）需要截然相反的量化处理方式（Key 按通道量化，Value 按 Token 量化），并指出这种差异并非由硬件限制决定，而是由注意力机制（Attention Equation）的数学本质所决定的。作者还警告了仅凭原始存储重构误差（Reconstruction Error）来验证压缩效果的潜在危险，强调必须在张量被消耗的下游操作中评估误差，这为所有中间激活值的压缩提供了重要的通用设计原则。
+
+---
+
+## 你的 KV 缓存不是比特问题，而是几何问题
+
+*By Himanshu Goel*
+
+&lt;picture&gt;&lt;source sizes="(max-width: 1672px) 100vw, 1672px" srcset="./images/a326e0b77ad2.webp.webp" type="image/webp"/&gt;&lt;img alt="" class="attachment- size- wp-post-image webpexpress-processed" decoding="async" fetchpriority="high" height="941" sizes="(max-width: 1672px) 100vw, 1672px" src="./images/a326e0b77ad2.webp" width="1672"/&gt;&lt;/picture&gt;
+
+&gt; *At identical 2-bit precision, one decision about which axis you quantize along swings a benchmark score from 2.88 to 63.53. Keys and values need opposite treatment — and the reason is in the attention equation, not the hardware.*
+
+&gt; 在相同的 2-bit 精度下，关于沿哪个轴进行量化的一项决策，就能让基准测试得分从 2.88 飙升至 63.53。Key 和 Value 需要截然相反的处理方式——其原因在于注意力方程（attention equation），而非硬件限制。
+
+以 Llama-2-13B 为例。将其键值缓存（key-value cache）按 32 的量化分组大小（group size）量化为 2 比特，同时保持其他所有条件不变——相同的模型、相同的比特预算、相同的分组大小以及相同的基准测试。
+
+取决于实现决策中的某一个单一要素，CoQA 准确率测试结果会得出 2.88 或是 63.53。全精度下的得分为 66.37。
+
+这项决策无关乎总共使用了多少比特，问题仅仅在于：在计算每个缩放因子（scale factor）时，你选择沿哪个轴进行分组？当你决定使用通道（channel）作为分组维度（针对 Key），并使用 Token 作为分组维度（针对 Value）时，你的性能最终会落在全精度性能的 4 个百分点之内。如果你颠倒其中任何一个选择，就会遭遇质量损失。如果你把这两个选择同时颠倒，模型将彻底无法工作。
+
+&lt;div class="wp-caption aligncenter" id="attachment_451526" style="width: 1950px"&gt;&lt;picture&gt;&lt;source sizes="(max-width: 1940px) 100vw, 1940px" srcset="https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c.png.webp 1940w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-800x404.png.webp 800w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1920x970.png.webp 1920w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-567x286.png.webp 567w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-768x388.png.webp 768w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1536x776.png.webp 1536w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1200x606.png.webp 1200w" type="image/webp"/&gt;&lt;img alt="" aria-describedby="caption-attachment-451526" class="wp-image-451526 size-full webpexpress-processed" decoding="async" height="980" sizes="(max-width: 1940px) 100vw, 1940px" src="https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c.png" srcset="https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c.png 1940w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-800x404.png 800w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1920x970.png 1920w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-567x286.png 567w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-768x388.png 768w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1536x776.png 1536w, https://www.unite.ai/wp-content/uploads/2026/08/c8b0303fcbb4cd5714abfba7422405b37fcf8a4c-1200x606.png 1200w" width="1940"/&gt;&lt;/picture&gt;&lt;p class="wp-caption-text" id="caption-attachment-451526"&gt;在相同的缓存上消耗相同的 2 个比特的四种方式。这是在 Llama-2-13B 上进行 KIVI 消融实验、分组大小为 32 时的结果。&lt;/p&gt;&lt;/div&gt;
+
+&gt; Quantization is usually thought of as just one dial: 8 bits, 4 bits, 2 bits, with smooth cost of accuracy attached. Inside KV cache, it is not like that. It is choosing coordinate systems, and different systems apply to keys and values. This piece explains why. Briefly: quantization error depends on the range of values within groups; keys and values have very different structure; and people often trip up because you can’t derive the right axis from value distribution at all. You have to look at how error changes after attention consumes it. That gives a general principle for compressing intermediate activations and a good reason to doubt reconstruction error as a proxy for quality.
+
+&gt; 人们通常认为量化只是一个刻度盘：8 位、4 位、2 位，并伴随着平滑的准确率代价。但在 KV 缓存内部，情况并非如此。这是在选择坐标系，并且不同的系统适用于 Key 和 Value。本文将解释其中的原因。简而言之：量化误差取决于分组内的数值范围；Key 和 Value 具有非常不同的结构；人们经常踩坑，因为你根本无法从数值分布中推导出来正确的坐标轴。你必须观察误差在注意力机制消耗它之后是如何变化的。这为压缩中间激活值提供了一个通用原则，也为质疑将重构误差作为质量代理指标提供了充分的理由。
+
+## 为什么 KV 缓存是痛点所在
+
+&gt; During the generation phase, a transformer stores all of the key and value projection (KV) data of tokens that it has previously processed into a cache so it does not have to recalculate this data again. That cache grows linearly with context length and batch size. Eventually, this will result in the cache growing larger than the model itself.
+
+&gt; 在生成阶段，Transformer 会将先前处理过的所有 Token 的键和值投影（KV）数据存储到缓存中，这样它就不必再次重新计算这些数据。该缓存随着上下文长度和批处理大小（batch size）呈线性增长。最终，这将导致缓存变得比模型本身还要大。
+
+&gt; This increase in growth can be easily identified when looking at the memory consumption of different parts of the model. In the [KVQuant analysis of LLaMA-7B](https://arxiv.org/abs/2401.18079), weights account for roughly 98 percent of memory at a sequence length of 512, with activations at 2 percent. At 128K context, the ratio inverts to about 16 percent weights and 84 percent KV cache. When we look at an analysis of OPT-175B cited by the [KIVI](https://arxiv.org/pdf/2402.02750) authors, they found similar results. Specifically, at a batch size of 512 with a 512-token prompt, the KV cache reaches 1.2TB — several times the size of the model weights.
+
+&gt; 观察模型不同部分的内存消耗，可以轻易发现这种增长趋势。在针对 [LLaMA-7B 的 KVQuant 分析](https://arxiv.org/abs/2401.18079)中，当序列长度为 512 时，权重约占内存的 98%，激活值占 2%。而在 128K 上下文下，这一比例倒置为约 16% 的权重和 84% 的 KV cache。当我们查看 [KIVI](https://arxiv.org/pdf/2402.02750) 作者引用的 OPT-175B 分析时，他们也发现了类似的结果。具体而言，在批处理大小为 512、提示词长度为 512 个 Token 的情况下，KV 缓存达到了 1.2TB——达到了模型权重大小的数倍之多。
+
+&gt; However, capacity is only half of the issue here. The GPU must read the entire KV cache from device memory for every single token it generates. This means that while the GPU is reading out the KV cache, the compute cores sit idle. As such, reducing the overall size of the cache both increases the available processing headroom and reduces the time spent waiting for transfers of data.
+
+&gt; 然而，容量只是问题的一半。GPU 必须为它生成的每一个 Token 从设备内存中完整读取整个 KV cache。这意味着当 GPU 在读取 KV 缓存时，计算核心处于闲置状态。因此，减小缓存的总大小既能增加可用的处理余量，又能减少等待数据传输的时间。
+
+## 量化误差到底是由什么组成的
+
+&gt; Uniform integer quantization is straightforward mathematically. For a group of numbers, you record the smallest number as a zero point and then divide the range of that group by the number of levels that can be represented to get a step size. You then round each element to the nearest step. Two immediate results follow. First, error per element is bounded by half a step. Second, the step size is the group’s range divided by 2ᴮ − 1. At 2 bits, you have only 4 levels to cover whatever spread exists within that group. So an element that is a hundred times larger compared to its neighbors does not just perform badly. It inflates step size for all other elements sharing the same group, and all of them become coarser together. Group is the unit of damage. Choosing an axis means deciding which elements suffer together. Framing the question differently, it is no longer “how many bits can we afford?” but “where are extreme values and can we isolate them?”
+
+&gt; 均匀整数量化在数学上很简单。对于一组数字，你将其中最小的数字记录为零点（zero point），然后将该组的数值范围除以可表示的级别数，以获得步长（step size）。接着，你将每个元素四舍五入到最近的步长。这里有两个直接的结果。首先，每个元素的误差受限于半个步长。其次，步长等于该组的范围除以 $2^B - 1$。在 2 比特下，你只有 4 个级别来覆盖该组中存在的任何数据离散度。因此，一个比其邻居大上百倍的元素不仅自身表现糟糕，它还会抬高共享同一组的所有其他元素的步长，导致它们整体变粗糙。分组是损害的单位。选择一个轴意味着决定哪些元素共同承受损害。换个角度来看，这不再是“我们买得起多少比特？”的问题，而是“极端值在哪里，我们能否隔离它们？”的问题。
+
+## Key：异常值存在于固定的通道中
+
+&gt; Large language models contain activations that are unusually large compared to most activations. [Sun and colleagues catalogued these very large activations](https://arxiv.org/pdf/2402.17762) across different families of models: in Mixtral 8x7B, the largest magnitude is near 7000 while the median feature magnitude is around 0.3 — roughly four orders of magnitude apart. These are very rare; they stay fixed in dimensions that rarely change with input, and they are not accidental. They act as implicit biases, and they are what focus attention on just a few tokens: attention sinks behavior. In key cache, this structure is very clear: specific channels carry very large magnitudes consistently across every token in a sequence. Group along tokens, and every group contains those outlier channels, so every group’s step size is set by the outliers, and all the ordinary channels pay for it. Group along channels, and the outlier channels form their own groups. Their internal range is large but self-contained; the ordinary channels are left alone. Results match. Averaged across layers and heads on Llama-2-13B, KIVI reports key reconstruction error of 13.67 under per-token grouping against 4.55 per-channel, and — more importantly — attention score error of 47.00 against 9.60. Quantizing keys per token produces roughly five times the score error. Scores then agree with meaningful metrics for keys; channel quantization excels on both fronts.
+
+&gt; 大语言模型包含一些与大多数激活值相比异常巨大的激活值。[Sun 及其同事对不同模型家族中的这些超大激活值进行了分类编目](https://arxiv.org/pdf/2402.17762)：在 Mixtral 8x7B 中，最大幅值接近 7000，而中位数特征幅值约为 0.3——两者相差大约四个数量级。它们非常罕见；它们固定在随输入变化极小的维度上，且并非偶然出现。它们充当了隐式偏置（implicit biases），正是它们将注意力集中在少数几个 Token 上：即注意力汇聚（attention sinks）行为。在 Key 缓存中，这种结构非常清晰：在序列中的每个 Token 上，特定的通道始终承载着非常大的幅值。如果按 Token 进行分组，每个组都包含这些异常值通道，因此每个组的步长都被异常值决定，所有普通通道都为此付出了代价。如果按通道进行分组，异常值通道则会形成它们自己的组。其内部范围虽然很大但自成一体，普通通道则不受影响。结果完全吻合。在 Llama-2-13B 的各层和各注意力头上取平均，KIVI 报告称，在按 Token 分组下，Key 的重构误差为 13.67，而按通道分组下为 4.55；更重要的是，注意力得分误差分别为 47.00 对 9.60。按 Token 量化 Key 产生的得分误差大约是通道量化的五倍。因此，得分结果与 Key 的有意义指标相吻合；通道量化在两个方面都表现出色。
+
+## Value：直觉失效的地方
+
+&gt; The value cache does not show a channel-outlier pattern. It appears to be fairly flat. On its own, by the range argument, we could expect that either of these axes will produce a similar quality of compression.
+
+&gt; Value 缓存并没有表现出通道异常值的模式。它看起来相当平缓。仅从数值范围的论点来看，我们本可以预期这两个轴中的任何一个都会产生相似的压缩质量。
+
+&gt; They do not. Regardless of how key management is implemented (the 2.80 and 2.88 results), compressing per-channel values collapses the model.
+
+&gt; 但事实并非如此。无论 Key 的管理方式如何实现（那组 2.80 和 2.88 的结果），按通道压缩 Value 都会导致模型崩溃。
+
+&gt; And here’s the catch: if you measured this loss using the raw reconstruction error on the original tensor for which each value was compressed, per-channel value quantization actually looks slightly better, at 3.73 against 4.57. If you validated your compression the obvious way, you would pick the configuration that destroys the model.
+
+&gt; 问题就在这里：如果你使用压缩前原始张量的原始重构误差来衡量这种损失，按通道的 Value 量化实际上看起来要稍微好一些（3.73 对比 4.57）。如果你用显而易见的方式来验证你的压缩，你反而会选择那个彻底摧毁模型的配置。
+
+&lt;div class="wp-caption aligncenter" id="attachment_451525" style="width: 2029px"&gt;&lt;picture&gt;&lt;source sizes="auto, (max-width: 2019px) 100vw, 2019px" srcset="./images/623f8b14ad0d.webp.webp 2019w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-800x332.png.webp 800w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1920x796.png.webp 1920w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-567x235.png.webp 567w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-768x318.png.webp 768w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1536x637.png.webp 1536w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1200x497.png.webp 1200w" type="image/webp"/&gt;&lt;img alt="" aria-describedby="caption-attachment-451525" class="wp-image-451525 size-full webpexpress-processed" decoding="async" height="837" loading="lazy" sizes="auto, (max-width: 2019px) 100vw, 2019px" src="./images/623f8b14ad0d.webp" srcset="./images/623f8b14ad0d.webp 2019w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-800x332.png 800w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1920x796.png 1920w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-567x235.png 567w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-768x318.png 768w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1536x637.png 1536w, https://www.unite.ai/wp-content/uploads/2026/08/7685e3c7ad0596c5a6c37434783fa2d1dc4f12a1-1200x497.png 1200w" width="2019"/&gt;&lt;/picture&gt;&lt;p class="wp-caption-text" id="caption-attachment-451525"&gt;Llama-2-13B 上的 Value 缓存量化误差，通过两种方式测量。存储张量指标与消耗输出指标的结果相差一个多数量级。&lt;/p&gt;&lt;/div&gt;
+
+&gt; The resolution is that the value cache is never read directly. It is consumed by a matrix product: the attention output is a weighted sum of value vectors across tokens, with softmax attention scores as the weights. Because of this, the relevant error is the one introduced during this process and not within the tensors themselves. Measured in terms of the attention output, the order was completely reversed. Relative error reported by KIVI for the attention output due to per-token value vector quantization was 3.55 compared to 49.89 for per-channel quantization — over fourteen times higher for what seemed like the better choice based on how well it was compressed.
+
+&gt; 问题的关键在于，Value 缓存从来都不是被直接读取的。它是通过矩阵乘积被消耗的：注意力输出是跨 Token 的值向量的加权和，其中 softmax 注意力得分作为权重。正因如此，相关的误差是在这个过程中引入的，而不是在张量本身之中。如果以注意力输出来衡量，顺序完全颠倒了。KIVI 报告称，由于按 Token 的值向量量化而导致的注意力输出相对误差为 3.55，而按通道量化的误差高达 49.89——对于基于压缩程度看起来更好的选择来说，其误差高出了十四倍以上。
+
+&gt; The explanation is attention sparsity, which they measured as 84.3 percent. The majority of the information contained in the output can be attributed to a small number of very important tokens. Per-token quantization confines each token’s error to that token, so errors on unimportant tokens get multiplied by near-zero attention weights and effectively vanish. Per-channel quantization smears every token’s error across a shared channel scale, so badly represented tokens contaminate the representation of the ones that matter. The sparsity that makes attention efficient is the same property that makes per-token quantization safe.
+
+&gt; 解释这一现象的原因是注意力的稀疏性（attention sparsity），他们测得该数值为 84.3%。输出中所包含的大部分信息可以归因于少数几个非常重要的 Token。按 Token 量化将每个 Token 的误差限制在该 Token 内部，因此不重要 Token 上的误差会被乘以接近零的注意力权重，从而实际上消失了。而按通道量化则将每个 Token 的误差涂抹到一个共享的通道缩放尺度上，导致表现糟糕的 Token 污染了那些至关重要的 Token 的表征。使注意力机制高效运行的稀疏性，正是使按 Token 量化安全的同一特质。
+
+&gt; The transferable lesson is broader than the KV cache: measure compression error where the tensor is consumed, not where it is stored. An implicit assumption made by reconstruction error is that every component of a tensor has equal weight when contributing to the final output. Attention explicitly does not. Any downstream operation that weights, gates, or sparsifies its input breaks that assumption. Readers familiar with my previous article regarding [blindspots in evaluation metrics in retrieval systems](https://www.unite.ai/biomedical-rag-contradiction-blindness-structural-prompting/) will recognize that these results are similar to previously described failures: easily computed metrics that report on something other than what was intended.
+
+&gt; 这一可以迁移的经验法则比 KV 缓存本身更为广泛：应该在张量被消耗的地方测量压缩误差，而不是在其被存储的地方。重构误差所做的一个隐式假设是：在对最终输出做出贡献时，张量的每个组件都具有相等的权重。但注意力机制显然并非如此。任何对其输入进行加权、门控（gating）或稀疏化的下游操作都会打破这一假设。熟悉我之前关于[检索系统中评估指标盲点](https://www.unite.ai/biomedical-rag-contradiction-blindness-structural-prompting/)文章的读者会认出，这些结果与先前描述的失败案例类似：即那些易于计算、但却反映了非预期内容的指标。
+
+## 旋转位置编码（RoPE）使 Key 变得复杂
+
+&gt; There are some issues with using Rotary Position Embeddings (RoPE). RoPE rotates pairs of channels based on the relative position of each token. That mixing partially dissolves the fixed-channel structure that made per-channel key quantization work in the first place — an outlier channel gets rotated into its neighbours, and the neighbours inherit the range. KVQuant’s answer is ordering: quantize keys before the rotation is applied, and apply RoPE after dequantization. Alongside per-channel key quantization, non-uniform datatypes, and isolating a small fraction of outliers, this gets them under 0.1 perplexity degradation at 3 bits, and enables serving LLaMA-7B at up to 1 million tokens of context on a single A100-80GB.
+
+&gt; 使用旋转位置编码（RoPE）带来了一些问题。RoPE 根据每个 Token 的相对位置旋转通道对。这种混合部分地瓦解了使按通道 Key 量化得以奏效的固定通道结构——异常值通道被旋转到了其邻居中，而邻居则继承了该范围。KVQuant 的解决方案是调整顺序：在应用旋转之前对 Key 进行量化，并在反量化（dequantization）之后应用 RoPE。结合按通道 Key 量化、非均匀数据类型以及隔离一小部分异常值，这使得他们在 3 比特下的困惑度（perplexity）退化低于 0.1，并使得在单张 A100-80GB 上能够提供高达 100 万 Token 上下文的 LLaMA-7B 服务成为可能。
+
+&gt; It is also important to understand the level of impact from RoPE. The authors of the paper [“RotateKV”](https://www.ijcai.org/proceedings/2025/0690.pdf) reported an increase of 145% in quantization errors once RoPE was added, and noted that outlier channels differ across attention heads — which is why applying one shared rotation matrix everywhere is insufficient, and head-adaptive rotations do better.
+
+&gt; 了解 RoPE 的影响程度也很重要。[“RotateKV”](https://www.ijcai.org/proceedings/2025/0690.pdf) 一文的作者报告称，一旦加入 RoPE，量化误差就会增加 145%，并指出异常值通道在不同的注意力头之间是各不相同的——这就是为什么到处应用一个共享的旋转矩阵是不够的，而头自适应旋转（head-adaptive rotations）表现得更好。
+
+## 系统开销（Systems Tax），以及为什么它不是小细节
+
+&gt; Per-token quantization suits decoding well. Each token arrives; you quantize it, add it to the sequence (along the token dimension), nothing else moves.
+
+&gt; 按 Token 量化非常适合解码阶段。每个 Token 到来；你对其进行量化，将其添加到序列中（沿 Token 维度），其他任何东西都不需要移动。
+
+&gt; However, per-channel quantization does not fit. As a channel’s statistics span tokens that have not been generated yet, you can’t compute a scale factor when a token comes in. KIVI’s workaround is to keep the most recent tokens — up to 128 — in full precision in a residual buffer, and quantize in groups once enough have accumulated.
+
+&gt; 然而，按通道量化则无法完美契合。由于一个通道的统计数据跨越了尚未生成的 Token，因此当一个 Token 到来时，你无法计算出缩放因子。KIVI 的变通方法是：在残差缓冲区（residual buffer）中以全精度保留最近生成的 Token（最多 128 个），一旦积累了足够多的 Token，就按组进行量化。
+
+&gt; As it happens, the residual buffer becomes load-bearing, rather than just an incidental thing. On GSM8K with Llama-2-7B, full precision scores 13.50. Fully quantized to 2 bits with the correct axes, it scores 5.76. The same axes and the same bits, plus the residual buffer of recently produced tokens at full precision, score 12.74. A sliding window of recently produced tokens at full precision will recover much of what was lost due to aggressive quantization on difficult multi-step problems — which would make sense if we consider which tokens were being attended to by a chain of arithmetic operations.
+
+&gt; 巧合的是，这个残差缓冲区变得起到了承重墙（load-bearing）的作用，而不仅仅是一个附带的东西。在运行 Llama-2-7B 的 GSM8K 测试中，全精度得分为 13.50。使用正确的轴完全量化到 2 比特时，得分为 5.76。采用相同的轴、相同的比特数，再加上以全精度保存最近生成的 Token 的残差缓冲区，得分为 12.74。对于困难的多步骤问题，通过全精度保存最近生成 Token 的滑动窗口，可以恢复因激进量化而损失的大部分性能——如果我们考虑到一系列算术运算所关注的是哪些 Token，这就完全讲得通了。
+
+&gt; There is a significant benefit from doing all of these things correctly — as KIVI reports, 2.6 times less peak memory use for Llama-2-7B, allowing for batch sizes up to 4 times larger, as well as 2.35 to 3.47 times better throughput on a real-world service task.
+
+&gt; 正确完成所有这些操作会带来巨大的收益——正如 KIVI 报道的那样，Llama-2-7B 的峰值内存使用量减少了 2.6 倍，允许的批处理大小（batch size）扩大了多达 4 倍，在真实世界的服务任务中吞吐量也提升了 2.35 到 3.47 倍。
+
+## 我们该怎么做
+
+1. **Never use one quantizer for both.** Use different quantizers for keys (per-channel) and for values (per token). A pipeline that applies a single quantizer to “the KV cache” has probably already sacrificed most of the possible quality when using a small number of bits to represent each value.
+2. **Quantize keys before RoPE.** This is a matter of correctness as opposed to a matter of preference.
+3. **Store a full precision window of recently generated tokens.** Although storing such a window takes very little memory compared to how large a cache can be, it is precisely this area that generates much of the accuracy for difficult tasks.
+4. **Do not validate on reconstruction error.** Always validate based upon the attention output or based upon end task performance. The storage metric is not merely noisy — for values it points the wrong way.
+5. **Do not validate on short-context multiple-choice benchmarks.** The KIVI authors deliberately avoid closed-ended tasks like MMLU for this evaluation, because a single decoding step reading output logits barely exercises the cache at all. Any evaluation that does not build a cache over time and then perform generation from it will never be able to observe the failures inherent in your system design.
+
+1. **切勿对两者使用同一个量化器。** 应当为 Key（按通道）和 Value（按 Token）使用不同的量化器。任何将单一量化器应用于“整个 KV 缓存”的流水线，在用少量比特表示每个数值时，大概率已经牺牲掉了绝大部分潜在的质量。
+2. **在 RoPE 之前量化 Key。** 这是一个正确性问题，而不是一个个人偏好问题。
+3. **存储最近生成的 Token 的全精度窗口。** 尽管与庞大的缓存相比，存储这样一个窗口所需的内存微不足道，但正是这一区域为困难任务贡献了大量的准确率。
+4. **切勿基于重构误差进行验证。** 始终应当基于注意力输出或最终任务性能进行验证。存储指标不仅存在噪声——对于 Value 来说，它甚至指引了错误的方向。
+5. **切勿在短上下文的多项选择基准上进行验证。** KIVI 的作者在评估时刻意避开了 MMLU 这样封闭式的任务，因为单步解码读取输出 logits 的过程几乎完全没有对缓存施加压力。任何不随时间构建缓存然后从中进行生成的评估，都永远无法观察到你系统设计中固有的缺陷。
+
+## 工作的前沿方向
+
+&gt; Although there is still some left to do regarding the geometric nature of the problem, many researchers continue to study ways that outlying channels are distributed among the various transformer heads, and how hardware limitations affect which groupings are cheapest: [InnerQ](https://arxiv.org/html/2602.23200) folds channel-wise key normalization into the key and query weights during prefill. Therefore, no additional overhead is incurred at runtime. Furthermore, InnerQ stores high precision windows for both recently generated tokens and attention sink tokens. In doing so, InnerQ eliminates the opportunity for outliers in the sink channel to contaminate neighboring channels.
+
+&gt; 尽管关于该问题的几何本质仍有一些工作要做，但许多研究人员仍在继续研究异常通道如何在各个 Transformer 注意力头之间分布，以及硬件限制如何影响哪种分组方式成本最低：[InnerQ](https://arxiv.org/html/2602.23200) 在预填充（prefill）阶段将按通道的 Key 归一化折叠到 Key 和 Query 权重中。因此，在运行时不会产生额外的开销。此外，InnerQ 为最近生成的 Token 和注意力汇聚（attention sink）Token 都存储了高精度窗口。通过这样做，InnerQ 消除了汇聚通道中的异常值污染相邻通道的可能性。
+
+&gt; Others propose that instead of storing the entire cache, we should store only enough information to be able to [rematerialize the key and/or value(s) on demand](https://arxiv.org/pdf/2508.10395) from a smaller cached representation.
+
+&gt; 其他人则提出，与其存储整个缓存，我们不如只存储足够的信息，以便能够从较小的缓存表征中[按需重新生成（rematerialize）Key 和/或 Value](https://arxiv.org/pdf/2508.10395)。
+
+&gt; Finally, it’s important to remember that accuracy is not the only parameter that quantization affects. [Recently published research demonstrated alignment degradation](https://arxiv.org/pdf/2606.09864) resulting from quantizing KV caches. Moreover, this research documented alignment degradation even in production vLLM serving environments utilizing FP8 caches along with a training-free recovery protocol that restored up to 97% of what was lost in terms of alignment. As such, while a configuration may hold onto its benchmark results, it does not necessarily mean that it retains all other relevant parameters you care about.
+
+&gt; 最后，务必记住，准确率并不是量化影响的唯一参数。[最近发表的一项研究表明](https://arxiv.org/pdf/2606.09864)，量化 KV 缓存会导致对齐（alignment）性能退化。此外，该研究记录到，即使在使用 FP8 缓存并配合无训练恢复协议（恢复了多达 97% 的对齐损失）的生产级 vLLM 服务环境中，对齐退化依然存在。因此，虽然某个配置可能在基准测试得分上表现良好，但这并不意味着它保留了你关心的所有其他相关参数。
+
+## 通用原则
+
+&gt; The idea of quantization has been framed as a “precision budget”: how many bits can I afford to sacrifice? The KV cache shows that the more useful question is structural. Precision is allocated in groups; the group is the unit of damage, and the axis you group along determines which elements share their fate. The correct axis is the on which your tensor is being consumed, i.e., the way you are using your tensor and NOT how your tensor appears when stored in memory. Keys are used via a dot-product computation against the query. A single corrupted channel will poison all scores. Values are consumed through a sparse-weighted-average computation across tokens. Therefore, a single corrupted token is simply weighted out.
+
+&gt; 量化的概念一直被框定为“精度预算”：我能负担得起牺牲多少比特？而 KV 缓存表明，更有用的问题其实是结构性的。精度是以组为单位分配的；分组是损害的单位，你沿之进行分组的轴决定了哪些元素命运与共。正确的轴是你的张量被消耗时的轴，也就是说，取决于你如何使用张量，而不是你的张量在内存中存储时的外观。Key 是通过与 Query 进行点积计算来使用的。单个受损的通道会毒害所有的得分。Value 则是通过跨 Token 的稀疏加权平均计算来消耗的。因此，单个受损的 Token 会被简单地加权过滤掉。
+
+&gt; Two tensors of identical dimensions and generated by two consecutive layers are treated differently. It is worth asking of any activation you plan to compress: what operation contracts this away, and does my grouping respect it?
+
+&gt; 维度相同且由两个连续层生成的两个张量，却需要受到截然不同的对待。对于你计划压缩的任何激活值，都值得去追问：是什么操作将其收缩（contracts this away）消解的，我的分组方式是否契合了这一操作？</description>
+    </item>
+    <item>
+      <title>2026-08-15-OEIS Open：语言模型能将多少猜想转化为定理？</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/OEIS Open：语言模型能将多少猜想转化为定理？/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/OEIS Open：语言模型能将多少猜想转化为定理？/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本文介绍了 **OEIS Open**，这是一个旨在评估大语言模型（LM）解决开放数学问题能力的全新基准测试。该基准基于整数序列在线百科全书（OEIS）中 492 个已在 Lean 定理证明器中形式化的开放猜想，为通用语言模型提供了一个安全且开源的评估框架。
+
+研究发现，在每次尝试 50 美元的预算下，配备极简工具的语言模型能够解决 147 个猜想（得分 30%）。在针对 100 个猜想的子集（OEIS Open Lite）中，表现最好的模型在 200 美元预算下达到了 44% 的准确率。令人意外的是，为模型提供 47.6 万篇 arXiv 数学论文的检索权限，或使用更复杂的智能体循环，均未能显著提升性能。尽管这些猜想的数学意义各异，但该研究证明了语言模型能够以较低的成本自主解决开放性的研究猜想。
+
+---
+
+## 执行摘要
+
+本文介绍了 **OEIS Open**，这是一个旨在评估大语言模型（LM）解决开放数学问题能力的全新基准测试。该基准基于整数序列在线百科全书（OEIS）中 492 个已在 Lean 定理证明器中形式化的开放猜想，为通用语言模型提供了一个安全且开源的评估框架。
+
+&gt; This paper introduces **OEIS Open**, a new benchmark designed to evaluate language models (LMs) on their ability to solve open mathematical problems. Built upon 492 open conjectures from the Online Encyclopedia of Integer Sequences (OEIS) formalized in the Lean theorem prover, the benchmark provides a secure, open-source evaluation framework for generic LMs. 
+
+关键研究发现包括：
+* 在每次尝试 50 美元的预算下，配备极简工具的语言模型解决了 147 个猜想（得分 30%）。
+* 表现最好的语言模型在 *OEIS Open Lite*（包含 100 个猜想的子集）上，以 200 美元的预算取得了 44% 的得分。
+* 令人好奇的是，为模型提供 47.6 万篇 arXiv 数学论文的访问权限，或利用更复杂的智能体循环，均未能提升性能。
+* 尽管这些特定猜想的数学意义各不相同，且许多猜想此前鲜有人关注，但研究结果表明，语言模型能够以适中的成本自主解决开放性的研究猜想。
+
+&gt; Key findings include:
+&gt; * LMs with minimal tooling resolve **147 conjectures (30% score)** under a budget of \$50 per attempt.
+&gt; * The best-performing LM scores **44%** on *OEIS Open Lite* (a 100-conjecture subset) with a \$200 budget.
+&gt; * Curiously, granting models access to 476,000 arXiv mathematics papers or utilizing more sophisticated agent loops **did not improve performance**.
+&gt; * While the mathematical significance of these specific conjectures varies and many have received little prior human attention, the results demonstrate that LMs can autonomously resolve open research conjectures at a modest cost.
+
+---
+
+## 论文元数据
+
+| 字段 | 详情 |
+| :--- | :--- |
+| **arXiv ID** | [arXiv:2608.11941](https://arxiv.org/abs/2608.11941) [cs.AI] |
+| **作者** | Tom Adamczewski |
+| **提交日期** | 2026年8月12日（修订：2026年8月13日） |
+| **学科** | 人工智能 (`cs.AI`) |
+| **MSC 分类** | 68V15 (主要), 68T07 |
+| **ACM 分类** | I.2.3; F.4.1 |
+| **资源** | • 代码: [GitHub - LeanOpenProblems](https://github.com/epoch-research/LeanOpenProblems)&lt;br&gt;• 结果: [GitHub - LeanOpenProblems-results](https://github.com/epoch-research/LeanOpenProblems-results) |
+
+---
+
+## 摘要
+
+我们构建了 OEIS Open，这是一个基于 OEIS 中 492 个开放数学猜想的基准测试，这些猜想由 Tsoukalas 等人使用 Lean 进行了形式化。虽然这些猜想此前仅通过定制的智能体进行过尝试，但我们的开源评估代码允许任何通用语言模型（LM）针对这些问题进行测试，并能有效防止语言模型的作弊行为。
+
+&gt; We construct OEIS Open, a benchmark based on 492 open mathematical conjectures from the OEIS, formalized in Lean by Tsoukalas et al. Whereas these conjectures had previously been attempted only with a bespoke agent, our open-source evaluation code runs any generic language model (LM) against them, and is secure against LM cheating attempts. 
+
+我们发现，配备极简工具集的语言模型在每次尝试 50 美元的预算下解决了其中的 147 个猜想，在 OEIS Open 上得分为 30%。OEIS Open Lite 是一个包含 100 个猜想的随机子集，用于更低成本的评估。当以每次尝试 200 美元的预算进行评估时，当前表现最好的语言模型在 OEIS Open Lite 上得分为 44%。通过 47.6 万篇 arXiv 论文为语言模型提供数学文献访问权限，或使用更复杂的智能体循环，均未能提高在 OEIS Open Lite 上的性能。
+
+&gt; We find that LMs equipped with a minimal set of tools resolve 147 of these conjectures with a budget of \$50 per attempt, scoring 30% on OEIS Open. OEIS Open Lite is a random subset of 100 conjectures for cheaper evaluation. When evaluated with a budget of \$200 per attempt, the best current LM scores 44% on OEIS Open Lite. Giving LMs access to the mathematics literature via 476,000 papers from arXiv did not increase performance on OEIS Open Lite, and nor did using more sophisticated agent loops. 
+
+本研究涵盖的猜想其数学意义尚不确定，且大多数可能此前鲜有人关注。尽管如此，我们的结果表明，语言模型能够以适中的成本自主解决开放性的研究猜想。
+
+&gt; The conjectures covered in this work are of uncertain mathematical significance, and most have likely received little previous attention. Nevertheless, our results show that LMs can resolve open research conjectures autonomously and at modest cost.
+
+---
+
+## 全文与访问链接
+
+* [查看 PDF](https://arxiv.org/pdf/2608.11941)
+* [HTML 版本 (实验性)](https://arxiv.org/html/2608.11941v2)
+* [TeX 源码](https://arxiv.org/src/2608.11941)
+* [许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+---
+
+## 参考文献与引用工具
+
+* [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.11941)
+* [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.11941)
+* [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.11941)</description>
+    </item>
+    <item>
+      <title>How NASA’s Mariner 9 Probe Encoded Images</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/NASA水手9号探测器是如何进行图像编码的/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/NASA水手9号探测器是如何进行图像编码的/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在1971年，NASA的水手9号（Mariner 9）探测器面临着一项巨大的技术挑战：如何将火星的高清图像跨越茫茫太空稳定地传输回地球。为了对抗传输过程中的信号畸变与噪声干扰，工程师们巧妙地运用了一种复杂的 (32, 6, 16) 阿达马（Hadamard）纠错码。
+
+该核心技术允许探测器将6位的像素数据扩展为具备极强鲁棒性的32位码字。即便在漫长的传输过程中有部分比特发生翻转，地球上的接收系统依然能够准确无误地重建出原始图像。本文简要介绍了这一经典空间通信技术的矩阵构造原理、解码纠错机制以及类似于快速傅里叶变换（FFT）的高效计算方法。
+
+---
+
+# How NASA’s Mariner 9 Probe Encoded Images</description>
+    </item>
+    <item>
+      <title>2026-08-15-MBA：面向现实世界商业构思的多模态基准与智能体</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/MBA：面向现实世界商业构思的多模态基准与智能体/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/MBA：面向现实世界商业构思的多模态基准与智能体/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>现实世界的商业决策与构思往往高度依赖于多模态信息（如市场图表、产品外观及视觉环境），然而现有的基于大语言模型（LLM）的智能体框架大都局限于纯文本范式，难以应对视觉线索至关重要的实际商业场景。为此，本文推出了 **MBA-Bench**——首个专为训练和评估现实世界商业构思智能体而设计的综合多模态基准。该基准涵盖来自六大商业领域的 30,000 个样本，每个样本均融合了关键的视觉线索。
+
+为了突破现有局限，研究团队开发了两种智能体变体：针对评估标准隐藏场景的 **MBA-b** 以及针对评估标准公开场景的 **MBA-k**。在训练方法上，两款智能体均通过基于 LoRA 的监督微调（SFT）以及引入全新“创造力”与“可行性”奖励的群组相对策略优化（GRPO）进行训练。实验结果表明，在 MBA-Bench 的各项严格测试中，MBA-b 和 MBA-k 的表现均显著超越了传统的纯文本基线以及现有的多模态基线，展现出强大的现实世界商业构思能力。
+
+---
+
+## 摘要 (Abstract)
+
+由大语言模型（LLMs）驱动的智能体系统为商业构思开辟了新的机遇。然而，尽管现实世界的上下文本质上具有多模态特征，现有方法仍局限于纯文本范式。
+
+&gt; Agentic systems powered by large language models (LLMs) have opened new opportunities for business ideation. Yet existing approaches remain confined to a text-only paradigm, despite the inherently multimodal nature of real-world contexts. 
+
+因此，我们推出了 **MBA-Bench**，这是首个用于训练和评估商业构思智能体的多模态基准，包含跨越六个领域的 30K 个样本，每个领域都具有无法仅通过文本完全传达的独特视觉线索。具体而言，我们自动为图像添加标题（caption），并利用 GPT-4o 通过检索查询生成、市场证据检索和证据增强合成，为三个商业问题中的每一个生成五个参考构思。
+
+&gt; We thus introduce **MBA-Bench**, the first multimodal benchmark for training and evaluating business ideation agents, comprising 30K samples across six domains, each domain characterized by distinct visual cues not fully conveyed by text alone. Concretely, we automatically caption images and employ GPT-4o to generate five reference ideas for each of three business questions through retrieval query generation, market evidence retrieval, and evidence-augmented synthesis. 
+
+遵循先前的工作，我们使用 MLLM-as-a-Judge（多模态大模型作为裁判）在六个面向商业的标准上评估智能体。为了考虑标准隐藏或公开的场景，我们分别提出了用于隐藏场景的 **MBA-b** 和用于公开场景的 **MBA-k**。我们使用两个新颖的奖励目标——创造力和可行性——来训练这两者，同时 MBA-k 进一步优化了六个公开标准，总共八个标准。两者的训练均通过基于 LoRA 的监督微调进行，随后利用这些针对特定场景的奖励进行群组相对策略优化（group relative policy optimization）。
+
+&gt; Following prior work, we evaluate agents across six business-oriented criteria using MLLM-as-a-Judge. To consider settings where criteria are hidden or disclosed, we present **MBA-b** and **MBA-k** for blind and known, respectively. We train both with two novel reward objectives—creativity and feasibility—while MBA-k further optimizes the six disclosed criteria for eight in total. Both are trained via LoRA-based supervised fine-tuning followed by group relative policy optimization with these setting-specific rewards. 
+
+为了在 MBA-Bench 上进行广泛的实验，我们设置了两个仅容纳图像标题或多模态输入的基线，后者在多项指标上接近闭源模型的性能。在基准测试中，MBA-b 和 MBA-k 分别比标题基线高出 63.9% 和 77.1%，比多模态基线高出 25.6% 和 35.8%。
+
+&gt; For extensive experiments on MBA-Bench, we set up two baselines accommodating either captions only or multimodal inputs, with the latter nearing closed-source performance on several metrics. MBA-b and MBA-k outperform caption baselines by 63.9% and 77.1%, and multimodal baselines by 25.6% and 35.8%, respectively.
+
+---
+
+## 元数据与参考信息 (Metadata &amp; Reference Information)
+
+* **arXiv ID:** [arXiv:2608.11616 [cs.AI]](https://arxiv.org/abs/2608.11616)
+&gt; * **arXiv ID:** [arXiv:2608.11616 [cs.AI]](https://arxiv.org/abs/2608.11616)
+* **学科分类 (Subjects):** 人工智能 (`cs.AI`)；计算机视觉与模式识别 (`cs.CV`)；机器学习 (`cs.LG`)
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Computer Vision and Pattern Recognition (`cs.CV`); Machine Learning (`cs.LG`)
+* **作者 (Authors):** Hojun Choi, Jaeyo Shin, Suin Lee, Hyunjung Shim
+&gt; * **Authors:** Hojun Choi, Jaeyo Shin, Suin Lee, Hyunjung Shim
+* **提交时间 (Submitted):** 2026年8月12日 (修订版: 2026年8月13日)
+&gt; * **Submitted:** August 12, 2026 (Revised: August 13, 2026)
+* **许可与权利 (License &amp; Rights):** [知识共享署名 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
+&gt; * **License &amp; Rights:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
+
+---
+
+## 项目资源与链接 (Project Resources &amp; Links)
+
+* **官方项目主页 (Official Project Page):** [项目网站 (Project Website)](https://hchoi256.github.io/projects/mba/)
+&gt; * **Official Project Page:** [Project Website](https://hchoi256.github.io/projects/mba/)
+* **源码与实现 (Source Code &amp; Implementation):** [GitHub 仓库 (GitHub Repository)](https://github.com/hchoi256/MBA)
+&gt; * **Source Code &amp; Implementation:** [GitHub Repository](https://github.com/hchoi256/MBA)
+* **全文格式 (Full-Text Formats):** [查看 PDF](https://arxiv.org/pdf/2608.11616) | [HTML 版本](https://arxiv.org/html/2608.11616v2) | [TeX 源码](https://arxiv.org/src/2608.11616)
+&gt; * **Full-Text Formats:** [View PDF](https://arxiv.org/pdf/2608.11616) | [HTML Version](https://arxiv.org/html/2608.11616v2) | [TeX Source](https://arxiv.org/src/2608.11616)</description>
+    </item>
+    <item>
+      <title>Hamilton-Zero: A Neural Tensor-Network Foundation Model for Ground States of Arbitrary Quadratic Qubit Hamiltonians</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-15/Hamilton-Zero：用于任意二次量子比特哈密顿量基态的神经张量网络基础模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-15/Hamilton-Zero：用于任意二次量子比特哈密顿量基态的神经张量网络基础模型/</guid>
+      <pubDate>Sat, 15 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在量子多体物理中，计算超出经典模拟能力边界的哈密顿系统基态是实现实用量子优势的核心承诺之一。本文提出的 Hamilton-Zero 模型引入了一种范式转变，它是一个包含约 5 亿个变分参数的神经张量网络基础模型，旨在高效计算任意通用二次量子比特哈密顿量的基态，并通过在大规模系统集上的预训练实现计算成本的分摊。
+
+该技术的核心创新在于将 $\text{spin-1/2}$ 量子基态学习建模为 $\mathrm{SU}(2)^N$ 上中心奇标量函数的流形变分优化。模型利用李导数代替显式的希尔伯特空间向量振幅，并通过 Peter-Weyl 定理在理论上保证了变分原理能够维持基态上限。结合 $\mathrm{SU}(2)$ 副本交换朗之万采样器（replica-exchange Langevin sampler）以及基于自定义 KFAC 扩展的分片自然梯度优化，研究团队在多达 64 个量子比特的系统上完成了预训练，并成功将模型微调扩展至 1024 个量子比特，并在高达 8100 个量子比特的系统上进行了评估，展现出强大的泛化与扩展性能。
+
+---
+
+# Hamilton-Zero: A Neural Tensor-Network Foundation Model for Ground States of Arbitrary Quadratic Qubit Hamiltonians
+
+**arXiv:** [2608.11911](https://arxiv.org/abs/2608.11911) [quant-ph]  
+**Authors:** Timothy Heightman, Elena Orlova, Philip Mantrov, Aleksei Ustimenko  
+**Submitted:** August 12, 2026 (Revised: August 13, 2026)  
+**Primary Subject:** Quantum Physics (`quant-ph`)  
+**Other Subjects:** Disordered Systems and Neural Networks (`cond-mat.dis-nn`), Strongly Correlated Electrons (`cond-mat.str-el`), Artificial Intelligence (`cs.AI`)
+
+---
+
+## Summary
+
+**Hamilton-Zero** introduces a paradigm shift in quantum many-body physics by presenting a neural tensor-network foundation model containing $\sim0.5$ billion variational parameters. Designed to compute the ground states of arbitrary and universal quadratic qubit Hamiltonians, the model leverages contemporary techniques from large language models and deep reinforcement learning to amortize computational costs across massive sets of systems. 
+
+Key innovations include:
+* **Manifold Variational Optimization:** Formulates $\text{spin-}1/2$ quantum ground-state learning over centrally odd scalar functions on $\mathrm{SU}(2)^N$, replacing explicit Hilbert-space vector amplitudes with manifold functions acted upon by Lie derivatives.
+* **Theoretical Guarantees:** Proves via the Peter-Weyl theorem that the variational principle preserves the $\text{spin-}1/2$ sector's ground-state upper bound.
+* **Large-Scale Training:** Pre-trained on hundreds of thousands of diverse Hamiltonian systems (varying topology, size, and interaction strengths) using an $\mathrm{SU}(2)$ replica-exchange Langevin sampler and sharded natural-gradient optimization with a custom Kronecker-Factored Approximate Curvature (KFAC) extension.
+* **Scaling Performance:** Demonstrates successful fine-tuning on held-out datasets up to 1,024 qubits and evaluation on systems reaching up to 8,100 qubits.
+
+---
+
+## Abstract
+
+&gt; A central promise of useful quantum advantage is the ability to compute ground states of Hamiltonian systems beyond the reach of classical simulation methods. Here we demonstrate that this problem can be effectively amortized across an arbitrary and universal set of Hamiltonians by a foundation model with $\sim0.5$B variational parameters, trained with contemporary techniques from large language models and deep reinforcement learning. To do this, we formulate $\text{spin-}1/2$ quantum ground-state learning as manifold variational optimisation over centrally odd scalar functions on $\mathrm{SU}(2)^N$. This replaces explicit Hilbert-space vector amplitudes with manifold functions on which the Hamiltonian acts through Lie derivatives, evaluated by custom automatic differentiation primitives. We prove that the resulting variational principle on this manifold preserves the $\text{spin-}1/2$ sector's ground-state upper bound using the Peter-Weyl theorem, then pre-train our foundation model on a dataset of hundreds of thousands of different Hamiltonian systems, varying the connection topology, system size, interaction types and strengths, bringing together a century of many-body literature. Using a novel $\mathrm{SU}(2)$ replica-exchange Langevin sampler and sharded natural-gradient optimisation, we train our model with our own extension of the Kronecker-Factored Approximate Curvature (KFAC) optimiser on system sizes up to 64 qubits. On a held-out generalisation dataset, we fine-tune our model on system sizes of up to 1024 qubits, and evaluate on systems up to 8100 qubits.
+
+---
+
+## Submission History
+
+* **[v1]** Wed, 12 Aug 2026 10:42:38 UTC (5,487 KB)
+* **[v2]** Thu, 13 Aug 2026 13:29:22 UTC (5,446 KB) — *This version*
+
+---
+
+## Access &amp; Resources
+
+* **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2608.11911) | [HTML (Experimental)](https://arxiv.org/html/2608.11911v2) | [TeX Source](https://arxiv.org/src/2608.11911)
+* **DOI:** [10.48550/arXiv.2608.11911](https://doi.org/10.48550/arXiv.2608.11911)
+* **External References:** [INSPIRE HEP](https://inspirehep.net/arxiv/2608.11911) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.11911) | [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.11911) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.11911)</description>
+    </item>
+    <item>
       <title>2026-08-14-面向高光谱鱼类新鲜度分类的域感知轻量级光谱分组卷积</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-14/面向高光谱鱼类新鲜度分类的域感知轻量级光谱分组卷积/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-14/面向高光谱鱼类新鲜度分类的域感知轻量级光谱分组卷积/</guid>
@@ -2617,521 +3408,6 @@ This paper introduces **liteOdyssey**, developed through *Policy Iteration with 
 &gt; * **NASA ADS:** [Link](https://ui.adsabs.harvard.edu/abs/arXiv:2606.02022)
 &gt; * **Google Scholar:** [Link](https://scholar.google.com/scholar_lookup?arxiv_id=2606.02022)
 &gt; * **Semantic Scholar:** [Link](https://api.semanticscholar.org/arXiv:2606.02022)</description>
-    </item>
-    <item>
-      <title>2026-08-14-拟阵上泊松过程次模最大化的对抗鲁棒性：从鲁棒离线优化到全强盗学习</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/拟阵上泊松过程次模最大化的对抗鲁棒性：从鲁棒离线优化到全强盗学习/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/拟阵上泊松过程次模最大化的对抗鲁棒性：从鲁棒离线优化到全强盗学习/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本文研究了在一般拟阵约束下的非负次模最大化问题，特别关注离线算法配备任意受控值谕言机（controlled value oracle）时的表现。作者针对“恶意贪婪交换泊松过程（SGS-Poisson）”算法建立了一个对抗鲁棒性定理，证明了该算法在无需修改核心参数（如泊松强度、单元素交换规则或恶意丢弃步骤）的情况下，仍能为单调和非单调目标函数保持强大的极限近似保证。
-
-此外，通过离线到在线归约，本文成功推导出了适用于拟阵约束次模奖励的全强盗组合多臂强盗（CMAB）算法，实现了精确的极限近似-遗憾因子以及次线性的遗憾界。这一研究沟通了鲁棒离线优化与复杂在线强盗学习之间的理论桥梁。
-
----
-
-## 摘要 (Abstract)
-
-&gt; We study nonnegative submodular maximization subject to a general matroid when the offline algorithm is given an arbitrary controlled value oracle. Our main result is an adversarial resilience theorem for the Spiteful Greedy Swap Poisson Process (SGS-Poisson): without modifying its Poisson intensity, single-element exchange rule, or spiteful drop step, the algorithm retains limiting approximation factors $1/e$ for non-monotone objectives and $1-1/e$ for monotone objectives. 
-
-我们研究了一般拟阵约束下的非负次模最大化问题，此时离线算法被赋予了一个任意的受控值谕言机。我们的主要结果是针对恶意贪婪交换泊松过程（Spiteful Greedy Swap Poisson Process, SGS-Poisson）的对抗鲁棒性定理：在不修改其泊松强度、单元素交换规则或恶意丢弃步骤的前提下，该算法对于非单调目标函数仍能保持 $1/e$ 的极限近似因子，对于单调目标函数则保持 $1-1/e$ 的近似因子。
-
-&gt; More precisely, under every controlled oracle $\widehat f$ satisfying $|\widehat f(S)-f(S)|\le \xi$ for every set $S$, our implementation returns a feasible set with expected value at least:
-* $(1/e-\varepsilon)\text{OPT}-O(k\xi)$ for non-monotone objectives, and
-* $(1-1/e-\varepsilon)\text{OPT}-O(k\xi)$ for monotone objectives, 
-&gt; using $\widetilde O(nk^2\varepsilon^{-2})$ oracle calls. As a consequence, the offline-to-online reduction yields full-bandit CMAB algorithms for general matroid-constrained submodular rewards with exact limiting approximation-regret factors $1/e$ and $1-1/e$ and $\widetilde O(n^{1/5}k^{4/5}T^{4/5})$ regret.
-
-更准确地说，对于满足任意集合 $S$ 都有 $|\widehat f(S)-f(S)|\le \xi$ 的每一个受控谕言机 $\widehat f$，我们的实现返回的可行集其期望值至少为：
-* 对于非单调目标函数，为 $(1/e-\varepsilon)\text{OPT}-O(k\xi)$；
-* 对于单调目标函数，为 $(1-1/e-\varepsilon)\text{OPT}-O(k\xi)$，
-
-算法所需的谕言机调用次数为 $\widetilde O(nk^2\varepsilon^{-2})$。因此，离线到在线的归约成功为一般拟阵约束的次模奖励生成了全强盗 CMAB 算法，实现了精确的极限近似-遗憾因子（$1/e$ 和 $1-1/e$）以及 $\widetilde O(n^{1/5}k^{4/5}T^{4/5})$ 的遗憾界。
-
----
-
-## 全文与访问链接 (Full-Text &amp; Access Links)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2608.12134)
-* [HTML (Experimental)](https://arxiv.org/html/2608.12134v1)
-* [TeX Source](https://arxiv.org/src/2608.12134)
-
-* [查看 PDF](https://arxiv.org/pdf/2608.12134)
-* [HTML 页面（实验性）](https://arxiv.org/html/2608.12134v1)
-* [TeX 源码](https://arxiv.org/src/2608.12134)</description>
-    </item>
-    <item>
-      <title>2026-08-14-手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>高性能 Tensor Core 内核通常依赖于底层 PTX 管道，该管道利用异步数据移动（`cp.async`）、warp 级矩阵加载（`ldmatrix`）以及矩阵乘累加操作（`mma.sync`）。然而，大多数应用程序是通过高级 WMMA C++ API 间接访问 Tensor Core 的。本文研究了一个实际的工程问题：**用手写 PTX 代替 WMMA 在什么时候真正划算？**
-
-作者在 NVIDIA L4 GPU（Ada Lovelace 架构，SM89）上进行了受控的单 GPU 分析，对比了双缓冲 WMMA 基准测试与一系列手写 PTX GEMM（通用矩阵乘法）内核，涵盖 **FP16**、**INT8** 和 **INT4** 精度，问题规模从 $N = 512$ 到 $N = 8192$ 不等。研究表明，寄存器分配、数据打包开销以及内存合并访问模式在不同精度下对性能有着决定性影响，并为需要手写 PTX 的特定场景提供了清晰的性能参考。
-
----
-
-## 摘要概要
-&gt; High-performance Tensor Core kernels typically rely on a low-level PTX pipeline that utilizes asynchronous data movement (`cp.async`), warp-level matrix loads (`ldmatrix`), and matrix multiply-accumulate operations (`mma.sync`). However, most applications access Tensor Cores indirectly via the high-level WMMA C++ API. 
-&gt; 
-&gt; This study investigates a practical engineering question: **When does replacing WMMA with hand-written PTX actually pay off?** 
-&gt; 
-&gt; Conducting a controlled, single-GPU analysis on an NVIDIA L4 GPU (Ada Lovelace, SM89), the authors compare double-buffered WMMA baselines against a family of hand-written PTX GEMM (General Matrix Multiply) kernels across **FP16**, **INT8**, and **INT4** arithmetic with square problem sizes ranging from $N = 512$ to $N = 8192$.
-
-高性能 Tensor Core 内核通常依赖于底层 PTX 管道，该管道利用异步数据移动（`cp.async`）、warp 级矩阵加载（`ldmatrix`）以及矩阵乘累加操作（`mma.sync`）。然而，大多数应用程序是通过高级 WMMA C++ API 间接访问 Tensor Core 的。
-&gt; High-performance Tensor Core kernels typically rely on a low-level PTX pipeline that utilizes asynchronous data movement (`cp.async`), warp-level matrix loads (`ldmatrix`), and matrix multiply-accumulate operations (`mma.sync`). However, most applications access Tensor Cores indirectly via the high-level WMMA C++ API. 
-
-本文研究了一个实际的工程问题：**用手写 PTX 代替 WMMA 在什么时候真正划算？**
-&gt; This study investigates a practical engineering question: **When does replacing WMMA with hand-written PTX actually pay off?** 
-
-作者在 NVIDIA L4 GPU（Ada Lovelace，SM89）上进行了受控的单 GPU 分析，对比了双缓冲 WMMA 基准测试与一系列手写 PTX GEMM（通用矩阵乘法）内核，涵盖 **FP16**、**INT8** 和 **INT4** 精度，问题规模从 $N = 512$ 到 $N = 8192$ 不等。
-&gt; Conducting a controlled, single-GPU analysis on an NVIDIA L4 GPU (Ada Lovelace, SM89), the authors compare double-buffered WMMA baselines against a family of hand-written PTX GEMM (General Matrix Multiply) kernels across **FP16**, **INT8**, and **INT4** arithmetic with square problem sizes ranging from $N = 512$ to $N = 8192$.
-
----
-
-## 关键发现与性能结果
-&gt; ## Key Findings &amp; Performance Results
-
-* **FP16（半精度）：** 手写 PTX **没有带来端到端的加速**。指令级别的收益完全被操作数打包开销（operand-packing overhead）所抵消。
-&gt; * **FP16 (Half Precision):** Hand-written PTX provides **no end-to-end speedup**. Instruction-level gains are entirely offset by operand-packing overhead.
-
-* **INT8（8位整数）：** PTX 内核实现了 **1.4倍至1.8倍** 的持续加速，这主要归功于更低的指令数和更优的全局内存合并访问（coalescing）。
-&gt; * **INT8 (8-bit Integer):** PTX kernels achieve consistent speedups of **1.4x to 1.8x**, driven primarily by lower instruction counts and superior global-memory coalescing.
-
-* **INT4（4位整数）：** PTX 内核实现了 **2.9倍至4.3倍** 的惊人加速，其中原生 `mma.sync.m16n8k64.s4` 绕过了标准 WMMA 路径所需的软件仿真序列。
-&gt; * **INT4 (4-bit Integer):** PTX kernels achieve dramatic speedups of **2.9x to 4.3x**, where native `mma.sync.m16n8k64.s4` execution bypasses the software-emulated sequences required by the standard WMMA path.
-
-* **量化峰值：** 相对于 FP16 WMMA 基准，在 $N = 8192$ 时，最优的量化内核分别达到了 **34.4倍**（INT8）和 **98.7倍**（INT4）的加速比。
-&gt; * **Quantized Peaks:** Relative to the FP16 WMMA baseline, the best quantized kernels reach **34.4x** (INT8) and **98.7x** (INT4) speedups at $N = 8192$.
-
----
-
-## GPU 性能指标的洞察
-&gt; ## Insights on GPU Performance Metrics
-
-从分析数据（通过 NVIDIA Nsight Compute 收集的全套指标）中得出的一个重要结论是：**占有率（Occupancy）是吞吐量的糟糕预测指标**。
-&gt; A major takeaway from the profiling data (collected via NVIDIA Nsight Compute across its full metric set) is that **occupancy is a poor predictor of throughput**. 
-
-对于大型矩阵，性能表现主要跟随内存系统的行为——具体来说是**全局加载合并（global-load coalescing）**和 **DRAM 活动周期（DRAM-active cycles）**——其关联度远高于原始的 Tensor Core 利用率。这些见解成功地勾勒出了能够证明手写 PTX 带来的额外复杂性是合理的特定精度和运算区间。
-&gt; For large matrices, performance tracks memory-system behavior—specifically **global-load coalescing** and **DRAM-active cycles**—far more closely than raw Tensor Core utilization. These insights successfully map out the specific precisions and operational regimes that justify the added complexity of hand-written PTX.</description>
-    </item>
-    <item>
-      <title>2026-08-14-思维链何时有效、何时失效：大模型推理中串行深度瓶颈的实证研究</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/思维链何时有效、何时失效：大模型推理中串行深度瓶颈的实证研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/思维链何时有效、何时失效：大模型推理中串行深度瓶颈的实证研究/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，业界普遍认为思维链（Chain-of-Thought, CoT）提示词能够普遍提升大语言模型（LLM）的推理能力。本文基于 $H_{dp}$ 带宽边界框架，对这一假设进行了深入的实证审视，指出 CoT 并非通用的推理增强器，而是一种“带宽旁路”（bandwidth bypass），主要用于将超出 Transformer 单次前向传递（single-pass）能力的串行计算外化。
-
-通过对多个指令微调模型和基准测试的实证评估，研究揭示了清晰的串行深度梯度：高深度的 $\mathbf{P}$-完全任务（如 GSM8K、MATH）从 CoT 中获益巨大；浅层的 $\mathbf{TC^0}$ 任务（如 MMLU、ARC）发现 CoT 在结构上是冗余的；而中间类任务（如 HumanEval）则表现出依赖于模型规模的转变。这些发现表明，CoT 仅对受限于单次传递容量的串行计算有帮助，而对于原本就能容纳的任务则显得多余。
-
----
-
-## Summary
-
-This paper investigates the common assumption that Chain-of-Thought (CoT) prompting universally improves Large Language Model (LLM) reasoning. Using the $H_{dp}$ bandwidth bound framework, the study demonstrates that CoT acts as a "bandwidth bypass" rather than a universal reasoning enhancer. It externalizes serial computation that exceeds a transformer's single-pass capacity. 
-
-The empirical evaluation across multiple instruction-tuned models and benchmarks reveals a clear serial-depth gradient:
-* **High-depth $\mathbf{P}$-complete tasks** (e.g., GSM8K, MATH) benefit massively from CoT (+54 to +68 pp recovery gap).
-* **Shallow $\mathbf{TC^0}$ tasks** (e.g., MMLU, ARC) find CoT structurally redundant with negligible impact.
-* **Intermediate tasks** (e.g., HumanEval) show a model-size-dependent transition.
-
-&gt; This paper investigates the common assumption that Chain-of-Thought (CoT) prompting universally improves Large Language Model (LLM) reasoning. Using the $H_{dp}$ bandwidth bound framework, the study demonstrates that CoT acts as a "bandwidth bypass" rather than a universal reasoning enhancer. It externalizes serial computation that exceeds a transformer's single-pass capacity. 
-&gt; 
-&gt; The empirical evaluation across multiple instruction-tuned models and benchmarks reveals a clear serial-depth gradient:
-&gt; * **High-depth $\mathbf{P}$-complete tasks** (e.g., GSM8K, MATH) benefit massively from CoT (+54 to +68 pp recovery gap).
-&gt; * **Shallow $\mathbf{TC^0}$ tasks** (e.g., MMLU, ARC) find CoT structurally redundant with negligible impact.
-&gt; * **Intermediate tasks** (e.g., HumanEval) show a model-size-dependent transition.
-
----
-
-## Document Metadata
-
-| 字段 | 详情 |
-| :--- | :--- |
-| **arXiv ID** | [arXiv:2608.09942 [cs.CL]](https://arxiv.org/abs/2608.09942) |
-| **主学科** | Computation and Language (`cs.CL`) |
-| **辅学科** | Artificial Intelligence (`cs.AI`), Machine Learning (`cs.LG`) |
-| **作者** | Tughanbulut Kurtulush |
-| **提交日期** | June 23, 2026 |
-| **预注册** | [OSF: 92jdk](https://osf.io/92jdk) |
-| **数据与代码** | [OSF: hteuj](https://osf.io/hteuj) |
-| **许可协议** | ![license icon](./images/345c7ad61f1b.png) [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) |
-
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [arXiv:2608.09942 [cs.CL]](https://arxiv.org/abs/2608.09942) |
-&gt; | **Primary Subject** | Computation and Language (`cs.CL`) |
-&gt; | **Secondary Subjects** | Artificial Intelligence (`cs.AI`), Machine Learning (`cs.LG`) |
-&gt; | **Author** | Tughanbulut Kurtulush |
-&gt; | **Submission Date** | June 23, 2026 |
-&gt; | **Pre-registration** | [OSF: 92jdk](https://osf.io/92jdk) |
-&gt; | **Data and Code** | [OSF: hteuj](https://osf.io/hteuj) |
-&gt; | **License** | ![license icon](./images/345c7ad61f1b.png) [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) |
-
----
-
-## Abstract
-
-人们普遍认为思维链（CoT）提示词能够无条件地提升 LLM 的推理能力。我们通过 $H_{dp}$ 带宽边界的概念框架（Chen 等人，2024 年）对此进行了研究：尽管形式上的边界仅在渐进意义上（在极大的提示长度下）成立，但它识别出了一个真实的架构瓶颈——超出 Transformer 单次处理容量的串行计算必须被外化，而这正是 CoT 所做的事情。
-
-我们的核心发现在于基准测试内部存在串行深度梯度：单次传递（无 CoT）的准确率随着每个样本的串行深度呈单调下降，而 CoT 在大致上对深度不敏感。我们在三个指令微调模型（Qwen-2.5-7B/32B、Llama-3.1-8B）和五个标准 NLP 基准上，在实际的上下文长度下测量了 CoT 的效果。
-
-* 在高深度的 $\mathbf{P}$-完全任务（GSM8K、MATH）上，所有模型的 CoT 恢复差距（recovery gap）均达到 +54 到 +68 个百分点（pp）。
-* 在浅层的 $\mathbf{TC^0}$ 任务（MMLU、ARC）上，CoT 在结构上是冗余的（$\Delta$ 在 $[0.0, +4.6]$ pp 之间，没有显著的负面影响）——尽管无 CoT 的高基线（在 ARC 上高达 95%）可能反映了数据污染，因此这一零结果并非一个干净的架构测试。
-* 中间类任务 $\mathbf{L}$（HumanEval）表现出依赖于模型规模的转变：+23.2 pp (32B)、+9.1 pp (8B)、-28.7 pp (7B)。
-
-跨基准的深度恢复相关性为 Spearman $\rho = 0.661$（$p = 0.007$，$n = 15$）；在进行 Bonferroni 校正后，15 个基准级别的 McNemar 检验中有 9 个显著。我们的结果在 OSF 上进行了预注册，表明 CoT 并非通用的推理增强器，而是充当了一种带宽旁路：它有助于处理那些压榨单次传递容量的串行计算，而对于已经能够适配的任务则是冗余的。
-
-&gt; It is widely assumed that chain-of-thought (CoT) prompting universally improves LLM reasoning. We investigate this through the conceptual framework of the $H_{dp}$ bandwidth bound (Chen et al., 2024): although the formal bound binds only asymptotically (at astronomically large prompt lengths), it identifies a real architectural bottleneck -- serial computation exceeding a transformer's single-pass capacity must be externalised, which is what CoT does. 
-&gt; 
-&gt; Our central finding is a within-benchmark serial-depth gradient: single-pass (no-CoT) accuracy degrades monotonically with per-item serial depth, while CoT is approximately depth-invariant. We measure CoT effects across three instruction-tuned models (Qwen-2.5-7B/32B, Llama-3.1-8B) and five standard NLP benchmarks at practical context lengths. 
-&gt; 
-&gt; * On high-depth $\mathbf{P}$-complete tasks (GSM8K, MATH), CoT gives a +54 to +68 pp recovery gap across all models.
-&gt; * On shallow $\mathbf{TC^0}$ tasks (MMLU, ARC), CoT is structurally redundant ($\Delta$ in $[0.0, +4.6]$ pp, no significant negative effect) -- though high no-CoT baselines (up to 95% on ARC) may reflect contamination, so this null is not a clean architectural test.
-&gt; * The intermediate class $\mathbf{L}$ (HumanEval) shows a model-size-dependent transition: +23.2 pp (32B), +9.1 pp (8B), -28.7 pp (7B). 
-&gt; 
-&gt; The cross-benchmark depth-recovery correlation is Spearman $\rho = 0.661$ ($p = 0.007$, $n = 15$); 9 of 15 benchmark-level McNemar tests are significant after Bonferroni correction. Pre-registered on OSF, our results indicate that CoT is not a universal reasoning enhancer but acts as a bandwidth bypass: it helps serial computation that strains single-pass capacity and is redundant for tasks that already fit.
-
----
-
-## Full-Text &amp; Reference Links
-
-* **PDF:** [查看 PDF](https://arxiv.org/pdf/2608.09942)
-* **HTML（实验性）：** [arXiv HTML 版本](https://arxiv.org/html/2608.09942v1)
-* **源码：** [TeX 源码](https://arxiv.org/src/2608.09942)
-* **外部索引：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.09942)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.09942)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.09942)
-
-&gt; * **PDF:** [View PDF](https://arxiv.org/pdf/2608.09942)
-&gt; * **HTML (Experimental):** [arXiv HTML version](https://arxiv.org/html/2608.09942v1)
-&gt; * **Source:** [TeX Source](https://arxiv.org/src/2608.09942)
-&gt; * **External Indices:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.09942)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.09942)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.09942)</description>
-    </item>
-    <item>
-      <title>2026-08-14-忠实、充分且可解释：通过离散扩散反演重新审视图反事实解释</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/忠实、充分且可解释：通过离散扩散反演重新审视图反事实解释/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/忠实、充分且可解释：通过离散扩散反演重新审视图反事实解释/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>图神经网络（GNN）在化学、生物学和网络分析等领域的图结构数据上取得了极高的预测性能，但它们缺乏内在的可解释性，这阻碍了其在高风险和安全关键场景中的应用。反事实解释（Counterfactual Explanations）通过识别改变模型预测所需的最小结构修改，为这一问题提供了解决方案。然而，由于图数据具有离散、组合式的搜索空间以及特定领域的约束（如分子图中的化学化合价），在图上生成有效的反事实极其困难。现有的方法通常被迫妥协：要么编辑偏离了数据流形，要么搜索无法覆盖完整的编辑空间。
-
-为了克服这些局限，作者提出了**基于反演的图扩散反事实解释（Graph Diffusion Counterfactual Explanation via Inversion, 简称 GDCE-I）**。通过将离散去噪扩散模型与新颖的离散反演方案相结合，GDCE-I 能够在利用整个领域编辑空间的同时进行分布感知（distribution-aware）的编辑。此外，该论文引入了一个基于既定解释诉求（desiderata）的统一评估框架，用于在统一协议下对图反事实方法进行一致的基准测试。在四个基准测试中，GDCE-I 显著优于相关工作，同时能够为分子图生成具可解释性的分布内（in-distribution）解。
-
----
-
-## Faithful, Sufficient and Understandable: Rethinking Graph Counterfactual Explanations via Discrete Diffusion Inversion
-
-&gt; **Authors:** David Bechtoldt, Sidney Bender  
-&gt; **Subjects:** Machine Learning (`cs.LG`); Artificial Intelligence (`cs.AI`)  
-&gt; **arXiv ID:** [2608.12083](https://arxiv.org/abs/2608.12083)  
-&gt; **Submitted:** August 12, 2026  
-
----
-
-## Summary
-
-&gt; Graph Neural Networks (GNNs) achieve strong predictive performance across domains like chemistry, biology, and network analysis, but lack intrinsic explainability—hindering their adoption in high-stakes and safety-critical settings. Counterfactual explanations address this by identifying minimal structural modifications required to alter a model's prediction. 
-&gt; 
-&gt; However, generating valid counterfactuals on graphs is challenging due to discrete, combinatorial search spaces and domain-specific constraints (e.g., chemical valency in molecular graphs). Existing methods typically force a compromise: either edits stray off the data manifold, or the search fails to span the full edit space. 
-&gt; 
-&gt; To overcome this, the authors propose **Graph Diffusion Counterfactual Explanation via Inversion (GDCE-I)**. By combining a discrete denoising diffusion model with a novel discrete inversion scheme, GDCE-I enables distribution-aware edits across the entire domain edit space. Furthermore, the paper introduces a unified evaluation framework based on defined explanation desiderata to consistently benchmark graph counterfactual methods. Across four benchmarks, GDCE-I significantly outperforms related work while generating interpretable, in-distribution solutions for molecular graphs.
-
----
-
-## 摘要
-
-&gt; 图神经网络（GNN）在化学、生物学和网络分析等领域的图结构数据上取得了强大的预测性能，但它们没有提供对其预测的内在解释。这限制了它们在高风险和安全关键环境中的采用。反事实解释通过揭示能够改变模型预测的最小结构修改来解决这个问题。然而，在图上生成这样的修改是困难的。搜索空间是离散且组合的，并且有效的答案必须遵守分类节点和边缘类型，以及诸如分子图情况下的化学化合价等领域规则。现有的解释器放弃了以下两点之一：要么编辑没有保持在数据流形上，要么搜索没有跨越完整的编辑空间。我们提出了基于反演的图扩散反事实解释（GDCE-I），它两点都不放弃。带有新型离散反演方案的离散去噪扩散模型能够利用整个领域编辑空间进行分布感知的编辑。我们进一步通过推导解释诉求框架并将其应用于同一共享协议下的每个方法，解决了图反事实评估不完整和不一致的问题。在四个基准测试中，GDCE-I 在所定义的框架上大幅优于相关工作。对于分子领域，我们进一步定性地表明 GDCE-I 获得了可解释的分布内解。
-
-&gt; Graph Neural Networks (GNNs) achieve strong predictive performance on graph-structured data across domains such as chemistry, biology, and network analysis, yet they provide no intrinsic explanation of their predictions. This limits their adoption in high-stakes and safety-critical settings. Counterfactual explanations address this by revealing the minimal structural modifications that would change a model's prediction. On graphs, however, such a modification is hard to produce. The search space is discrete and combinatorial, and a valid answer must respect categorical node and edge types together with domain rules such as chemical valency in the case of molecular graphs. Existing explainers give up one of two things. Either edits are not held on the data manifold, or the search does not span the full edit space. We propose Graph Diffusion Counterfactual Explanation via Inversion (GDCE-I), which gives up neither. A discrete denoising diffusion model with a novel discrete inversion scheme enables distribution-aware edits leveraging the whole domain edit space. We further address the incomplete and inconsistent evaluation of graph counterfactuals by deriving a framework of explanation desiderata and applying it to every method under one shared protocol. Across four benchmarks, GDCE-I outperforms related work by a large margin on the defined framework. For the molecular domain, we further qualitatively show that GDCE-I attains interpretable in-distribution solutions.
-
----
-
-## 链接与资源
-
-* **全文访问：** [查看 PDF](https://arxiv.org/pdf/2608.12083) | [HTML（实验性）](https://arxiv.org/html/2608.12083v1)
-* **源码与引用：** [TeX 源码](https://arxiv.org/src/2608.12083) | [DOI](https://doi.org/10.48550/arXiv.2608.12083)
-* **外部索引：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.12083) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.12083) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.12083)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2608.12083) | [HTML (Experimental)](https://arxiv.org/html/2608.12083v1)
-&gt; * **Source Code &amp; Citation:** [TeX Source](https://arxiv.org/src/2608.12083) | [DOI](https://doi.org/10.48550/arXiv.2608.12083)
-&gt; * **External Indices:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.12083) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.12083) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.12083)</description>
-    </item>
-    <item>
-      <title>Do Influence Tactics Matter? Investigating Prompt Framing Effects in LLM Code Generation</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/影响力策略重要吗？大语言模型代码生成中提示词框架效应的研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/影响力策略重要吗？大语言模型代码生成中提示词框架效应的研究/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型（LLM）在软件工程工作流中的集成度日益加深，理解提示词设计如何改变模型行为变得至关重要。此前的研究主要集中在技术性提示词结构上，而这项研究则探讨了**心理学启发的提示词框架**（借鉴自 Yukl &amp; Falbe 的人际影响力策略分类，如理性说服、迎合奉承和紧迫感）所产生的影响。
-
-研究人员在 *LiveCodeBench* 和 *SWE-bench Verified* 两个基准测试上评估了五款领先的开源大语言模型，从四个维度对代码生成进行了考核：**功能正确性、质量、可维护性以及安全性**。实证结果表明，特定的影响力策略——尤其是那些强调紧迫感的策略——会无意中降低代码的正确性并引入安全漏洞。这项工作为软件工程任务中基于影响力诱导的提示词框架提供了首个大规模经验研究，并为设计透明且可解释的人机交互代码生成流程提供了深刻见解。
-
----
-
-# Do Influence Tactics Matter? Investigating Prompt Framing Effects in LLM Code Generation
-
-&gt; # Do Influence Tactics Matter? Investigating Prompt Framing Effects in LLM Code Generation
-
----
-
-## 📌 Executive Summary
-
-&gt; ## 📌 Executive Summary
-&gt;
-&gt; As Large Language Models (LLMs) become increasingly integral to software engineering workflows, understanding how prompt design alters their behavior is critical. While previous studies have focused primarily on technical prompt structure, this research investigates the impact of **psychologically inspired prompt framings**—drawing from Yukl &amp; Falbe's taxonomy of interpersonal influence tactics (such as rational persuasion, ingratiation, and urgency). 
-&gt;
-&gt; Evaluating five leading open-weight LLMs across the *LiveCodeBench* and *SWE-bench Verified* benchmarks, the authors assessed code generation across four dimensions: **functional correctness, quality, maintainability, and security**. The empirical findings reveal that specific influence tactics—notably those invoking urgency—can inadvertently degrade code correctness and introduce security vulnerabilities.
-
----
-
-## 📖 Metadata Overview
-
-&gt; ## 📖 Metadata Overview
-&gt;
-&gt; * **arXiv ID:** [arXiv:2608.11513 [cs.SE]](https://arxiv.org/abs/2608.11513)
-&gt; * **Authors:** Alex Deaconu, Anubhav Gupta, Manaal Basha, Nicholas Haydu, Gema Rodríguez-Pérez
-&gt; * **Primary Subject:** Software Engineering (`cs.SE`)
-&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Computation and Language (`cs.CL`)
-&gt; * **Publication Reference:** *Empirical Software Engineering 32 (2026) 13*
-&gt; * **Submission Date:** August 11, 2026
-&gt; * **Related DOI:** [10.1007/s10664-026-10934-z](https://doi.org/10.1007/s10664-026-10934-z)
-
----
-
-## 📝 Abstract
-
-&gt; ## 📝 Abstract
-&gt;
-&gt; &gt; Large Language Models (LLMs) are increasingly integrated into software engineering workflows, helping developers write, debug, test, and maintain code. While prompt wording and structure are known to influence model performance, the impact of psychologically inspired prompt framings remains unexplored. This study investigates whether different psychology-based communication strategies that humans use to persuade or motivate others can lead to more effective prompt framing, which may, in turn, affect LLM behaviour in coding tasks. Drawing on Yukl &amp; Falbe's well-known taxonomy, we operationalized eight influence tactics (like rational persuasion, ingratiation, and exchange) into reproducible prompt templates. These prompt templates were evaluated across five leading open-weight LLMs using two widely adopted benchmarks: LiveCodeBench and SWE-bench Verified. We assessed the resulting code output on four key software quality dimensions: functional correctness, quality, maintainability, and security. Our results show that certain influence-induced prompt framings, particularly those emphasizing urgency, were associated with reduced correctness and security. This work presents the first large-scale empirical study of influence-induced prompt framing in software engineering tasks, offering insights into how linguistic cues may shape LLM outputs. We conclude with practical insights for designing transparent and interpretable human-AI interactions in code generation.
-
----
-
-## 🛠️ Key Contributions &amp; Methodology
-
-&gt; ## 🛠️ Key Contributions &amp; Methodology
-&gt;
-&gt; 1. **Psychological Operationalization:** Adapted Yukl &amp; Falbe's interpersonal influence tactics taxonomy into structured, reproducible prompt templates for code generation tasks.
-&gt; 2. **Benchmark Evaluation:** Tested five open-weight LLMs rigorously utilizing two robust industry benchmarks:
-&gt;    * **LiveCodeBench**
-&gt;    * **SWE-bench Verified**
-&gt; 3. **Multi-Dimensional Assessment:** Evaluated generated artifacts across four critical dimensions:
-&gt;    * Functional Correctness
-&gt;    * Software Quality
-&gt;    * Maintainability
-&gt;    * Security
-
----
-
-## 🔗 External Resources &amp; Full-Text Access
-
-&gt; ## 🔗 External Resources &amp; Full-Text Access
-&gt;
-&gt; * **Full-Text PDF:** [View PDF](https://arxiv.org/pdf/2608.11513)
-&gt; * **Experimental HTML:** [arXiv HTML Version](https://arxiv.org/html/2608.11513v1)
-&gt; * **Source Files:** [TeX Source](https://arxiv.org/src/2608.11513)
-&gt; * **Citations &amp; Metrics:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.11513)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.11513)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.11513)</description>
-    </item>
-    <item>
-      <title>当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在大型语言模型（LLM）的推理阶段，通过多数表决实现自一致性（Self-Consistency, SC）是一种标准策略，即采样多条思维链并返回得票最多的答案。然而，这篇论文指出，在使用小型指令微调大语言模型时，多数表决实际上会降低大多数硬科学问题中每个问题的准确率。
-
-通过在完整的 GPQA Diamond 基准测试（包含 198 道研究生水平的科学问题）上进行测试，该研究揭示了不同系列模型准确率下降的现象：Qwen2.5-7B 在 56.6% 的问题上准确率下降，而 Llama-3-8B 在 65.7% 的问题上准确率下降。该研究通过严谨的预注册实验设计，深入探讨了模型置信度与正确性脱节的根本原因，并指出了无验证器门控机制在实际应用中的局限性。
-
----
-
-# 当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现
-
-**作者：** Utkarsh Bahuguna  
-**发布时间：** 2026年8月11日  
-**主要领域：** 人工智能 (`cs.AI`)  
-**次要领域：** 计算与语言 (`cs.CL`)、机器学习 (`cs.LG`)  
-**会议：** 已被 COLM 2026 高效推理工作坊接受  
-**arXiv：** [2608.11403](https://arxiv.org/abs/2608.11403) | **DOI：** [10.48550/arXiv.2608.11403](https://doi.org/10.48550/arXiv.2608.11403)
-
----
-
-## 📌 执行摘要
-
-通过多数表决实现的自一致性（SC）是一种标准的推理时计算策略，它采样多条思维链并返回票数最多的答案。然而，本文证明，在使用小型指令微调大型语言模型（LLM）时，**多数表决实际上降低了大多数硬科学问题中单题的准确率**。
-
-通过在完整的 GPQA Diamond 基准（198道研究生水平科学问题）上进行测试，该研究揭示了来自不同系列模型的准确率下降情况：
-* **Qwen2.5-7B：** 在 **56.6%** 的问题上准确率下降。
-* **Llama-3-8B：** 在 **65.7%** 的问题上准确率下降（从接近随机猜测的基线进一步恶化）。
-
-&gt; Self-consistency (SC) via majority voting is a standard inference-time compute strategy where multiple chains of thought are sampled, and the plurality answer is returned. However, this paper demonstrates that **majority voting actually reduces per-problem accuracy on the majority of hard science problems** when using small instruction-tuned Large Language Models (LLMs). 
-&gt;
-&gt; Testing on the full GPQA Diamond benchmark (198 graduate-level science questions), the study reveals drops in accuracy across models from different families:
-&gt; * **Qwen2.5-7B:** Accuracy decreased on **56.6%** of problems.
-&gt; * **Llama-3-8B:** Accuracy decreased on **65.7%** of problems (corroborating the direction from a near-chance baseline).
-
----
-
-## 🔬 核心发现与方法论
-
-* **严谨的实验设计：** 这一效应最初是在 47 个探索性问题上观察到的，随后在一个包含 151 个问题的验证性划分上进行了预注册。全部四个验证性假设均成功通过。
-* **置信度的角色：** 底层失败机制非常直接：**在这些复杂问题上，模型的置信度无法反映其正确性**。
-  * 对于 Qwen 而言，在最高一致性区间内的多数答案只有大约一半的时间是正确的。
-  * 对于 Llama 而言，最高一致性区间的准确率实际上比最低一致性区间*更低*。
-* **无验证器门控的局限性：** 网格预言机（Grid oracle）能够理想地将每个问题路由至最优样本量（$N \in \{1, 2, 4, 8, 16, 32, 64\}$），其理论上限比 Qwen 的 $N=1$ 高出 14 个准确率百分点，比 Llama 高出 17 个百分点。然而，这需要真实的标签（ground truth）。任何可部署的无验证器门控（无论是多数一致性门控还是词元熵门控），在准确率上的提升与 $N=64$ 的固定预算表决相比都不超过 $0.002$。
-
-&gt; * **Rigorous Experimental Design:** The effect was initially observed on 47 exploratory problems and subsequently pre-registered on a 151-problem confirmatory split. All four confirmatory hypotheses successfully passed.
-&gt; * **The Role of Confidence:** The underlying failure mechanism is straightforward: **model confidence does not track correctness** on these complex problems. 
-&gt;   * For Qwen, the plurality answer in the highest-agreement bin is correct only about half the time.
-&gt;   * For Llama, the highest-agreement bin is actually *less* accurate than its lowest-agreement bin.
-&gt; * **Limitations of Verifier-Free Gates:** A grid oracle that ideally routes each problem to the optimal sample size ($N \in \{1, 2, 4, 8, 16, 32, 64\}$) achieves a theoretical upper bound 14 accuracy points above $N=1$ for Qwen, and 17 points for Llama. However, this requires ground truth. No deployable, verifier-free gate (neither plurality-agreement nor token-entropy gates) improves accuracy by more than $0.002$ compared to fixed-budget voting at $N=64$.
-
----
-
-## ⚠️ 研究范围与开放问题
-
-* **模型范围：** 本研究的发现专门在**小型指令微调模型**上进行了预注册并得到证实。
-* **开放问题：** 作者明确指出，原生推理模型（reasoning-native models）*未*被测试，这使得它们在自一致性下的行为成为未来研究的核心开放问题。
-
-&gt; * **Model Scope:** The findings are specifically pre-registered and confirmed on **small instruction-tuned models**. 
-&gt; * **Open Question:** The author explicitly flags that reasoning-native models were *not* tested, leaving their behavior under self-consistency as the central open question for future research.
-
----
-
-## 🔗 链接与资源
-
-* [查看 PDF](https://arxiv.org/pdf/2608.11403)
-* [TeX 源码](https://arxiv.org/src/2608.11403)
-* [HTML 版本（实验性）](https://arxiv.org/html/2608.11403v1)
-* **许可证：** [知识共享署名 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2608.11403)
-&gt; * [TeX Source](https://arxiv.org/src/2608.11403)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2608.11403v1)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
-    </item>
-    <item>
-      <title>2026-08-14-强化完全正当代表性：高效验证与计算</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/强化完全正当代表性：高效验证与计算/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/强化完全正当代表性：高效验证与计算/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在基于赞成票的委员会选举中，完全正当代表性（Full Justified Representation, FJR）是最强的可满足比例公理之一。尽管先前的研究表明可以在多项式时间内识别出一个 FJR 委员会，但验证一个给定的委员会是否真正满足 FJR 仍然是一个 coNP 完全问题。为了克服这一计算障碍，本文引入了 **FJR+**，它是 FJR 和 EJR+ 的严格强化版本，不仅能够被高效验证，还能在多项式时间内得到满足。
-
-本文的核心贡献包括分析了残余预算贪婪（RBG）算法，证明其选择的部分委员会的所有 $k$ 大小补全均满足 FJR+；通过应用序贯弗拉格曼（Phragmén）方法获得了可定价的补全；成功推导出了 FJR+ 的德鲁普配额（Droop-quota）变体；并将其扩展到了具有任意项目成本的基于赞成票的参与式预算中。这些成果不仅在理论上解决了 FJR 验证难的问题，也为公平分配和委员会选举提供了更高效、可解释的计算工具。
-
----
-
-## Abstract Summary
-
-&gt; Full Justified Representation (FJR) stands as one of the strongest satisfiable proportionality axioms within approval-based committee elections. Although prior research demonstrates that an FJR committee can be identified in polynomial time, validating whether a given committee actually satisfies FJR remains a coNP-complete problem. 
-
-全正当代表性（FJR）是基于赞成票的委员会选举中最强的可满足比例公理之一。尽管先前的研究表明可以在多项式时间内识别出一个 FJR 委员会，但验证一个给定的委员会是否真正满足 FJR 仍然是一个 coNP 完全问题。
-
-&gt; To overcome this computational hurdle, this paper introduces **FJR+**, a strict strengthening of both FJR and EJR+ that can be both efficiently verified and satisfied in polynomial time. 
-
-为了克服这一计算障碍，本文引入了 **FJR+**，它是 FJR 和 EJR+ 的严格强化版本，能够被高效验证并在多项式时间内得到满足。</description>
-    </item>
-    <item>
-      <title>2026-08-14-强化大语言模型中步骤级推理以实现高效自我纠错</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-14/强化大语言模型中步骤级推理以实现高效自我纠错/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-14/强化大语言模型中步骤级推理以实现高效自我纠错/</guid>
-      <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型（LLM）在面对复杂推理任务时，如何自主发现并纠正自身的错误（即自我纠错与错误验证）一直是一个根本性的挑战。现有模型往往缺乏可靠的步骤级监控能力，导致纠错过程低效甚至适得其反。为了克服这一限制，本文作者提出了一种名为 **Self-Fix Step-DPO (SFS-DPO)** 的新型两阶段强化学习框架，旨在全面提升大语言模型的步骤级自我验证与自我纠错能力。
-
-该研究的核心技术分为两个阶段：第一阶段通过步骤级偏好优化（step-level preference optimization）来强化模型的步骤级推理能力；第二阶段则显式地训练模型进行自我验证和错误修正。此外，研究团队还引入了教师辅助变体 **SFS-DPO-R**，通过在错误验证中加入解释性理由（explanatory rationales），从而提供更强有力的纠正信号。在多个域内（in-domain）和大模型（out-of-domain）上的广泛评估表明，SFS-DPO 及其变体显著优于现有的步骤级基线方法，大幅提升了模型自我纠错的频率与有效性。
-
----
-
-## 📋 摘要 (Summary)
-
-&gt; 本文于2026年8月12日提交至 arXiv，针对大语言模型（LLM）中的一个基础性局限——实现有效的自我纠错与错误验证的挑战，提出了一种创新的解决方案。作者提出了 **Self-Fix Step-DPO (SFS-DPO)**，这是一个基于强化学习的两阶段框架，专为提升步骤级自我验证和自我纠错而设计。
-&gt;
-&gt; 该研究的主要亮点包括：
-&gt; * **第一阶段：** 利用步骤级偏好优化来增强步骤级推理。
-&gt; * **第二阶段：** 显式训练模型进行自我验证和纠错。
-&gt; * **SFS-DPO-R（教师辅助变体）：** 结合了解释错误验证的推理依据，以提供更强的纠错信号。
-&gt; * **实验结果：** 跨多个 LLM（涵盖域内和域外）的大量评估表明，所提出的方法优于现有的步骤级基线，显著提高了模型自我纠错的频率和有效性。
-
-&gt; This paper, submitted to arXiv on August 12, 2026, addresses a fundamental limitation in Large Language Models (LLMs): the challenge of effective self-correction and error verification. The authors propose **Self-Fix Step-DPO (SFS-DPO)**, a novel two-stage reinforcement learning framework designed to improve step-level self-verification and self-correction. 
-&gt;
-&gt; Key highlights of the research include:
-&gt; * **Stage 1:** Strengthens step-level reasoning using step-level preference optimization.
-&gt; * **Stage 2:** Trains models explicitly to self-verify and self-correct.
-&gt; * **SFS-DPO-R (Teacher-Assisted Variant):** Incorporates explanatory rationales for error verification to deliver stronger corrective signals.
-&gt; * **Results:** Extensive evaluations across multiple LLMs (both in-domain and out-of-domain) show that the proposed methods outperform existing step-level baseline, significantly increasing both the frequency and effectiveness of model self-correction.
-
----
-
-## 📄 元数据与出版详情 (Metadata &amp; Publication Details)
-
-&gt; * **arXiv 标识符：** [arXiv:2608.11573](https://arxiv.org/abs/2608.11573) [cs.CL]
-&gt; * **主要学科：** 计算与语言 (`cs.CL`)
-&gt; * **次要学科：** 人工智能 (`cs.AI`)
-&gt; * **提交日期：** 2026年8月12日
-&gt; * **作者：** 
-&gt;   * Vu Duc Anh
-&gt;   * Nhat M. Hoang
-&gt;   * Do Xuan Long
-&gt;   * Cong-Duy Nguyen
-&gt;   * Ponhvoan Srey
-&gt;   * Luu Anh Tuan
-
-&gt; * **arXiv Identifier:** [arXiv:2608.11573](https://arxiv.org/abs/2608.11573) [cs.CL]
-&gt; * **Primary Subject:** Computation and Language (`cs.CL`)
-&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Date:** August 12, 2026
-&gt; * **Authors:** 
-&gt;   * Vu Duc Anh
-&gt;   * Nhat M. Hoang
-&gt;   * Do Xuan Long
-&gt;   * Cong-Duy Nguyen
-&gt;   * Ponhvoan Srey
-&gt;   * Luu Anh Tuan
-
----
-
-## 📝 摘要全文 (Abstract)
-
-&gt; 实现有效的自我纠错（即模型能够验证并纠正自身的错误）对大语言模型（LLM）而言仍然是一个根本性的挑战。在这项工作中，我们提出了 Self-Fix Step-DPO (SFS-DPO)，这是一个基于强化学习的两阶段框架，用于实现步骤级的自我验证和自我纠错。第一阶段通过步骤级偏好优化来增强步骤级推理，而第二阶段则显式训练模型进行自我验证和自我纠错。我们进一步引入了一种教师辅助变体 SFS-DPO-R，它结合了错误验证的解释性理由，以提供更强的纠错信号。在多个 LLM 上进行的综合域内和域外评估表明，SFS-DPO 和 SFS-DPO-R 始终优于先前的步骤级训练基线。我们的分析进一步揭示了自我纠错频率和有效性的提升，凸显了强化步骤级推理对于实现鲁棒性能的重要性。
-
-&gt; Achieving effective self-correction, where models verify and correct their own mistakes, remains a fundamental challenge for large language models (LLMs). In this work, we propose Self-Fix Step-DPO (SFS-DPO), a reinforcement learning based, two-stage framework for step-level self-verification and self-correction. The first stage strengthens step-level reasoning via step-level preference optimization, while the second stage explicitly trains models to self-verify and self-correct. We further introduce a teacher-assisted variant, SFS-DPO-R, which incorporates explanatory rationales for error verification to provide stronger corrective signals. Comprehensive in-domain and out-of-domain evaluations across multiple LLMs demonstrate that SFS-DPO and SFS-DPO-R consistently outperform prior step-level training baselines. Our analysis further reveals improvements in self-correction frequency and effectiveness, highlighting the importance of strengthening step-level reasoning for robust performance.
-
----
-
-## 🔗 快速链接与资源 (Quick Links &amp; Resources)
-
-&gt; * [查看 PDF](https://arxiv.org/pdf/2608.11573)
-&gt; * [HTML 版本（实验性）](https://arxiv.org/html/2608.11573v1)
-&gt; * [TeX 源码](https://arxiv.org/src/2608.11573)
-&gt; * **许可协议：** [知识共享署名 4.0 国际](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; * [View PDF](https://arxiv.org/pdf/2608.11573)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2608.11573v1)
-&gt; * [TeX Source](https://arxiv.org/src/2608.11573)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
----
-
-## 📚 引用与外部工具 (Citations &amp; External Tools)
-
-&gt; * **文献数据库：** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.11573)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.11573)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.11573)
-&gt; * **代码与社区工具：**
-&gt;   * [Hugging Face Spaces / Models](https://huggingface.co/)
-&gt;   * [Connected Papers](https://www.connectedpapers.com/)
-&gt;   * [alphaXiv](https://alphaxiv.org/)
-
-&gt; * **Bibliographic Databases:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.11573)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.11573)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.11573)
-&gt; * **Code &amp; Community Tools:**
-&gt;   * [Hugging Face Spaces / Models](https://huggingface.co/)
-&gt;   * [Connected Papers](https://www.connectedpapers.com/)
-&gt;   * [alphaXiv](https://alphaxiv.org/)</description>
     </item>
   </channel>
 </rss>
