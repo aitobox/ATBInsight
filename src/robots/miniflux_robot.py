@@ -14,7 +14,7 @@ def fetch_miniflux_entries(
 ) -> list[dict]:
     api_url = f"{url.rstrip('/')}/v1/entries?order=created_at&direction=desc&limit={limit}"
     logger.info(f"Fetching RSS entries from Miniflux: {api_url}")
-    resp = requests.get(api_url, auth=(username, password), timeout=15)
+    resp = requests.get(api_url, auth=(username, password), timeout=60)
     resp.raise_for_status()
     data = resp.json()
     entries = data.get("entries", [])
