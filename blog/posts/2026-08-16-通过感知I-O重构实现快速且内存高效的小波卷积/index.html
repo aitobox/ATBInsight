@@ -1,0 +1,794 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-16-%E9%80%9A%E8%BF%87%E6%84%9F%E7%9F%A5I-O%E9%87%8D%E6%9E%84%E5%AE%9E%E7%8E%B0%E5%BF%AB%E9%80%9F%E4%B8%94%E5%86%85%E5%AD%98%E9%AB%98%E6%95%88%E7%9A%84%E5%B0%8F%E6%B3%A2%E5%8D%B7%E7%A7%AF/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>通过感知I/O重构实现快速且内存高效的小波卷积 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              通过感知I/O重构实现快速且内存高效的小波卷积
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fast-and-memory-efficient-wavelet-convolutions-via-io-aware-reformulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fast and Memory-Efficient Wavelet Convolutions via I/O-Aware Reformulation
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fast and Memory-Efficient Wavelet Convolutions via I&#x2f;O-Aware Reformulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#technical-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Technical Contributions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Contributions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-io-bottleneck" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The I/O Bottleneck
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-io-bottleneck_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The I/O Bottleneck
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#algebraic-reformulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Algebraic Reformulations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#algebraic-reformulations_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Algebraic Reformulations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance Evaluation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-evaluation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance Evaluation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#access-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#access-resources_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>小波卷积（WTConv）作为标准卷积的一种强大替代方案，能够以线性的参数扩展实现呈指数增长的感受野。然而，由于高带宽内存（HBM）中存在大量的数据移动，导致了严重的内存瓶颈，从而阻碍了其在实际中的广泛应用。</p>
+<p>本文引入了一种感知I/O的模型来识别这些瓶颈，并提出了三种代数重构方法来优化性能：1. 片上Haar分析：直接在芯片上重新计算低成本的Haar分析蝶形运算；2. 闭式综合：将多级综合级联折叠为由输出坐标位索引的单次遍历；3. 权重折叠：将学习得到的每个通道的缩放比例直接整合到卷积权重中。与参考实现相比，这些优化使HBM流量减少了2.55倍，训练速度提升了4.35倍，峰值内存使用量减少了50%，从而有效消除了以往限制WTConv效率的系统级开销。</p>
+<hr />
+<h1 id="fast-and-memory-efficient-wavelet-convolutions-via-io-aware-reformulation">Fast and Memory-Efficient Wavelet Convolutions via I/O-Aware Reformulation</h1>
+<blockquote>
+<p><strong>Authors:</strong> Amit Aflalo, Shahaf E. Finder, Roy Amoyal, Eran Treister, Oren Freifeld<br />
+<strong>arXiv:</strong> <a href="https://arxiv.org/abs/2608.10805">2608.10805</a> [cs.CV]<br />
+<strong>Submitted:</strong> 11 Aug 2026 (v1), 13 Aug 2026 (v2)</p>
+</blockquote>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>小波卷积（WTConv）是标准卷积的一种强大替代方案，它以线性的参数扩展提供呈指数增长的感受野。然而，由于高带宽内存（HBM）中过多的数据移动导致了严重的内存瓶颈，其实际应用一直受到阻碍。</p>
+<blockquote>
+<p>Wavelet convolution (WTConv) is a powerful alternative to standard convolutions, offering an exponentially increasing receptive field with linear parameter scaling. However, its practical adoption has been hindered by significant memory bottlenecks caused by excessive data movement through high-bandwidth memory (HBM). </p>
+</blockquote>
+<p>本文引入了一种感知I/O的模型来识别这些瓶颈，并提出了三种代数重构方法来优化性能：
+1. <strong>片上Haar分析：</strong> 直接在芯片上重新计算低成本的Haar分析蝶形运算。
+2. <strong>闭式综合：</strong> 将多级综合级联折叠为由输出坐标位索引的单次遍历。
+3. <strong>权重折叠：</strong> 将学习得到的每个通道的缩放比例直接整合到卷积权重中。</p>
+<blockquote>
+<p>This paper introduces an I/O-aware model to identify these bottlenecks and proposes three algebraic reformulations to optimize performance:
+1. <strong>On-chip Haar Analysis:</strong> Recomputing the inexpensive Haar analysis butterfly directly on-chip.
+2. <strong>Closed-form Synthesis:</strong> Collapsing the multi-level synthesis cascade into a single pass indexed by output-coordinate bits.
+3. <strong>Weight Folding:</strong> Integrating learned per-channel scales directly into the convolution weights.</p>
+</blockquote>
+<p>与参考实现相比，这些优化带来了 <strong>2.55倍的HBM流量减少</strong>、<strong>4.35倍的训练加速</strong> 以及 <strong>50%的峰值内存使用量减少</strong>，有效移除了此前限制WTConv效率的系统级开销。</p>
+<blockquote>
+<p>These optimizations result in a <strong>2.55× reduction in HBM traffic</strong>, a <strong>4.35× training speedup</strong>, and a <strong>50% reduction in peak memory usage</strong> compared to the reference implementation, effectively removing the systems-level overhead that previously limited WTConv efficiency.</p>
+</blockquote>
+<hr />
+<h2 id="technical-contributions">Technical Contributions</h2>
+<h3 id="the-io-bottleneck">The I/O Bottleneck</h3>
+<p>WTConv的参考实现是“内存受限（memory-bound）”的，这意味着其性能受限于处理器与HBM之间的数据传输速度，而不是计算吞吐量。通过对I/O需求进行建模，作者发现多级分解和综合过程会产生过多的内存流量。</p>
+<blockquote>
+<h3 id="the-io-bottleneck_1">The I/O Bottleneck</h3>
+<p>The reference implementation of WTConv is "memory-bound," meaning its performance is limited by the speed of data transfer between the processor and HBM rather than computational throughput. By modeling the I/O requirements, the authors identified that the multi-level decomposition and synthesis processes create excessive memory traffic.</p>
+</blockquote>
+<h3 id="algebraic-reformulations">Algebraic Reformulations</h3>
+<p>所提出的方法将标准的WTConv流水线转换为融合的、I/O高效的操作：
+* <strong>融合执行：</strong> 通过将分析、卷积和综合步骤结合起来，该模型最大限度地减少了将中间张量写回HBM的需求。
+* <strong>基于坐标的索引：</strong> 对综合级联进行了重构，允许根据坐标位直接计算输出值，从而消除了多级缓冲的需求。
+* <strong>权重集成：</strong> 将学习到的缩放因子折叠到卷积核中，减少了前向传播所需的运算次数和内存读取次数。</p>
+<blockquote>
+<h3 id="algebraic-reformulations_1">Algebraic Reformulations</h3>
+<p>The proposed approach transforms the standard WTConv pipeline into a fused, I/O-efficient operation:
+* <strong>Fused Execution:</strong> By combining the analysis, convolution, and synthesis steps, the model minimizes the need to write intermediate tensors back to HBM.
+* <strong>Coordinate-based Indexing:</strong> The synthesis cascade is reformulated to allow direct calculation of output values based on coordinate bits, eliminating the need for multi-stage buffering.
+* <strong>Weight Integration:</strong> Folding learned scaling factors into the convolution kernels reduces the number of operations and memory reads required during the forward pass.</p>
+</blockquote>
+<h3 id="performance-evaluation">Performance Evaluation</h3>
+<p>使用 <code>WTConvNeXt</code> 配置进行评估，重构后的方法展示出以下优势：
+* <strong>速度：</strong> 与参考实现相比，训练速度提升高达 4.35 倍。
+* <strong>内存：</strong> 峰值内存占用减少约 50%。
+* <strong>效率：</strong> 显著减少了HBM流量，使WTConv成为标准深度卷积（depthwise convolutions）的一种可行且高性能的即插即用替代方案。</p>
+<blockquote>
+<h3 id="performance-evaluation_1">Performance Evaluation</h3>
+<p>Evaluated using the <code>WTConvNeXt</code> configuration, the reformulated approach demonstrates:
+* <strong>Speed:</strong> Up to 4.35× faster training compared to reference implementations.
+* <strong>Memory:</strong> Roughly 50% reduction in peak memory footprint.
+* <strong>Efficiency:</strong> Significant reduction in HBM traffic, making WTConv a viable, high-performance drop-in replacement for standard depthwise convolutions.</p>
+</blockquote>
+<hr />
+<h2 id="access-resources">Access &amp; Resources</h2>
+<ul>
+<li><strong><a href="https://arxiv.org/pdf/2608.10805">查看 PDF</a></strong></li>
+<li><strong><a href="https://arxiv.org/html/2608.10805v2">HTML（实验性）</a></strong></li>
+<li><strong><a href="https://arxiv.org/src/2608.10805">TeX 源码</a></strong></li>
+<li><strong>许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></li>
+</ul>
+<blockquote>
+<h2 id="access-resources_1">Access &amp; Resources</h2>
+<ul>
+<li><strong><a href="https://arxiv.org/pdf/2608.10805">View PDF</a></strong></li>
+<li><strong><a href="https://arxiv.org/html/2608.10805v2">HTML (Experimental)</a></strong></li>
+<li><strong><a href="https://arxiv.org/src/2608.10805">TeX Source</a></strong></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></li>
+</ul>
+</blockquote>
+<p><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"></p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">小波卷积</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">内存优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">计算效率</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">I/O感知</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

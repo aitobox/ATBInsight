@@ -1,0 +1,1298 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-16-%E5%B9%B6%E5%8F%91%E6%9C%8D%E5%8A%A1%E5%99%A8%EF%BC%9A%E7%AC%AC%207%20%E9%83%A8%E5%88%86%20-%20Rust%20%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>并发服务器：第 7 部分 - Rust 语言实现 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              并发服务器：第 7 部分 - Rust 语言实现
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        摘要 (Summary)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#series-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        系列概述 (Series Overview)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        引言 (Introduction)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-the-baseline-a-sequential-state-machine-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        建立基准：顺序状态机服务器 (Setting the Baseline: A Sequential State Machine Server)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-thread-per-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        每个客户端一个线程 (One Thread Per Client)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thread-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        线程池 (Thread Pool)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asynchronous-event-driven-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        异步、事件驱动服务器 (Asynchronous, Event-Driven Server)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asynchronous-primality-testing-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        异步素数测试服务器 (Asynchronous Primality Testing Servers)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="异步素数测试服务器 (Asynchronous Primality Testing Servers)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        注意事项 (Notes)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        代码 (Code)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#footnotes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        脚注 (Footnotes)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">并发服务器：第 7 部分 - Rust 语言实现</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文是编写并发网络服务器系列文章的第七部分。在前几篇文章中，作者探讨了从基础的单线程状态机、线程池到现代异步事件驱动架构的各种并发挑战。在本篇中，作者将目光转向 Rust 语言，展示了 Rust 如何通过其独特的语言特性、<code>tokio</code> 运行时以及 Redis 缓存集成来应对这些挑战。</p>
+<p>文章首先回顾了顺序执行的状态机服务器，随后逐步演进到“每个客户端一个线程”的模型以及通过 <code>crossbeam_channel</code> 实现的固定线程池模型。接着，文章重点介绍了基于 <code>tokio</code> 的现代异步事件驱动服务器，并通过素数计算和 Redis 缓存集成案例，演示了 Rust 异步编程中的“async/await”语法以及对“函数颜色问题”的处理方式。</p>
+<hr />
+<h2 id="summary">摘要 (Summary)</h2>
+<blockquote>
+<p>This is the seventh installment in a comprehensive series on writing concurrent network servers. In this part, we explore how Rust addresses the concurrency challenges discussed in earlier articles—ranging from foundational single-threaded state machines to thread pools, and finally to modern asynchronous event-driven architectures utilizing the <code>tokio</code> runtime and Redis caching.</p>
+</blockquote>
+<p>这是关于编写并发网络服务器系列文章的第七部分。在本部分中，我们探讨了 Rust 如何应对早期文章中讨论的并发挑战——从基础的单线程状态机到线程池，最后到利用 <code>tokio</code> 运行时和 Redis 缓存的现代异步事件驱动架构。</p>
+<hr />
+<h2 id="series-overview">系列概述 (Series Overview)</h2>
+<blockquote>
+<ul>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/">Part 1 - Introduction</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-2-threads/">Part 2 - Threads</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-3-event-driven/">Part 3 - Event-driven</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-4-libuv/">Part 4 - libuv</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-5-redis-case-study/">Part 5 - Redis case study</a></li>
+<li><a href="https://eli.thegreenplace.net/2018/concurrent-servers-part-6-callbacks-promises-and-asyncawait/">Part 6 - Callbacks, Promises and async/await</a></li>
+<li><strong>Part 7 - Rust</strong> <em>(this part)</em></li>
+</ul>
+</blockquote>
+<ul>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/">第 1 部分 - 简介</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-2-threads/">第 2 部分 - 线程</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-3-event-driven/">第 3 部分 - 事件驱动</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-4-libuv/">第 4 部分 - libuv</a></li>
+<li><a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-5-redis-case-study/">第 5 部分 - Redis 案例研究</a></li>
+<li><a href="https://eli.thegreenplace.net/2018/concurrent-servers-part-6-callbacks-promises-and-asyncawait/">第 6 部分 - 回调、Promise 与 async/await</a></li>
+<li><strong>第 7 部分 - Rust</strong> <em>（本部分）</em></li>
+</ul>
+<hr />
+<h2 id="introduction">引言 (Introduction)</h2>
+<blockquote>
+<p>Several years have passed since the previous parts were published. I've recently gone over them to make sure the information presented is still relevant and all the code samples build and run using modern toolchains. I strongly recommend reviewing the previous parts before reading this one.</p>
+</blockquote>
+<p>自从发布前几部分以来，已经过去了好几年。我最近重新审阅了它们，以确保所提供的信息仍然具有相关性，并且所有的代码示例都能在使用现代工具链的情况下构建和运行。我强烈建议在阅读本文之前先复习前面的部分。</p>
+<blockquote>
+<p>This post assumes a basic familiarity with the Rust programming language. It will only explain Rust constructs when we encounter code that wouldn't appear in an introductory book or tutorial.</p>
+</blockquote>
+<p>本文假定读者对 Rust 编程语言有基本的了解。只有当我们遇到不会出现在入门书籍或教程中的代码时，才会对 Rust 的结构进行解释。</p>
+<hr />
+<h2 id="setting-the-baseline-a-sequential-state-machine-server">建立基准：顺序状态机服务器 (Setting the Baseline: A Sequential State Machine Server)</h2>
+<blockquote>
+<p>The first few parts in the series focused on a socket server that implements a simple state machine protocol. See <a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/">Part 1</a> for a complete description of the protocol. Let's start by showing how this protocol is implemented in a basic sequential Rust server:</p>
+</blockquote>
+<p>本系列的前几部分重点关注实现简单状态机协议的套接字服务器。有关该协议的完整描述，请参见<a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/">第 1 部分</a>。让我们首先展示如何在基本的顺序 Rust 服务器中实现该协议：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">async_socket_server</span><span class="p">::</span><span class="n">serve_connection</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpListener</span><span class="p">;</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;9090&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_connection</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection: {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {addr}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>With the function <code>serve_connection</code> defined as:</p>
+</blockquote>
+<p>其中 <code>serve_connection</code> 函数定义如下：</p>
+<div class="highlight"><pre><span></span><code><span class="k">pub</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="nc">ProcessingState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">WaitForMsg</span><span class="p">,</span>
+<span class="w">    </span><span class="n">InMsg</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">serve_connection</span><span class="p">(</span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="p">:</span><span class="w"> </span><span class="nc">TcpStream</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">stream</span><span class="p">.</span><span class="n">write_all</span><span class="p">(</span><span class="s">b&quot;*&quot;</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="k">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">1024</span><span class="p">];</span>
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Connection closed by the client.</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">match</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="n">byte</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">b&#39;^&#39;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">InMsg</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">InMsg</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="n">byte</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">b&#39;$&#39;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="kd">let</span><span class="w"> </span><span class="n">newbyte</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">byte</span><span class="p">.</span><span class="n">wrapping_add</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="w">                        </span><span class="n">stream</span><span class="p">.</span><span class="n">write_all</span><span class="p">(</span><span class="o">&amp;</span><span class="p">[</span><span class="n">newbyte</span><span class="p">])</span><span class="o">?</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nb">Ok</span><span class="p">(())</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>As a reminder, this server version is <em>sequential</em> because it accepts clients one by one; the main loop blocks on <code>serve_connection</code> until it's done (the client closes the connection), and only then goes back to accept the next client.</p>
+</blockquote>
+<p>提醒一下，这个版本的服务器是<em>顺序执行的</em>，因为它逐个接受客户端；主循环在 <code>serve_connection</code> 上阻塞，直到其完成（客户端关闭连接），然后才返回去接受下一个客户端。</p>
+<hr />
+<h2 id="one-thread-per-client">每个客户端一个线程 (One Thread Per Client)</h2>
+<blockquote>
+<p>Clearly, handling clients one by one won't do. In <a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-2-threads/">Part 2</a>, we've discussed approaches that use OS threads to handle clients concurrently. Let's start with the unbounded one-thread-per-client solution in Rust:</p>
+</blockquote>
+<p>很明显，逐个处理客户端是行不通的。在<a href="https://eli.thegreenplace.net/2017/concurrent-servers-part-2-threads/">第 2 部分</a>中，我们讨论了使用操作系统线程来并发处理客户端的方法。让我们从 Rust 中无限制的“每个客户端一个线程”解决方案开始：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">async_socket_server</span><span class="p">::</span><span class="n">serve_connection</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::{</span><span class="n">net</span><span class="p">::</span><span class="n">TcpListener</span><span class="p">,</span><span class="w"> </span><span class="n">thread</span><span class="p">};</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;9090&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">);</span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">thread</span><span class="p">::</span><span class="n">Builder</span><span class="p">::</span><span class="n">new</span><span class="p">().</span><span class="n">spawn</span><span class="p">(</span><span class="k">move</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_connection</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection: {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {addr}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">});</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error spawning thread: {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>The <code>spawn</code> method returns a <code>Result&lt;JoinHandle&lt;T&gt;&gt;</code>; on success, we allow the handle to be dropped at the end of the loop iteration. In Rust, this <em>detaches</em> the thread; we don't actually wait for it to complete. This is reasonable for our code sample, because the loop is <em>infinite</em>; it never terminates anyway. The potential for runaway threads is just one of the issues with the unbounded threads approach discussed in part 2. The solution is to use a fixed thread pool.</p>
+</blockquote>
+<p><code>spawn</code> 方法返回一个 <code>Result&lt;JoinHandle&lt;T&gt;&gt;</code>；成功时，我们允许在循环迭代结束时丢弃该句柄。在 Rust 中，这会<em>分离（detach）</em>线程；我们实际上并不等待它完成。对于我们的代码示例来说，这是合理的，因为循环是<em>无限的</em>；无论如何它都不会终止。线程失控的潜力只是第 2 部分中讨论的无限制线程方法的其中一个问题。解决方案是使用固定的线程池。</p>
+<hr />
+<h2 id="thread-pool">线程池 (Thread Pool)</h2>
+<blockquote>
+<p>Before diving into the code, a quick note on the design: the thread pool is a fixed set of threads that await "jobs" and handle them to completion. In our case a "job" is <code>serve_connection</code> for a specific client. There are many ways to implement a thread pool; for our use case, I went with a set of threads that all get a shared <em>channel</em> to which the main thread sends jobs. A worker thread picks up the next job from the channel, serves it to completion, and goes back to waiting for the next job. Here's how this looks in code:</p>
+</blockquote>
+<p>在深入代码之前，先简要说明一下设计：线程池是一组固定的线程，它们等待“任务”并将其处理完成。在我们的例子中，“任务”是针对特定客户端的 <code>serve_connection</code>。实现线程池的方法有很多；对于我们的用例，我选择了一组线程，它们都获取一个共享的<em>通道（channel）</em>，主线程向其中发送任务。工作线程从通道中拾取下一个任务，将其服务到完成，然后返回等待下一个任务。以下是代码中的实现形式：</p>
+<div class="highlight"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">Job</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">stream</span><span class="p">:</span><span class="w"> </span><span class="nc">TcpStream</span><span class="p">,</span>
+<span class="w">    </span><span class="n">addr</span><span class="p">:</span><span class="w"> </span><span class="nc">SocketAddr</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">worker</span><span class="p">(</span><span class="n">receiver</span><span class="p">:</span><span class="w"> </span><span class="nc">Receiver</span><span class="o">&lt;</span><span class="n">Job</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(</span><span class="n">job</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">receiver</span><span class="p">.</span><span class="n">recv</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_connection</span><span class="p">(</span><span class="n">job</span><span class="p">.</span><span class="n">stream</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection from {}: {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">job</span><span class="p">.</span><span class="n">addr</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">job</span><span class="p">.</span><span class="n">addr</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>What is <code>Receiver</code>? It's a type from the <code>crossbeam_channel</code> crate:</p>
+</blockquote>
+<p>什么是 <code>Receiver</code>？它是 <code>crossbeam_channel</code> crate 中的一个类型：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">crossbeam_channel</span><span class="p">::{</span><span class="n">Receiver</span><span class="p">,</span><span class="w"> </span><span class="n">bounded</span><span class="p">};</span>
+</code></pre></div>
+<blockquote>
+<p>Rust's builtin channels in <code>std</code> are <em>mpsc</em> — multi producer, single consumer, but what we need for our job queue is a channel that supports multiple consumers (the worker threads). While <code>std</code> does have <a href="https://doc.rust-lang.org/std/sync/mpmc/fn.channel.html">mpmc</a>, this is an experimental API only available in nightly versions at the time of writing. Therefore, I've opted to include the <code>crossbeam_channel</code> crate that provides well-tested mpmc channels for this sample <a href="#footnote-1" id="footnote-reference-1">[1]</a>.</p>
+</blockquote>
+<p>Rust <code>std</code> 中的内置通道是 <em>mpsc</em>（多生产者，单消费者），但我们任务队列需要的是支持多消费者（工作线程）的通道。虽然 <code>std</code> 确实有 <a href="https://doc.rust-lang.org/std/sync/mpmc/fn.channel.html">mpmc</a>，但在撰写本文时，这是一个仅在 nightly 版本中可用的实验性 API。因此，我选择引入 <code>crossbeam_channel</code> crate，它为本示例提供了经过充分测试的 mpmc 通道 <a href="#footnote-1" id="footnote-reference-1">[1]</a>。</p>
+<blockquote>
+<p>And here's the main function:</p>
+</blockquote>
+<p>以下是 <code>main</code> 函数：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">async_socket_server</span><span class="p">::</span><span class="n">serve_connection</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">crossbeam_channel</span><span class="p">::{</span><span class="n">Receiver</span><span class="p">,</span><span class="w"> </span><span class="n">bounded</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::{</span>
+<span class="w">    </span><span class="n">io</span><span class="p">,</span>
+<span class="w">    </span><span class="n">net</span><span class="p">::{</span><span class="n">SocketAddr</span><span class="p">,</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">,</span><span class="w"> </span><span class="n">TcpStream</span><span class="p">},</span>
+<span class="w">    </span><span class="n">thread</span><span class="p">,</span>
+<span class="p">};</span>
+
+<span class="k">const</span><span class="w"> </span><span class="n">NUM_WORKERS</span><span class="p">:</span><span class="w"> </span><span class="kt">usize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">256</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="n">JOB_QUEUE_CAPACITY</span><span class="p">:</span><span class="w"> </span><span class="kt">usize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NUM_WORKERS</span><span class="p">;</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;9090&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">tx</span><span class="p">,</span><span class="w"> </span><span class="n">rx</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bounded</span><span class="p">::</span><span class="o">&lt;</span><span class="n">Job</span><span class="o">&gt;</span><span class="p">(</span><span class="n">JOB_QUEUE_CAPACITY</span><span class="p">);</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">NUM_WORKERS</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">receiver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rx</span><span class="p">.</span><span class="n">clone</span><span class="p">();</span>
+<span class="w">        </span><span class="n">thread</span><span class="p">::</span><span class="n">Builder</span><span class="p">::</span><span class="n">new</span><span class="p">().</span><span class="n">spawn</span><span class="p">(</span><span class="k">move</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">worker</span><span class="p">(</span><span class="n">receiver</span><span class="p">))</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nb">drop</span><span class="p">(</span><span class="n">rx</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {addr}&quot;</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// A full queue blocks this loop, preventing it from accepting more</span>
+<span class="w">        </span><span class="c1">// connections until a worker becomes available.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">tx</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">Job</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="p">}).</span><span class="n">is_err</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">other</span><span class="p">(</span><span class="s">&quot;all connection workers stopped&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>Note that our job channel is <em>bounded</em> — it has a fixed size. This helps naturally implement a <em>backpressure</em> mechanism — if too many clients connect, the following clients will have to wait — the main loop blocks on <code>tx.send</code> and won't accept additional clients on the socket until jobs are cleared from the channel.</p>
+</blockquote>
+<p>请注意，我们的任务通道是<em>有界的（bounded）</em>——它具有固定的大小。这有助于自然地实现<em>背压（backpressure）</em>机制——如果有太多客户端连接，后续的客户端将不得不等待——主循环会在 <code>tx.send</code> 上阻塞，并且在通道中的任务被清理之前，不会接受套接字上的更多客户端。</p>
+<hr />
+<h2 id="asynchronous-event-driven-server">异步、事件驱动服务器 (Asynchronous, Event-Driven Server)</h2>
+<blockquote>
+<p>In Parts 4, 5, and 6 of the series we've discussed <em>event-driven</em>, or <em>asynchronous</em> servers. Let's see how it's done in Rust. Specifically, <a href="https://eli.thegreenplace.net/2018/concurrent-servers-part-6-callbacks-promises-and-asyncawait/">Part 6</a> presented a gradation from callbacks to promises to async/await mechanisms; Rust supports all of these and — as you'd expect — modern code is usually written with async/await while hiding all the details of promises (called <em>futures</em> in Rust) underneath.</p>
+</blockquote>
+<p>在本系列的第 4、5 和 6 部分中，我们讨论了<em>事件驱动</em>或<em>异步</em>服务器。让我们看看在 Rust 中是如何实现的。具体来说，<a href="https://eli.thegreenplace.net/2018/concurrent-servers-part-6-callbacks-promises-and-asyncawait/">第 6 部分</a>展示了从回调到 Promise 再到 async/await 机制的演进；Rust 支持所有这些，并且——正如你所料——现代代码通常使用 async/await 编写，同时在底层隐藏了 Promise（在 Rust 中称为 <em>futures</em>）的所有细节。</p>
+<blockquote>
+<p>Without further ado, here's our simple state machine protocol in asynchronous Rust:</p>
+</blockquote>
+<p>废话不多说，这是我们在异步 Rust 中实现的简单状态机协议：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">async_socket_server</span><span class="p">::</span><span class="n">ProcessingState</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">io</span><span class="p">::{</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncReadExt</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncWriteExt</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpListener</span><span class="p">;</span>
+
+<span class="cp">#[tokio::main]</span>
+<span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;9090&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">socket</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">().</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {addr:?}&quot;</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">tokio</span><span class="p">::</span><span class="n">spawn</span><span class="p">(</span><span class="k">async</span><span class="w"> </span><span class="k">move</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_connection_async</span><span class="p">(</span><span class="n">socket</span><span class="p">).</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection from {addr:?}: {e}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {addr:?}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">});</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>Rust takes an interesting approach to async programming: it supports some of its fundamental building blocks (like futures and the <code>async</code> and <code>await</code> keywords) in the core language, but leaves the actual async engine implementation (the thing that implements the event loop) to external crates. By far the most popular crate for async programming in Rust is <a href="https://tokio.rs">tokio</a>, so that's what we're using here.</p>
+</blockquote>
+<p>Rust 对异步编程采取了一种有趣的方法：它在核心语言中支持其某些基础构建块（如 futures 以及 <code>async</code> 和 <code>await</code> 关键字），但将实际的异步引擎实现（实现事件循环的东西）留给外部 crate。到目前为止，Rust 中最受欢迎的异步编程 crate 是 <a href="https://tokio.rs">tokio</a>，所以这就是我们在这里使用的工具。</p>
+<blockquote>
+<p>After reading the JS code in part 6, the Rust snippet above should appear fairly familiar, except perhaps the explicit tokio task "spawn". Instead of enqueuing a callback on the connection returned by <code>listener.accept</code>, the code spawns a tokio task, which can be seen as a <a href="https://en.wikipedia.org/wiki/Green_thread">green thread</a>, and hence uses similar terminology <a href="#footnote-2" id="footnote-reference-2">[2]</a>. These tasks must not issue blocking calls; therefore, they are supposed to use tokio's I/O utilities instead of the usual, blocking <code>std</code> utilities. In fact, we have to implement an async version of <code>serve_connection</code> to make this work:</p>
+</blockquote>
+<p>在阅读了第 6 部分中的 JS 代码后，上面这段 Rust 代码片段应该显得相当熟悉，除了显式的 tokio 任务“spawn”之外。代码没有在 <code>listener.accept</code> 返回的连接上排队回调，而是生成（spawn）了一个 tokio 任务，这可以被视为一个<a href="https://en.wikipedia.org/wiki/Green_thread">绿色线程（green thread）</a>，因此使用了类似的术语 <a href="#footnote-2" id="footnote-reference-2">[2]</a>。这些任务绝不能发出阻塞调用；因此，它们应该使用 tokio 的 I/O 工具，而不是通常的阻塞 <code>std</code> 工具。事实上，我们必须实现一个异步版本的 <code>serve_connection</code> 才能使其工作：</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">serve_connection_async</span><span class="p">(</span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="p">:</span><span class="w"> </span><span class="nc">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpStream</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">stream</span><span class="p">.</span><span class="n">write_all</span><span class="p">(</span><span class="s">b&quot;*&quot;</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="k">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">1024</span><span class="p">];</span>
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Connection closed by the client.</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">match</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="n">byte</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">b&#39;^&#39;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">InMsg</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">InMsg</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="n">byte</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">b&#39;$&#39;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProcessingState</span><span class="p">::</span><span class="n">WaitForMsg</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="kd">let</span><span class="w"> </span><span class="n">newbyte</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">byte</span><span class="p">.</span><span class="n">wrapping_add</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="w">                        </span><span class="n">stream</span><span class="p">.</span><span class="n">write_all</span><span class="p">(</span><span class="o">&amp;</span><span class="p">[</span><span class="n">newbyte</span><span class="p">]).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nb">Ok</span><span class="p">(())</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>Note how similar this code is to <code>serve_connection</code> from earlier; the only real differences are the <code>await</code> calls on socket reads and writes <a href="#footnote-3" id="footnote-reference-3">[3]</a>, and the types involved. For example, instead of a <code>std::net::TcpStream</code> used in the synchronous samples, here we're using <code>tokio::net::TcpStream</code>. Tokio has an underlying dependency called <a href="https://github.com/tokio-rs/mio">mio</a> to handle non-blocking APIs for all kinds of I/O. It wraps OS-specific event loops like epoll to do so efficiently.</p>
+</blockquote>
+<p>请注意这段代码与先前的 <code>serve_connection</code> 是多么相似；唯一的真正区别是对套接字读写的 <code>await</code> 调用 <a href="#footnote-3" id="footnote-reference-3">[3]</a>，以及所涉及的类型。例如，我们没有使用同步示例中使用的 <code>std::net::TcpStream</code>，而是在这里使用了 <code>tokio::net::TcpStream</code>。Tokio 有一个名为 <a href="https://github.com/tokio-rs/mio">mio</a> 的底层依赖项，用于处理各种 I/O 的非阻塞 API。它封装了操作系统特定的事件循环（如 epoll），从而高效地完成工作。</p>
+<hr />
+<h2 id="asynchronous-primality-testing-servers">异步素数测试服务器 (Asynchronous Primality Testing Servers)</h2>
+<blockquote>
+<p>While most of the series has been using a simple state machine server as the driving example, Part 6 switched focus to a server for primality testing which simulates long compute tasks. Let's see how this is done in Rust with tokio:</p>
+</blockquote>
+<p>虽然本系列的大多数文章一直使用简单的状态机服务器作为驱动示例，但第 6 部分将重点转移到了用于素数测试的服务器上，该服务器模拟了长时间的计算任务。让我们看看在 Rust 中如何使用 tokio 来实现这一点：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">io</span><span class="p">::{</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncReadExt</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncWriteExt</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpListener</span><span class="p">;</span>
+
+<span class="cp">#[tokio::main]</span>
+<span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;8070&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">socket</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">().</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {addr:?}&quot;</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">tokio</span><span class="p">::</span><span class="n">spawn</span><span class="p">(</span><span class="k">async</span><span class="w"> </span><span class="k">move</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_client</span><span class="p">(</span><span class="n">socket</span><span class="p">).</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection from {addr:?}: {e}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {addr:?}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">});</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">serve_client</span><span class="p">(</span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="p">:</span><span class="w"> </span><span class="nc">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpStream</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="k">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">1024</span><span class="p">];</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Connection closed by the client.</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(());</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Parse read buf into u64.</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="kt">str</span><span class="p">::</span><span class="n">from_utf8</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">])</span>
+<span class="w">            </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="o">|</span><span class="n">error</span><span class="o">|</span><span class="w"> </span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">ErrorKind</span><span class="p">::</span><span class="n">InvalidData</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">))</span><span class="o">?</span>
+<span class="w">            </span><span class="p">.</span><span class="n">trim</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">parse</span><span class="p">::</span><span class="o">&lt;</span><span class="kt">u64</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="o">|</span><span class="n">error</span><span class="o">|</span><span class="w"> </span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">ErrorKind</span><span class="p">::</span><span class="n">InvalidData</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">))</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">isprime</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;prime&quot;</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;composite&quot;</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="n">stream</span>
+<span class="w">            </span><span class="p">.</span><span class="n">write_all</span><span class="p">((</span><span class="n">answer</span><span class="p">.</span><span class="n">to_string</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">).</span><span class="n">as_bytes</span><span class="p">())</span>
+<span class="w">            </span><span class="p">.</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>This code is very similar to the previous snippet conceptually; <code>isprime</code> is:</p>
+</blockquote>
+<p>这段代码在概念上与前一个代码片段非常相似；<code>isprime</code> 如下：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Check if n is prime, returning a boolean. The delay parameter is optional;</span>
+<span class="c1">// if true, the function will block for n milliseconds before computing the</span>
+<span class="c1">// answer. This is useful for simulating a long-running computation.</span>
+<span class="k">fn</span><span class="w"> </span><span class="nf">isprime</span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="w"> </span><span class="kt">u64</span><span class="p">,</span><span class="w"> </span><span class="n">delay</span><span class="p">:</span><span class="w"> </span><span class="kt">bool</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">delay</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="p">::</span><span class="n">thread</span><span class="p">::</span><span class="n">sleep</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">time</span><span class="p">::</span><span class="n">Duration</span><span class="p">::</span><span class="n">from_millis</span><span class="p">(</span><span class="n">n</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">r</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>Note that this sample demonstrates a job that can block (simulated with a sleep in this case). This can be problematic in an async context, as the <a href="https://docs.rs/tokio/latest/tokio/task/index.html#blocking-and-yielding">tokio documentation explains</a>.</p>
+</blockquote>
+<p>请注意，此示例演示了一个可能会阻塞的任务（在本例中通过 sleep 模拟）。正如 <a href="https://docs.rs/tokio/latest/tokio/task/index.html#blocking-and-yielding">tokio 文档所解释的</a>，这在异步上下文中可能会出问题。</p>
+<blockquote>
+<p>One potential solution would be to dispatch a blocking task to a separate thread pool and use <a href="https://docs.rs/tokio/1.53.1/tokio/sync/">tokio channels</a> to communicate with it; this is similar to the approach we've taken in the thread pool sample above.</p>
+</blockquote>
+<p>一个潜在的解决方案是将阻塞任务分发到单独的线程池，并使用 <a href="https://docs.rs/tokio/1.53.1/tokio/sync/">tokio 通道</a>与其通信；这类似于我们在上面的线程池示例中采用的方法。</p>
+<blockquote>
+<p>Part 6 also included a version of this server that caches data on a local Redis instance; the goal was to demonstrate the complexity of event-driven code when additional layers of callbacks are added and how async/await can help mitigate that. Here's our Rust version of this server, using the <code>redis</code> crate (that has a tokio component enabled explicitly to support async calls):</p>
+</blockquote>
+<p>第 6 部分还包含了该服务器的一个版本，它将数据缓存在本地 Redis 实例上；其目的是演示当添加额外的回调层时事件驱动代码的复杂性，以及 async/await 如何帮助缓解这种情况。以下是我们该服务器的 Rust 版本，它使用了 <code>redis</code> crate（显式启用了 tokio 组件以支持异步调用）：</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">redis</span><span class="p">::</span><span class="n">AsyncTypedCommands</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">redis</span><span class="p">::</span><span class="n">aio</span><span class="p">::</span><span class="n">MultiplexedConnection</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">io</span><span class="p">::{</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncReadExt</span><span class="p">,</span><span class="w"> </span><span class="n">AsyncWriteExt</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpListener</span><span class="p">;</span>
+
+<span class="cp">#[derive(Clone)]</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">AppState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">redis_connection</span><span class="p">:</span><span class="w"> </span><span class="nc">MultiplexedConnection</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">const</span><span class="w"> </span><span class="n">REDIS_URL</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="kt">str</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;redis://127.0.0.1&quot;</span><span class="p">;</span>
+
+<span class="cp">#[tokio::main]</span>
+<span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">args</span><span class="p">().</span><span class="n">nth</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;8070&quot;</span><span class="p">.</span><span class="n">to_string</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;127.0.0.1:{port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">app_state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">redis_connection</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">redis</span><span class="p">::</span><span class="n">Client</span><span class="p">::</span><span class="n">open</span><span class="p">(</span><span class="n">REDIS_URL</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">other</span><span class="p">)</span><span class="o">?</span>
+<span class="w">                </span><span class="p">.</span><span class="n">get_multiplexed_async_connection</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="k">await</span>
+<span class="w">                </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">other</span><span class="p">)</span><span class="o">?</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TcpListener</span><span class="p">::</span><span class="n">bind</span><span class="p">(</span><span class="n">addr</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;Serving on port {port}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">socket</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">listener</span><span class="p">.</span><span class="n">accept</span><span class="p">().</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;connection received from {addr:?}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">app_state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">app_state</span><span class="p">.</span><span class="n">clone</span><span class="p">();</span>
+
+<span class="w">        </span><span class="n">tokio</span><span class="p">::</span><span class="n">spawn</span><span class="p">(</span><span class="k">async</span><span class="w"> </span><span class="k">move</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serve_client</span><span class="p">(</span><span class="n">socket</span><span class="p">,</span><span class="w"> </span><span class="n">app_state</span><span class="p">).</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">eprintln!</span><span class="p">(</span><span class="s">&quot;error serving connection from {addr:?}: {e}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;peer done {addr:?}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">});</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">serve_client</span><span class="p">(</span>
+<span class="w">    </span><span class="k">mut</span><span class="w"> </span><span class="n">stream</span><span class="p">:</span><span class="w"> </span><span class="nc">tokio</span><span class="p">::</span><span class="n">net</span><span class="p">::</span><span class="n">TcpStream</span><span class="p">,</span>
+<span class="w">    </span><span class="k">mut</span><span class="w"> </span><span class="n">app_state</span><span class="p">:</span><span class="w"> </span><span class="nc">AppState</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">std</span><span class="p">::</span><span class="n">io</span><span class="p">::</span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="k">u8</span><span class="p">;</span><span class="w"> </span><span class="mi">1024</span><span class="p">];</span>
+
+<span class="w">    </span><span class="k">loop</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">buf</span><span class="p">).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Connection closed by the client.</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nb">Ok</span><span class="p">(());</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Parse read buf into u64.</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">num</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="kt">str</span><span class="p">::</span><span class="n">from_utf8</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="o">..</span><span class="n">n</span><span class="p">])</span>
+<span class="w">            </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="o">|</span><span class="n">error</span><span class="o">|</span><span class="w"> </span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">ErrorKind</span><span class="p">::</span><span class="n">InvalidData</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">))</span><span class="o">?</span>
+<span class="w">            </span><span class="p">.</span><span class="n">trim</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">parse</span><span class="p">::</span><span class="o">&lt;</span><span class="kt">u64</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="o">|</span><span class="n">error</span><span class="o">|</span><span class="w"> </span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">ErrorKind</span><span class="p">::</span><span class="n">InvalidData</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">))</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">        </span><span class="c1">// Try the redis cache first. If found in cache, send the cached</span>
+<span class="w">        </span><span class="c1">// answer.</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">cachekey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">format!</span><span class="p">(</span><span class="s">&quot;primecache:{num}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="n">app_state</span><span class="p">.</span><span class="n">redis_connection</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">cachekey</span><span class="p">.</span><span class="n">clone</span><span class="p">()).</span><span class="k">await</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nb">Ok</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">cached</span><span class="p">))</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">stream</span><span class="p">.</span><span class="n">write_all</span><span class="p">((</span><span class="n">cached</span><span class="p">.</span><span class="n">clone</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">).</span><span class="n">as_bytes</span><span class="p">()).</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">                </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;cached num {num} is {cached}&quot;</span><span class="p">);</span>
+<span class="w">                </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="nb">Ok</span><span class="p">(</span><span class="nb">None</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// Not found in cache, continue to compute.</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="nb">Err</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="nb">Err</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">other</span><span class="p">(</span><span class="n">error</span><span class="p">));</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">isprime</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;prime&quot;</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s">&quot;composite&quot;</span>
+<span class="w">        </span><span class="p">};</span>
+
+<span class="w">        </span><span class="c1">// Save answer in cache and send it to the client.</span>
+<span class="w">        </span><span class="n">app_state</span>
+<span class="w">            </span><span class="p">.</span><span class="n">redis_connection</span>
+<span class="w">            </span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="n">cachekey</span><span class="p">,</span><span class="w"> </span><span class="n">answer</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="k">await</span>
+<span class="w">            </span><span class="p">.</span><span class="n">map_err</span><span class="p">(</span><span class="n">io</span><span class="p">::</span><span class="n">Error</span><span class="p">::</span><span class="n">other</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+<span class="w">        </span><span class="n">stream</span>
+<span class="w">            </span><span class="p">.</span><span class="n">write_all</span><span class="p">((</span><span class="n">answer</span><span class="p">.</span><span class="n">to_string</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">).</span><span class="n">as_bytes</span><span class="p">())</span>
+<span class="w">            </span><span class="p">.</span><span class="k">await</span><span class="o">?</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="notes">注意事项 (Notes)</h3>
+<blockquote>
+<ul>
+<li>Because of the <a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/">function color problem</a>, the redis crate has a connection constructor specifically for async: <code>get_multiplexed_async_connection</code>.</li>
+<li>Here we have an example of shared state between tokio tasks — the Redis connection. Note that we don't require any particular synchronization because <code>MultiplexedConnection</code> is <code>Clone</code>; cloning it to different tasks is safe — and in fact that's what we do for each new task. There's no magic here; if you look inside <code>MultiplexedConnection</code>, you'll see that it already has all the synchronization mechanisms implemented internally, as needed.</li>
+<li>Due to the magic of async/await, the code in <code>serve_client</code> is nice and linear. We simply <code>await</code> on the Redis call, and once it's back we continue with the rest of the handler. Since we're using an async Redis connection, in case waiting is required, control will be ceded to some other task that's not currently blocked on I/O.</li>
+</ul>
+</blockquote>
+<ul>
+<li>由于<a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/">函数颜色问题（function color problem）</a>，redis crate 专门为异步提供了一个连接构造函数：<code>get_multiplexed_async_connection</code>。</li>
+<li>这里我们有一个 tokio 任务之间共享状态的示例——Redis 连接。请注意，我们不需要任何特定的同步机制，因为 <code>MultiplexedConnection</code> 实现了 <code>Clone</code>；将其克隆到不同的任务是安全的——事实上，我们对每个新任务都是这样做的。这里没有什么魔术；如果你查看 <code>MultiplexedConnection</code> 的内部，你会发现它已经根据需要内部实现了所有同步机制。</li>
+<li>得益于 async/await 的魔术，<code>serve_client</code> 中的代码非常清晰且呈线性。我们只需在 Redis 调用上执行 <code>await</code>，一旦它返回，我们就继续执行处理程序的其余部分。由于我们使用的是异步 Redis 连接，如果需要等待，控制权将让渡给其他当前未被 I/O 阻塞的任务。</li>
+</ul>
+<blockquote>
+<p>In conclusion, while Rust provides excellent support for async programming, it doesn't solve its inherent issues like function colors and the need for careful separation between blocking and non-blocking tasks. These issues are typically surmountable with some extra care, and async programming with Tokio in Rust is very popular due to its performance benefits.</p>
+</blockquote>
+<p>总之，虽然 Rust 为异步编程提供了极佳的支持，但它并未解决异步编程固有的问题，例如函数颜色问题以及需要仔细区分阻塞和非阻塞任务的需求。只要格外小心，这些问题通常是可以克服的，并且由于其性能优势，在 Rust 中使用 Tokio 进行异步编程非常受欢迎。</p>
+<hr />
+<h2 id="code">代码 (Code)</h2>
+<blockquote>
+<p>All the code for this post is available <a href="https://github.com/eliben/code-for-blog/tree/main/2026/async-socket-server">on GitHub</a>.</p>
+</blockquote>
+<p>本文的所有代码均可在 <a href="https://github.com/eliben/code-for-blog/tree/main/2026/async-socket-server">GitHub</a> 上获取。</p>
+<hr />
+<h2 id="footnotes">脚注 (Footnotes)</h2>
+<blockquote>
+<p><table>
+  <tbody>
+    <tr>
+      <td><a href="#footnote-reference-1" id="footnote-1">[1]</a></td>
+      <td>Rust makes a conscious design choice to keep its standard library minimal. In part 2, we've used Python's builtin stdlib thread pools; Rust also has several crates that implement thread pools, but I decided against using them because they obscure the underlying working of the code too much. Our sample implements a simple thread pool, but unfortunately still has to reach for an external crate to use a well-supported multi-consumer channel mechanism.</td>
+    </tr>
+    <tr>
+      <td><a href="#footnote-reference-2" id="footnote-2">[2]</a></td>
+      <td>tokio is quite sophisticated; it manages a thread pool with an efficient work-stealing mechanism, onto which new tasks are spawned. Therefore, all shared data must be protected with mutexes or other synchronization primitives, and Rust's traits like <code>Send</code> and <code>Sync</code> play an important role, where applicable.</td>
+    </tr>
+    <tr>
+      <td><a href="#footnote-reference-3" id="footnote-3">[3]</a></td>
+      <td>Having to code this alternative just for the sake of async invocation is a classical example of the <a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank">function color problem</a>.</td>
+    </tr>
+  &lt;/tbody
+</table></p>
+</blockquote>
+<table>
+  <tbody>
+    <tr>
+      <td><a href="#footnote-reference-1" id="footnote-1">[1]</a></td>
+      <td>Rust 在设计上有意保持其标准库的精简。在第 2 部分中，我们使用了 Python 内置的标准库线程池；Rust 也有几个实现线程池的 crate，但我决定不使用它们，因为它们将代码的底层工作机制掩盖得太深了。我们的示例实现了一个简单的线程池，但不幸的是，为了使用支持良好的多消费者通道机制，仍然不得不求助于外部 crate。</td>
+    </tr>
+    <tr>
+      <td><a href="#footnote-reference-2" id="footnote-2">[2]</a></td>
+      <td>tokio 非常成熟复杂；它管理着一个具有高效工作窃取（work-stealing）机制的线程池，新的任务就在其上生成。因此，所有共享数据必须用互斥锁或其他同步原语进行保护，而 Rust 的 <code>Send</code> 和 <code>Sync</code> 等 trait 在适用的情况下扮演着重要的角色。</td>
+    </tr>
+    <tr>
+      <td><a href="#footnote-reference-3" id="footnote-3">[3]</a></td>
+      <td>仅仅为了异步调用的缘故而不得不编写这份替代代码，正是<a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank">函数颜色问题</a>的一个经典范例。</td>
+    </tr>
+  </tbody>
+</table>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">并发服务器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Tokio</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">异步编程</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">线程池</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
