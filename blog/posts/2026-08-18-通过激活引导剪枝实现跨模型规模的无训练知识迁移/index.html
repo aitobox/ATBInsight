@@ -1,0 +1,807 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-18-%E9%80%9A%E8%BF%87%E6%BF%80%E6%B4%BB%E5%BC%95%E5%AF%BC%E5%89%AA%E6%9E%9D%E5%AE%9E%E7%8E%B0%E8%B7%A8%E6%A8%A1%E5%9E%8B%E8%A7%84%E6%A8%A1%E7%9A%84%E6%97%A0%E8%AE%AD%E7%BB%83%E7%9F%A5%E8%AF%86%E8%BF%81%E7%A7%BB/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>通过激活引导剪枝实现跨模型规模的无训练知识迁移 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              通过激活引导剪枝实现跨模型规模的无训练知识迁移
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-free-knowledge-transfer-across-model-scales-through-activation-guided-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Training-Free Knowledge Transfer Across Model Scales through Activation-Guided Pruning
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Training-Free Knowledge Transfer Across Model Scales through Activation-Guided Pruning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Contributions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Contributions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        异构融合的挑战
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-challenge-of-heterogeneous-fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Challenge of Heterogeneous Fusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apm" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        APM 框架
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-apm-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The APM Framework
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        经验性能
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empirical-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Empirical Performance
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conclusion_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metadata_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大模型技术飞速发展的背景下，如何将大型、高性能模型的知识高效迁移到较小的模型中，一直是学术界和工业界关注的核心问题。传统的知识蒸馏或模型微调方法通常需要消耗大量的计算资源，且在面对不同规模和架构的异构模型时显得力不从心。本文介绍了一种名为激活-剪枝-合并（Activation-Prune-Merge, APM）的全新无训练框架，旨在无需显式神经元级语义对齐的情况下，实现跨模型规模的知识无缝融合。</p>
+<p>该技术的核心创新在于利用“激活引导映射”技术，从“供体（donor）”大模型中精准识别并提取出关键的功能组件（如显著层、隐藏维度、注意力头和MLP神经元），然后通过微插值系数将其注入到“受体（recipient）”小模型中。在包含推理、数学、代码生成和指令遵循等16个多样化基准测试上的实验结果表明，APM能够显著提升小模型的性能，例如将3B参数的受体模型平均准确率从55.5%大幅提升至60.6%，并在多项具体任务中展现出卓越的增益效果。</p>
+<hr />
+<h1 id="training-free-knowledge-transfer-across-model-scales-through-activation-guided-pruning">Training-Free Knowledge Transfer Across Model Scales through Activation-Guided Pruning</h1>
+<p><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.13596">2608.13596</a><br />
+<strong>Authors:</strong> Jiahe Fan, Si Chen, Yinghao Hou, Aiyuan Zhang, Hong Xie<br />
+<strong>Date:</strong> July 31, 2026<br />
+<strong>Subject:</strong> Machine Learning (cs.LG)</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>本文介绍了<strong>激活-剪枝-合并（Activation-Prune-Merge, APM）</strong>，这是一个新颖的、无需训练的框架，旨在通过从更大、更强大的模型中转移知识来改进较小的语言模型。尽管模型规模之间存在显著的架构不匹配，但APM成功实现了模型的融合，且不需要显式的神经元级语义对齐。通过使用激活引导映射，该框架识别并提取出“供体（donor）”模型中的功能组件，然后使用微插值系数将它们注入到“受体（recipient）”模型中。在16个基准测试上的实验结果证明了显著的性能提升，特别是将一个3B参数的受体模型的平均准确率从55.5%显著提升至60.6%。</p>
+<blockquote>
+<p>This paper introduces <strong>Activation-Prune-Merge (APM)</strong>, a novel, training-free framework designed to improve smaller language models by transferring knowledge from larger, more powerful models. Despite significant architectural mismatches between model scales, APM successfully fuses models without requiring explicit neuron-wise semantic alignment. By using activation-guided mapping, the framework identifies and extracts functional components from a "donor" model and injects them into a "recipient" model using a micro-interpolation coefficient. Experimental results across 16 benchmarks demonstrate significant performance gains, notably increasing average accuracy from 55.5% to 60.6% for a 3B parameter recipient model.</p>
+</blockquote>
+<hr />
+<h2 id="key-contributions">Key Contributions</h2>
+<h3 id="_2">异构融合的挑战</h3>
+<p>作者指出了结合在规模和架构上存在差异的模型的困难所在。传统方法通常需要复杂的对齐或微调；本研究探讨了是否可以通过将供体模型视为集中功能组件的来源，来直接转移功能能力。</p>
+<blockquote>
+<h3 id="the-challenge-of-heterogeneous-fusion">The Challenge of Heterogeneous Fusion</h3>
+<p>The authors address the difficulty of combining models that differ in scale and architecture. Traditional methods often require complex alignment or fine-tuning; this research investigates whether functional capabilities can be transferred directly by treating the donor model as a source of concentrated functional components.</p>
+</blockquote>
+<h3 id="apm">APM 框架</h3>
+<p><strong>激活-剪枝-合并（APM）</strong> 过程包含三个主要步骤：
+1.  <strong>任务条件激活映射：</strong> 分析供体模型，以识别显著层、隐藏维度、注意力头和MLP神经元。
+2.  <strong>结构剪枝：</strong> 根据识别出的显著组件，对供体模型进行剪枝，使其与较小受体模型的架构相匹配。
+3.  <strong>微插值注入：</strong> 使用最小的混合权重将提取出的“供体切片”注入到受体模型中，在保留受体原始结构的同时增强其能力。</p>
+<blockquote>
+<h3 id="the-apm-framework">The APM Framework</h3>
+<p>The <strong>Activation-Prune-Merge (APM)</strong> process involves three primary steps:
+1.  <strong>Task-Conditioned Activation Mapping:</strong> The donor model is analyzed to identify salient layers, hidden dimensions, attention heads, and MLP neurons.
+2.  <strong>Structural Pruning:</strong> The donor model is pruned to match the architecture of the smaller recipient model based on the identified salient components.
+3.  <strong>Micro-Interpolation Injection:</strong> The extracted "donor slice" is injected into the recipient model using a minimal mixing weight, preserving the recipient's original structure while enhancing its capabilities.</p>
+</blockquote>
+<h3 id="_3">经验性能</h3>
+<p>APM在16个不同的基准测试中进行了评估，包括推理、数学、代码生成和指令遵循。主要的性能提升包括：
+*   <strong>整体准确率：</strong> 在3B受体模型上，准确率从55.5%提升至60.6%。
+*   <strong>RTE 准确率：</strong> 从64.3%提升至82.3%。
+*   <strong>QNLI 准确率：</strong> 从52.3%提升至65.7%。
+*   <strong>BoolQ 准确率：</strong> 从70.8%提升至79.2%。</p>
+<blockquote>
+<h3 id="empirical-performance">Empirical Performance</h3>
+<p>APM was evaluated across 16 diverse benchmarks, including reasoning, mathematics, code generation, and instruction following. Key improvements include:
+*   <strong>Overall Accuracy:</strong> Improved from 55.5% to 60.6% on a 3B recipient model.
+*   <strong>RTE Accuracy:</strong> Increased from 64.3% to 82.3%.
+*   <strong>QNLI Accuracy:</strong> Increased from 52.3% to 65.7%.
+*   <strong>BoolQ Accuracy:</strong> Increased from 70.8% to 79.2%.</p>
+</blockquote>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<p>该研究提供了强有力的证据，证明了跨规模异构模型融合在没有显式语义对齐的情况下是可行的。通过精细的激活引导选择来集中供体的贡献，研究人员能够以无训练、计算高效的方式有效地“升级”较小的模型。</p>
+<blockquote>
+<h2 id="conclusion_1">Conclusion</h2>
+<p>The study provides strong evidence that cross-scale heterogeneous model fusion is viable without explicit semantic alignment. By concentrating the donor's contribution through careful, activation-guided selection, researchers can effectively "upgrade" smaller models in a training-free, computationally efficient manner.</p>
+</blockquote>
+<hr />
+<h2 id="metadata">Metadata</h2>
+<ul>
+<li><strong>Comments:</strong> 9 pages, 3 figures, 7 tables</li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.13596">10.48550/arXiv.2608.13596</a></li>
+<li><strong>Full-Text Links:</strong> <a href="https://arxiv.org/pdf/2608.13596">PDF</a>, <a href="https://arxiv.org/html/2608.13596v1">HTML</a>, <a href="https://arxiv.org/src/2608.13596">TeX Source</a></li>
+</ul>
+<blockquote>
+<h2 id="metadata_1">Metadata</h2>
+<ul>
+<li><strong>Comments:</strong> 9 pages, 3 figures, 7 tables</li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.13596">10.48550/arXiv.2608.13596</a></li>
+<li><strong>Full-Text Links:</strong> <a href="https://arxiv.org/pdf/2608.13596">PDF</a>, <a href="https://arxiv.org/html/2608.13596v1">HTML</a>, <a href="https://arxiv.org/src/2608.13596">TeX Source</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型融合</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">知识迁移</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型剪枝</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">无训练</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
