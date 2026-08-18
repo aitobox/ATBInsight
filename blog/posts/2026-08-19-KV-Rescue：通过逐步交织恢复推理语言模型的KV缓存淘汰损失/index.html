@@ -1,0 +1,703 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-19-KV-Rescue%EF%BC%9A%E9%80%9A%E8%BF%87%E9%80%90%E6%AD%A5%E4%BA%A4%E7%BB%87%E6%81%A2%E5%A4%8D%E6%8E%A8%E7%90%86%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E7%9A%84KV%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E6%8D%9F%E5%A4%B1/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>KV-Rescue：通过逐步交织恢复推理语言模型的KV缓存淘汰损失 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              KV-Rescue：通过逐步交织恢复推理语言模型的KV缓存淘汰损失
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kv-rescue-recovering-reasoning-language-model-kv-eviction-loss-via-stepwise-interleaving" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        KV-Rescue: Recovering Reasoning Language Model KV Eviction Loss via Stepwise Interleaving
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="KV-Rescue: Recovering Reasoning Language Model KV Eviction Loss via Stepwise Interleaving">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔍 Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-contributions-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🛠️ Key Contributions &amp; Highlights
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#links-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 Links &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型处理长推理轨迹时，键值（KV）缓存淘汰（KV cache eviction）是控制内存开销的常用技术。然而，这种方法本质上是有损的，会导致模型在部分历史视图下解码。在激进的内存预算下，这不仅会降低准确率，还会引发“失控退化”（runaway degeneration），即模型输出重复或不连贯的词元，直至达到长度极限。</p>
+<p>本文作者将这种性能损失定义为“信息差”（缺少上下文），而非“能力差”（模型容量限制）。为此，他们推出了 <strong>KV-Rescue</strong>，这是一个无需训练的推理框架，它将经过淘汰的基础模型与一个轻量级的全上下文辅助模型配对。通过交织推理步骤并利用基于在线熵和可压缩性的检测器及早终止退化候选，KV-Rescue 有效恢复了丢失的推理性能。</p>
+<hr />
+<h1 id="kv-rescue-recovering-reasoning-language-model-kv-eviction-loss-via-stepwise-interleaving">KV-Rescue: Recovering Reasoning Language Model KV Eviction Loss via Stepwise Interleaving</h1>
+<p><strong>Authors:</strong> Minsoo Cheong, Woosang Lim, Vincent-Daniel Yun, Sungjoo Yoo<br />
+<strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>); Computation and Language (<code>cs.CL</code>)<br />
+<strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.15797">arXiv:2608.15797</a><br />
+<strong>Submitted:</strong> August 16, 2026  </p>
+<hr />
+<h2 id="summary">📌 Summary</h2>
+<p>键值（KV）缓存淘汰是限制大语言模型中长推理轨迹内存成本的常用技术。然而，它本质上有损，迫使模型从局部的历史视图进行解码。在激进的预算下，这不仅会导致准确率下降，还会引发<strong>失控退化</strong>（即模型输出重复或不连贯的词元，直到达到长度极限）。</p>
+<p>作者将这种损失描述为<em>信息差距</em>（缺少上下文）而不是<em>能力差距</em>（模型容量限制）。为了解决这个问题，他们引入了 <strong>KV-Rescue</strong>，这是一个无需训练的推理框架，它将一个被淘汰的基础模型与一个轻量级的全上下文辅助模型配对。通过交织推理步骤并利用基于在线熵和可压缩性的检测器来尽早终止退化的候选者，KV-Rescue 有效地恢复了丢失的推理性能。</p>
+<blockquote>
+<p>Key-Value (KV) cache eviction is a common technique to cap the memory cost of long reasoning traces in large language models. However, it is inherently lossy, forcing models to decode from a partial historical view. Under aggressive budgets, this causes not only accuracy degradation but also <strong>runaway degeneration</strong> (where models output repetitive or incoherent tokens until hitting length limits). </p>
+<p>The authors characterize this loss as an <em>information gap</em> (missing context) rather than a <em>capability gap</em> (model capacity limits). To address this, they introduce <strong>KV-Rescue</strong>, a training-free inference framework that pairs an evicted base model with a lightweight full-context helper. By interleaving reasoning steps and utilizing an online entropy- and compressibility-based detector to halt degenerated candidates early, KV-Rescue effectively recovers lost reasoning performance.</p>
+</blockquote>
+<hr />
+<h2 id="abstract">🔍 Abstract</h2>
+<p>KV 缓存淘汰限制了长推理轨迹的内存成本，但它本质上是有损的，因为模型是从其历史的局部视图进行解码的。在激进的预算下，这不仅会降低准确率，还会导致失控退化，即模型产生不连贯或重复的词元，直到达到长度限制。</p>
+<p>我们将这种损失的大部分归结为由缺少上下文引起的信息差距，而不是由有限模型容量引起的能力差距。被淘汰的 7B 模型和全上下文的 1.5B 模型会产生互补的错误，在其答案之间进行预言机（oracle）选择可以恢复与全 KV 7B 模型之间 79% 的准确率差距。</p>
+<p>基于这一观察，我们提出了 <strong>KV-Rescue</strong>，这是一个无需训练的推理框架，它利用轻量级全上下文辅助模型来弥合 KV 淘汰引入的信息差距。KV-Rescue 将两个模型的推理步骤交织到一个共享的轨迹中。在线检测器使用熵和可压缩性来动态终止不连贯或重复的基础模型候选者的生成。</p>
+<p>在五个数学基准测试中，使用 <code>Qwen2.5-Math 7B</code> 和 <code>72B</code>，KV-Rescue 在淘汰预算 <span class="arithmatex">\(B=64\)</span> 的情况下恢复了平均 <strong>87%</strong> 因淘汰而损失的准确率。解码成本分析进一步表明，防止失控退化平均将基础模型的词元生成量减少了 <strong>43%</strong>。</p>
+<blockquote>
+<p>KV-cache eviction caps the memory cost of long reasoning traces but is inherently lossy because the model decodes from a partial view of its history. Under aggressive budgets, this not only lowers accuracy but can also cause runaway degeneration, where the model produces incoherent or repetitive tokens until reaching the length limit. </p>
+<p>We characterize much of this loss as an information gap caused by missing context, rather than a capability gap caused by limited model capacity. An evicted 7B model and a full-context 1.5B model make complementary errors, and an oracle choice between their answers recovers 79% of the accuracy gap to the full-KV 7B model. </p>
+<p>Based on this observation, we propose <strong>KV-Rescue</strong>, a training-free inference framework that bridges the information gap introduced by KV eviction using a lightweight full-context helper. KV-Rescue interleaves reasoning steps from the two models into a shared trajectory. An online detector uses entropy and compressibility to terminate the generation of incoherent or repetitive base-model candidates early. </p>
+<p>Across five math benchmarks with <code>Qwen2.5-Math 7B</code> and <code>72B</code>, KV-Rescue recovers an average of <strong>87%</strong> of the accuracy lost to eviction at an eviction budget of <span class="arithmatex">\(B=64\)</span>. A decode-cost analysis further shows that preventing runaway degeneration cuts base-model token generation by <strong>43%</strong> on average.</p>
+</blockquote>
+<hr />
+<h2 id="key-contributions-highlights">🛠️ Key Contributions &amp; Highlights</h2>
+<ul>
+<li><strong>信息差距的识别：</strong> 证明了 KV 淘汰损失主要由上下文丢失驱动，而非模型容量限制。</li>
+<li><strong>互补错误恢复：</strong> 表明将淘汰的大型模型（例如 7B）与全上下文辅助模型（例如 1.5B）结合，可以实现显著的准确率恢复。</li>
+<li><strong>KV-Rescue 框架：</strong> 一种无需训练的推理方法，可在不同模型之间逐步交织推理轨迹。</li>
+<li><strong>在线退化检测器：</strong> 利用词元熵和可压缩性动态捕捉并终止失控的重复或不连贯现象。</li>
+<li><strong>显著的性能与效率提升：</strong> 在五个数学基准测试中恢复了 87% 丢失的准确率，同时将基础模型的词元生成开销减少了 43%。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Identification of the Information Gap:</strong> Demonstrates that KV eviction loss is primarily driven by missing context rather than model capacity constraints.</li>
+<li><strong>Complementary Error Recovery:</strong> Shows that combining an evicted large model (e.g., 7B) with a full-context helper model (e.g., 1.5B) captures significant accuracy recovery.</li>
+<li><strong>KV-Rescue Framework:</strong> A training-free inference approach that stepwise-interleaves reasoning traces between models.</li>
+<li><strong>Online Degeneration Detector:</strong> Leverages token entropy and compressibility to dynamically catch and terminate runaway repetitions or incoherence.</li>
+<li><strong>Substantial Performance &amp; Efficiency Gains:</strong> Recovers 87% of lost accuracy across five math benchmarks while simultaneously cutting base-model generation token overhead by 43%.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="links-resources">🔗 Links &amp; Resources</h2>
+<ul>
+<li><strong>查看 PDF：</strong> <a href="https://arxiv.org/pdf/2608.15797">arXiv:2608.15797 PDF</a></li>
+<li><strong>HTML 版本：</strong> <a href="https://arxiv.org/html/2608.15797v1">arXiv HTML (实验性)</a></li>
+<li><strong>DOI：</strong> <a href="https://doi.org/10.48550/arXiv.2608.15797">10.48550/arXiv.2608.15797</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>View PDF:</strong> <a href="https://arxiv.org/pdf/2608.15797">arXiv:2608.15797 PDF</a></li>
+<li><strong>HTML Version:</strong> <a href="https://arxiv.org/html/2608.15797v1">arXiv HTML (Experimental)</a></li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.15797">10.48550/arXiv.2608.15797</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">KV缓存</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">内存优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">检索与生成</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
