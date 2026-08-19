@@ -1,0 +1,752 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-20-Systemd%20%E5%90%AF%E5%8A%A8%E7%BC%93%E6%85%A2%E4%B9%8B%E8%B0%9C%EF%BC%9A%E4%B8%80%E6%AC%A1%E6%8E%92%E6%9F%A5%E7%BB%8F%E5%8E%86/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Systemd 启动缓慢之谜：一次排查经历 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Systemd 启动缓慢之谜：一次排查经历
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 症状描述
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. 症状描述">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        变通方案
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-workaround" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Workaround
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-systemd-analyze" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 使用 <code>systemd-analyze</code> 定位瓶颈
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 代码调查
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 调试挑战
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. 潜在的根本原因
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">Systemd 启动缓慢之谜：一次排查经历</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文探讨了一台 Ubuntu 26.04 服务器上出现的 SSH 登录延迟问题，该问题导致用户登录时出现超过 3 秒的卡顿。通过使用修改版的 <code>extrace</code> 工具和 <code>systemd-analyze</code>，作者将性能瓶颈定位在用户级 <code>systemd</code> 会话管理器的单元加载阶段。</p>
+<p>调查显示，该问题并非 <code>systemd</code> 本身的 Bug，而是系统底层在处理单元枚举时出现了异常延迟。本文详细记录了排查过程中的技术挑战、所使用的调试工具，以及针对此类动态用户空间进程进行诊断的复杂性，为处理类似系统性能异常提供了参考思路。</p>
+<hr />
+<h2 id="1">1. 症状描述</h2>
+<p>正如最初在 <a href="https://mastodon.social/@cks/116891813776049327">Fediverse 上分享的那样</a>：</p>
+<blockquote>
+<p>今天的谜题：在唯一的一台系统上（使用共享 NFS 主目录），登录需要 3 秒以上才能启动，因为 <code>/usr/lib/systemd/systemd --user</code> 在运行 <code>systemd-xdg-autostart-generator</code> 和执行后续极其晦涩的登录过程之间停滞不前。</p>
+<p>我甚至不知道从哪里开始，我能查到这一步全靠一个修改版的优秀工具 <a href="https://github.com/leahneukirchen/extrace">extrace</a>，它能报告进程启动的时间戳。</p>
+</blockquote>
+<p><em>(注：尽管最初的帖子中未提及，但这些都是标准的 SSH 登录。)</em></p>
+<blockquote>
+<p>Today's mystery: on exactly one system (with shared NFS home directories), logins take 3+ seconds to start because <code>/usr/lib/systemd/systemd --user</code> sits on its hands between running <code>systemd-xdg-autostart-generator</code> and running the next step of a remarkably opaque login process.</p>
+<p>I don't even know where to start and I only got this far with a hacked version of the great <a href="https://github.com/leahneukirchen/extrace">extrace</a> that also reports a process start time number.</p>
+</blockquote>
+<p><em>(Note: Although omitted in the initial post, these are standard SSH logins.)</em></p>
+<p>这种行为仅限于一台 Ubuntu 26.04 系统。其他共享完全相同的软件配置和 <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/ZFSFileserverSetupIII">NFS 挂载主目录</a> 的机器并没有出现这种延迟。此外：
+* 这种缓慢现象在多次重启和修改主机名后依然存在。
+* 一旦初始的 <code>systemd</code> 用户会话建立，后续的 SSH 登录将瞬间完成。
+* 该问题影响多个用户账户，而不仅仅是单个用户。</p>
+<blockquote>
+<p>This behavior is isolated to a single Ubuntu 26.04 system. Other machines sharing the exact same software configuration and <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/ZFSFileserverSetupIII">NFS-mounted home directories</a> do not exhibit this delay. Furthermore:
+* The slowness has persisted across multiple reboots and a hostname change.
+* Once an initial <code>systemd</code> user session is established, subsequent SSH logins are instantaneous.
+* The issue affects multiple user accounts, not just a single user.</p>
+</blockquote>
+<h3 id="_2">变通方案</h3>
+<p>对于我自己的账户，我使用 SSH 主连接多路复用（multiplexing）的变通方法缓解了这个问题：
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;ControlPersist 30d&quot;</span><span class="w"> </span>-N<span class="w"> </span>-M<span class="w"> </span>&lt;host&gt;<span class="w"> </span>-f
+</code></pre></div>
+这使得会话无限期保持活跃，从而消除了重复初始化新 SSH 连接和用户会话的需要。</p>
+<blockquote>
+<h3 id="the-workaround">The Workaround</h3>
+<p>For my own account, I mitigated the issue using an SSH master connection multiplexing workaround:
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;ControlPersist 30d&quot;</span><span class="w"> </span>-N<span class="w"> </span>-M<span class="w"> </span>&lt;host&gt;<span class="w"> </span>-f
+</code></pre></div>
+This keeps the session active indefinitely and eliminates the need to initialize a fresh SSH connection and user session repeatedly.</p>
+</blockquote>
+<hr />
+<h2 id="2-systemd-analyze">2. 使用 <code>systemd-analyze</code> 定位瓶颈</h2>
+<p>要检查会话启动性能，可以运行 <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html#systemd-analyze%20dump%20%5Bpattern%E2%80%A6%5D"><code>systemd-analyze --user dump</code></a>。运行此诊断程序揭示了<a href="https://mastodon.social/@cks/116892465105850592">一个明显的问题</a>：</p>
+<div class="highlight"><pre><span></span><code>Timestamp units-load-start: Thu 2026-07-09 18:40:30 EDT
+Timestamp units-load-finish: Thu 2026-07-09 18:40:33 EDT
+</code></pre></div>
+<p>仅仅为了加载单元就延迟了三秒——这发生在 <code>systemd</code> 实际开始执行任务之前，但在单元生成器运行之后——这是极不正常的。</p>
+<blockquote>
+<p>To inspect session startup performance, you can run <a href="https://www.freedesktop.org/software/systemd/man/latest/systemd-analyze.html#systemd-analyze%20dump%20%5Bpattern%E2%80%A6%5D"><code>systemd-analyze --user dump</code></a>. Running this diagnostic revealed <a href="https://mastodon.social/@cks/116892465105850592">a clear problem</a>:</p>
+<div class="highlight"><pre><span></span><code>Timestamp units-load-start: Thu 2026-07-09 18:40:30 EDT
+Timestamp units-load-finish: Thu 2026-07-09 18:40:33 EDT
+</code></pre></div>
+<p>A three-second delay just to load units—occurring before <code>systemd</code> actually starts executing tasks, but immediately after unit generators have run—is highly abnormal.</p>
+</blockquote>
+<hr />
+<h2 id="3">3. 代码调查</h2>
+<p><a href="https://mstdn.io/@wolf480pl/116892643832298193">进一步追踪</a>直接指向了 <a href="https://github.com/systemd/systemd/blob/main/src/core/manager.c#L2184">systemd 的管理器源代码 (<code>src/core/manager.c</code>)</a>。延迟发生在两个主要调用附近：
+1. <code>manager_enumerate_perpetual()</code>
+2. <code>manager_enumerate()</code> </p>
+<p>（也在 <a href="https://github.com/systemd/systemd/blob/main/src/core/manager.c#L1820">manager.c 第 1820 行</a> 中引用）。</p>
+<p>这些函数枚举并设置已知的 <a href="https://github.com/systemd/systemd/blob/main/src/basic/unit-def.h">systemd 单元</a>。用户会话通常只包含少数几个永久单元（如 <code>-.slice</code> 和 <code>init.scope</code>）。非永久枚举处理设备、挂载点和交换空间，随后触发单元加载队列。</p>
+<blockquote>
+<p><a href="https://mstdn.io/@wolf480pl/116892643832298193">Tracing this further</a> led directly to <a href="https://github.com/systemd/systemd/blob/main/src/core/manager.c#L2184">systemd's manager source code (<code>src/core/manager.c</code>)</a>. The delay occurs around two primary calls:
+1. <code>manager_enumerate_perpetual()</code>
+2. <code>manager_enumerate()</code> </p>
+<p>(Also referenced in <a href="https://github.com/systemd/systemd/blob/main/src/core/manager.c#L1820">manager.c line 1820</a>).</p>
+<p>These functions enumerate and set up known <a href="https://github.com/systemd/systemd/blob/main/src/basic/unit-def.h">systemd units</a>. User sessions typically contain only a few perpetual units (such as <code>-.slice</code> and <code>init.scope</code>). Non-perpetual enumeration handles devices, mounts, and swaps, subsequently triggering the unit load queue.</p>
+</blockquote>
+<hr />
+<h2 id="4">4. 调试挑战</h2>
+<ul>
+<li><strong>文件系统活动：</strong> 使用 <code>opensnoop-bpfcc</code> 监控打开的文件没有显示出明显的错误，尽管在文件打开活动中确实存在明显的间隙。</li>
+<li><strong>系统调用追踪：</strong> 虽然更深入的 <code>strace</code> 日志可能会有所帮助，但在 PID 已知之前，通过 UID 和命令名称来隔离动态生成的用户级 <code>systemd</code> 进程存在巨大的追踪挑战。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>File System Activity:</strong> Using <code>opensnoop-bpfcc</code> to monitor opened files showed nothing blatantly wrong, though notable gaps in file-opening activity were present.</li>
+<li><strong>System Call Tracing:</strong> While deeper <code>strace</code> logs could help, isolating a dynamically spawned user-level <code>systemd</code> process by UID and command name before its PID is known presents a significant tracking challenge.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="5">5. 潜在的根本原因</h2>
+<p>怀疑点并不在于 <code>systemd</code> 本身。相反，<code>systemd</code> 似乎正在查询或与某个在此特定主机上异常缓慢的子系统进行交互。</p>
+<p>这台机器上还存在其他细微的性能异常——例如 <code>dpkg -S</code> 有时会变慢——但<a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/PrometheusGrafanaSetup-2019">我们的指标监控系统</a>显示没有明显的硬件瓶颈（如 CPU 节流或内存耗尽）。对于最终可能归结为简单的局部配置或硬件怪癖的问题，很容易陷入过度复杂化诊断的陷阱。</p>
+<blockquote>
+<p>Suspicions point away from <code>systemd</code> itself. Instead, <code>systemd</code> appears to be querying or interacting with a subsystem that is unusually sluggish on this specific host. </p>
+<p>Other minor performance anomalies exist on this machine—such as occasional slowness with <code>dpkg -S</code>—yet <a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/PrometheusGrafanaSetup-2019">our metrics monitoring system</a> shows no obvious hardware bottlenecks (such as throttled CPUs or exhausted RAM). It is easy to fall into the trap of overcomplicating diagnostics for what may ultimately boil down to a simple, localized configuration or hardware quirk.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">systemd</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Linux</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">SSH</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Ubuntu</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
