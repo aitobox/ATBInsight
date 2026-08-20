@@ -1,0 +1,786 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-21-ERASE%EF%BC%9A%E7%94%A8%E4%BA%8E%E7%8E%B0%E4%BB%A3%E6%8E%A8%E8%8D%90%E7%B3%BB%E7%BB%9F%E5%8A%A0%E9%80%9F%E8%AE%AD%E7%BB%83%E7%9A%84%E6%97%A9%E6%9C%9F%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD%E8%B0%83%E5%BA%A6%E6%96%B9%E6%A1%88/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>ERASE：用于现代推荐系统加速训练的早期反向传播调度方案 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ERASE：用于现代推荐系统加速训练的早期反向传播调度方案
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#erase-early-backpropagation-schedule-for-faster-training-of-modern-recommendation-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ERASE: EaRly bAckpropagation SchEdule for Faster Training of Modern Recommendation Systems
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ERASE: EaRly bAckpropagation SchEdule for Faster Training of Modern Recommendation Systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Concepts
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-inefficiency-of-conventional-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Inefficiency of Conventional Training
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        传统训练的低效性
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-erase-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The ERASE Mechanism
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#erase" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ERASE 机制
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance Highlights
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        性能亮点
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-the-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Accessing the Paper
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        论文访问
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>现代大规模推荐系统（如点击率预估模型）在训练过程中，传统的端到端前向和反向传播常由于严格的依赖顺序而面临硬件利用率不足的问题。本文介绍了一种名为 <strong>ERASE</strong>（EaRly bAckpropagation SchEdule）的新型训练技术，旨在打破这种全局依赖链，从而大幅提升训练吞吐量。</p>
+<p>ERASE 的核心创新在于将前向-前向（FF）网络中的解耦（detachment）机制重新定义为一个调度原语。通过截断模块输出并解除下游梯度依赖，系统能够在前向传播局部完成后立即启动反向传播，并通过独立的 CUDA 流与后续的前向计算进行重叠执行。在大规模 CTR 模型上的实验表明，该技术在保持模型性能的同时，可将吞吐量提升高达 <strong>9.51%</strong>。</p>
+<hr />
+<h1 id="erase-early-backpropagation-schedule-for-faster-training-of-modern-recommendation-systems">ERASE: EaRly bAckpropagation SchEdule for Faster Training of Modern Recommendation Systems</h1>
+<p><strong>Authors:</strong> Ergan Shang, Flavio Sales Truzzi<br />
+<strong>Date:</strong> August 19, 2026<br />
+<strong>Primary Subject:</strong> Machine Learning (cs.LG)<br />
+<strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.18469">2608.18469</a></p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>The paper introduces <strong>ERASE</strong> (EaRly bAckpropagation SchEdule), a novel training technique designed to accelerate the training of modern recommendation systems. </p>
+<blockquote>
+<p>本文介绍了 <strong>ERASE</strong>（EaRly bAckpropagation SchEdule，早期反向传播调度），这是一种旨在加速现代推荐系统训练的新型训练技术。</p>
+</blockquote>
+<p>Traditional training methods treat forward and backward passes as disjoint phases, leading to underutilized hardware capacity. ERASE reinterprets the detachment mechanism from Forward-Forward (FF) networks as a scheduling primitive. By detaching a block's output, the system removes downstream gradient dependencies, allowing the backward pass to be initiated immediately upon the completion of the forward pass. These backward passes are launched on separate CUDA streams, enabling them to overlap with subsequent forward computations. Experimental results on large-scale click-through-rate (CTR) models demonstrate a throughput improvement of up to <strong>9.51%</strong> while maintaining model performance.</p>
+<blockquote>
+<p>传统的训练方法将前向传播和反向传播视为互不相交的阶段，导致硬件算力未得到充分利用。ERASE 重新诠释了前向-前向（FF）网络中的解耦机制，将其作为调度原语。通过解耦某个模块的输出，系统去除了下游的梯度依赖，使得反向传播能够在对应前向传播完成后立即启动。这些反向传播任务会在独立的 CUDA 流上启动，从而能够与后续的前向计算实现并行重叠。在大规模点击率（CTR）模型上的实验结果表明，在保持模型性能的同时，吞吐量提升高达 <strong>9.51%</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="key-concepts">Key Concepts</h2>
+<h3 id="the-inefficiency-of-conventional-training">The Inefficiency of Conventional Training</h3>
+<p>In standard deep learning pipelines, the backward pass must wait for the entire forward pass to complete, and vice versa. This creates "bubbles" in the execution pipeline where hardware accelerators (like GPUs) are not fully utilized, particularly in lightweight proxy models where kernel sizes are small.</p>
+<blockquote>
+<h3 id="_2">传统训练的低效性</h3>
+<p>在标准的深度学习流水线中，反向传播必须等待整个前向传播完成，反之亦然。这会在执行流水线中产生“气泡”（bubbles），导致硬件加速器（如 GPU）无法被充分利用，尤其是在内核规模较小的轻量级代理模型中更为明显。</p>
+</blockquote>
+<h3 id="the-erase-mechanism">The ERASE Mechanism</h3>
+<ul>
+<li><strong>Detachment as a Primitive:</strong> By using a local objective to detach a block's output, the model breaks the global dependency chain.</li>
+<li><strong>Early Backpropagation:</strong> Once a block is detached, its backward pass is no longer dependent on the rest of the network's forward pass.</li>
+<li><strong>Concurrent Execution:</strong> ERASE schedules these ready-to-run backward passes on separate CUDA streams, effectively filling the "spare capacity" of the device with concurrent forward and backward operations.</li>
+</ul>
+<blockquote>
+<h3 id="erase">ERASE 机制</h3>
+<ul>
+<li><strong>作为原语的解耦：</strong> 通过使用局部目标函数来解耦模块的输出，模型打破了全局依赖链。</li>
+<li><strong>早期反向传播：</strong> 一旦某个模块被解耦，其反向传播将不再依赖于网络其余部分的前向传播。</li>
+<li><strong>并发执行：</strong> ERASE 将这些准备就绪的反向传播任务调度到不同的 CUDA 流上，有效地利用前向和反向操作的并发执行来填补设备的“闲置算力”。</li>
+</ul>
+</blockquote>
+<h3 id="performance-highlights">Performance Highlights</h3>
+<ul>
+<li><strong>Throughput:</strong> Achieved up to a <strong>9.51% increase</strong> in training speed on large-scale CTR models.</li>
+<li><strong>Stability:</strong> The method maintains normalized entropy levels comparable to baseline models, ensuring that the speed gains do not come at the cost of model quality.</li>
+<li><strong>Constraint:</strong> The authors note that the effectiveness of this overlap is limited by device saturation; if a kernel fully saturates the accelerator, there is no remaining capacity for concurrent execution.</li>
+</ul>
+<blockquote>
+<h3 id="_3">性能亮点</h3>
+<ul>
+<li><strong>吞吐量：</strong> 在大规模 CTR 模型上，训练速度实现了高达 <strong>9.51% 的提升</strong>。</li>
+<li><strong>稳定性：</strong> 该方法保持了与基线模型相当的归一化熵水平，确保速度的提升不会以牺牲模型质量为代价。</li>
+<li><strong>限制条件：</strong> 作者指出，这种重叠执行的有效性受到设备饱和度的限制；如果某个内核完全占满了加速器，则没有多余的算力来进行并发执行。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="accessing-the-paper">Accessing the Paper</h2>
+<ul>
+<li><strong><a href="https://arxiv.org/pdf/2608.18469">View PDF</a></strong></li>
+<li><strong><a href="https://arxiv.org/html/2608.18469v1">HTML Version</a></strong></li>
+<li><strong><a href="https://arxiv.org/src/2608.18469">TeX Source</a></strong></li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.18469">https://doi.org/10.48550/arXiv.2608.18469</a></li>
+</ul>
+<blockquote>
+<h2 id="_4">论文访问</h2>
+<ul>
+<li><strong><a href="https://arxiv.org/pdf/2608.18469">查看 PDF</a></strong></li>
+<li><strong><a href="https://arxiv.org/html/2608.18469v1">HTML 版本</a></strong></li>
+<li><strong><a href="https://arxiv.org/src/2608.18469">TeX 源码</a></strong></li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.18469">https://doi.org/10.48550/arXiv.2608.18469</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">推荐系统</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型训练</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">硬件加速</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">算法优化</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

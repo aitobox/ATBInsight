@@ -1,0 +1,847 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-21-%E5%91%A8%E6%9C%AB%E8%B6%A3%E8%B0%88%EF%BC%9A%E4%BD%A0%E7%9A%84%E8%BF%9B%E7%A8%8B%E5%86%85%E5%AD%98%E5%85%B6%E5%AE%9E%E5%B0%B1%E6%98%AF%E4%B8%80%E4%B8%AA%E6%96%87%E4%BB%B6/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>周末趣谈：你的进程内存其实就是一个文件 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              周末趣谈：你的进程内存其实就是一个文件
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weekend-trivia-your-process-memory-is-a-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Weekend Trivia: Your Process' Memory is a File
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unix" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Unix 的“一切皆文件”哲学
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-unix-everything-is-a-file-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Unix "Everything is a File" Philosophy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pid-proc" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        超越文件描述符：PID 与 <code>/proc</code> 文件系统
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beyond-file-descriptors-pids-and-the-proc-filesystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Beyond File Descriptors: PIDs and the <code>/proc</code> Filesystem
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#procselfmem" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        通过 <code>/proc/self/mem</code> 与进程内存交互
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interacting-with-process-memory-via-procselfmem" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Interacting with Process Memory via <code>/proc/self/mem</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#memfetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        重生 <code>memfetch</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reviving-memfetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reviving <code>memfetch</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">周末趣谈：你的进程内存其实就是一个文件</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文探讨了 Unix 和 Linux 系统中关于“一切皆文件”哲学的实际应用与局限性，并重点介绍了通过 <code>/proc/&lt;pid&gt;/mem</code> 伪文件直接读写任意进程实时内存的精妙机制。作者通过一个展示“自我手术”的 C 语言示例，演示了如何利用标准的 <code>pwrite</code> 等文件操作无缝修改内存。此外，文章还重温并现代化改造了作者在 2002 年编写的经典工具 <code>memfetch</code>，使其能够在现代 64 位系统上将进程内存转储为原始二进制文件。</p>
+<blockquote>
+<h2 id="weekend-trivia-your-process-memory-is-a-file">Weekend Trivia: Your Process' Memory is a File</h2>
+<h2 id="summary">Summary</h2>
+<p>While Unix systems don't strictly live up to the "everything is a file" philosophy, Linux offers a fascinating realization of this concept through the <code>/proc/&lt;pid&gt;/mem</code> pseudo-file. By using standard file operations like <code>lseek</code> and <code>pwrite</code> (or <code>pread</code>), a program can seamlessly read or modify the live memory of another process in real time. This article explores this elegant API, examines a C demonstration of self-surgery, and revisits <code>memfetch</code>—a retro utility updated for modern 64-bit systems to dump process memory into raw binary files.</p>
+</blockquote>
+<hr />
+<h2 id="unix">Unix 的“一切皆文件”哲学</h2>
+<p>有人说，Unix 的设计哲学是“一切皆文件”。如果你熟悉类 Unix 平台，你可能知道它们并没有完全兑现这个宏大宣传。诚然，这些系统允许通过 <code>/sys</code> 或 <code>/dev</code> 等目录中的类文件对象来便捷地访问硬件。与此同时，许多操作系统功能并没有通过文件暴露出来；例如，如果不使用专用的系统调用，你就无法连接到远程 Web 服务器。</p>
+<blockquote>
+<h2 id="the-unix-everything-is-a-file-philosophy">The Unix "Everything is a File" Philosophy</h2>
+<p>Some folks say that the design philosophy of Unix is that “everything is a file”. If you’re familiar with Unix-like platforms, you probably know that they don’t quite live up to the hype. It’s true that these systems allow convenient access to hardware through file-like objects in directories such as <code>/sys</code> or <code>/dev</code>. At the same time, there’s plenty of OS functionality that isn’t exposed via files; for example, you can’t connect to a remote webserver without using a dedicated system call.</p>
+</blockquote>
+<p>这大概是人们很希望做到的一点！一个名为 <em>bash</em> 的流行 Shell 带有变通方案：它对某些文件路径进行了特殊处理，从而让你能构造出下面这种 Shell 怪胎：</p>
+<blockquote>
+<p>This is something people would probably have liked to do! A popular shell called <em>bash</em> comes with a workaround: it special-cases certain file paths, letting you construct the following shell monstrosity:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span><span class="o">(</span><span class="nb">echo</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;GET / HTTP/1.0\nHost: coredump.cx\n&#39;</span><span class="w"> </span><span class="m">1</span>&gt;<span class="p">&amp;</span><span class="m">0</span><span class="p">;</span><span class="w"> </span>cat<span class="o">)</span><span class="w"> </span>&lt;/dev/tcp/coredump.cx/80
+HTTP/1.1<span class="w"> </span><span class="m">301</span><span class="w"> </span>Moved<span class="w"> </span>Permanently
+Date:<span class="w"> </span>Mon,<span class="w"> </span><span class="m">01</span><span class="w"> </span>Jun<span class="w"> </span><span class="m">2026</span><span class="w"> </span><span class="m">01</span>:07:22<span class="w"> </span>GMT
+Content-Type:<span class="w"> </span>text/html<span class="p">;</span><span class="w"> </span><span class="nv">charset</span><span class="o">=</span>UTF-8
+Connection:<span class="w"> </span>close
+Location:<span class="w"> </span>https://coredump.cx/
+...
+</code></pre></div>
+<p>话虽如此，<code>/dev/tcp/&lt;server&gt;/&lt;port&gt;</code> 这一招仅适用于由 Shell 自身打开的文件。如果你把这样的路径传递给任何其他程序，你将无法获得期望的结果：</p>
+<blockquote>
+<p>That said, the <code>/dev/tcp/&lt;server&gt;/&lt;port&gt;</code> trick works only for the files opened by the shell itself. If you pass such a path to any other program, you won’t get the expected result:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>cat<span class="w"> </span>/dev/tcp/coredump.cx/80
+cat:<span class="w"> </span>/dev/tcp/coredump.cx/80:<span class="w"> </span>No<span class="w"> </span>such<span class="w"> </span>file<span class="w"> </span>or<span class="w"> </span>directory
+</code></pre></div>
+<p>如果你对这种不一致性发牢骚，你可能会听到这样的解释：并非一切都是文件，而是“一切皆<strong>文件描述符</strong>（<em>file descriptor</em>）”。也就是说，你可能需要做一些特殊的事情来发起 TCP/IP 连接，但一旦完成，返回的连接标识符就具有类似文件的语义，并且可以传递给标准的文件 API，例如 <em>read(…)</em> 和 <em>write(…)</em>。</p>
+<blockquote>
+<p>If you complain about this inconsistency, you might get told that not everything is a file; instead, “everything is a <em>file</em> <em>descriptor</em>”. That is, you might need to do something special to initiate a TCP/IP connection, but once this is done, the returned connection identifier has file-like semantics and can be passed to standard file APIs such as <em>read(…)</em> and <em>write(…)</em>.</p>
+</blockquote>
+<hr />
+<h2 id="pid-proc">超越文件描述符：PID 与 <code>/proc</code> 文件系统</h2>
+<p>并非一切皆文件描述符！操作系统的某些部分使用独立的命名空间和 API；进程标识符（PID）就是一个很好的例子。你不能对一个进程标识符调用 <em>read(…)</em>：PID 和文件描述符都只是整数，但它们使用相同的数字来引用不相干的事物。（最近的 Linux 内核引入了一个特殊的系统调用，允许你将 PID 转换为<a href="https://www.man7.0rg/linux/man-pages/man2/pidfd_open.2.html">受限用途的文件描述符</a>，但目前用它能做的事情还非常有限。）</p>
+<blockquote>
+<h2 id="beyond-file-descriptors-pids-and-the-proc-filesystem">Beyond File Descriptors: PIDs and the <code>/proc</code> Filesystem</h2>
+<p>Not everything is a file descriptor! Some parts of the OS use separate namespaces and APIs; a good example are process identifiers (PIDs). You can’t call <em>read(…)</em> on a process identifier: both PIDs and file descriptors are just integers, but they use the same numbers to reference unrelated things. (Recent Linux kernels have a special system call that lets you convert a PID into a <a href="https://www.man7.org/linux/man-pages/man2/pidfd_open.2.html">limited-use file descriptor</a>, but there’s little you can currently do with that.)</p>
+</blockquote>
+<p>乍一看，通过文件与 PID 交互的最接近方式是通过一个名为 <code>/proc</code> 的伪文件系统来窥探进程的元数据。可惜的是，这些数据在很大程度上似乎是只读的，而且并不是特别有趣。它们就是你在 <em>ps</em> 或 <em>top</em> 输出中看到的内容：</p>
+<blockquote>
+<p>At first blush, the closest you can get to interacting with PIDs via files is to peek at process metadata via a pseudo-filesystem called <code>/proc</code>. Alas, the data appears to be largely read-only and not particularly interesting. It’s the stuff you see in the output of <em>ps</em> or <em>top</em>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>cat<span class="w"> </span>/proc/self/status
+Name:<span class="w">   </span>cat
+Umask:<span class="w">  </span><span class="m">0077</span>
+State:<span class="w">  </span>R<span class="w"> </span><span class="o">(</span>running<span class="o">)</span>
+...
+Pid:<span class="w">    </span><span class="m">29329</span>
+PPid:<span class="w">   </span><span class="m">17523</span>
+...
+Uid:<span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span>
+Gid:<span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span><span class="w">    </span><span class="m">1000</span>
+...
+VmSize:<span class="w">     </span><span class="m">2420</span><span class="w"> </span>kB
+...
+</code></pre></div>
+<hr />
+<h2 id="procselfmem">通过 <code>/proc/self/mem</code> 与进程内存交互</h2>
+<p>如果你曾在 Linux 上四处探索 <code>/proc/&lt;pid&gt;/</code> 目录，你可能会注意到一个神秘的文件，它看起来似乎无法读取：</p>
+<blockquote>
+<h2 id="interacting-with-process-memory-via-procselfmem">Interacting with Process Memory via <code>/proc/self/mem</code></h2>
+<p>If you ever snooped around the <code>/proc/&lt;pid&gt;/</code> directory on Linux, you might have noticed a mysterious file that seemingly can’t be read:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>cat<span class="w"> </span>/proc/self/mem
+cat:<span class="w"> </span>/proc/self/mem:<span class="w"> </span>I/O<span class="w"> </span>error
+</code></pre></div>
+<p>要想从这个“文件”中获取任何东西，你需要先 <em>lseek(…)</em> 到一个特定的偏移量，然后才能调用 <em>read(…)</em> 或 <em>write(…)</em>；或者，你也可以在调用 <em>pread(…)</em> 或 <em>pwrite(…)</em> 时直接传入偏移量。如果你遵循这个步骤，你就可以实时无缝地获取或修改目标程序的内存。</p>
+<blockquote>
+<p>To get anything out of that “file”, you need to <em>lseek(…)</em> to a specific offset before calling <em>read(…)</em> or <em>write(…)</em>; alternatively, you can pass the offset when calling <em>pread(…)</em> or <em>pwrite(…)</em>. If you follow that procedure, you can then seamlessly fetch or modify the memory of the target program in real time.</p>
+</blockquote>
+<p>下面是它的实际工作方式——一个通过基于文件的接口执行表演性质的自我手术的程序（<a href="https://godbolt.org/z/hsEfdqhhh">演示链接</a>）：</p>
+<blockquote>
+<p>Here’s how it works in practice — a program that carries out performative self-surgery via the file-based interface (<a href="https://godbolt.org/z/hsEfdqhhh">demo link</a>):</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;fcntl.h&gt;</span>
+
+<span class="cp">#define  gcc_barrier() asm volatile (&quot;&quot; ::: &quot;memory&quot;)</span>
+
+<span class="k">volatile</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">my_val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">  </span><span class="cm">/* Open the process&#39; own memory file. */</span>
+
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">mem_fd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">open</span><span class="p">(</span><span class="s">&quot;/proc/self/mem&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">O_RDWR</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">mem_fd</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">  </span><span class="cm">/* Write &#39;123&#39; at the file offset associated with my_val. */</span>
+
+<span class="w">  </span><span class="n">pwrite</span><span class="p">(</span><span class="n">mem_fd</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="p">(</span><span class="kt">int</span><span class="p">){</span><span class="mi">123</span><span class="p">},</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="kt">off_t</span><span class="p">)</span><span class="o">&amp;</span><span class="n">my_val</span><span class="p">);</span>
+
+<span class="w">  </span><span class="cm">/* Display my_val, with compiler barrier to prevent reordering. */</span>
+
+<span class="w">  </span><span class="n">gcc_barrier</span><span class="p">();</span>
+<span class="w">  </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;my_val = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">my_val</span><span class="p">);</span>
+
+<span class="p">}</span>
+</code></pre></div>
+<p>大约 25 年前我第一次发现这个 API 时，我发现它异常优雅。标准的 Unix 调试接口 <em>ptrace(…)</em> 支持一对更为人熟知的 <code>PTRACE_PEEKDATA</code> 和 <code>PTRACE_POKEDATA</code> 方法，但 <em>ptrace(…)</em> 极其笨拙晦涩；相比之下，<code>/proc/&lt;pid&gt;/mem</code> 在其简洁性上堪称完美。</p>
+<blockquote>
+<p>When I first discovered this API some 25 years ago, I found it to be remarkably elegant. The standard Unix debugging interface, <em>ptrace(…)</em>, supports a pair of better-known <code>PTRACE_PEEKDATA</code> and <code>PTRACE_POKEDATA</code> methods, but <em>ptrace(…)</em> is incredibly janky; in contrast, <code>/proc/&lt;pid&gt;/mem</code> is beautiful in its simplicity.</p>
+</blockquote>
+<hr />
+<h2 id="memfetch">重生 <code>memfetch</code></h2>
+<p>在 2002 年，我对这个 API 的迷恋促使我编写了一个非常简单的程序，名叫 <em>memfetch</em>；这个实用工具允许你对所选的任何进程内存进行非破坏性的“截图”，无论是为了满足好奇心、绕过反调试特性，还是从无响应的应用程序中恢复数据。这个周末，我把它重新翻了出来，并对代码进行了全面改造，使其能够在现代 64 位系统上运行：</p>
+<blockquote>
+<h2 id="reviving-memfetch">Reviving <code>memfetch</code></h2>
+<p>In 2002, my fascination with this API prompted me to write a very simple program called <em>memfetch</em>; the utility allowed you to grab a non-destructive “screenshot” of the memory of any process of your choice, be it to satiate curiosity, to work around anti-debugging features, or to recover data from a non-responsive app. This weekend, I dug it up and overhauled the code to work on modern 64-bit systems:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./memfetch<span class="w"> </span><span class="m">9742</span>
+memfetch<span class="w"> </span><span class="m">1</span>.02<span class="w"> </span>by<span class="w"> </span>Michal<span class="w"> </span>Zalewski<span class="w"> </span>&lt;lcamtuf@coredump.cx&gt;
+<span class="o">[</span>+<span class="o">]</span><span class="w"> </span>Attached<span class="w"> </span>to<span class="w"> </span>PID<span class="w"> </span><span class="m">9742</span><span class="w"> </span><span class="o">(</span>/usr/bin/vim<span class="o">)</span>.
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Processing<span class="w"> </span>memory<span class="w"> </span>maps<span class="w"> </span><span class="o">(</span>index:<span class="w"> </span>mf-index.txt<span class="o">)</span>...
+<span class="w">    </span>-<span class="w"> </span>Skipping<span class="w"> </span>read-only<span class="w"> </span>section<span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;vim&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">224</span><span class="w"> </span>kB<span class="o">)</span>.
+<span class="w">    </span>-<span class="w"> </span>Skipping<span class="w"> </span>read-only<span class="w"> </span>section<span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;vim&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">1832</span><span class="w"> </span>kB<span class="o">)</span>.
+<span class="w">    </span>-<span class="w"> </span>Skipping<span class="w"> </span>read-only<span class="w"> </span>section<span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;vim&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">464</span><span class="w"> </span>kB<span class="o">)</span>.
+<span class="w">    </span>-<span class="w"> </span>Skipping<span class="w"> </span>read-only<span class="w"> </span>section<span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;vim&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">72</span><span class="w"> </span>kB<span class="o">)</span>.
+<span class="w">    </span>+<span class="w"> </span>Dumping<span class="w"> </span>writable<span class="w"> </span>section<span class="w"> </span>from<span class="w"> </span><span class="s1">&#39;vim&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">176</span><span class="w"> </span>kB<span class="o">)</span><span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;mf-map-005.bin&#39;</span>...
+<span class="w">    </span>+<span class="w"> </span>Dumping<span class="w"> </span>anonymous<span class="w"> </span>memory<span class="w"> </span><span class="o">(</span><span class="m">56</span><span class="w"> </span>kB<span class="o">)</span><span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;mf-mem-006.bin&#39;</span>...
+<span class="w">    </span>+<span class="w"> </span>Dumping<span class="w"> </span>anonymous<span class="w"> </span>memory<span class="w"> </span><span class="o">(</span><span class="m">4</span><span class="w"> </span>kB<span class="o">)</span><span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;mf-mem-007.bin&#39;</span>...
+<span class="w">    </span>+<span class="w"> </span>Dumping<span class="w"> </span>anonymous<span class="w"> </span>memory<span class="w"> </span><span class="o">(</span><span class="m">40</span><span class="w"> </span>kB<span class="o">)</span><span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;mf-mem-008.bin&#39;</span>...
+...
+</code></pre></div>
+<p>该程序为你提供了一组原始二进制文件，你可以对它们进行 grep 搜索、在编辑器中打开等等。你可以在<a href="http://lcamtuf.coredump.cx/soft/memfetch.tgz">此处</a>下载源码。</p>
+<blockquote>
+<p>The program gives you a collection of raw binary files that can be grepped, opened in an editor, and so forth. You can download the source <a href="http://lcamtuf.coredump.cx/soft/memfetch.tgz">here</a>.</p>
+</blockquote>
+<p>某些读者可能会觉得有趣的是，在 2000 年代初，Linux 2.2 允许你对生成的 <code>/proc/&lt;pid&gt;/mem</code> 文件描述符调用 <em>mmap(…)</em>，从而将目标进程的内存镜像映射到你的地址空间。这简直好得令人难以置信：<em>memfetch</em> 的最初版本有时会因为页表（page tables）不同步而导致整个系统崩溃或挂起。不久之后，整个 <em>mmap(…)</em> 逻辑就被彻底删除了。</p>
+<blockquote>
+<p>Some readers might find it amusing that in the early 2000s, Linux 2.2 allowed you to call <em>mmap(…)</em> on the resulting <code>/proc/&lt;pid&gt;/mem</code> file descriptor, mirroring the memory of the target process to your address space. This was too good to be true: the initial version of <em>memfetch</em> would sometimes crash or hang the entire system due to page tables getting out of sync. Soon after, the entire <em>mmap(…)</em> logic was yanked out.</p>
+<p><strong>更正</strong>：感谢 Jann Horn 向我指出了 pidfds 并发现了与 <code>PTRACE_ATTACH</code> 相关的一个错误。我最初声称访问该文件是必需的，但实际上并非如此。</p>
+<blockquote>
+<p><strong>Correction:</strong> Thanks to Jann Horn who pointed me to pidfds and spotted a mistake related to <code>PTRACE_ATTACH</code>. I initially stated it’s necessary for accessing the file, but it isn’t.</p>
+</blockquote>
+</blockquote>
+<hr />
+<p><em>如果你是一名软件工程师，你可能也会喜欢：</em></p>
+<p><em>我撰写关于电子学、数学和其他内容的原创文章。如果你喜欢你所看到的，请订阅。</em></p>
+<blockquote>
+<p><em>If you are a software engineer, you might also enjoy:</em></p>
+<p><em>I write original articles about electronics, math, and other stuff. If you like what you see, please subscribe.</em></p>
+</blockquote>
+<p><a href="https://blog.coredump.cx/subscribe?">立即订阅</a></p>
+<blockquote>
+<p><a href="https://blog.coredump.cx/subscribe?">Subscribe now</a></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Linux</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">进程内存</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">/proc</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统编程</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">C语言</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

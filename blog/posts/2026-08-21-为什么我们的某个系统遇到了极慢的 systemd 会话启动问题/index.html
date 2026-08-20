@@ -1,0 +1,713 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-21-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E4%BB%AC%E7%9A%84%E6%9F%90%E4%B8%AA%E7%B3%BB%E7%BB%9F%E9%81%87%E5%88%B0%E4%BA%86%E6%9E%81%E6%85%A2%E7%9A%84%20systemd%20%E4%BC%9A%E8%AF%9D%E5%90%AF%E5%8A%A8%E9%97%AE%E9%A2%98/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>为什么我们的某个系统遇到了极慢的 systemd 会话启动问题 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              为什么我们的某个系统遇到了极慢的 systemd 会话启动问题
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        调查过程
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-investigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Investigation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        意料之外的罪魁祸首：持久化的运行时限制
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-unexpected-culprit-persistent-runtime-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Unexpected Culprit: Persistent Runtime Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心要点
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-takeaways" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Takeaways
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">为什么我们的某个系统遇到了极慢的 systemd 会话启动问题</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在服务器运维过程中，合理的资源限制本该保护系统免受用户误操作的影响，但有时过严的策略却会引发隐蔽的性能陷阱。本文记录了一起因过于严格的资源限制导致服务器系统响应迟钝、systemd 用户会话启动极其缓慢的故障排查过程。</p>
+<p>文章的核心原因在于通过 <code>systemd</code> 和 <code>pam_exec</code> 应用了极其严格的 CPU 和内存约束，并借助 <code>--runtime</code> 标志将这些限制写入了 <code>/run</code> 目录。由于这些配置在用户登出后依然残留在 <code>/run/systemd/system.control/</code> 中，当用户再次登录、系统重建 <code>user-&lt;uid&gt;.slice</code> 时，这些限制会从初始化阶段就开始生效，从而严重拖慢了 systemd 会话初始化以及日常管理命令的执行。通过适当放宽限制并理解 <code>--runtime</code> 的持久化特性，该性能问题得到了圆满解决。</p>
+<hr />
+<h2 id="_2">调查过程</h2>
+<blockquote>
+<h2 id="the-investigation">The Investigation</h2>
+</blockquote>
+<p>此前我注意到，在我们的某台服务器上，用户会话设置期间 systemd 加载用户单元（user units）竟然需要三秒钟的时间，而且尽管 I/O 指标完全正常，系统整体却表现出莫名的迟钝。</p>
+<blockquote>
+<p>Previously, I noted how systemd took three seconds to load user units during session setup on one of our servers, alongside unexplained general system slowness despite healthy I/O metrics.</p>
+</blockquote>
+<p>这台特定的机器是我们 <a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/SlurmHowWeUseIt">SLURM 集群</a>的头节点（主服务器）。由于历史原因，用户通常会直接登录这里来提交作业，这导致我们经常遇到用户不小心在该节点上直接运行消耗大量 CPU 或内存的准备任务。为了劝阻这种行为，我们在 <code>user-&lt;uid&gt;.slice</code> 单元上实施了非常严格的 <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/Ubuntu1804SystemdUserLimits">基于 systemd 的 CPU</a> 和 <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/SystemdUserMemoryLimits">内存限制</a>：128 MB RAM 以及单个 CPU 的 25%。在 Ubuntu 26.04 上，这些限制严苛到让像 <code>dpkg -S</code> 这样的常规命令都变得慢得明显。</p>
+<blockquote>
+<p>This specific machine is the head node (master server) of our <a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/SlurmHowWeUseIt">SLURM cluster</a>. Because users historically logged in here to submit jobs, we faced ongoing issues with people accidentally running heavy CPU or memory-consuming preparation tasks directly on the node. To discourage this, we implemented very strict <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/Ubuntu1804SystemdUserLimits">systemd-based CPU</a> and <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/SystemdUserMemoryLimits">memory limits</a> on <code>user-&lt;uid&gt;.slice</code> units: 128 MB of RAM and 25% of a single CPU. On Ubuntu 26.04, these limits proved restrictive enough to make routine commands like <code>dpkg -S</code> noticeably slow.</p>
+</blockquote>
+<hr />
+<h2 id="_3">意料之外的罪魁祸首：持久化的运行时限制</h2>
+<blockquote>
+<h2 id="the-unexpected-culprit-persistent-runtime-limits">The Unexpected Culprit: Persistent Runtime Limits</h2>
+</blockquote>
+<p>虽然这些资源限制很容易解释登录后 <code>dpkg</code> 等命令变慢的原因，但起初它们似乎与 systemd 会话的设置并没有关系。这些限制是通过 <a href="https://man7.org/linux/man-pages/man8/pam_exec.8.html"><code>pam_exec</code></a> 在 <a href="https://man7.org/linux/man-pages/man8/pam_systemd.8.html"><code>pam_systemd</code></a> 构建用户会话<em>之后</em>应用的。此外，<code>user-&lt;uid&gt;.slice</code> 单元在用户登出后理应完全消失。</p>
+<blockquote>
+<p>While the resource limits easily explained the slowness of commands like <code>dpkg</code> post-login, they initially seemed unrelated to systemd session setup. These limits are applied via <a href="https://man7.org/linux/man-pages/man8/pam_exec.8.html"><code>pam_exec</code></a> <em>after</em> <a href="https://man7.org/linux/man-pages/man8/pam_systemd.8.html"><code>pam_systemd</code></a> constructs the user session. Furthermore, <code>user-&lt;uid&gt;.slice</code> units are supposed to disappear entirely upon logout.</p>
+</blockquote>
+<p>然而，我发现我错了。</p>
+<blockquote>
+<p>However, I discovered I was mistaken.</p>
+</blockquote>
+<p>我们使用以下命令设置针对每个用户的限制：</p>
+<blockquote>
+<p>We set per-user limits using:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>systemctl<span class="w"> </span>--runtime<span class="w"> </span>set-property<span class="w"> </span>user-&lt;uid&gt;.slice<span class="w"> </span>...
+</code></pre></div>
+<p>正如文档所述，<code>--runtime</code> 标志不仅会修改内存中正在运行的单元，它还会将持久配置文件写入 <code>/run/systemd/system.control/&lt;unit&gt;.d/</code>，这些文件将一直保留到下一次重启。当 systemd 随后为再次登录的用户重新创建 <code>user-&lt;uid&gt;.slice</code> 时，这些 <code>/run</code> 中的文件会导致限制条件<strong>从一开始</strong>就被重新应用。因此，systemd 用户会话进程受到了极大的约束，从而大幅变慢。</p>
+<blockquote>
+<p>As documented, the <code>--runtime</code> flag does not merely modify the running unit in memory; it writes persistent configuration files to <code>/run/systemd/system.control/&lt;unit&gt;.d/</code>, which persist until the next reboot. When systemd subsequently recreated a <code>user-&lt;uid&gt;.slice</code> for a returning user, those <code>/run</code> files caused the restrictive limits to be re-applied <strong>right from the start</strong>. Consequently, the systemd user session process was heavily constrained and drastically slowed down. </p>
+</blockquote>
+<p>将限制提高到更合理的数值完全解决了会话启动迟钝的问题。</p>
+<blockquote>
+<p>Raising the limits to more reasonable values completely resolved the sluggish session startups.</p>
+</blockquote>
+<hr />
+<h2 id="_4">核心要点</h2>
+<blockquote>
+<h2 id="key-takeaways">Key Takeaways</h2>
+</blockquote>
+<ul>
+<li><strong><code>/run</code> 中的持久性：</strong> <code>--runtime</code> 标志写入的文件其生命周期会超出单独的用户会话。在登录时停止应用限制，并不能清除过去会话中建立的限制。要撤销它们，必须显式清除或重启系统。</li>
+<li><strong>重置 Cgroup v2 限制：</strong> Systemd 可能会在内存中缓存状态。要完全清除限制，可以通过配置参数将其重置：</li>
+<li>将 <code>CPUQuotaPerSecUSec</code> 设置为 <code>infinity</code></li>
+<li>将 <code>MemoryMax</code> 和/或 <code>MemoryHigh</code> 设置为 <code>infinity</code></li>
+<li>将 <code>TaskMax</code> 设置为适当的大系统默认值</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Persistence in <code>/run</code>:</strong> The <code>--runtime</code> flag writes files that outlive individual user sessions. Stopping the application of limits at login time does not clear limits established during past sessions. To undo them, you must explicitly clear them or reboot.</li>
+<li><strong>Resetting Cgroup v2 Limits:</strong> Systemd may cache state in memory. To completely clear limits, you can reset them via configuration parameters:</li>
+<li>Set <code>CPUQuotaPerSecUSec</code> to <code>infinity</code></li>
+<li>Set <code>MemoryMax</code> and/or <code>MemoryHigh</code> to <code>infinity</code></li>
+<li>Set <code>TaskMax</code> to an appropriate large system default</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Systemd</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Linux系统管理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能调优</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Cgroup</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PAM</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
