@@ -5,6 +5,531 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Measuring Benchmark Optimization in Speech Recognition</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/衡量语音识别中的基准过拟合现象/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/衡量语音识别中的基准过拟合现象/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>公开的语音 AI 基准测试往往给人一种模型表现已达到人类水平的错觉，但这些高分并不总能反映出真实世界的可靠性。由于主流基准测试是公开且被广泛使用的，模型可能会对“测试本身进行优化（即所谓的“benchmaxxing”）”——它们学会了针对特定基准的模式，而不是真正提升底层任务的能力。
+
+为了在自动语音识别（ASR）中量化这一现象，近期的一项研究在 11 个广泛使用的开源模型上引入了三项评估测试：1. **参考不一致性（Reference Disagreement）**：评估模型是转录音频实际发出的内容，还是盲目复制基准转录中的已知错误；2. **掩码实体检索（Masked Entity Retrieval）**：测试模型是根据音频内容，还是根据对基准文本的熟悉程度来幻觉或自动补全被静音的数字和实体；3. **正字法切换（Orthographic Switching）**：检查模型是否会根据它们检测到自己正在哪个数据集上受测，从而改变拼写习惯（例如“any one”对“anyone”，或“Mr.”对“Mister”）。
+
+研究结果表明，许多表现顶尖的模型利用了周围的声学和文本线索来迎合数据集特定的期望，从而高估了它们的真实泛化能力。作者建议采用保留评估集（如 *Real World VoiceEQ* 和 *Open-ASR Leaderboard*），并摒弃简单的独立同分布（IID）测试划分。
+
+---
+
+# Measuring Benchmark Optimization in Speech Recognition
+
+**Published:** August 21, 2026  
+**Authors:** Theo Lebryk, Eric Bezzam, Alice, David Ayllon, Jakub Piotr Cłapa, Jens Madsen, Panagiotis Tzirakis (Hume AI)
+
+---
+
+## Summary
+
+Public voice AI benchmarks often give the impression that models are performing at human levels, but these high scores do not always reflect real-world reliability. Because popular benchmarks are open and widely used, models can become **optimized for the tests themselves ("benchmaxxing")**—learning benchmark-specific patterns rather than improving at the underlying task. 
+
+To quantify this phenomenon in automatic speech recognition (ASR), recent research introduced three evaluation tests across 11 widely used open-source models:
+1. **Reference Disagreement:** Evaluating whether models transcribe what the audio actually says or blindly reproduce known errors in benchmark transcripts (e.g., from *VoxPopuli*).
+2. **Masked Entity Retrieval:** Testing whether models hallucinate or autocomplete silenced numbers and entities based on benchmark text familiarity rather than audio.
+3. **Orthographic Switching:** Checking whether models alter spelling conventions (e.g., "any one" vs. "anyone", or "Mr." vs. "Mister") based on which dataset they detect they are being tested on.
+
+The findings reveal that many top-performing models leverage surrounding acoustic and textual cues to match dataset-specific expectations, overstating their true generalization capabilities. The authors recommend adopting held-out evaluation sets (such as *Real World VoiceEQ* and the *Open-ASR Leaderboard*) and moving away from simple IID test splits.
+
+---
+
+## Reference Disagreement (VoxPopuli Case Study)
+## 参考不一致性（VoxPopuli 案例研究）
+
+VoxPopuli 众所周知包含大量的转录错误。一致性不一致探针（consensus disagreement probe）用于测试领先的 ASR 模型遇到这些错误时的反应：*它们是准确转录音频所说的话，还是复制基准中不正确的参考转录？*
+
+&gt; VoxPopuli is known to contain a high number of transcription errors. A consensus disagreement probe tests what happens when leading ASR models encounter these errors: *Do they accurately transcribe what the audio says, or reproduce the benchmark's incorrect reference transcript?*
+
+为了测试这一点，研究人员使用了一组具有较低音素错误率（PER）的独立模型集成，来标记模型与参考转录完全不一致的情况。例如，当音频片段中清晰包含短语 *"Thank you, Mr. President,"* 时，参考转录却漏掉了 *"Thank you."* 在测试的 11 个模型中，有 6 个复现了错误的参考转录。
+
+&gt; To test this, an ensemble of independent models with low phoneme error rates (PER) was used to flag cases where models unanimously disagreed with the reference transcript. For example, while an audio clip clearly includes the phrase *"Thank you, Mr. President,"* the reference transcript omits *"Thank you."* 6 out of 11 tested models reproduced the erroneous reference transcript. 
+
+然而，当在欧盟议会录音中新收集的语音或通用语音上进行测试时，这种行为基本消失了，这表明模型对表明其属于基准测试的声学线索作出了反应。
+
+&gt; However, when tested on newly collected voices from EU parliamentary recordings or generic voices, this behavior largely disappeared, suggesting models respond to acoustic cues indicating benchmark membership.
+
+&lt;div align="center"&gt;
+&lt;img alt="Scatterplot comparing VoxPopuli WER to the rate at which each model reproduces the benchmark's incorrect reference transcript." src="./images/3502c9f710e6.png" width="800px"/&gt;
+&lt;/div&gt;
+
+---
+
+## Masked Entity Retrieval
+## 掩码实体检索
+
+为了进一步验证一致性不一致性，测试数据集音频样本中的数字被刻意进行了静音处理。由于音频中不存在该数字，模型本不应该将其输出。
+
+&gt; To build on consensus disagreement, numbers were deliberately silenced in test dataset audio samples. Because the number is absent from the audio, models should not output it. 
+
+评估显示，在公共基准测试中，被掩码数字的恢复率最高，而在保留音频或新收集的音频上则显著较低。在 *LibriSpeech* 上，尽管音频已经被清洗，但表现顶尖的模型仍在 30%–40% 的样本中复现了被掩码的数字，这证明了周围与基准相关的上下文驱动了文本的补全。
+
+&gt; The evaluation showed that recovery rates for masked numbers were highest on public benchmarks and significantly lower on held-out or newly collected audio. On *LibriSpeech*, top-performing models reproduced masked numbers in 30–40% of examples despite the audio being scrubbed, demonstrating that surrounding benchmark-associated context drives textual completion.
+
+&lt;div align="center"&gt;
+&lt;img alt="Recovery rate of masked numbers on public benchmarks versus freshly collected held-out audio." src="./images/c6c281c2ab80.png" width="700px"/&gt;
+&lt;/div&gt;
+
+---
+
+## Orthographic Switching
+## 正字法切换
+
+正字法切换探针用于测试模型是否会复现完全相同的基准拼写变体（例如 *1* 对 *one*，*Mr.* 对 *mister*，*any one* 对 *anyone*），尽管它们的语音输入完全相同。
+
+&gt; The orthographic switching probe tests whether models reproduce exact benchmark spelling variants (e.g., *1* vs. *one*, *Mr.* vs. *mister*, *any one* vs. *anyone*) despite phonetically identical audio inputs. 
+
+* **数据集内切换（Intra-dataset switching）：** 通过 *LibriSpeech* 中的较旧空格惯例（*"any one"* 对 *"anyone"*）进行测试。
+* **数据集间切换（Inter-dataset switching）：** 通过不同基准之间的拼写差异（例如 *VoxPopuli* 使用 *"Mr."* 而 *LibriSpeech* 拼写为 *"Mister"*) 进行测试。
+
+&gt; * **Intra-dataset switching:** Tested via older spacing conventions in *LibriSpeech* (*"any one"* vs. *"anyone"*).
+&gt; * **Inter-dataset switching:** Tested via spelling differences across benchmarks (e.g., *VoxPopuli* using *"Mr."* vs. *LibriSpeech* spelling out *"Mister"*).
+
+多个模型的表现超过了 50% 的随机选择基准，部分模型甚至达到了约 90% 的切换准确率——这证明了**模型能够识别音频样本源自哪个数据集，并调整其格式以迎合预期。**
+
+&gt; Multiple models exceeded the 50% random-choice baseline, with some reaching ~90% switch accuracy—proving that **models can identify which dataset an audio sample originates from and adapt their formatting to match expectations.**
+
+&lt;div align="center"&gt;
+&lt;img alt='Switch rate for the "any one" vs "anyone" spacing convention, sorted by model.' src="./images/ef4a5084f07d.png" width="700px"/&gt;
+&lt;/div&gt;
+
+&lt;div align="center"&gt;
+&lt;img alt='Switch rate for the "Mr." vs "Mister" convention across VoxPopuli and LibriSpeech, sorted by model.' src="./images/8fae502d41bb.png" width="700px"/&gt;
+&lt;/div&gt;
+
+---
+
+## Localizing the Switches
+## 定位切换行为
+
+进一步的干预措施——例如使用超出训练截止日期的新鲜数据、翻译音频、限制注意力帧（attention frames）或裁剪周围的上下文——表明模型实际上*能够*忠实地转录字面口语。相反，它们是利用周围的声学上下文来决定是遵循音频本身，还是遵循特定于基准的转录策略。
+
+&gt; Further interventions—such as using fresh data past training cutoffs, translating audio, restricting attention frames, or trimming surrounding context—demonstrate that models *can* faithfully transcribe literal spoken words. Instead, they leverage surrounding acoustic context to decide whether to follow the audio or a benchmark-specific transcription policy.
+
+&lt;div align="center"&gt;
+&lt;img alt="Effect of steering the amount of surrounding benchmark-associated audio context on transcription behavior." src="./images/7505bafd95e5.png" width="800px"/&gt;
+&lt;/div&gt;
+
+---
+
+## Conclusion
+## 结论
+
+该研究表明，开源 ASR 模型经常能够检测到与数据集相关的声学线索，并调整其转录行为以契合基准的特质。
+
+&gt; The research demonstrates that open-source ASR models frequently detect dataset-associated acoustic cues and adjust their transcription behavior to match benchmark idiosyncrasies. 
+
+为了应对这一问题：
+* **对于模型选择者：** 使用完全保留的评估集（如 *RW-Voice-EQ Bench* 和 *Open ASR Leaderboard*），并超越单一基准的词错误率（WER）来看待问题。Open ASR Leaderboard 中现已新增一个“基准拟合（Benchmark fitting）”标签页，用于量化参考错误率和正字法切换。
+* **对于基准开发者：** 避免使用简单的独立同分布（IID）测试划分，转而采用基于时间、说话人或元数据的分离方式，以确保稳健的泛化能力。
+
+&gt; To combat this:
+&gt; * **For model selectors:** Use fully held-out evaluation sets (such as *RW-Voice-EQ Bench* and the *Open ASR Leaderboard*) and look beyond single-benchmark Word Error Rates (WER). A new "Benchmark fitting" tab has been added to the Open ASR Leaderboard to quantify reference error rates and orthographic switching.
+&gt; * **For benchmark developers:** Avoid simple IID test splits in favor of temporal, speaker, or metadata-based separation to ensure robust generalization.</description>
+    </item>
+    <item>
+      <title>2026-08-22-可解释架构的图形化设计</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/可解释架构的图形化设计/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/可解释架构的图形化设计/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>设计和实现可解释的机器学习架构通常缺乏统一的形式化表示方法。传统的符号方程难以提供架构的全局概览，而概率图模型和流程图则往往掩盖了张量层面的操作细节，从而限制了研究的可复现性。
+
+为了解决这一问题，本文引入了一种改编自 Penrose 张量符号的图形化表示法。该符号系统能够提供架构的高层全局视图，并能与 `PyTorch einsum` 代码实现一一对应。作者通过该方法展示了多种“构造性可解释”架构（如概念瓶颈模型、稀疏探测、原型网络等），并详细解析了前沿可解释语言模型 **Steerling-8B** 的核心架构组件。
+
+---
+
+## 摘要
+
+&gt; Designing, implementing, and comparing interpretable architectures requires a formal language to represent them. The most common representations fall short in one of two ways. Symbolic equations give no global view of an architecture at a glance. Probabilistic graphical models and flowcharts do not describe actual tensor manipulations, thus hiding key insights and limiting reproducibility. To close this gap, we introduce a graphical notation for designing interpretable AI architectures, adapted from Penrose tensor notation. This graphical notation gives a global view of an architecture and maps one to one onto PyTorch einsum code. We first use this notation to describe architectures that are interpretable by construction, including concept bottlenecks, sparse probes, prototype networks, neural additive models, and mixtures of linear models. We then diagram the key architectural components of Steerling-8B, a frontier interpretable language model. The diagram yields global insights into the architecture (e.g., showing that Steerling is a residual model), a geometric interpretation of each individual operation, and a direct translation into 33 lines of PyTorch code.
+
+设计、实现和比较可解释架构需要一种形式化语言来进行表示。目前最常见的表示方法在两个方面存在不足：符号方程无法一眼提供架构的全局视图；概率图模型和流程图则无法描述实际的张量操作，从而隐藏了关键见解并限制了可复现性。为了弥补这一差距，我们引入了一种用于设计可解释 AI 架构的图形化符号，该符号改编自 Penrose 张量符号。这种图形化符号提供了架构的全局视图，并能与 PyTorch `einsum` 代码实现一一对应。我们首先使用该符号描述了构造性可解释的架构，包括概念瓶颈模型、稀疏探测、原型网络、神经加性模型和线性模型混合体。随后，我们绘制了前沿可解释语言模型 Steerling-8B 的关键架构组件图。该图表不仅提供了对架构的全局洞察（例如，显示 Steerling 是一个残差模型），还为每个单独的操作提供了几何解释，并能直接转换为 33 行 PyTorch 代码。
+
+---
+
+## 文档元数据
+
+* **arXiv ID:** [arXiv:2608.18936](https://arxiv.org/abs/2608.18936) [cs.LG]
+* **主要学科:** 机器学习 (`cs.LG`)
+* **次要学科:** 人工智能 (`cs.AI`), 神经与进化计算 (`cs.NE`)
+* **作者:** Pietro Barbiero
+* **提交日期:** 2026年8月19日 (最后修订于 2026年8月20日)
+* **DOI:** [10.48550/arXiv.2608.18936](https://doi.org/10.48550/arXiv.2608.18936)
+
+---
+
+## 全文及访问链接
+
+* **PDF 版本:** [查看 PDF](https://arxiv.org/pdf/2608.18936)
+* **HTML 版本:** [HTML (实验性)](https://arxiv.org/html/2608.18936v2)
+* **TeX 源码:** [TeX 源码](https://arxiv.org/src/2608.18936)
+* **许可协议:** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
+
+---
+
+## 外部资源与工具
+
+* **引用工具:** 
+  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18936)
+  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18936)
+  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18936)
+* **代码、数据与社区平台:**
+  * [alphaXiv 讨论](https://alphaxiv.org/)
+  * [CatalyzeX 代码查找器](https://www.catalyzex.com)
+  * [Hugging Face](https://huggingface.co/)
+  * [Connected Papers](https://www.connectedpapers.com/)</description>
+    </item>
+    <item>
+      <title>2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>Liquid AI 近期发布了针对 LFM2.5 模型家族中三个模型（`LFM2.5-1.2B-Instruct`、`LFM2.5-2.6B` 以及 `LFM2.5-8B-A1B`）的 **DSpark 草稿模型检查点（checkpoint）**。这些检查点引入了一种创新的投机解码路径，在保持严格输出质量不变的前提下，以极小的内存开销实现了显著的解码加速。
+
+该技术的核心在于结合了 DFlash 风格的并行主干网络、轻量级顺序头以及置信度调度验证器，有效缓解了大语言模型推理过程中通常面临的内存带宽瓶颈。测试表明，它在 GPU 上最高可带来 3.18 倍的吞吐量提升，在端侧（如苹果芯片）上最高可达 2.87 倍，同时还能将 `LFM2.5-2.6B` 的函数调用（function-calling）延迟平均降低 57%。此外，它在发布首日即获得了 `llama.cpp` 和 `SGLang` 框架的原生集成支持。
+
+---
+
+## 摘要
+
+Liquid AI has released **DSpark draft model checkpoints** for three models within the LFM2.5 family: `LFM2.5-1.2B-Instruct`, `LFM2.5-2.6B`, and `LFM2.5-8B-A1B`. These checkpoints introduce a speculative decoding path that yields significant decoding speedups with minimal memory overhead while strictly preserving output quality. 
+
+&gt; Liquid AI 为 LFM2.5 家族中的三个模型发布了 **DSpark 草稿模型检查点**：`LFM2.5-1.2B-Instruct`、`LFM2.5-2.6B` 和 `LFM2.5-8B-A1B`。这些检查点引入了一种投机解码路径，在保持严格输出质量的同时，以极小的内存开销带来了显著的解码加速。
+
+Key highlights include:
+* **Faster Inference:** Up to 3.18x throughput improvement on GPUs and up to 2.87x on-device.
+* **On-Device Agentic Capabilities:** Cuts function-calling latency by 57% on average for `LFM2.5-2.6B`.
+* **Day-One Framework Support:** Upstream integrations for both `llama.cpp` and `SGLang`.
+
+&gt; 主要亮点包括：
+&gt; * **更快的推理：** GPU 上的吞吐量提升高达 3.18 倍，端侧设备上提升高达 2.87 倍。
+&gt; * **端侧智能体（Agentic）能力：** 将 `LFM2.5-2.6B` 的函数调用延迟平均降低了 57%。
+&gt; * **首日框架支持：** 已对 `llama.cpp` 和 `SGLang` 进行了上游集成。
+
+---
+
+## DSpark 是如何工作的？
+
+The decoding phase in Large Language Model (LLM) inference is traditionally memory-bound, meaning most latency stems from streaming weights from DRAM into SRAM rather than heavy computation. Speculative decoding alleviates this by utilizing a lightweight draft model to generate candidate tokens, allowing the target model to verify them in a single forward pass and amortize weight-loading costs.
+
+&gt; 大语言模型（LLM）推理中的解码阶段传统上受限于内存带宽（memory-bound），这意味着绝大部分延迟来自于将权重从 DRAM 传输到 SRAM，而不是繁重的计算。投机解码通过利用轻量级草稿模型来生成候选 Token 来缓解这一问题，允许目标模型在单次前向传播中对其进行验证，从而分摊权重加载成本。
+
+DSpark combines three core components:
+1. **DFlash-Style Parallel Backbone:** Conditioned on the target model's context features to produce hidden states for all draft tokens in a single forward pass.
+2. **Lightweight Sequential Head:** Modeled as a Markov chain between neighboring tokens to capture inter-token dependencies and increase acceptance rates at later positions.
+3. **Confidence-Scheduled Verifier:** Predicts survival probabilities for each token and prunes low-confidence suffixes when verification costs outweigh potential savings.
+
+&gt; DSpark 结合了三个核心组件：
+&gt; 1. **DFlash 风格的并行主干网络：** 以目标模型的上下文特征为条件，在单次前向传播中为所有草稿 Token 生成隐藏状态。
+&gt; 2. **轻量级顺序头：** 建模为相邻 Token 之间的马尔可夫链，以捕获 Token 间的依赖关系，并提高后续位置的接受率。
+&gt; 3. **置信度调度验证器：** 预测每个 Token 的生存概率，并在验证成本超过潜在节省时修剪低置信度的后缀。
+
+![DSpark](./images/69bce3b6dc99.png)
+
+---
+
+## 训练与架构
+
+DSpark models utilize an attention-only architecture consisting of 5 layers (~300M parameters) trained across a diverse data mix (SFT, chat, code, and function calling) for 15 epochs. 
+
+&gt; DSpark 模型采用仅注意力机制（attention-only）架构，包含 5 层（约 3.03 亿参数），在包含 SFT、聊天、代码和函数调用的多样化混合数据集上进行了 15 个周期的训练。
+
+| Component | LFM2.5-1.2B-Instruct | LFM2.5-8B-A1B | LFM2.5-2.6B |
+| :--- | :--- | :--- | :--- |
+| Decoder stack (5 layers) | 241.2M | 241.2M | 241.2M |
+| Hidden-state projection | 21.0M | 21.0M | 21.0M |
+| Markov head | 33.6M | 65.5M | 65.5M |
+| Norms + confidence head | 27.5k | 27.5k | 27.5k |
+| **Total** | **295.7M** | **327.7M** | **327.7M** |
+
+&gt; | 组件 | LFM2.5-1.2B-Instruct | LFM2.5-8B-A1B | LFM2.5-2.6B |
+&gt; | :--- | :--- | :--- | :--- |
+&gt; | 解码器堆栈（5层） | 241.2M | 241.2M | 241.2M |
+&gt; | 隐藏状态投影 | 21.0M | 21.0M | 21.0M |
+&gt; | 马尔可夫头 | 33.6M | 65.5M | 65.5M |
+&gt; | 归一化 + 置信度头 | 27.5k | 27.5k | 27.5k |
+&gt; | **总计** | **295.7M** | **327.7M** | **327.7M** |
+
+---
+
+## 质量一致性
+
+Under greedy decoding, a draft token is only accepted if it matches the target model's distribution. Rejected tokens are replaced by the target model's token. Consequently, the output sequence remains **identical to baseline greedy execution**, meaning benchmark accuracy metrics (pass@1, exact match) remain completely unaffected.
+
+&gt; 在贪婪解码（greedy decoding）下，草稿 Token 只有在与目标模型的分布匹配时才会被接受。被拒绝的 Token 会被目标模型的 Token 替换。因此，输出序列与**基准贪婪执行完全相同**，这意味着基准测试准确率指标（pass@1、精确匹配等）完全不受影响。
+
+---
+
+## CPU 和 GPU 上的推理加速
+
+LFM2.5 DSpark models support **llama.cpp** (utilizing Metal kernels) and **SGLang** out of the box. Below are performance metrics measured using a DSpark block size of 9, a batch size of 1, and zero temperature.
+
+&gt; LFM2.5 DSpark 模型开箱即用地支持 **llama.cpp**（利用 Metal 内核）和 **SGLang**。以下是使用 DSpark 块大小为 9、批大小（batch size）为 1 且温度为 0 测得的性能指标。</description>
+    </item>
+    <item>
+      <title>2026-08-22-你的边缘设备是以单次前向传递进行基准测试的，但你的Agent将运行循环</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/你的边缘设备是以单次前向传递进行基准测试的，但你的Agent将运行循环/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/你的边缘设备是以单次前向传递进行基准测试的，但你的Agent将运行循环/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>本文深入探讨了当前边缘AI硬件基准测试与实际智能体（Agent）工作负载之间的严重脱节问题。行业虽然已经意识到边缘AI硬件受限于热设计功耗而非单纯的计算能力，但现有的测试仍基于单次“前向传递”进行，完全忽略了智能体在实际运行中处于无界循环（决策、行动、再评估）的状态。
+
+文章指出，这种持续的热负载会导致现代边缘设备迅速发生热节流甚至硬件性能崩溃。为了解决这一痛点，开发者和工程师必须将评估标准从“每秒生成Token数”转变为“完成单项任务所需的焦耳数（Joules per Task）”，并在智能体设计中明确引入热预算和步骤限制，以确保端侧智能体的稳定落地。
+
+---
+
+![Edge AI Hardware](./images/bd9011082089.png)</description>
+    </item>
+    <item>
+      <title>介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>长期以来，许多机械键盘爱好者一直在寻找一种既能保留心仪键盘手感、又能享受 Mac Touch ID 指纹解锁便利的方案，但苹果官方生态的封闭性让这一需求难以实现。为此，开源项目 Dashboard Touch 应运而生。它基于 Zimeng Xiong 的优秀项目 tinyTouch 进行了深度重构，允许用户使用低成本的现成硬件，自行组装一个专属于 Mac 的独立指纹传感器。
+
+该项目不仅具备友好的本地网页管理界面，支持自定义呼吸灯颜色及指纹录入，还在技术实现上巧妙地将指纹验证转化为安全的键盘输入模拟。文章记录了作者从硬件焊接、固件配置到木工外壳制作的完整 DIY 历程，旨在通过这个充满极客乐趣的开源项目，重燃独立制作与分享技术玩物的极客精神。
+
+---
+
+# 介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案
+
+&gt; **摘要：** 厌倦了为了在喜爱的机械键盘上使用 Touch ID 而被束缚在苹果的专有键盘里吗？**Dashboard Touch** 是一个全新的开源项目，它允许你使用现成的零件为你的 Mac 构建自己的定制、低成本指纹传感器，并配有友好的本地网页界面以及令人满意的触觉工作流程。
+
+&gt; **Dashboard Touch:** Tired of being locked into Apple’s proprietary keyboards just to use Touch ID with your favorite mechanical keyboard? **Dashboard Touch** is a new open-source project that lets you build your own custom, low-cost fingerprint sensor for your Mac using off-the-shelf parts, complete with a friendly local web interface and a satisfying tactile workflow.
+
+---
+
+多年来，我一直渴望为我的 Mac 提供一个独立版本的苹果 Touch ID 身份验证功能，同时又不必使用苹果的键盘。（我通常挺喜欢他们的键盘，但我如今日常主力使用的是一把声音清脆的大型机械键盘。）我曾尝试过各种替代方案，甚至关注过那些拆解昂贵的苹果键盘以回收其 Touch ID 传感器的做法，但没有一种能完美解决问题。
+
+&gt; For years, I’ve wanted to have a standalone version of Apple’s Touch ID authentication feature for my Mac, but without having to use an Apple keyboard. (I generally like their keyboards, but my daily driver keyboard these days is a big clicky mechanical beast.) I’d gone down various dead ends of trying to find substitutes, and even checked out the efforts where people had ripped apart expensive Apple keyboards just to scavenge the Touch ID sensors out of them. None of them quite solved the problem.
+
+&lt;iframe src="https://www.youtube-nocookie.com/embed/8zXN-JzjkgY" frameborder="0" allowfullscreen="" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"&gt;&lt;/iframe&gt;
+
+因此，今天我分享一个名为 [Dashboard Touch](https://anildash.com/projects/dashboard-touch/) 的开源项目，它能让你使用低成本的现成零件，为你的 Mac 制作专属的 Touch ID 风格传感器。它基于对 Zimeng Xiong 优秀的 [tinyTouch](https://github.com/ZimengXiong/tinyTouch) 项目的大规模重构。Zimeng Xiong 最近刚刚攻克了如何打造一个既实用、又对普通 Mac 用户而言具备合理安全性的指纹扫描系统。（如果你对这类东西感兴趣，绝对应该去看看他的项目并支持他的新硬件构建。）
+
+&gt; So today, I’m sharing an open source project called [Dashboard Touch](https://anildash.com/projects/dashboard-touch/), which lets you make your own Touch ID-style sensor for your Mac, using low-cost off-the-shelf part. It’s based on an extensive refactoring of the excellent [tinyTouch](https://github.com/ZimengXiong/tinyTouch) project by Zimeng Xiong, who recently cracked the code on how to make a useful fingerprint scanner system that’s also reasonably secure for regular Mac users. (You should definitely check out his project and support his new hardware build if you’re interested in this stuff.)
+
+我采用了自己的方法来实现这项工作，因为我想专注于提供一个友好的网页界面，以便精确配置指纹传感器系统在计算机上的工作方式。当你设置好 Dashboard Touch 后，它会提供一个直接在你的 Mac 上运行的漂亮网页界面，让你能够执行诸如设置指纹传感器环形灯颜色、或者录入指纹并将其记录到系统中的操作。
+
+&gt; I took my own approach to this work because I wanted to focus a lot on having a friendly web interface for configuring exactly how the fingerprint sensor system works on your computer. When you get Dashboard Touch set up, it presents you with a nice web interface that runs right on your own Mac, letting you do things like set the color of the ring light on the fingerprint sensor, or capture your fingerprints so they’re recorded in the system.
+
+## 工作原理 (How It Works)
+
+在幕后，该系统的工作原理极其简单。你购买一个小型的指纹传感器和一个小型微控制器，将它们连线（重新拾起焊接的活儿其实挺有意思的！），然后用一根普通的 USB 线将它们插到你的电脑上。运行安装脚本后，你只需访问网页界面并将你的手指添加到系统中即可。
+
+&gt; Behind the scenes, the way the system works couldn’t be simpler. You buy a little fingerprint sensor, and a small microcontroller, wire them together (it was actually fun to get back to soldering stuff!), and then plug them into your computer with a regular USB cable. After you run the setup script, you just go to the web interface and add your finger(s) to the system.
+
+&lt;img src="./images/35c54e16a197.png" alt="Dashboard Touch 网页界面展示了如何配置传感器" loading="lazy"/&gt;
+
+&gt; &lt;img src="./images/35c54e16a197.png" alt="the Dashboard Touch web interface shows how to configure your sensor" loading="lazy"/&gt;
+
+一旦运行起来，你的 Mac 就会像往常一样工作，唯一的区别是：每当系统提示你输入密码时，你只需在传感器上刷一下指纹，Dashboard Touch 就会为你键入密码。在技术层面上，该设备实际上在字面意义上伪装成了一个键盘。（你可以浏览 [GitHub 上的代码](https://github.com/anildash/dashtouch)，很快就能领会这种方法。）
+
+&gt; Once you’re running, your Mac runs as normal, except any time the system prompts you to type in your password, you can just swipe your fingertip on the sensor and Dashboard Touch will type your password in for you. At a technical level, the device is actually literally pretending to be a keyboard. (You can look over the [code on GitHub](https://github.com/anildash/dashtouch) and get a feel for the approach pretty quickly.)
+
+安装完成后，它基本上是一个“设置后即可忘掉”的东西。你不需要做任何其他事情就能让它“直接运行”。你的密码仅安全存储在你的 Mac 上，而你的指纹仅安全存储在你的传感器上。你可以随时擦除它们，并且除了一个手动更新检查器外，没有任何东西会连接到互联网——只有当你故意点击按钮请求它时，它才会检查是否有新版本的 Dashboard Touch。
+
+&gt; After it’s installed, it’s basically a set-it-and-forget-it kind of thing. You don’t need to do anything else for it to Just Work. Your password is only ever stored securely on your Mac, and your fingerprints are only ever stored securely on your sensor. You can erase them at any time and nothing talks to the internet at all except the one manual update checker, where you can see if there’s a new version of Dashboard Touch, but only when you intentionally click the button to request it to do so.
+
+总的来说，如果你是在保护一个银行金库，这绝对不是你应该使用的系统；但如果你的计算机在物理上是安全的，并且没有人会在未经你允许的情况下对你的 Dashboard Touch 设置进行长时间的无监督访问，那么它就完全没问题。
+
+&gt; Overall, this isn’t the kind of system you should use if you’re protecting a bank vault, but if your computer is physically secure and nobody is going to have extended unsupervised access to your Dashboard Touch setup without your permission, you should be fine.
+
+## 动手即快乐，告别无聊 (Dash, Not Bored)
+
+就我个人而言，重新开始动手制造东西真的非常有趣。正如你在我的介绍视频中所看到的，我最终在木工车间里为我的指纹传感器制作了一个外壳，好让它与我最近打造的书桌相匹配。甚至连创作和剪辑介绍视频也是一个有趣的项目，它把我拉出了平时的舒适区。
+
+&gt; Personally, it’s been really fun to get back to making things. As you can see in my introductory video, I ended up creating an enclosure for my fingerprint sensor in my woodshop, so that it would match my desk that I recently built. Even creating and editing the intro video was a fun project that took me out of my usual comfort zone.
+
+这个项目中的几乎每个任务都让我不得不去尝试那些我相当不擅长的事情，从固件编写、安全审查到精细的木工和视频剪辑。但我就是喜欢把东西重新发布出去让大家去魔改的这种感觉，而且在经历了多年必须团队协作的工作之后，能够对某个东西的设计和用户界面拥有极其主观的掌控力，也是一件非常令人满足的事。（尽管我合作的总是才华横溢的人，但能够亲自挑选每一个像素的感觉是完全不同的！）
+
+&gt; Nearly every task in this project has had me stretching to do things that I’m pretty bad at, from firmware coding to security review to detailed carpentry to video editing. But I just love the idea of putting things out there again for people to hack on, and there's also something really satisfying about being able to be super-opinionated about the design and user interface of something after so many years of working on teams where I had to collaborate. (Even though I always got to collaborate with brilliant people, it's different when you get to pick every pixel!)
+
+此外，我也一直在怀念互联网的那个时代——当时我在网上看到的大多数内容都是普通人制作的古怪而有趣的东西。我意识到，除非我投入自己的精力去亲自建造一些这样的东西，否则我无法哀叹这类项目的缺失。所以，这就是一个！让我知道你的想法，以及你是否有任何关于如何让这个东西变得更好的想法。当然，如果你发现了任何需要我修复的漏洞，也请告诉我。
+
+&gt; I just also have been missing the era of the web when most of what I saw online was weird and fun things that regular people were building, and I realized that I can't mourn the absence of those kinds of projects unless I invest my own energy into building some of those kinds of things myself. So, here's one! Let me know what you think, and if you've got any ideas for how to make this thing better. Or, of course, if you find any bugs that I should fix.
+
+希望你在触摸闪烁的灯光时玩得开心！
+
+&gt; I hope you have fun touching the blinking lights!</description>
+    </item>
+    <item>
+      <title>2026-08-22-TestifAI：基于层析成像的深度学习系统测试方法</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/TestifAI：基于层析成像的深度学习系统测试方法/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/TestifAI：基于层析成像的深度学习系统测试方法/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>随着深度学习系统在自动驾驶等安全关键领域的部署日益增加，确保其面对现实世界扰动（如图像模糊、亮度变化和缩放）时的鲁棒性变得至关重要。传统的测试框架需要进行数千次模型推理，并且由于组合爆炸问题，难以高效地评估多种扰动组合的效果。
+
+为了解决这一痛点，研究人员提出了 **TestifAI**，这是一个创新的深度学习测试框架，它利用了*局部模型层析成像（partial model tomography）*技术。通过仅利用低阶（1阶和2阶）扰动观测值来预测高阶（3阶和4阶扰动）测试结果，TestifAI 在将总体鲁棒性估计误差控制在 **7% 以下**的同时，将所需的模型推理次数减少了 **60% 至 80%**。
+
+---
+
+## TestifAI: Tomography-Based Testing for Deep Learning Systems
+## TestifAI：基于层析成像的深度学习系统测试方法
+
+## Summary
+## 摘要
+
+随着深度学习系统越来越多地被部署在安全关键的应用领域（例如自动驾驶），相关的风险也在不断增加。因此，支撑现代AI系统的深度学习模型必须经过彻底的测试，以确保其行为正确。单次鲁棒性测试涉及数千次推理，以凭经验验证模型的输出在输入的有界扰动下是否保持稳定。然而，现有的测试框架缺乏系统探索和总结扰动组合空间中鲁棒性的手段。
+
+&gt; As deep learning systems are increasingly deployed in safety-critical domains like autonomous driving, ensuring their robustness against real-world perturbations (such as image blur, brightness, and zoom) becomes paramount. Traditional testing frameworks require thousands of model inferences and struggle to efficiently evaluate combinations of perturbations due to combinatorial explosion. 
+&gt; 
+&gt; To solve this, researchers propose **TestifAI**, an innovative deep learning testing framework that utilizes *partial model tomography*. By predicting higher-order (3 and 4-perturbation) test outcomes using only low-order (1 and 2-perturbation) observations, TestifAI reduces the number of required model inferences by **60–80%** while maintaining an aggregate robustness estimation error of **less than 7%**.
+
+我们提出了 **TestifAI**，这是一个用于高效、准确评估模型在多种扰动组合下鲁棒性的深度学习测试框架。TestifAI 允许用户将操作条件指定为结构化的语义输入扰动空间（例如图像模糊、亮度和缩放）以及离散的严重程度级别（例如低、中和高）。用户可以查询任何组合下的模型鲁棒性（例如：“低模糊、高亮度和中缩放”）。
+
+&gt; As AI systems are increasingly deployed in safety-critical application domains (e.g., autonomous driving), associated risks increase too. Deep learning models underlying modern AI systems, therefore, must undergo thorough testing to ensure their correct behaviour. A single robustness test involves thousands of inferences to empirically verify if a model's outputs remain stable under a bounded perturbation of its inputs. However, existing testing frameworks lack the means to systematically explore and summarise robustness across a combinatorial space of perturbations.
+&gt; 
+&gt; We propose **TestifAI**, a deep learning testing framework for efficient and accurate estimation of robustness against combinations of perturbations. TestifAI enables users to specify operational conditions as structured spaces of semantic input perturbations (e.g., image blur, brightness and zoom) and discrete severity levels (e.g., low, medium and high). Users can query model robustness for any combination (e.g., *"low blur, high brightness, and medium zoom"*). 
+
+为了实现高效和准确，TestifAI 引入了**局部模型层析成像（partial model tomography）**，这是一种新颖的方法，它通过仅应用少量扰动（低阶投影）的测试来重建多扰动空间中的模型行为。为了估计对至少三种扰动的鲁棒性，TestifAI 仅根据涉及多达两种扰动的测试结果来训练辅助模型，从而避免了执行指数级数量的测试。我们在五个图像和语言分类任务上的实验表明，TestifAI 可以从低阶（1阶和2阶）观测值中预测高阶（3阶和4阶扰动）测试结果，总体鲁棒性估计误差低于 7%，同时将推理次数减少了 60% 至 80%。
+
+&gt; To achieve efficiency and accuracy, TestifAI introduces **partial model tomography**, a novel approach to reconstructing model behaviour in a multi-perturbation space from tests that apply only a small number of perturbations (lower-order projections). To estimate robustness against at least three perturbations, TestifAI trains an auxiliary model on the results of tests involving up to two perturbations only, avoiding execution of an exponential number of tests. Our experiments on five image and language classification tasks show that TestifAI can predict higher-order (3 and 4 perturbations) test outcomes from low-order (1 and 2 perturbations) observations with an aggregate robustness estimation error of less than 7%, while reducing the number of inferences by 60–80%.
+
+---
+
+## Paper Metadata
+## 论文元数据
+
+- **arXiv ID:** [arXiv:2608.18900](https://arxiv.org/abs/2608.18900) [cs.AI]
+- **主学科领域:** 计算机科学 &gt; 人工智能 (`cs.AI`)
+- **作者:** Arooj Arif, Tobias Hartung, Elena Botoeva, Alexandros Koliousis
+- **提交历史:** 
+  - [v1] 2026年8月19日 星期三
+  - [v2] 2026年8月20日 星期四 *(当前版本)*
+- **许可证:** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+&gt; - **arXiv ID:** [arXiv:2608.18900](https://arxiv.org/abs/2608.18900) [cs.AI]
+&gt; - **Primary Subject:** Computer Science &gt; Artificial Intelligence (`cs.AI`)
+&gt; - **Authors:** Arooj Arif, Tobias Hartung, Elena Botoeva, Alexandros Koliousis
+&gt; - **Submission History:** 
+&gt;   - [v1] Wed, 19 Aug 2026
+&gt;   - [v2] Thu, 20 Aug 2026 *(This version)*
+&gt; - **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+---
+
+## Quick Links &amp; Resources
+## 快速链接与资源
+
+- **访问论文:**
+  - [查看 PDF](https://arxiv.org/pdf/2608.18900)
+  - [HTML 版本（实验性）](https://arxiv.org/html/2608.18900v2)
+  - [TeX 源码](https://arxiv.org/src/2608.18900)
+- **外部引用与工具:**
+  - [谷歌学术](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18900)
+  - [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18900)
+  - [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18900)
+- **代码与演示:**
+  - [Hugging Face Spaces](https://huggingface.co/docs/hub/spaces)
+  - [CatalyzeX 代码查找器](https://www.catalyzex.com)
+
+&gt; - **Access Paper:**
+&gt;   - [View PDF](https://arxiv.org/pdf/2608.18900)
+&gt;   - [HTML Version (Experimental)](https://arxiv.org/html/2608.18900v2)
+&gt;   - [TeX Source](https://arxiv.org/src/2608.18900)
+&gt; - **External Citations &amp; Tools:**
+&gt;   - [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18900)
+&gt;   - [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18900)
+&gt;   - [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18900)
+&gt; - **Code &amp; Demos:**
+&gt;   - [Hugging Face Spaces](https://huggingface.co/docs/hub/spaces)
+&gt;   - [CatalyzeX Code Finder](https://www.catalyzex.com)</description>
+    </item>
+    <item>
+      <title>2026-08-22-Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-22/Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-22/Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的/</guid>
+      <pubDate>Sat, 22 Aug 2026 00:00:00 GMT</pubDate>
+      <description>你是否曾在截屏 Bluesky 或其他社交软件的帖子时，发现原本显示“关注”按钮的角落里，莫名其妙地多出了一个应用的 Logo？本文探讨了这种奇特行为背后的巧妙技术。通过利用原本为密码输入框设计的 iOS 系统级安全特性，开发者可以在用户截图时动态替换界面元素。这是一种兼具巧思、同时又带有一点争议的“增长黑客”技巧，此前 Telegram 和 Signal 等应用也曾使用过类似的方法。
+
+---
+
+## 神秘的 Logo
+
+&gt; # How Bluesky and Threads Sneak Their Logos Into iOS Screenshots
+&gt; 
+&gt; *Published by [mt](https://timmarinin.net) on Sunday, 16 August 2026*
+&gt; 
+&gt; ## Summary
+&gt; Have you ever taken a screenshot of a Bluesky post and noticed a subtle app logo magically appearing in the corner where the "Follow" button normally sits? This article explores the clever technical trick behind this behavior. By leveraging iOS security features meant for password fields, developers can swap interface elements specifically for screenshots—a clever, if somewhat controversial, growth-hacking technique also utilized by apps like Telegram and Signal.
+
+有时候，我会在截取自己喜欢的帖子时顺手拍个照，要么是发给朋友或表情包频道，要么是留下一份“持久”的备份。就像下面这样（我把界面其余部分裁掉了）：
+
+&gt; ## The Mysterious Logo
+&gt; 
+&gt; Sometimes I take a screenshot of a post I like, either to send it to friends/meme channel or to save a “durable” copy. Like this one (I’ve cropped out the rest of the interface):
+
+&lt;figure&gt;
+&lt;img alt="A screenshot of Bluesky post by @eroston.bsky.social, the important part is that Bluesky logo is visible in the top right corner" src="./skeet.jpg" width="50%"/&gt;
+&lt;figcaption&gt;&lt;a href="https://bsky.app/profile/eroston.bsky.social/post/3mt5gs2fdyk2l"&gt;Original&lt;/a&gt;, if you want to reskeet it&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&gt; &lt;figure&gt;
+&gt; &lt;img alt="A screenshot of Bluesky post by @eroston.bsky.social, the important part is that Bluesky logo is visible in the top right corner" src="./skeet.jpg" width="50%"/&gt;
+&gt; &lt;figcaption&gt;&lt;a href="https://bsky.app/profile/eroston.bsky.social/post/3mt5gs2fdyk2l"&gt;Original&lt;/a&gt;, if you want to reskeet it&lt;/figcaption&gt;
+&gt; &lt;/figure&gt;
+
+我注意到右下角有一个 Bluesky 的 Logo，心里觉得挺纳闷：为什么我平时用 App 时完全没注意到这个 Logo 呢？于是我再次打开 App 查看那篇帖子——Logo 根本不在那儿，取而代之的是“关注（Follow）”按钮。
+
+&gt; I noticed the Bluesky logo in the right corner and thought that it was weird that the logo doesn’t bother me when I use the app. Then I looked at the post in the app again—logo wasn’t there, replaced by the “Follow” button.
+
+我记得有些 App 会把它们的 Logo 藏在 iPhone 的“灵动岛”或刘海屏附近，这样平时不会突兀，除非你截图。但这里的 Logo 可是大喇喇地摆在显眼位置，他们究竟是怎么做到的？
+
+&gt; I remembered that a few apps hide their logo where the iPhone notch is, so that it doesn’t stick out, unless you take a screenshot. But here the logo is placed in the open, so how do they do it?
+
+我试着再截一次屏，这次我选在切换到另一个 App 的半途中：
+
+&gt; I tried to take another screenshot, this time mid-switching to the other app:
+
+&lt;figure&gt;
+&lt;img alt="Screenshot of zoomed out version of Bluesky app mid-switching, Follow button is visible" src="./mid-switch.png" width="50%"/&gt;
+&lt;figcaption&gt;&lt;a href="https://bsky.app/profile/eroston.bsky.social/post/3mt5gs2fdyk2l"&gt;The “Follow” button is visible when I take the screenshot mid-switch.&lt;/a&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&gt; &lt;figure&gt;
+&gt; &lt;img alt="Screenshot of zoomed out version of Bluesky app mid-switching, Follow button is visible" src="./mid-switch.png" width="50%"/&gt;
+&gt; &lt;figcaption&gt;The “Follow” button is visible when I take the screenshot mid-switch.&lt;/figcaption&gt;
+&gt; &lt;/figure&gt;
+
+难道他们监听了我按下截图组合键的动作，然后在最后一刻来了个“狸猫换太子”？我不是 iOS 开发者，所以不太清楚那边到底支持哪些骚操作。
+
+&gt; Did they somehow set up a listener for two buttons I’m pressing to take a screenshot and do a switcheroo at the last moment? I’m not an iOS developer, so I’m not sure what’s possible and what is not over there.
+
+此时此刻，我的好奇心被彻底勾起来了。好在我记起来 Bluesky 是个开源应用（至少代码是公开可查的）。
+
+&gt; At this point I was mildly intrigued. Thankfully, I remembered that Bluesky app is open source (or at least the code is available to look at).
+
+## 秘密机制
+
+&gt; ## The Secret Mechanism
+
+答案就藏在一个非常直白的文件中：[GrowthHack.tsx](https://github.com/bluesky-social/social-app/blob/main/src/screens/PostThread/components/GrowthHack.tsx)，它是由 [mozzius](https://github.com/mozzius) 在 2026 年 1 月引入的。不过，该文件仅仅是调用了一个依赖库，为了弄清原理，我又去查看了同样由其开发的 [expo-privacy-sensitive](https://github.com/mozzius/expo-privacy-sensitive) 软件包。
+
+&gt; The answer was in the file literally called [GrowthHack.tsx](https://github.com/bluesky-social/social-app/blob/main/src/screens/PostThread/components/GrowthHack.tsx), introduced in January 2026 by [mozzius](https://github.com/mozzius). But it merely used a dependency, so to understand I looked into package [expo-privacy-sensitive](https://github.com/mozzius/expo-privacy-sensitive), also by them.
+
+该软件包会创建一个 `UITextField`，并将 `isSecureTextEntry`（安全文本输入）属性设为 true，然后将实际内容（即那个按钮）渲染到该字段的 `.layer` 中。当我进行截屏时，iOS 会通过将该图层置空来隐去这个 `UITextField`，从而让藏在底下的 Bluesky Logo 显露出来（其实它一直都在那儿）。对于其他平台，它只是按原样渲染内容，而不会进行这种图层遮罩处理。
+
+&gt; The package creates `UITextField` with `isSecureTextEntry` property set to true and renders the actual content (the button) into that field’s `.layer`. When I take the screenshot, iOS hides this UITextField by blanking the layer, allowing the Bluesky logo to flutter its wings through (it was here the whooole time). For other platforms it simply renders content as-is, without masking.
+
+为什么在切换应用的过程中截图不生效呢？我猜是因为 iOS 在手势刚开始时就自己截好了快照（此时并没有触发图层清空），而当我真正完成截图时，并没有一个活生生的 `UITextField` 实例去响应它，只有那个静态的快照。当然了，我还是得强调——我不是 iOS 开发者。
+
+&gt; Why doesn’t it work when I switch between the apps? I suppose that iOS takes a snapshot itself at the start of the gesture (without triggering blanking), and when I do a screenshot, there is no live UITextField instance to react to that, only the inert snapshot. But once again, I’m not an iOS developer.
+
+## 行业先例与结论
+
+&gt; ## Industry Precedent and Conclusion
+
+这是一个绝妙的技巧，还是对原本用于隐私保护的 API 的一种滥用？在[添加该行为的讨论串](https://github.com/bluesky-social/social-app/pull/9637)被锁定之前，大家基本上对它持反感态度。不过我觉得挺有意思的。
+
+&gt; Nifty trick or an abuse of API meant for privacy? The people in [the thread adding the behavior](https://github.com/bluesky-social/social-app/pull/9637) mostly didn’t like it, before the thread got locked. I think it’s cute.
+
+我在谷歌上搜了一下，发现这个小把戏其实已经广为人知。Telegram 在其“私密聊天”功能中就实现了[类似机制](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/submodules/UIKitRuntimeUtils/Source/UIKitRuntimeUtils/UIKitUtils.m#L299-L328)，[Signal](https://github.com/signalapp/Signal-iOS/blob/a9f55ea599561e6d3bcee87d4f1540a7191b28dc/Signal/util/ScreenshotBlocking.swift) 也是如此。因此，我估计苹果短期内并不会把这个“漏洞”给补上。
+
+&gt; I googled a bit, and the trick is well-known. Telegram implemented [similar thing for its "secret" chats](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/submodules/UIKitRuntimeUtils/Source/UIKitRuntimeUtils/UIKitUtils.m#L299-L328), as did [Signal](https://github.com/signalapp/Signal-iOS/blob/a9f55ea599561e6d3bcee87d4f1540a7191b28dc/Signal/util/ScreenshotBlocking.swift), so I don’t expect it to be patched by Apple any time soon.</description>
+    </item>
+    <item>
       <title>2026-08-21-面向长文本自动驾驶的规划对齐 Token 压缩</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-21/面向长文本自动驾驶的规划对齐 Token 压缩/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-21/面向长文本自动驾驶的规划对齐 Token 压缩/</guid>
@@ -2780,362 +3305,6 @@ Scandent 并没有将这款 HAT 商业化的打算；他们的目标仅仅是为
 * **HTML 版本:** [arXiv HTML（实验性）](https://arxiv.org/html/2512.00020v3)
 * **源代码/文件:** [TeX 源码](https://arxiv.org/src/2512.00020)
 * **开源许可:** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) ![许可图标](./images/345c7ad61f1b.png)</description>
-    </item>
-    <item>
-      <title>Training-Free Inference-Time Self-Reflection and Cost-Bounded Early Stopping for Large Language Models</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型无训练推理时自我反思与成本受限早停机制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型无训练推理时自我反思与成本受限早停机制/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>通过强化学习（如 GRPO）训练具备推理能力的大语言模型（LLM）往往成本高昂、资源消耗极大，并且对受控环境有着极高的要求。本文介绍了 **EvoResearcher**，这是一种新颖的、无需训练的推理时协议，旨在通过成本受限的自我反思来增强单个冻结的 LLM 主干网络。
-
-与依赖高昂梯度更新的方法不同，EvoResearcher 通过 **生成 $\rightarrow$ 自我批判 $\rightarrow$ 修正** 的循环进行迭代。该过程会一直持续，直到达到最大深度 $D$ 或者批判返回 `CONFIRMED` 信号。这种隐式的早停机制允许主干网络在严格的计算预算下高效地自我验证答案，在保持准确率不变的同时，提前终止了 82% 至 88% 的任务（平均每个问题约进行 2.1 次生成）。
-
----
-
-# Training-Free Inference-Time Self-Reflection and Cost-Bounded Early Stopping for Large Language Models
-
-* **arXiv ID:** [arXiv:2608.18884](https://arxiv.org/abs/2608.18884) [cs.AI]
-* **Submitted:** August 19, 2026
-* **Authors:** Wei Yu, Suxing Liu, Minjie Yu, Jiahao Wang, Zhijian Zheng, Haocheng Deng, Bing Li
-
-&gt; ## 📌 Summary
-&gt; 
-&gt; Training reasoning Large Language Models (LLMs) via reinforcement learning (e.g., GRPO) is notoriously expensive, resource-intensive, and demands tightly controlled environments. This paper introduces **EvoResearcher**, a novel, training-free, inference-time protocol designed to augment a single frozen LLM backbone with cost-bounded self-reflection. 
-&gt; 
-&gt; Rather than relying on costly gradient updates, EvoResearcher iterates through a **generate $\rightarrow$ self-critique $\rightarrow$ revise** loop. This process continues until a maximum depth $D$ is reached or the critique returns a `CONFIRMED` sentinel. This implicit early-stopping mechanism allows the backbone to efficiently self-verify answers under a strict compute budget, terminating 82–88% of items early while maintaining equal accuracy (averaging roughly 2.1 generations per question).
-
----
-
-## 📋 作者与机构 (Authors and Affiliations)
-
-* Wei Yu
-* Suxing Liu
-* Minjie Yu
-* Jiahao Wang
-* Zhijian Zheng
-* Haocheng Deng
-* Bing Li
-
-&gt; ## 📋 Authors and Affiliations
-&gt; * Wei Yu
-&gt; * Suxing Liu
-&gt; * Minjie Yu
-&gt; * Jiahao Wang
-&gt; * Zhijian Zheng
-&gt; * Haocheng Deng
-&gt; * Bing Li
-
----
-
-## 🛠️ 协议设计与元奖励组件 (Protocol Design &amp; Meta-Reward Components)
-
-EvoResearcher 框架建立了四个自我反思的元奖励组件，它们可作为提示词级别的设计原则，在**零梯度更新**的情况下带来收益：
-1. **正确性（Correctness）：** 确保生成的推理步骤在逻辑上是健全的。
-2. **效率（Efficiency）：** 优化 Token 消耗和路径长度。
-3. **反思深度（Reflection Depth）：** 控制最高达深度 $D$ 的迭代精炼过程。
-4. **工具调用多样性（Tool-Call Diversity）：** 鼓励多样化的方法（在提示词级别进行了验证，环境与多智能体扩展留作未来工作）。
-
-&gt; ## 🛠️ Protocol Design &amp; Meta-Reward Components
-&gt; 
-&gt; The EvoResearcher framework establishes four self-reflective meta-reward components that serve as prompt-level design principles, yielding benefits with **zero gradient updates**:
-&gt; 1. **Correctness:** Ensuring the logical soundness of the generated reasoning steps.
-&gt; 2. **Efficiency:** Optimizing token expenditure and path length.
-&gt; 3. **Reflection Depth:** Controlling the iterative refinement process up to depth $D$.
-&gt; 4. **Tool-Call Diversity:** Encouraging varied approaches (validated in prompt-level form, with environment and multi-agent extensions left for future work).
-
----
-
-## 📊 实验验证与结果 (Experimental Validation &amp; Results)
-
-作者在多个纯推理基准测试中验证了该协议：
-* **Big-Bench Hard (BBH)：** 在 100 个问题上进行了测试。在干净的 BBH 数据集上，该协议充当了成本受限的验证机制，而不仅仅是将准确率提升超出 95% 的威尔逊区间（Wilson interval）。
-* **GSM8K &amp; MATH：** 使用相同的冻结主干网络，分别在 500 个问题上评估了跨域行为。
-* **Qwen2.5-72B：** 成功展示了跨模型的复现效果。
-
-**核心结论：** 该协议的核心价值在于**成本受限的自我验证**。`CONFIRMED` 早停机制成功提前终止了 **82% 至 88%** 的项目（平均每个问题 $\sim$2.1 次生成），且并未牺牲准确率。
-
-&gt; ## 📊 Experimental Validation &amp; Results
-&gt; 
-&gt; The authors validated the protocol across multiple pure-reasoning benchmarks:
-&gt; * **Big-Bench Hard (BBH):** Tested on 100 questions. On clean BBH, the protocol operates as a cost-bounded verification mechanism rather than boosting accuracy beyond the 95% Wilson interval.
-&gt; * **GSM8K &amp; MATH:** Cross-domain behavior evaluated on 500 questions each using the same frozen backbone.
-&gt; * **Qwen2.5-72B:** Cross-model replication successfully demonstrated.
-&gt; 
-&gt; **Key Takeaway:** The primary value of the protocol lies in **cost-bounded self-verification**. The `CONFIRMED` early stop successfully terminates **82% to 88%** of items early—averaging $\sim$2.1 generations per question—without sacrificing accuracy.
-
----
-
-## 🔗 链接与资源 (Links &amp; Resources)
-
-* [查看 PDF (View PDF)](https://arxiv.org/pdf/2608.18884)
-* [TeX 源码 (TeX Source)](https://arxiv.org/src/2608.18884)
-* [DOI](https://doi.org/10.48550/arXiv.2608.18884)
-
-&gt; ## 🔗 Links &amp; Resources
-&gt; * [View PDF](https://arxiv.org/pdf/2608.18884)
-&gt; * [TeX Source](https://arxiv.org/src/2608.18884)
-&gt; * [DOI](https://doi.org/10.48550/arXiv.2608.18884)</description>
-    </item>
-    <item>
-      <title>2026-08-21-大语言模型何时真正有效？评估 LLM 作为数据质量标注工具的效能</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型何时真正有效？评估 LLM 作为数据质量标注工具的效能/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型何时真正有效？评估 LLM 作为数据质量标注工具的效能/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型（LLM）在自动化数据质量检测中的应用日益广泛，其判断的一致性与实际效能成为了研究焦点。本文通过在电子商务领域的两个核心任务——实体匹配与品牌错误标注检测——对 LLM 进行了深入评估，并将其与基于规则的基准模型及人工验证的真实数据进行了对比。
-
-研究发现，LLM 的价值高度依赖于具体任务的需求。在存在强词法信号的实体匹配任务中，LLM 相比简单的规则方法并无明显优势，且针对小样本优化的提示词（Prompt）反而可能导致全量性能下降。相反，在涉及品牌与产品关系等需要外部背景知识的品牌错误标注任务中，LLM 表现出显著优势。此外，研究还证实了 LLM 在重复推理中具有极高的一致性，但通过多数投票（Majority Voting）提升性能的边际收益极低，且会大幅增加推理成本。
-
----
-
-## 执行摘要
-
-本研究调查了在大规模语言模型（LLM）被自动用于捕捉数据质量问题时的实际效用和一致性。通过在两个不同的电子商务任务（实体匹配和品牌错误标注）中，针对基于规则的基准模型和人工验证的真实数据进行评估，研究揭示了 **LLM 的价值在很大程度上取决于具体的任务需求**：
-
-&gt; This study investigates the practical utility and consistency of Large Language Models (LLMs) when used automatically to catch data quality issues. Evaluated across two distinct e-commerce tasks—entity matching and brand mislabeling—against rule-based baselines and human-verified ground truths, the research reveals that **the value of LLMs depends heavily on the specific task requirements**:
-
-1. **实体匹配：** 当已经存在强词法信号时，LLM 相比简单的基于规则的方法几乎没有优势（零样本 LLM 的 $F_1 = 0.948$ 对比基于规则基准的 $F_1 = 0.950$）。此外，在小规模验证样本上优化提示词可能会产生误导，并降低全量性能（$F_1$ 降至 $0.914$）。
-&gt; 1. **Entity Matching:** LLMs offer little advantage over simple rule-based methods ($F_1 = 0.948$ for zero-shot LLM vs. $F_1 = 0.950$ for a rule-based baseline) when strong lexical signals are already present. Furthermore, optimizing prompts on a small validation sample can be misleading and degrade full-scale performance ($F_1$ dropped to $0.914$).
-
-2. **品牌错误标注检测：** LLM 通过利用简单的规则无法捕获的关于品牌-产品关系的外部背景知识，明显优于朴素的基于规则的基准（$F_1 = 0.833$ 对比 $0.721$）。
-&gt; 2. **Brand Mislabeling Detection:** LLMs clearly outperform naive rule-based baselines ($F_1 = 0.833$ vs. $0.721$) by leveraging external background knowledge regarding brand-product relationships that simple rules cannot capture.
-
-3. **一致性：** LLM 在重复运行中表现出极高的一致性（在温度 0.7 时平均一致性为 99.7%），尽管多数投票带来的性能提升微乎其微，却显著增加了推理成本。
-&gt; 3. **Consistency:** LLMs demonstrated exceptionally high internal consistency across repeated runs (99.7% average agreement at temperature 0.7), though majority voting yielded minimal performance gains while significantly multiplying inference costs.
-
----
-
-## 摘要
-
-LLM 越来越多地被用于自动捕捉数据质量问题，但我们对这些判断的一致性知之甚少。本研究在零样本和少样本提示下，针对基于规则的基准和人工验证的真实数据，测试了 LLM 在两个电子商务数据质量任务（实体匹配和品牌错误标注）中的表现。
-
-&gt; LLMs have been increasingly used to catch data quality issues automatically, but we know very little about how consistent these judgments actually are. This study tests an LLM on two e-commerce data quality tasks, entity matching and brand mislabeling, against rule based baselines and human verified ground truth, under both zero-shot and few-shot prompting.
-
-在实体匹配方面，使用 Abt Buy 基准（2,194 个标记对）时，简单的基于规则的基准（$F_1=0.950$）的表现与 LLM 零样本提示（$F_1=0.948$）相当。此外，在小验证样本上看起来有效的少样本提示修订，将全量性能降低到了 $F_1=0.914$。这表明小样本提示评估可能会产生误导。
-
-&gt; On entity matching while using the Abt Buy benchmark (2,194 labeled pairs), a simple rule based baseline ($F_1=0.950$) performed about as well as LLM zero shot prompting ($F_1=0.948$). Moreover, a few-shot prompt revision that looked effective on a small validation sample reduced full-scale performance to $F_1=0.914$. This showed that small sample prompt evaluation can be misleading.
-
-在品牌错误标注检测方面，使用 500 个注入了合成标注错误的亚马逊产品列表，LLM 明显优于朴素的基于规则的基准（$F_1=0.833$ 对比 $0.721$），因为它能够利用简单规则无法获取的品牌-产品关系背景知识。
-
-&gt; On brand mislabeling detection, using 500 Amazon product listings with synthetically injected labeling errors, the LLM clearly outperformed a naive rule based baseline ($F_1=0.833$ vs. $0.721$), because it could draw on background knowledge of brand product relationships that a simple rule could not access.
-
-测试重复运行的一致性（200 对数据，温度 0.7 下运行 5 次）显示，模型平均有 99.7% 的时间与自身达成一致，99% 的数据对在所有 5 次运行中给出了相同的答案。在这些运行中使用多数投票仅将 $F_1$ 提高了 0.005，但推理成本却增加了 5 倍。
-
-&gt; Testing consistency across repeated runs (200 pairs, 5 runs at temperature 0.7) showed the model agreeing with itself 99.7% of the time on average, with 99% of pairs giving identical answers across all 5 runs. Using majority voting across these runs only improved $F_1$ by $0.005$, at 5 times the inference cost.
-
-这些结果表明，使用 LLM 替代传统方法的价值在很大程度上取决于任务。当存在强词法信号时，LLM 几乎没有优势；但当任务需要背景知识时，LLM 具有明显的优势，同时在重复查询中保持高度一致。
-
-&gt; These results suggest that the value of using an LLM over traditional methods depends heavily on the task. LLMs offer little advantage when strong lexical signals already exist, but a clear advantage when the task requires background knowledge, all while remaining highly consistent across repeated queries.
-
----
-
-## 其他元数据
-
-* **备注：** 6 页，4 张图表
-* **许可：** [知识共享署名 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; * **Comments:** 6 pages, 4 figures
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>大型语言模型中的机构声望与地理偏见：来自带有自助法置信区间的三个析因实验的证据 (Institutional Prestige as Geographic Bias in Large Language Models: Evidence from Three Factorial Experiments with Bootstrap Confidence Intervals)</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/大型语言模型中的机构声望与地理偏见：来自带有自助法置信区间的三个析因实验的证据/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/大型语言模型中的机构声望与地理偏见：来自带有自助法置信区间的三个析因实验的证据/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本文探讨了大语言模型（LLM）在候选人评估中是否会基于申请者姓名的族裔背景、机构声望和地理位置产生系统性歧视。通过针对4个大语言模型和5个专业领域进行总计4,320次API调用的三个析因实验，作者成功隔离并剖析了评估偏见的驱动因素。
-
-核心研究结果表明，**机构声望和发表渠道对评估结果的影响远远超过了姓名来源效应**。此外，该研究引入了*中智偏见指数*（$NBI\langle T,I,F\rangle$），揭示了低声望背景的候选人在评估过程中所面临的隐藏认识论劣势（如评估不一致性），而传统仅关注均值的分析方法往往会忽略这些指标。
-
----
-
-# 大型语言模型中的机构声望与地理偏见：来自带有自助法置信区间的三个析因实验的证据 (Institutional Prestige as Geographic Bias in Large Language Models: Evidence from Three Factorial Experiments with Bootstrap Confidence Intervals)
-
-**作者：** Maikel Leyva-Vazquez, Florentin Smarandache  
-**提交时间：** 2026年6月10日  
-**主要学科：** 计算与语言 (`cs.CL`)  
-**arXiv ID：** [arXiv:2608.18107](https://arxiv.org/abs/2608.18107)  
-
----
-
-## 执行摘要 (Executive Summary)
-
-&gt; This paper investigates whether Large Language Models (LLMs) systematically discriminate in candidate evaluations based on applicant name ethnicity, institutional prestige, and geographic location. Utilizing three factorial experiments involving 4,320 API calls across four LLMs and five professional domains, the authors isolate the drivers of evaluation bias. 
-&gt; 
-&gt; Key findings reveal that **institutional prestige and publication venues heavily outweigh name-origin effects**. Furthermore, the study introduces the *Neutrosophic Bias Index* ($NBI\langle T,I,F\rangle$) to uncover hidden epistemic disadvantages—such as evaluation inconsistency—faced by low-prestige profiles, metrics that traditional mean-only analyses typically miss.
-
-本文探讨了大语言模型（LLM）在候选人评估中是否会基于申请者姓名的族裔背景、机构声望和地理位置产生系统性歧视。通过针对4个大语言模型和5个专业领域进行总计4,320次API调用的三个析因实验，作者成功隔离并剖析了评估偏见的驱动因素。
-
-核心研究结果表明，**机构声望和发表渠道对评估结果的影响远远超过了姓名来源效应**。此外，该研究引入了*中智偏见指数*（$NBI\langle T,I,F\rangle$），揭示了低声望背景的候选人在评估过程中所面临的隐藏认识论劣势（如评估不一致性），而传统仅关注均值的分析方法往往会忽略这些指标。
-
----
-
-## 核心实验发现 (Key Experimental Findings)</description>
-    </item>
-    <item>
-      <title>Cross-Model Memory Transfer via Target-Side Reader Adaptation</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/基于目标侧阅读器适配的跨模型记忆迁移/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/基于目标侧阅读器适配的跨模型记忆迁移/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型（LLMs）在平衡外部知识检索（灵活性高但引入延迟且集成度浅）与参数化适配（推理时高效但知识与模型权重纠缠，更新和迁移困难）方面通常面临挑战。本文研究了**Engram风格的哈希内存**（Engram-style hashed memory），这是一种介于两者之间的中间方法，其中学习到的信息存储在外部可寻址表中，并通过一个小型的学习型阅读器进行消费。核心研究问题探讨了将此内存迁移到不同主干网时，最重要的是什么：**是冻结的记忆本身，还是目标侧的阅读器？**
-
-研究发现，虽然学习到的内存内容和正确的寻址至关重要，但迁移后的内存表只有在与目标模型对齐的阅读器配对时，才能真正发挥作用。通过在下游问答任务上使用双层四分支阅读器，研究人员几乎弥合了同模型与跨模型复用之间的性能差距（平均分达到 38.8）。该研究为大模型的知识共享与高效迁移开辟了新途径。
-
----
-
-# Cross-Model Memory Transfer via Target-Side Reader Adaptation
-
-**Authors:** Mingyuan Li, Guangsheng Yu, Xu Wang, Shaoxiong Ji  
-**Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`)  
-**arXiv ID:** [arXiv:2608.17050](https://arxiv.org/abs/2608.17050)  
-**Submission Date:** August 17, 2026 (Last revised August 19, 2026)  
-
-&gt; **Authors:** Mingyuan Li, Guangsheng Yu, Xu Wang, Shaoxiong Ji  
-&gt; **Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`)  
-&gt; **arXiv ID:** [arXiv:2608.17050](https://arxiv.org/abs/2608.17050)  
-&gt; **Submission Date:** August 17, 2026 (Last revised August 19, 2026)  
-
----
-
-## 📌 Summary
-
-Large Language Models (LLMs) typically struggle to balance external knowledge retrieval (which is flexible but introduces latency and shallow integration) with parametric adaptation (which is efficient at inference time but entangles knowledge with model weights, making updates and transfers difficult). 
-
-This paper investigates **Engram-style hashed memory**, an intermediate approach where learned information is stored in an external addressable table and consumed via a small learned reader. The core research question explores what matters most when moving this memory across different backbones: **the frozen memory itself or the target-side reader?**</description>
-    </item>
-    <item>
-      <title>2026-08-21-基于时序多信号融合的Token级幻觉检测</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/基于时序多信号融合的Token级幻觉检测/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/基于时序多信号融合的Token级幻觉检测/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型（LLM）的实际应用中，幻觉现象一直是阻碍其迈向高可靠性的关键痛点。传统的Token级幻觉检测器通常仅依赖单一、孤立的信号对每个Token进行独立评估，这导致它们在生成模型表现出“自信且错误（confidently wrong）”的状态时彻底失效。为了突破这一瓶颈，该论文提出了一种全新的技术路线：将幻觉视为在时间维度上延伸的文本片段（Span），并通过序列标注（Sequence Labeling）的方式对其进行精准检测。
-
-该研究的核心技术在于构建了一个33维的特征流，融合了文本统计特征、自然语言推理（NLI）蕴含度以及大语言模型困惑度（Surprisal），并将其输入双向门控循环单元（BiGRU）中。该方法无需访问模型的内部参数，即可在RAGTruth数据集上取得0.840的AUC，相比独立逻辑回归基线实现了高达11个百分点的性能提升。通过控制变量消融实验，作者证实性能增益主要源于时序关联而非模型容量的提升。此外，该检测器对循环网络、状态空间模型（Mamba）以及注意力机制等多种架构展现出良好的通用性，并能无缝适配闭源模型及未在训练集中出现过的新模型文本，展现出极高的工业落地价值。
-
----
-
-## 📌 执行摘要
-
-&gt; 传统的Token级幻觉检测器通常使用单一信号独立评分每个Token，在生成模型“自信地出错”时往往会失效。本文提出了一种全新的方法：将幻觉视为一个在时间上延伸的片段（Span），并通过序列标注来进行检测。该方法通过一个33维的特征流（融合了文本统计、自然语言推理（NLI）蕴含度以及语言模型困惑度）对每个Token进行评分，且无需访问模型内部参数。应用在这些特征之上的双向门控循环单元（BiGRU）在RAGTruth（10个随机种子）上达到了0.840的AUC，相比独立的逻辑回归基线提升了11个百分点（$p = 0.002$，Wilcoxon符号秩检验）。受控的分解实验表明，性能的大幅提升主要归功于时序顺序而非模型容量：证据得以从置信度高的位置传播到片段内的模糊邻居。递归、状态空间（Mamba）和注意力机制等架构都出现了相同的0.845性能上限，这表明性能瓶颈在于特征集而非模型本身。由于它仅读取生成的文本和外部信号，该检测器不仅适用于闭源模型，而且在处理训练期间未曾见过的语言模型所生成的文本时依然有效，AUC损失不到4%。
-
-&gt; Traditional token-level hallucination detectors typically evaluate each token independently using a single isolated signal, rendering them ineffective when the generating language model is "confidently wrong." 
-&gt; 
-&gt; This paper introduces a fresh approach: treating hallucinations as temporally extended spans evaluated through sequence labeling. By feeding a 33-dimensional feature stream—combining text statistics, Natural Language Inference (NLI) entailment, and language model surprisal—into a Bidirectional Gated Recurrent Unit (BiGRU) without needing access to model internals, the detector achieves state-of-the-art results while remaining compatible with closed-source models.
-
----
-
-## 📋 摘要
-
-&gt; Token级幻觉检测器从单一信号中独立对每个Token进行评分，恰恰在生成模型自信地犯错时失效。本文转而将幻觉视为一个在时间上延伸的片段，并通过序列标注来检测它：每个Token根据一个33维的特征流进行评分，该特征流融合了文本统计信息、自然语言推理（NLI）蕴含度以及语言模型困惑度，且无需访问模型内部。在这些特征之上的双向门控循环单元（BiGRU）在RAGTruth（10个种子）上达到了0.840的AUC，比独立的逻辑回归基线提升了11个点（$p = 0.002$，Wilcoxon符号秩检验）。受控分解表明，大部分增益归因于时序顺序而非模型容量：证据在片段内从自信的位置传播到模糊的邻居。相同的0.845上限在循环、状态空间（Mamba）和注意力机制架构中重复出现，将瓶颈定位在特征集而不是模型中。由于它仅读取生成的文本和外部信号，该检测器适用于闭源模型，并且在它训练期间从未见过的语言模型生成的文本上也能持续工作，AUC损失小于4%。
-
-&gt; Token-level hallucination detectors score each token independently from a single signal, and fail exactly when the generating model is confidently wrong. This paper instead treats hallucination as a temporally extended span and detects it by sequence labeling: each token is scored from a 33-dimensional feature stream that fuses text statistics, Natural Language Inference (NLI) entailment, and language model surprisal, with no access to model internals. A Bidirectional Gated Recurrent Unit (BiGRU) over these features reaches an AUC of 0.840 on RAGTruth (10 seeds), an 11-point gain over an independent logistic-regression baseline ($p = 0.002$, Wilcoxon signed-rank). A controlled decomposition attributes most of the gain to temporal order rather than model capacity: evidence propagates from confident positions to ambiguous neighbors within a span. The same 0.845 ceiling recurs across recurrent, state-space (Mamba), and attention architectures, locating the bottleneck in the feature set rather than the model. Because it reads only the generated text and external signals, the detector works on closed-source models, and it keeps working on text produced by language models it never saw during training, losing under 4% AUC.
-
----
-
-## 🔍 核心发现与方法论
-
-&gt; * **序列标注方法：** 模型不再将幻觉检测视为每个Token的孤立分类任务，而是将错误视为随时间连续分布的片段。
-&gt; * **特征工程：** 利用一个**33维的特征流**，结合了：
-&gt;   * 文本统计信息
-&gt;   * 自然语言推理（NLI）蕴含度得分
-&gt;   * 语言模型困惑度（Surprisal）指标
-&gt; * **架构无关性：** 在循环、状态空间（Mamba）和基于注意力机制的架构中进行了评估，它们一致触及了约 0.845 AUC 的性能上限，证明了瓶颈在于特征表示而非神经网络架构。
-&gt; * **泛化能力：** 由于系统独立于模型内部结构来分析外部信号和生成的文本，因此它可以与闭源模型无缝协作，并在未见过的语言模型生成的文本上保持高性能（AUC损失 $&lt;4\%$）。
-
-* **Sequence Labeling Approach:** Instead of treating hallucination detection as isolated classification tasks per token, the model treats errors as continuous spans over time.
-* **Feature Engineering:** Utilizes a **33-dimensional feature stream** combining:
-  * Text statistics
-  * Natural Language Inference (NLI) entailment scores
-  * Language model surprisal metrics
-* **Architecture Agnosticism:** Evaluated across Recurrent, State-Space (Mamba), and Attention-based architectures, all consistently hitting a performance ceiling of ~0.845 AUC, proving the bottleneck lies within the feature representations rather than the neural architecture.
-* **Generalizability:** Because the system analyzes external signals and generated text independently of model internals, it functions seamlessly with closed-source models and maintains high performance (losing &lt;4% AUC) on text generated by unseen language models.
-
----
-
-## 📊 元数据与分类
-
-&gt; * **学科领域：** 计算与语言 (`cs.CL`)；人工智能 (`cs.AI`)；机器学习 (`cs.LG`)
-&gt; * **ACM 分类：** I.2.7；I.2.6
-&gt; * **DOI 链接：** [10.48550/arXiv.2608.18115](https://doi.org/10.48550/arXiv.2608.18115)
-
-* **Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`)
-* **ACM Classes:** I.2.7; I.2.6
-* **DOI:** [10.48550/arXiv.2608.18115](https://doi.org/10.48550/arXiv.2608.18115)</description>
-    </item>
-    <item>
-      <title>Coverage-Driven RTL Assertion Generation with Formal Exploration and Neuro-Symbolic Refinement</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/基于形式化探索与神经符号细化的覆盖率驱动 RTL 断言生成/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/基于形式化探索与神经符号细化的覆盖率驱动 RTL 断言生成/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>硬件功能验证在暴露设计缺陷以及确保寄存器传输级（RTL）设计信心方面，高度依赖高质量的断言（Assertions）。然而，传统断言挖掘方法往往表现不佳，因为随机或有限的执行追踪无法触及深层、难以访问的行为，且一站式生成技术缺乏识别验证盲区的反馈机制。
-
-为了克服这些局限性，作者引入了 **NeuroAssertion**，这是一个新颖的覆盖率驱动断言生成框架，它将形式化追踪生成、语法制导综合（SyGuS）以及智能体驱动的细化过程有机结合。实验评估表明，与传统的断言挖掘技术相比，NeuroAssertion 能够产生大约 **2 倍的断言**，并实现大约 **2 倍高的变异覆盖率**。
-
----
-
-# Coverage-Driven RTL Assertion Generation with Formal Exploration and Neuro-Symbolic Refinement
-
-**Authors:** Zhiyuan Yan, Ziyue Zheng, Hongce Zhang  
-**Primary Subject:** Hardware Architecture (`cs.AR`)  
-**Secondary Subject:** Artificial Intelligence (`cs.AI`)  
-**Identifiers:** arXiv: [2608.18482](https://arxiv.org/abs/2608.18482) | DOI: [10.48550/arXiv.2608.18482](https://doi.org/10.48550/arXiv.2608.18482)  
-**Status:** Accepted at MLCAD 2026  
-**Submitted:** August 19, 2026  
-
-&gt; **Authors:** Zhiyuan Yan, Ziyue Zheng, Hongce Zhang  
-&gt; **Primary Subject:** Hardware Architecture (`cs.AR`)  
-&gt; **Secondary Subject:** Artificial Intelligence (`cs.AI`)  
-&gt; **Identifiers:** arXiv: [2608.18482](https://arxiv.org/abs/2608.18482) | DOI: [10.48550/arXiv.2608.18482](https://doi.org/10.48550/arXiv.2608.18482)  
-&gt; **Status:** Accepted at MLCAD 2026  
-&gt; **Submitted:** August 19, 2026  
-
----
-
-## Summary
-
-硬件功能验证 heavily 依赖于高质量的断言来暴露设计缺陷并确保对寄存器传输级（RTL）设计的信心。然而，传统断言挖掘方法往往效果欠佳，因为随机或有限的执行追踪无法触及深层、难以访问的行为，并且一站式生成技术缺乏用于识别验证盲区的反馈机制。
-
-&gt; Hardware functional verification heavily relies on high-quality assertions to expose design bugs and ensure confidence in Register Transfer Level (RTL) designs. However, traditional assertion mining methods often fall short because random or limited execution traces fail to reach deep, hard-to-access behaviors, and one-stop generation techniques lack feedback mechanisms to identify verification gaps. 
-
-为了克服这些局限性，作者推出了 **NeuroAssertion**，这是一个新颖的覆盖率驱动断言生成框架，它统一了形式化追踪生成、语法制导综合（SyGuS）以及智能体驱动的细化过程。
-
-&gt; To overcome these limitations, the authors introduce **NeuroAssertion**, a novel coverage-driven assertion generation framework that unifies formal trace generation, syntax-guided synthesis (SyGuS), and an agent-driven refinement process.</description>
-    </item>
-    <item>
-      <title>Structure-Informed Estimation for Pilot-Limited MIMO Channels via Tensor Decomposition</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/基于张量分解的导频受限MIMO信道结构化估计/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/基于张量分解的导频受限MIMO信道结构化估计/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>随着宽带MIMO系统向6G演进，获取精确信道状态信息（CSI）所需的导频信号开销已成为主要的性能瓶颈。本文引入了一种**结构化混合估计器**，将导频受限的MIMO信道估计建模为一个低秩张量补全问题。通过利用正则多面体（CP）和Tucker等张量分解方法，该方法有效解决了稀疏导频观测所固有的欠定逆问题。
-
-此外，该框架结合了一个轻量级的3D U-Net网络来学习残余分量，从而能够有效捕捉纯低Rank模型可能遗漏的扩散散射和硬件非理想特性。实验结果表明，该方法在不同导频密度下均展现出优异的数值稳定性和估计精度，为未来6G超大规模MIMO系统的信道估计提供了一条高效的新途径。
-
----
-
-# Structure-Informed Estimation for Pilot-Limited MIMO Channels via Tensor Decomposition
-
-**Authors:** Alexandre Barbosa de Lima  
-**Subjects:** Signal Processing (eess.SP); Artificial Intelligence (cs.AI)  
-**arXiv ID:** [2602.04083](https://arxiv.org/abs/2602.04083)  
-**Submitted:** 3 Feb 2026 (Last revised: 19 Aug 2026)
-
-&gt; ## Structure-Informed Estimation for Pilot-Limited MIMO Channels via Tensor Decomposition
-&gt; 
-&gt; **Authors:** Alexandre Barbosa de Lima  
-&gt; **Subjects:** Signal Processing (eess.SP); Artificial Intelligence (cs.AI)  
-&gt; **arXiv ID:** [2602.04083](https://arxiv.org/abs/2602.04083)  
-&gt; **Submitted:** 3 Feb 2026 (Last revised: 19 Aug 2026)
-
----
-
-## Summary
-
-随着宽带MIMO系统向6G演进，准确获取信道状态信息（CSI）所需的导频信号开销成为了一个重大瓶颈。本文引入了一种**结构化混合估计器**，将导频受限的MIMO信道估计视为低秩张量补全问题。通过利用张量分解（具体为正则多面体分解（CP）和Tucker分解），所提方法解决了稀疏导频观测中固有的欠定逆问题。该框架进一步结合了轻量级的3D U-Net来学习残余分量，有效地捕捉了纯低秩模型可能遗漏的扩散散射和硬件非理想性。
-
-&gt; ## Summary
-&gt; As wideband MIMO systems scale toward 6G, the overhead required for pilot signals becomes a significant bottleneck for accurate channel state information (CSI). This paper introduces a **structure-informed hybrid estimator** that treats pilot-limited MIMO channel estimation as a low-rank tensor completion problem. By leveraging tensor decompositions—specifically Canonical Polyadic (CP) and Tucker—the proposed method addresses the underdetermined inverse problem inherent in sparse pilot observations. The framework further incorporates a lightweight 3D U-Net to learn residual components, effectively capturing diffuse scattering and hardware non-idealities that pure low-rank models might miss.
-
----
-
-## Key Methodologies</description>
     </item>
   </channel>
 </rss>
