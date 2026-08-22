@@ -5,6 +5,673 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-08-23-解码 AI：智能体循环架构与供应商经济学</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/解码 AI：智能体循环架构与供应商经济学/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/解码 AI：智能体循环架构与供应商经济学/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>近期研究（包括 LangChain 的 *Terminal-Bench* 实验）表明，围绕大语言模型（LLM）构建的“架构框架”（Harness）对智能体性能的影响远超模型本身。本文基于 *Decoding AI* 开源课程的视角，深入探讨了智能体循环的三种主要运行模式。
+
+文章核心在于分析不同运行模式如何决定基础设施需求及成本优化策略。通过对比交互式、离线式和异步式三种模式，作者阐述了在“按 Token 付费”的 API 模式与“按 GPU 小时计费”的服务器模式之间进行权衡的逻辑，为开发者提供了构建高效、经济的智能体系统的实践指南。
+
+---
+
+## 一个无头核心，三种运行形态
+
+每个智能体的核心都是一个**无头框架（headless harness）**：这是一个轻量级的循环，LLM 在其中选择动作，工具执行任务，并将观察结果反馈回上下文窗口。虽然核心逻辑非常精简（通常不到 150 行代码），但其周围的基础设施——内存、沙箱和权限管理——才是决定智能体实用性的关键。
+
+&gt; At the heart of every agent is a **headless harness**: a lightweight loop where an LLM selects an action, a tool executes, and the observation is fed back into the context window. While the core logic is minimal (often under 150 lines), the surrounding infrastructure—memory, sandboxing, and permissions—defines the agent's utility.</description>
+    </item>
+    <item>
+      <title>FAB's AGENT.MD</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/我的 agent.md：如何利用它提升大模型辅助编程的代码质量/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/我的 agent.md：如何利用它提升大模型辅助编程的代码质量/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在使用大语言模型（LLM）进行辅助编程时，尽管开发速度大幅提升，但初始生成的代码往往杂乱无章、缺乏格式化，需要进行繁琐的手动修正。为了解决这一痛点，开发者 Fabien Sanglard 引入了一种项目级的配置文件——`agent.md`。通过在 AI 的提示词约束（prompt harness）中直接注入代码风格指南、架构边界和编码标准，从而消除了重复的代码风格纠正，确保产出达到生产环境的可用标准。
+
+本文探讨了 Fabien 如何通过迭代工作流演进出 `agent.md` 方案，详细列出了其自定义的各项严格规则，并分享了应对大模型“上下文稀释（context dilution）”问题以及自动更新配置文件的实用技巧。
+
+---
+
+## 摘要 (Executive Summary)
+
+Using Large Language Models (LLMs) for coding can drastically speed up development, but the initial code quality is often messy, unformatted, and requires tedious correction. By introducing a project-level configuration file named `agent.md`, developers can inject style guides, architectural boundaries, and coding standards directly into the AI's prompt harness. This article explores how Fabien Sanglard evolved his workflow to eliminate repetitive code-style corrections and maintain production-ready outputs.
+
+&gt; 使用大语言模型（LLM）进行编码可以极大地加快开发速度，但初始代码质量往往杂乱无章、未格式化，并且需要进行繁琐的修正。通过引入名为 `agent.md` 的项目级配置文件，开发者可以将风格指南、架构边界和编码标准直接注入到 AI 的提示词框架中。本文探讨了 Fabien Sanglard 如何演进其工作流，以消除重复的代码风格修正并保持生产就绪的代码输出。
+
+---
+
+## 从无感到应接不暇 (From Unimpressed to Overwhelmed)
+
+Fabien's first attempt to use LLMs for coding in mid-2025 resulted in broken, non-compiling Rust code for an mDNS implementation (`libadbmdns`). Returning to LLMs in January 2026 yielded much better results, including complex binary heap generation and tracking down obscure Windows IOCP bugs. 
+
+However, the generated code quality was abysmal: spaghetti code devoid of comments and structure. The time saved in writing code was quickly lost in cleaning it up to meet production standards.
+
+&gt; Fabien 在 2025 年中期首次尝试使用 LLM 进行编码时，得到的 mDNS 实现（`libadbmdns`）是损坏且无法编译的 Rust 代码。2026 年 1 月重新使用 LLM 时，效果有了很大改善，包括复杂的二叉堆生成以及排查晦涩的 Windows IOCP 漏洞。
+&gt; 
+&gt; 然而，生成的代码质量依然糟糕透顶：充斥着缺乏注释和结构的“面条代码”。编写代码所节省的时间，很快就在将其清理至符合生产标准的过程中消耗殆尽了。
+
+## 不断迭代与重复唠叨 (Iterating and Repeating Yourself)
+
+By March 2026, using agentic IDEs like Antigravity and VS Code's Claude Code plugin allowed for staged code iteration. While code quality improved significantly—resembling hand-written work—the process became tedious. Fabien found himself acting as an infinitely patient junior CS major's reviewer, constantly repeating instructions like:
+* *"Don't use magic numbers."*
+* *"Add a short explanatory comment."*
+* *"Use short function names."*
+
+&gt; 到 2026 年 3 月，使用诸如 Antigravity 和 VS Code 的 Claude Code 插件等智能体 IDE（agentic IDEs），使得分阶段的代码迭代成为可能。尽管代码质量显著提高——类似于人工编写的代码——但这个过程变得十分繁琐。Fabien 发现自己扮演着一个拥有无限耐心的计算机专业初级学生的审阅者，不断重复着如下指令：
+&gt; * *“不要使用魔法数字。”*
+&gt; * *“添加简短的解释性注释。”*
+&gt; * *“使用简短的函数名。”*
+
+## `Agent.md` 救场 (Agent.md to the Rescue)
+
+Coding harnesses often load a file named [`agent.md`](https://github.com/agentsmd/agents.md/issues/135) at the start of a session, injecting it directly into the prompt. This serves as the ideal location to fine-tune coding style preferences once and for all.
+
+Placing the following `agent.md` file in the root of a project enforces these standards automatically. (Alternatively, you can symlink `gemini.md` or `claude.md` to point to `agent.md`).
+
+&gt; 编程工具框架通常会在会话开始时加载名为 [`agent.md`](https://github.com/agentsmd/agents.md/issues/135) 的文件，并将其直接注入到提示词中。这是彻底微调代码风格偏好的理想场所。
+&gt; 
+&gt; 将以下 `agent.md` 文件放在项目的根目录下，即可自动强制执行这些标准。（或者，您可以将 `gemini.md` 或 `claude.md` 符号链接指向 `agent.md`）。
+
+```markdown
+# FAB's AGENT.MD
+
+- When writing something intended for human consumption, (comment, commit message, reply to prompt) use as few words as possible. Pick every word meticulously to reduce the volume to a strict minimum. Be down to the point. Less is more.
+
+- Avoid superlatives and praise. Stop telling me I am absolutely right. Give me the cold hard truth.
+
+- Avoid magic numbers and strings by extracting recurring or meaningful values into descriptive constants (const) or enums. Keep self-explanatory, one-off values inline to avoid clutter. If a value comes from a spec (e.g. HTTP 200 OK), use a constant regardless.
+
+- Reduce code indentation. Avoid Arrow Anti-Pattern. Leverage early return and continue.
+
+- Keep function names short. Less than 30 characters.
+
+- Use enums instead of booleans for function parameters.
+
+- Let the reader of the code breathe. Add empty lines between logical blocks of code.
+
+- Add a small, to the point, comment to explain *what* the block does and *why*. Use examples when possible. Propose ASCII drawings to explain complete systems.
+
+- Treat member visibility changes as a breaking design shift. Keep all fields and functions private unless external access is strictly required by the design. Prompt the user for explicit approval before changing any access modifier from private to internal or public.
+
+- Program to levels of abstraction. Lower-level mechanics (e.g., raw hardware I/O, sector parsing, direct socket streams) must be encapsulated in a dedicated driver/abstraction layer. Expose clean, high-level APIs to the rest of the application so calling code works with domain concepts, not raw implementation details.
+
+- Don't touch blocks of code unrelated to the feature you implement. e.g. Don't add comments to a block of code if you did not create it or modify it. As much as possible try to minimize the number of changed lines when implementing a feature.
+
+- Strictly adhere to the layered boundary hierarchy: each layer may only communicate with its immediate neighbor directly below it. Never "punch holes" through layers (e.g., controllers or UI components must never directly call database queries, raw hardware drivers, or low-level network clients; always route through the intermediate service/abstraction layer).
+
+- Always use {}, even on a one-line "if" statement.
+
+When you write a commit message, follow these 7 rules:
+Rule 1: Separate the subject line from the body with a single blank line.
+Rule 2: Limit the subject line to 50 characters (72 is the absolute hard limit).
+Rule 3: Capitalize the first letter of the subject line.
+Rule 4: Do not end the subject line with a period.
+Rule 5: Use the imperative mood in the subject line (e.g., "Fix bug," "Add feature," 
+        not "Fixed" or "Adds"). Test formula: It must complete the sentence: "If applied,
+        this commit will [your subject line here]".
+Rule 6: Wrap the body text manually at 72 characters to prevent Git formatting issues.
+Rule 7: Use the body to explain what and why vs. how. Assume the code explains the how;
+        the message must explain the context and reasoning. 
+
+- If the prompt indicates that a bug is being fixed, don't write the fix right away. First write the test. Observe it failing. Then write the fix. And observe the test passing.        
+```
+
+&gt; **Note:** While this approach dramatically improves code quality, it isn't a silver bullet. LLMs still hallucinate and require code review—shifting the developer's focus from micro-style edits to high-level architecture and design.
+
+&gt; **注意：** 尽管这种方法极大地提高了代码质量，但它并非万灵药。LLM 仍然会产生幻觉并需要代码审查——这把开发者的工作重点从微观风格的修改转移到了高层架构和设计上。
+
+---
+
+## 如何应对上下文稀释 (How to Deal with Context Dilution)
+
+As context grows, LLMs suffer from **"context dilution"** (or *attention dilution*), as explored in the ["Lost in the Middle" paper](https://arxiv.org/abs/2307.03172). Models pay less attention to instructions buried in the middle of the context window. To minimize this issue:
+
+1. **Keep the context short:** Start a fresh session for each new feature.
+2. **Explicitly reload:** Prompt the harness to reload instructions when code quality dips by simply typing: *"Reload agent.md."*
+
+&gt; 随着上下文的增长，LLM 会遭受**“上下文稀释”**（或*注意力稀释*）的影响，正如[“迷失在中部”（"Lost in the Middle"）论文](https://arxiv.org/abs/2307.03172)中所探讨的那样。模型对埋在上下文窗口中间的指令关注度会下降。为了将此问题降到最低：
+&gt; 
+&gt; 1. **保持上下文简短：** 为每个新功能开启一个全新的会话。
+&gt; 2. **显式重新加载：** 当代码质量下降时，只需输入 *“Reload agent.md.”* 即可提示框架重新加载指令。
+
+---
+
+## 自动更新 `agent.md` (Auto-Updating `agent.md`)
+
+You don't need to manually open an editor every time you want to refine a rule. A quick and efficient approach is to simply **ask the agent to update `agent.md` directly** when a new preference emerges.
+
+&gt; 每当你想完善规则时，大可不必每次都手动打开编辑器。一个快捷高效的方法是：当出现新的偏好时，**直接让 AI 助手去更新 `agent.md`** 即可。</description>
+    </item>
+    <item>
+      <title>2026-08-23-并发服务器：第 8 部分 - Go 语言</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/并发服务器：第 8 部分 - Go 语言/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/并发服务器：第 8 部分 - Go 语言/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在“并发服务器”系列的第八部分中，我们探讨了 Go 语言如何应对并发编程的挑战。Go 通过提供 **goroutine**（一种由运行时原生管理的轻量级 M:N 调度绿色线程）避开了复杂的事件循环和基于回调的异步编程模型。
+
+本文通过一个基础的 TCP 状态机服务器和一个更具现实意义的素数测试工作负载，演示了如何实现顺序服务器、如何通过每个客户端一个 goroutine 实现轻松扩展、如何使用带缓冲通道作为信号量来安全限制并发，以及如何实现工作池（Worker Pool）。文章最后总结道，Go 的运行时透明地处理了底层的 I/O 多路复用（如 `epoll`），为解决异步/等待（async/await）范式中的“函数颜色”问题提供了一种符合人体工程学的替代方案。
+
+---
+
+## 系列索引
+
+* [第 1 部分 - 简介](https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/)
+* [第 2 部分 - 线程](https://eli.thegreenplace.net/2017/concurrent-servers-part-2-threads/)
+* [第 3 部分 - 事件驱动](https://eli.thegreenplace.net/2017/concurrent-servers-part-3-event-driven/)
+* [第 4 部分 - libuv](https://eli.thegreenplace.net/2017/concurrent-servers-part-4-libuv/)
+* [第 5 部分 - Redis 案例研究](https://eli.thegreenplace.net/2017/concurrent-servers-part-5-redis-case-study/)
+* [第 6 部分 - 回调、Promise 和 async/await](https://eli.thegreenplace.net/2018/concurrent-servers-part-6-callbacks-promises-and-asyncawait/)
+* [第 7 部分 - Rust](https://eli.thegreenplace.net/2026/concurrent-servers-part-7-rust/)
+* **第 8 部分 - Go** *(本文)*
+
+*注：本文假设读者对 Go 编程语言有基础了解。*
+
+---
+
+## 顺序状态机服务器
+
+和之前一样，我们将从 [第 1 部分](https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/) 中介绍的基础状态机协议的顺序服务器开始。
+
+这是主函数：
+
+```go
+func main() {
+  port := "9090"
+  if len(os.Args) &gt;= 2 {
+    port = os.Args[1]
+  }
+  log.Println("Serving on port", port)
+
+  listener, err := net.Listen("tcp", ":"+port)
+  if err != nil {
+    log.Fatal("Error listening:", err)
+  }
+  defer listener.Close()
+
+  for {
+    conn, err := listener.Accept()
+    if err != nil {
+      log.Printf("Error accepting connection: %v", err)
+      continue
+    }
+    log.Println("connection received from", conn.RemoteAddr())
+
+    if err := server.ServeSerialProtocol(conn); err != nil {
+      log.Printf("Error serving %v: %v", conn.RemoteAddr(), err)
+    } else {
+      log.Println("peer done", conn.RemoteAddr())
+    }
+  }
+}
+```
+
+与前几部分一样，该服务器是“无限”的；除非被显式终止，否则它永远不会停止服务新连接。
+
+这是实现单个客户端协议的函数；它接收一个代表与客户端连接的套接字的 `net.Conn` 值：
+
+```go
+type processingState int
+
+const (
+  waitForMsg processingState = iota
+  inMsg
+)
+
+// ServeSerialProtocol serves our serial protocol to a single TCP connection.
+func ServeSerialProtocol(conn net.Conn) error {
+  defer conn.Close()
+
+  if _, err := conn.Write([]byte{'*'}); err != nil {
+    return err
+  }
+
+  var state processingState = waitForMsg
+  buf := make([]byte, 1024)
+  for {
+    n, err := conn.Read(buf)
+    for _, b := range buf[:n] {
+      switch state {
+      case waitForMsg:
+        if b == '^' {
+          state = inMsg
+        }
+      case inMsg:
+        if b == '$' {
+          state = waitForMsg
+        } else {
+          var bb byte = byte(b) + 1
+          if _, err := conn.Write([]byte{bb}); err != nil {
+            return err
+          }
+        }
+      }
+    }
+
+    // Check error after processing the bytes received along with it.
+    if err != nil {
+      if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+        return nil
+      } else {
+        return err
+      }
+    }
+  }
+}
+```
+
+---
+
+## 每个客户端一个 Goroutine
+
+Go 运行时并没有直接暴露操作系统线程，而是实现了自己的 M:N 调度，在操作系统线程之上运行轻量级的 *goroutine*。在 Go 中使用 goroutine 的成本非常低——无论是在语法和开发工作量方面，还是在 [系统资源](https://eli.thegreenplace.net/2018/measuring-context-switching-and-memory-overheads-for-linux-threads/) 方面。
+
+下面是我们顺序协议服务器的一个版本，它通过为每个客户端启动一个 goroutine 来并发地服务客户端：
+
+```go
+func main() {
+  port := "9090"
+  if len(os.Args) &gt;= 2 {
+    port = os.Args[1]
+  }
+  log.Println("Serving on port", port)
+
+  listener, err := net.Listen("tcp", ":"+port)
+  if err != nil {
+    log.Fatal("Error listening:", err)
+  }
+  defer listener.Close()
+
+  for {
+    conn, err := listener.Accept()
+    if err != nil {
+      log.Printf("Error accepting connection: %v", err)
+      continue
+    }
+    log.Println("connection received from", conn.RemoteAddr())
+
+    go func() {
+      if err := server.ServeSerialProtocol(conn); err != nil {
+        log.Printf("Error serving %v: %v", conn.RemoteAddr(), err)
+      } else {
+        log.Println("peer done", conn.RemoteAddr())
+      }
+    }()
+  }
+}
+```
+
+在这种情况下，并发修改特别简单，因为服务器是无限循环的；没有必要等待这些 goroutine 完成（因此不需要 [`sync.WaitGroup`](https://pkg.go.dev/sync#WaitGroup)）。`server.ServeSerialProtocol` 的参数是从封闭作用域中词法捕获的，其返回值由周围的闭包处理。
+
+由于 goroutine 非常廉价，该服务器不太可能因为启动过多的 goroutine 而耗尽资源；事实上，它很可能会先耗尽其他资源——比如套接字的文件描述符。然而，有时限制并发程度仍然是有用的，即使是在 Go 中，我们将在接下来的章节中讨论一些实现方法。
+
+---
+
+## 使用信号量限制并发
+
+在以下场景中，即使 goroutine 启动和运行成本很低，限制 Go 程序中的并发程度也是有意义的：
+
+* **CPU 限制：** 任务可能是计算密集型的，任何服务器的 CPU 容量本质上都是有限的。如果太多的并发 goroutine 竞争有限的 CPU，它们都将进展缓慢。让较少的任务在合理的时间内完成可能更有意义。
+* **下游资源：** 保护可能有限的下游资源，例如并发数据库连接或其他服务。例如，如果服务器必须为每个任务向其他服务发送请求，且这些服务有速率限制，则必须仔细管理并发。
+* **安全性：** 防止恶意客户端通过过度请求导致服务崩溃，从而使合法客户端无法使用服务。
+
+让我们切换到 [第 4 部分](https://eli.thegreenplace.net/2017/concurrent-servers-part-4-libuv/) 中的素数测试服务器，因为这代表了更现实的工作负载。提醒一下：服务器接收数字，通过睡眠模拟阻塞，并返回 `"prime"` 或 `"composite"`。无限制的“每个客户端一个 goroutine”版本看起来与之前的代码示例 [几乎相同](https://github.com/eliben/code-for-blog/tree/main/2026/async-socket-server-go/cmd/prime-server-unbounded)，只是 goroutine 调用了另一个函数：
+
+```go
+go func() {
+  if err := server.ServePrimeProtocol(conn); err != nil {
+    log.Printf("Error serving %v: %v", conn.RemoteAddr(), err)
+  } else {
+    log.Println("peer done", conn.RemoteAddr())
+  }
+}()
+```
+
+其中 `ServePrimeProtocol` 定义如下 [[1]](#footnote-1)：
+
+```go
+// ServePrimeProtocol serves our prime protocol to a single TCP connection.
+func ServePrimeProtocol(conn net.Conn) error {
+  defer conn.Close()
+  buf := make([]byte, 1024)
+
+  for {
+    n, readerr := conn.Read(buf)
+    if n &gt; 0 {
+      // Parse the read buffer to an i64
+      num, err := strconv.ParseInt(strings.TrimSpace(string(buf[:n])), 10, 64)
+      if err != nil {
+        return err
+      }
+
+      response := "composite"
+      if isPrime(num, true) {
+        response = "prime"
+      }
+      if _, err := conn.Write([]byte(response + "\n")); err != nil {
+        return err
+      }
+    }
+
+    if readerr != nil {
+      if errors.Is(readerr, io.EOF) || errors.Is(readerr, net.ErrClosed) {
+        return nil
+      }
+      return readerr
+    }
+  }
+}
+
+// isPrime returns true if n is prime, false otherwise. If delay is true, it
+// will sleep for n milliseconds before calculating.
+func isPrime(n int64, delay bool) bool {
+  if delay {
+    time.Sleep(time.Duration(n) * time.Millisecond)
+  }
+
+  if n &lt; 2 {
+    return false
+  }
+  if n%2 == 0 {
+    return n == 2
+  }
+  for i := int64(3); i*i &lt;= n; i += 2 {
+    if n%i == 0 {
+      return false
+    }
+  }
+  return true
+}
+```
+
+在 Go 中限制并发最简单的方法是使用计数信号量，通过通道实现：
+
+```go
+func main() {
+  port := "8070"
+  if len(os.Args) &gt;= 2 {
+    port = os.Args[1]
+  }
+  log.Println("Serving on port", port)
+
+  listener, err := net.Listen("tcp", ":"+port)
+  if err != nil {
+    log.Fatal("Error listening:", err)
+  }
+  defer listener.Close()
+
+  maxConcurrency := runtime.NumCPU()
+  sem := make(chan struct{}, maxConcurrency)
+
+  for {
+    conn, err := listener.Accept()
+    if err != nil {
+      log.Printf("Error accepting connection: %v", err)
+      continue
+    }
+    log.Println("connection received from", conn.RemoteAddr())
+
+    // Acquire a token from the semaphore to limit concurrency.
+    sem &lt;- struct{}{}
+
+    go func() {
+      // Return the token when done serving the connection.
+      defer func() { &lt;-sem }()
+
+      if err := server.ServePrimeProtocol(conn); err != nil {
+        log.Printf("Error serving %v: %v", conn.RemoteAddr(), err)
+      } else {
+        log.Println("peer done", conn.RemoteAddr())
+      }
+    }()
+  }
+}
+```
+
+通道 `sem` 用作信号量；请注意，它是一个具有最大容量的缓冲通道。通过向通道发送数据来获取令牌，通过从通道接收数据来释放令牌。当通道已满时，发送操作 `sem &lt;- struct{}{}` 会阻塞，直到其他 goroutine 移除一个令牌 [[2]](#footnote-2)。
+
+通道的类型是 `struct{}`，这意味着“空”或“无数据”。这在 Go 中是惯用法，用于仅为了同步语义而非数据传输而使用的通道。
+
+---
+
+## 工作池
+
+由于启动 goroutine 很廉价，且限制并发很容易（如上所示），对于像我们这样的服务器，通常不需要“工作池”模式。不过，它偶尔也有用处（例如当工作者需要在任务之间维护某些非平凡的状态时），因此在这里讨论一下是有价值的。
+
+这是我们使用工作池的素数测试服务器的一个变体：
+
+```go
+func worker(jobs &lt;-chan net.Conn) {
+  for conn := range jobs {
+    if err := server.ServePrimeProtocol(conn); err != nil {
+      log.Printf("Error serving %v: %v", conn.RemoteAddr(), err)
+    } else {
+      log.Println("peer done", conn.RemoteAddr())
+    }
+  }
+}
+
+func main() {
+  port := "8070"
+  if len(os.Args) &gt;= 2 {
+    port = os.Args[1]
+  }
+  log.Println("Serving on port", port)
+
+  listener, err := net.Listen("tcp", ":"+port)
+  if err != nil {
+    log.Fatal("Error listening:", err)
+  }
+  defer listener.Close()
+
+  // The channel is unbuffered, so it will block when there are no available
+  // workers to accept a new connection.
+  jobs := make(chan net.Conn)
+  maxConcurrency := runtime.NumCPU()
+  for i := 0; i &lt; maxConcurrency; i++ {
+    go worker(jobs)
+  }
+
+  for {
+    conn, err := listener.Accept()
+    if err != nil {
+      log.Printf("Error accepting connection: %v", err)
+      continue
+    }
+    log.Println("connection received from", conn.RemoteAddr())
+
+    jobs &lt;- conn
+  }
+}
+```
+
+启动固定数量的工作者 goroutine；这些 goroutine 都从同一个通道接收“作业”。在 `Accept` 循环中，每个客户端连接作为新作业发送到此通道，并由下一个可用的工作者获取。如前所述，通常会在某处看到 `sync.WaitGroup` 以确保 goroutine 的干净关闭，但在我们的例子中，由于服务器从不退出，因此没有必要。
+
+---
+
+## 异步？
+
+程序员在 Go 中是否必须求助于异步/事件驱动编程？根据我的经验，几乎不需要。Go 从底层设计上就适合大规模并发；goroutine 创建非常廉价，内存占用极小，切换速度非常快——所有这些都在用户空间完成。我在 [2018 年](https://eli.thegreenplace.net/2018/measuring-context-switching-and-memory-overheads-for-linux-threads/) 进行的测量显示，切换时间约为 170 纳秒，而 Linux 线程的切换时间为 1-2 微秒。
+
+此外，Go 在底层已经使用了像 `epoll` 这样的事件驱动循环进行 I/O。等待 I/O（如套接字）的 goroutine 实际上被“挂起”，除了它们的小内存占用外不消耗任何资源；当它们的 I/O 描述符就绪时，它们会被 Go 的运行时唤醒——这与异步编程的工作方式非常相似！
+
+话虽如此，当同时处理 *数百万* 个流时，有些人确实会尝试通过直接的异步编程来进一步挖掘资源。我只想说，这种情况非常罕见，绝大多数用户永远不需要这样做。
+
+---
+
+## 结论
+
+2018 年，我写了一篇题为 [Go hits the concurrency nail right on the head](https://eli.thegreenplace.net/2018/go-hits-the-concurrency-nail-right-on-the-head/) 的文章，在经过几年的积极编码后，我完全支持这一说法。Go 对于并发程序来说非常强大且符合人体工程学；虽然其他环境在库中费尽心思实现 async-await 风格的事件循环，但在 Go 中，它已经内置在核心语言和运行时中。你想要带有非常轻量级绿色线程的事件驱动 I/O，并且可以执行阻塞任务而无需担心 [函数颜色问题](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/) 吗？Go 已经为你准备好了。
+
+---
+
+## 代码
+
+本文的所有代码均可在 [GitHub](https://github.com/eliben/code-for-blog/tree/main/2026/async-socket-server-go) 上找到。
+
+---
+
+## 脚注
+
+1. &lt;span id="footnote-1"&gt;&lt;/span&gt;细心的读者会注意到这段代码的两个问题：
+   1. 该协议假设完整的数字是在一次 `conn.Read` 调用中从套接字读取的，并且不同数字之间没有帧或分隔。
+   2. 素数检查循环使用 `i*i`，对于大数字可能会溢出。
+   
+   这些问题在之前部分中 C、Python、JavaScript 和 Rust 版本的素数服务器中是一致的，因为我的重点是展示并发点的最简单代码。
+
+2. &lt;span id="footnote-2"&gt;&lt;/span&gt;**练习：** 请注意，我们的信号量保护了整个 `ServePrimeProtocol`，这意味着恶意（或无能的）客户端可以连接并空闲而不发送任何请求，从而将我们的并发容量减少 1。调整代码，将信号量移动到素数计算本身周围，以便仅限制此部分。</description>
+    </item>
+    <item>
+      <title>2026-08-23-大规模 Git 架构演进：Cursor 的 Continuity 架构解析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/大规模 Git 架构演进：Cursor 的 Continuity 架构解析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/大规模 Git 架构演进：Cursor 的 Continuity 架构解析/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在大规模场景下托管 Git 仓库一直面临着独特的工程挑战，这是由 Git 的分布式架构以及对二进制包文件（packfiles）的强依赖所决定的。传统的分布式文件系统、分布式哈希表（DHT）或者诸如 GitHub Spokes 那样的基于三阶段提交（3PC）的应用层复制方案，在应对现代企业级超大单体仓库（Monorepos）以及 AI 智能体（Agent）驱动的大量短生命周期仓库时，逐渐暴露出可扩展性、可用性以及运维复杂度方面的严重瓶颈。
+
+本文探讨了 Git 托管基础设施的演进历程，并重点介绍了由 Cursor 团队构建的全新 Git 架构 —— **Continuity**。该架构创新性地将预写日志（WAL）与对象存储（如 S3）相结合，将 S3 设定为唯一的真实数据源（Source of Truth）。通过这一设计，Continuity 实现了完全一致的水平扩展、轻松的压缩（Compaction）机制，以及针对现代复杂工作负载的零停机可靠性。
+
+---
+
+##  Git 难在哪里？
+
+&gt; Hosting Git repositories at scale is a well-known engineering hurdle. When Linus Torvalds designed Git, he created a **distributed** version control system intended to replace BitKeeper for the decentralized development of the Linux Kernel. In a distributed model, all instances of a repository are identical—there is nothing fundamentally unique about the repository on a server versus the one on a developer's laptop.
+在规模化场景下托管 Git 仓库是一个众所周知的工程难题。当林纳斯·托瓦兹（Linus Torvalds）设计 Git 时，他创造了一个**分布式**版本控制系统，旨在取代 BitKeeper，用于 Linux 内核的去中心化开发。在分布式模型中，仓库的所有实例都是完全相同的 —— 服务器上的仓库与开发者笔记本电脑上的仓库在本质上没有任何区别。
+
+&gt; While this works wonderfully for local operations and offline workflows, modern software companies rely heavily on centralized hosting. Unfortunately, Git's underlying design makes server-side scaling remarkably difficult.
+虽然这对于本地操作和离线工作流来说堪称完美，但现代软件公司高度依赖集中式托管。不幸的是，Git 的底层设计使得服务端扩展变得异常困难。
+
+&gt; Code and metadata are compressed and stored in **packfiles**—a binary serialization format optimized for local machine performance rather than distributed server management. Because packfiles must be transferred over the network and accessed on disk as large binary blobs, traditional approaches (like placing an HTTP server in front of on-disk repositories) quickly hit low scalability and availability ceilings.
+代码和元数据被压缩并存储在**包文件（packfiles）**中 —— 这是一种针对本地机器性能而非分布式服务器管理优化的二进制序列化格式。由于包文件必须通过网络传输并在磁盘上以大型二进制大对象（Blob）的形式被访问，传统方法（例如在磁盘仓库前端放置 HTTP 服务器）很快就会触及可扩展性和可用性的低上限。
+
+&gt; Scaling server-side Git generally falls into three approaches of increasing complexity:
+&gt; 1. Distributing the filesystem
+&gt; 2. Distributing the packfiles (objects)
+&gt; 3. Distributing Git itself
+扩展服务端 Git 通常分为三种复杂度逐渐递增的方法：
+1. 分布式文件系统
+2. 分布式包文件（对象）
+3. 分布式 Git 本身
+
+---
+
+## 没有包文件的 Git
+
+&gt; Because Git is a content-addressable data store keyed by SHA-1 hashes, it theoretically maps well to a distributed key-value store. However, this approach fails in practice because Git's actual layout is a **Directed Acyclic Graph (DAG)**. 
+由于 Git 是一个以 SHA-1 哈希为键的内容寻址数据存储，理论上它与分布式键值（Key-Value）存储有着良好的契合度。然而，这种方法在实践中行不通，因为 Git 的实际布局是一个**有向无环图（DAG）**。
+
+&gt; To perform even trivial operations—like listing recent changes—you must walk the commit history step-by-step. Each step yields a pointer to a tree, a file, or a parent commit. Because you cannot know the value of the next pointer without fetching the previous one, relying on a distributed store introduces prohibitive network latency. Previous attempts to store objects in Distributed Hash Tables (DHTs)—such as Google's JGit-based experiments—ultimately failed because the Git protocol still requires packfiles to be transmitted over the network, rendering `git clone` performance unacceptable.
+为了执行哪怕是最简单的操作（例如列出最近的更改），你也必须一步步遍历提交历史。每一步都会产生一个指向树（tree）、文件或父提交的指针。由于在不获取前一个指针的情况下无法得知下一个指针的值，依赖分布式存储会引入不可接受的网络延迟。先前将对象存储在分布式哈希表（DHT）中的尝试（例如谷歌基于 JGit 的实验）最终都失败了，因为 Git 协议仍然要求通过网络传输包文件，这导致 `git clone` 的性能完全无法让人接受。
+
+---
+
+## GitHub 与文件系统
+
+&gt; When GitHub launched in 2008, it sought to make centralized Git hosting painless using a monolithic Ruby on Rails application with repositories stored locally on disk. As the platform grew, scaling the application meant deploying more instances, raising the question: *How do you deploy multiple copies of apps that need disk access to the same Git repositories?*
+2008 年 GitHub 刚上线时，它试图通过一个单体 Ruby on Rails 应用程序来实现无痛的集中式 Git 托管，并将仓库直接存储在本地磁盘上。随着平台的发展，扩展应用程序意味着部署更多实例，这就引发了一个问题：*如何将需要访问磁盘的应用部署多份副本来操作相同的 Git 仓库？*
+
+&gt; Early engineers attempted to distribute the filesystem using NFS, GFS, and DRBD. All of these approaches failed due to:
+&gt; * **Filesystem assumptions:** Git assumes local filesystem semantics (locking, syncing, and tearing) that break down across networked filesystems.
+&gt; * **Random read patterns:** Because packfiles store objects as deltas spread randomly across compressed binaries, navigating the DAG requires random jumps across gigabytes of data. Networked filesystems crawl under these access patterns without local caching.
+早期工程师曾尝试使用 NFS、GFS 和 DRBD 来实现文件系统分布式化。但所有这些方法都以失败告终，原因如下：
+* **文件系统假设：** Git 假定具备本地文件系统语义（锁定、同步和防撕裂），而这些在网络文件系统中会失效。
+* **随机读取模式：** 由于 packfiles 将对象存储为随机分布在压缩二进制文件中的增量（deltas），因此导航 DAG 需要在数 GB 的数据中进行随机跳转。在没有本地缓存的情况下，网络文件系统在面对这种访问模式时性能会急剧下降。
+
+&gt; Ultimately, GitHub abandoned distributed filesystems in favor of an RPC system where repositories lived on dedicated fileservers, accessed remotely by the Rails app.
+最终，GitHub 放弃了分布式文件系统，转而采用一种 RPC 系统：仓库驻留在专用的文件服务器上，由 Rails 应用进行远程访问。
+
+---
+
+## Spokes 与一致性
+
+&gt; Developed around 2013, GitHub's **Spokes** pioneered application-level replication for Git repositories. It made three foundational choices:
+&gt; 1. It works at the **packfile level** rather than distributing Git internals.
+&gt; 2. It stores data as **plain Git repositories on local NVMe disks**.
+&gt; 3. It replicates data while keeping all copies **consistently in sync**.
+GitHub 的 **Spokes** 开发于 2013 年左右，开创了 Git 仓库应用级复制的先河。它做出了三个基础性选择：
+1. 它工作在**包文件（packfile）级别**，而不是分布式化 Git 的内部实现。
+2. 它将数据存储为**本地 NVMe 磁盘上的纯 Git 仓库**。
+3. 它在复制数据的同时，保持所有副本**高度一致地同步**。</description>
+    </item>
+    <item>
+      <title>2026-08-23-monday.com 是如何将其平台转型为人类与智能体协作的“智能体优先”产品的</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/monday.com 是如何将其平台转型为人类与智能体协作的“智能体优先”产品的/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/monday.com 是如何将其平台转型为人类与智能体协作的“智能体优先”产品的/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在经历了简单 AI 附加功能的瓶颈期后，项目管理与协作平台 monday.com 进行了根本性的架构变革，围绕 Claude 重构了其平台，打造出真正的“智能体优先”（agent-first）体验。通过超越“AI点缀”（即在现有工作流中简单嵌入功能），该公司成功将 AI 智能体集成为了积极的团队成员。上线两个月后，该平台已促进了超过五00万次的人机交互，证明了将 AI 深度融入现有工作流是实现持续 AI 采纳的关键所在。
+
+&gt; After hitting a ceiling with simple AI add-ons, monday.com underwent a fundamental architectural shift, rebuilding its platform around Claude to create a truly agent-first experience. By moving beyond "AI dust"—sprinkling features onto existing workflows—the company successfully integrated AI agents as active teammates. Two months post-launch, the platform has facilitated over five million human-agent interactions, proving that deep integration within existing workflows is the key to sustained AI adoption.
+
+---
+
+![Illustration](./images/5f404b45fbb1.svg)
+
+## 击碎“AI 点缀”的天花板
+monday.com 的转型经历了三个阶段。最初，团队专注于将 AI 功能嵌入其现有的可视化界面中。虽然这在早期引起了轰动，但团队很快意识到，他们只是在构建“AI 点缀”——这些自动化并未从根本上改变价值主张，也没有创造出长期的使用习惯。
+
+&gt; ## Hitting the “AI dust” ceiling
+&gt; monday.com’s transformation occurred in three phases. Initially, the team focused on embedding AI capabilities into their existing visual interface. While this generated early excitement, the team soon realized they were merely building "AI dust"—automations that didn't fundamentally change the value proposition or create long-term usage patterns.
+
+“采纳 AI 功能并不等于成为一家 AI 公司，”AI 平台产品副总裁 Orly Stern Izhaki 表示。该公司改变了战略使命：不再是在功能上添加 AI，而是将平台重新构建为一个让人类和智能体能够原生协作的地方，并充分利用现有的上下文、看板和治理机制。
+
+&gt; "Adopting AI features is not the same as becoming an AI company," says Orly Stern Izhaki, VP of Product, AI Works Platform. The company shifted its mandate: instead of adding AI to features, they would rebuild the platform to be a place where humans and agents work together natively, utilizing existing context, boards, and governance.
+
+## 智能体作为团队成员
+为了缩短抽象的 AI 概念与具体工作之间的距离，monday.com 将智能体设计得如同同事一般。每个智能体都被赋予了一个名字和头像，用户可以通过触发器和 @提及（mentions）为其分配任务。这种设计避免了 AI 聊天界面常有的弊端——即聊天界面独立于实际工作并行运行，而不是融入其中。
+
+&gt; ## Agents as teammates
+&gt; To bridge the gap between abstract AI concepts and concrete work, monday.com designed agents to act like colleagues. Each agent is assigned a name and an avatar, and users can assign them tasks via triggers and mentions. This design prevents the common pitfall of AI chat interfaces that run parallel to, rather than within, actual work.</description>
+    </item>
+    <item>
+      <title>Claude 如何为 AI 生成的文本添加水印</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-23/Claude 如何为 AI 生成的文本添加水印/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-23/Claude 如何为 AI 生成的文本添加水印/</guid>
+      <pubDate>Sun, 23 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在这篇文章中，作者 Sebastian Raschka 深入探讨了 Anthropic 为 Claude 引入的全新文本水印机制。不同于对大语言模型（LLM）架构进行昂贵且复杂的重新训练，该水印技术巧妙地介入了文本生成的**采样阶段**，利用密钥引导词元（token）选择过程中的随机数种子，从而在输出中嵌入一种不可见但可被验证的“数字签名”。
+
+文章详细拆解了 LLM 从分词、获取对数几率（logits）、概率归一化到最终采样的全过程，并进一步剖析了类似 Google "SynthID-Text" 的“锦标赛采样”（tournament sampling）机制。这种方法极大地降低了水印检测的计算成本，无需重新运行庞大的底层模型即可高效验证文本来源。通过此次详尽的讲解，读者可以全面理解 AI 水印的技术原理、安全性以及对抗篡改的实际表现。
+
+---
+
+# Claude 如何为 AI 生成的文本添加水印
+
+&gt; In a recent [Substack note](https://substack.com/@rasbt/note/c-315339554?r=gb4sb), I discussed Anthropic’s new [watermarking process](https://www.anthropic.com/news/claude-text-watermark) for Claude. Due to the high level of interest and the complexity of the mechanism, I have expanded my explanation into a comprehensive lecture.
+&gt; 
+&gt; Originally planned as a 10-minute overview, this deep dive grew into a 48-minute presentation covering the technical "under-the-hood" mechanics of how LLMs generate text and how watermarking is integrated into that process.
+&gt; 
+&gt; *   **[Watch the YouTube Lecture](https://youtu.be/tLv7qRWFMlw)**
+&gt; *   **[Download the Slide Deck (PDF)](https://sebastianraschka.com/pdf/slides/2026-08-18-claude-watermarking.pdf)**
+&gt; 
+&gt; [Subscribe to the newsletter](https://magazine.sebastianraschka.com/subscribe?) for more technical deep dives.
+
+在最近的一篇 [Substack 笔记](https://substack.com/@rasbt/note/c-315339554?r=gb4sb)中，我讨论了 Anthropic 针对 Claude 推出的全新[水印机制](https://www.anthropic.com/news/claude-text-watermark)。由于大家对此高度关注且该机制较为复杂，我将解释内容扩展成了一堂全面的技术讲座。
+
+这场深度解析最初计划作为一个 10 分钟的概述，最终扩展成了一场 48 分钟的演示，涵盖了大语言模型（LLM）如何生成文本以及水印如何融入该过程的技术“底层”机制。
+
+*   **[观看 YouTube 讲座](https://youtu.be/tLv7qRWFMlw)**
+*   **[下载幻灯片 (PDF)](https://sebastianraschka.com/pdf/slides/2026-08-18-claude-watermarking.pdf)**
+
+[订阅新闻通讯](https://magazine.sebastianraschka.com/subscribe?)以获取更多技术深度解析。
+
+---
+
+## Summary
+
+&gt; This lecture explains that watermarking is not a separate, expensive layer added to an LLM, but rather a subtle modification to the **sampling stage** of text generation. By using a secret key to influence the random seed during token selection, the model creates a detectable "signature" in the output. The lecture also covers the "tournament sampling" method used to make watermark detection computationally efficient without needing to rerun the original LLM.
+
+## 总结
+
+&gt; 本次讲座解释了水印并非添加到 LLM 中的独立且昂贵的层，而是对文本生成**采样阶段**的微妙修改。通过使用密钥在词元选择过程中影响随机种子，模型在输出中创建了一个可检测的“签名”。讲座还涵盖了“锦标赛采样”方法，该方法使得水印检测在计算上高效，而无需重新运行原始 LLM。
+
+---
+
+## Video Transcript
+
+&gt; *(Note: The following transcript has been edited for readability while preserving the flow of the lecture.)*
+
+## 视频文稿
+
+&gt; *（注：为保证可读性并保留讲座的流畅度，以下文稿经过了编辑。）*</description>
+    </item>
+    <item>
       <title>Measuring Benchmark Optimization in Speech Recognition</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-22/衡量语音识别中的基准过拟合现象/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-22/衡量语音识别中的基准过拟合现象/</guid>
@@ -2772,539 +3439,6 @@ Through a large-scale empirical study using *CoderForge-Preview*—the largest o
 该文的核心在于强调实测数据对于电子设计的必要性。通过采用脉冲电源、液体冷却以及基于 SCPI 的自动化采集方案，作者成功捕捉到了半导体器件在真实工作环境下的细微特征，揭示了理想模型与实际物理表现之间的显著差异，为工程师提供了更具参考价值的电路设计依据。
 
 ---</description>
-    </item>
-    <item>
-      <title>2026-08-21-我们的仆人会代劳：自动化与人类工作的未来</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/我们的仆人会代劳：自动化与人类工作的未来/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/我们的仆人会代劳：自动化与人类工作的未来/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>现代自动化愿景承诺，通过消除日常琐事，人类将获得自由去追求更有意义、更具英雄色彩且智力充实的活动，重现《星际迷航》式的理想未来。然而，本文指出这一愿景忽略了两个关键缺陷：一是“复杂性陷阱”，即能够自动化繁琐任务的技术必然也能自动化所谓“有意义”的工作；二是“唯我论偏好”，即人类在选择时往往表现出对交易型、去人性化便利的压倒性偏好，而非对人际关系和劳动过程的珍视。
-
-随着通用人工智能（AGI）的临近，经济激励机制正威胁着几乎所有传统职业。当技术能够以极低成本提供同等甚至更优的产出时，人类劳动在经济价值上将面临被彻底边缘化的风险，最终可能只剩下纯粹依赖人际关系的经济领域作为避难所。
-
----
-
-## 任务复杂性与 AGI
-
-在过去的 250 年里，社会系统性地逐一自动化各项任务。如果人类能够设计出一台机器或程序来执行某项任务，那么该任务本质上就属于“琐事”。自动化带来的经济激励一直推动着人类的繁荣，使工作变得更安全、报酬更高、更健康且更具智力启发性。
-
-我们可以通过一个图表来概念化这种进步：$x$ 轴代表时间，$y$ 轴代表任务复杂性。在某个阈值之下是“可形式化区域”（Formalizable Region）——即我们能够成功编程让机器执行的任务。在该阈值之上则是“人类完备区域”（Human-Complete Region），涵盖了有意义的努力（如撰写文章）和繁琐的人类行政工作。
-
-&gt; For the past 250 years, society has systematically automated tasks one by one. If a human can design a machine or procedure to perform a task, that task inherently qualifies as drudgery. Economic incentives for automation have consistently driven human flourishing, making work safer, higher-paying, healthier, and more intellectually stimulating.
-&gt;
-&gt; We can conceptualize this progress through a graph where the $x$-axis represents time and the $y$-axis represents task complexity. Below a certain threshold lies the "Formalizable Region"—tasks we can successfully program machines to execute. Above this threshold lies the "Human-Complete Region," encompassing both meaningful endeavors (like essay writing) and tedious human administration.
-
-![A line plot. The X axis is time, ranging from the year 1800 to the year 2100. A vertical dotted line marks the year 2026. The Y axis is qualitative, showing a list of tasks, sorted from top to bottom by increasing complexity. A horizontal dotted line marks the 'Limit of Formalizability'. The region above this line is labeled 'Human-Complete Region'. The region below this line is labeled 'Formalizable Region'. A sigmoid curve, representing technological progress, is drawn starting from just above the origin in the year 1800, to just below the limit of formalizability in 2026.](./images/3c87256797b6.png)
-
-至关重要的是，自然界并没有在 $y$ 轴上划定一条“琐事界限”。AGI 的到来——定义为在大多数具有经济价值的工作中表现优于人类的高度自主系统——创造了一个剧烈的断层。突然之间，技术能力飙升至 100% 自动化，将琐事和有意义的劳动一并压缩进自动化层级中。
-
-&gt; Crucially, nature does not draw a "Limit of Drudgery" along the $y$-axis. The arrival of AGI—defined as highly autonomous systems outperforming humans at most economically valuable work—creates a sharp discontinuity. Suddenly, technological capability surges to 100% automation, compressing both drudgery and meaningful labor into the automated tier.
-
-![A line plot identical to the above, with one addition: the sigmoid curve representing technical progress shoots up almost vertically a few years after 2026, reaching the top of the Y axis.](./images/8becfbf929f4.png)
-
-在这一节点上，经济激励机制[开始与人类利益背道而驰](https://borretti.me/article/no-one-escapes-the-permanent-underclass)。唯一剩下的职业利基市场是关系经济，即人类面孔成为工作描述中不可或缺的一部分。
-
-&gt; At this juncture, economic incentives [work against humanity](https://borretti.me/article/no-one-escapes-the-permanent-underclass). The only remaining occupational niche is the relational economy, where a human face forms an indispensable part of the job description.
-
----
-
-## 唯我论
-
-第二个主要挑战在于人类的偏好。虽然个人认为自己的劳动具有独特的意义，但在评估他人的工作时，他们严格从工具性角度出发——优先考虑结果而非人际联系。在销售时，人们强调声誉、信任和关系；但在购买时，他们要求廉价、快速和便捷的解决方案。当有选择时，消费者总是倾向于交易效率而非人类摩擦（例如，尽管有真人驾驶的替代方案，人们仍倾向于选择 Waymo 等自动驾驶交通工具）。
-
-&gt; The second major challenge lies in human preferences. While individuals view their own labor as uniquely meaningful, they evaluate everyone else's work strictly in instrumental terms—prioritizing outcomes over human connection. When selling, people emphasize reputation, trust, and relationships; when buying, they demand cheap, fast, and convenient solutions. Given the choice, consumers consistently prefer transactional efficiency over human friction (e.g., preferring autonomous transport like Waymo despite human-driven alternatives).
-
-如果我们汇总人们希望自动化的工作，这些愿望的并集几乎涵盖了所有工作。什么都不会剩下。这种趋势在消费者服务、知识工作和创意领域显而易见：
-
-&gt; If we aggregate the jobs people wish to see automated, the union of those desires covers nearly all work. Nothing is left. This trend is visible across consumer services, knowledge work, and creative fields:
-
-* **软件工程：** 虽然开发者认为编程在智力上是有益的，但用户只想要能运行的软件。当 AI 能以象征性的费用瞬间生成功能性代码时，为什么还要去应付一个有主见的人类？软件工程工作之所以正在演变为“AI 驯服”角色，仅仅是因为当前 AI 模型存在局限性（如缺乏长期记忆或结构化组织能力）。一旦数万亿美元的研究克服了这些障碍，这一职业本身可能会消失。
-* **数学：** 数学家们正在经历[同样的轨迹](https://kirwinhampshire.substack.com/p/the-dark-night-of-mathematics)，尽管许多人[对该领域的去智力化感到愤慨](https://tasmin.substack.com/p/mathematicians-need-to-act)，而科技文化往往欢迎这种转变：*我们的仆人会代劳。*
-* **艺术：** 艺术将具体的制品（文本、绘画、歌曲）与人类背景（历史、意图、话语）结合在一起。如果 AI 能瞬间以零成本生成审美等价物，那么大部分受众可能会乐于绕过人类创作者，转而选择即时、定制化的媒体。
-
-&gt; * **Software Engineering:** While developers find coding intellectually rewarding, users simply want working software. Why deal with an opinionated human when an AI can generate functional code instantly for a nominal fee? Software engineering jobs are evolving into AI-wrangling roles only because current AI models possess limitations (such as lack of long-term memory or structural organization). Once trillions of dollars in research overcome these hurdles, the profession itself may vanish.
-&gt; * **Mathematics:** Mathematicians are experiencing an [identical trajectory](https://kirwinhampshire.substack.com/p/the-dark-night-of-mathematics), though many [resent the de-intellectualization of their field](https://tasmin.substack.com/p/mathematicians-need-to-act) compared to tech culture, which often welcomes the shift: *Our servants will do that for us.*
-&gt; * **Art:** Art combines a concrete artifact (text, painting, song) with a human context (history, intent, discourse). If an AI can generate aesthetic equivalents instantly and at zero cost, much of the audience may happily bypass the human creator in favor of instant, custom-tailored media.
-
-最终，我们可能会发现，人类的偏好远没有我们自认为的那样具有人文主义色彩，反而更具唯我论倾向。
-
-&gt; Ultimately, we may discover that human preferences are far less humanist and far more solipsistic than we care to admit.
-
----
-
-## 致谢
-
-埃米·诺特（Emmy Noether）曾观察到“一切都已包含在戴德金（Dedekind）的著作中”。至于我，我所写关于 AI 的一切，[J. D. Pressman](https://jdpressman.com/) 都已经说过了。
-
-&gt; Emmy Noether once observed that "everything is already in Dedekind." As for me, everything I write about AI was already said by [J. D. Pressman](https://jdpressman.com/).
-
----
-
-## 脚注
-
-1. 这是一个极其严重的简化，因为我把所有的复杂性都塞进了“同等或更好结果”的概念中。所以让我们再试一次，用[*几何学方式*](https://en.wikipedia.org/wiki/Spinoza%27s_Ethics)并加上不必要的 LaTeX。你想购买一件商品。你环顾四周，收集一系列选项，按效用排序并挑选赢家。你可以把效用看作是一个加权和：
-
-$$\mathfrak{u}(x) = \sum\limits_{a \in A} \alpha_a x_a$$
-
-其中 $a$ 是你权衡的方面（价格、运输速度、品牌信任度、我从这件东西中获得的社会地位等），变量量化了这些方面，而 $\alpha$ 是系数。所以如果你是一个潮流追随者，你的 $\alpha_\text{clout}$（影响力系数）远高于你的 $\alpha_\text{price}$（价格系数）；如果你是一个极客，一台破旧 ThinkPad 的 $x_\text{clout}$ 比 MacBook 更高。
-
-现在，由于生物学原因，人类很慢；而且由于[鲍莫尔效应](https://en.wikipedia.org/wiki/Baumol_effect)，我们随着时间的推移变得越来越昂贵。计算机既快又便宜。最重要的是，AI 的进步速度远超人类。因此，自动化生产的效用被拉高，而人类生产的效用被拉低，最终它们相差甚远，以至于你必须是一个拥有极高 $\alpha_\text{human}$ 系数的极端分子，才会选择人类替代方案。[↩](#fnref:fn1)
-
-2. 我很谨慎地使用“文本或图像”而不是“艺术”，使用“审美价值”而不是“质量”，因为你可能会反驳说机器制造的艺术不是艺术。我想说的是，它不必是艺术。它可以仅仅是一幅令人愉悦的图像、一段令人愉悦的文字，等等。[↩](#fnref:fn2)
-
-&gt; 1. This is a horrendous oversimplification, because I’ve stuffed all the complexity into the notion of “same outcome or better”. So let’s try it again, [*more geometrico*](https://en.wikipedia.org/wiki/Spinoza%27s_Ethics) and with unnecessary LaTeX. You want to buy a good. You look around, assemble a set of options, sort them by utility and pick the winner. And you can think of the utility as like a weighted sum:
-&gt;
-&gt; $$\mathfrak{u}(x) = \sum\limits_{a \in A} \alpha_a x_a$$
-&gt;
-&gt; Where the a’s are the aspects you are weighing (price, shipping speed, trust in the brand, how much social status I get from this thing, etc.), the variables quantify these aspects, and the alphas are the coefficients. So if you’re a hypebeast your $\alpha_\text{clout}$ is much higher than your $\alpha_\text{price}$, and if you’re a neckbeard the $x_\text{clout}$ of a busted ThinkPad is higher than that of a MacBook.
-&gt;
-&gt; Now, humans are slow, because biology; and because of [Baumol](https://en.wikipedia.org/wiki/Baumol_effect) we get more expensive over time. Computers are fast and cheap. On top of that, the pace of improvement in AI is vastly greater than the pace of improvement in humans. So the utility of automated production gets pulled up, and the utility of human production gets pulled down, and eventually they are so far apart that you have to be an extremist with a very high $\alpha_\text{human}$ coefficient to choose the human alternative. [↩](#fnref:fn1)
-&gt;
-&gt; 2. I’m being careful to say “texts or images” rather than “art”, and “aesthetic value” rather than “quality”, because you might object that machine-made art is not art. And what I’m trying to say is that is doesn’t have to be art. It can just be a pleasing image, a pleasing text, and so on. [↩](#fnref:fn2)</description>
-    </item>
-    <item>
-      <title>心理健康教育人工智能：用于自动化临床督导与风险分流的三流微调大模型框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/心理健康教育人工智能：用于自动化临床督导与风险分流的三流微调大模型框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/心理健康教育人工智能：用于自动化临床督导与风险分流的三流微调大模型框架/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>现代心理健康医疗领域面临着资深督导资源严重短缺的困境，导致了所谓的“督导鸿沟”（supervision gap）。这种系统性缺陷常常使初级治疗师在管理高风险患者时，面临专业反馈严重滞后的危险。为了弥补这一差距，本文引入了一个开创性的框架，该框架由经过微调的 **Mistral-7B-instruct** 模型驱动，充当自动化的“人在回路督导”（Supervisor-in-the-Loop）系统。利用 DAIC-WOZ 数据集中的 106 个会话，多模态 VAL（视觉-声学-语言）框架执行同时的三流分析，将督导分流延迟从 72 小时大幅降低至实时水平（每个会话约 10 秒）。
-
-该研究的核心方法论结合了三流微调大模型（LLM）方法与基于时间戳的模态同步，实现了稳健的多模态融合。通过策略性地使用贝叶斯先验，它解决了自动化临床工具中常见的“冷启动问题”。通过治疗同盟追踪、潜在风险预测以及运用动态临床紧急指数（D-CUI）的督导分流这三个操作流，该模型在单块 Tesla T4 GPU 上实现了高效训练，并在多项临床标准评估中展现出优异的统计性能，将技术识别准确率提升至 95%，同时将督导延迟从数天缩短至秒级。
-
----
-
-# 心理健康教育人工智能：用于自动化临床督导与风险分流的三流微调大模型框架
-
-**作者：** Shreeya Sharma, Ravish Gupta, Saket Kumar, Abhishek Aggarwal  
-**发表于：** *AICTC 2026, Lecture Notes in Networks and Systems, vol. 2165, Springer*  
-&gt; **Authors:** Shreeya Sharma, Ravish Gupta, Saket Kumar, Abhishek Aggarwal  
-&gt; **Published in:** *AICTC 2026, Lecture Notes in Networks and Systems, vol. 2165, Springer*  
-
-**arXiv：** [2608.18438 [cs.CL]](https://arxiv.org/abs/2608.18438)  
-&gt; **arXiv:** [2608.18438 [cs.CL]](https://arxiv.org/abs/2608.18438)  
-
-**提交时间：** 2026年8月19日  
-&gt; **Submitted:** August 19, 2026  
-
----
-
-## 📋 执行摘要
-
-现代心理健康医疗领域正遭受着资深督导资源严重短缺的困扰，这导致了“督导鸿沟”（"supervision gap"）。这种系统性缺陷常常使初级治疗师在处理高风险患者时，面临专业反馈危险滞后的局面。
-
-&gt; Modern mental healthcare is plagued by a critical shortage of senior supervisory oversight, resulting in a **"supervision gap."** This systemic flaw often leaves novice therapists managing high-stakes patient risks with dangerously delayed professional feedback. 
-
-为了弥合这一差距，本文引入了一个开创性的框架，该框架由经过微调的 **Mistral-7B-instruct** 模型驱动，充当自动化的“人在回路督导”（"Supervisor-in-the-Loop"）系统。利用 DAIC-WOZ 数据集中的 106 个会话，多模态 VAL（视觉-声学-语言，Visual-Acoustic-Linguistic）框架执行同时的三流分析，将督导分流延迟从 72 小时大幅降低至实时水平（每个会话约 10 秒）。
-
-&gt; To bridge this gap, this paper introduces a pioneering framework powered by a fine-tuned **Mistral-7B-instruct** model acting as an automated **"Supervisor-in-the-Loop"** system. Utilizing 106 sessions from the DAIC-WOZ dataset, the multi-modal VAL (Visual-Acoustic-Linguistic) framework performs a simultaneous tri-stream analysis to drastically reduce supervisory triage latency from 72 hours down to real-time (~10 seconds per session).
-
----
-
-## 🔍 核心框架与方法论
-
-所提出的架构利用了**三流微调大模型方法**，并结合了基于时间戳的模态同步，以实现稳健的多模态融合。通过策略性地使用贝叶斯先验，它解决了自动化临床工具中常见的“冷启动问题”。
-
-&gt; The proposed architecture utilizes a **tri-stream fine-tuned LLM approach** combined with timestamp-based modality synchronization to achieve robust multi-modal fusion. It addresses the common "cold-start problem" in automated clinical tools through the strategic use of Bayesian priors.
-
-该模型通过三个不同的操作流分析心理健康会话：
-
-&gt; The model analyzes mental health sessions across three distinct operational streams:
-
-1. **治疗同盟追踪：** 监测语义依从性，并衡量治疗师与患者之间的协作纽带与连接。
-   &gt; **Therapeutic Alliance Tracking:** Monitors semantic adherence and measures the collaborative bond and connection between the therapist and the patient.
-2. **潜在风险预测：** 利用注意力加权分析来识别心理痛苦和临床风险的隐藏或低调线索。
-   &gt; **Latent Risk Prediction:** Leverages attention-weighted analytics to identify hidden or understated cues of mental distress and clinical risk.
-3. **督导分流：** 实施**动态临床紧急指数（Dynamic Clinical Urgency Index, D-CUI）**来评估会话的紧急程度，并即时标记需要立即干预的危急情况。
-   &gt; **Supervisory Triage:** Implements a **Dynamic Clinical Urgency Index (D-CUI)** to evaluate session urgency and instantly flag critical situations requiring immediate intervention.
-
----
-
-## 📊 关键性能指标
-
-该框架在单块 Tesla T4 GPU 上进行了高效训练（仅用 105 步便实现收敛，损失降低了 85.2%），并在多个临床标准下展现出强健的统计性能：
-
-&gt; Trained efficiently on a single Tesla T4 GPU (achieving convergence in just 105 steps with an 85.2% loss reduction), the framework delivers robust statistical performance across multiple clinical criteria:
-
-* **技术识别准确率：** **95%** `[95% 置信区间: 75.1% - 99.9%]`
-  &gt; * **Technique Identification Accuracy:** **95%** `[95% CI: 75.1% - 99.9%]`
-* **同盟评估平均绝对误差（MAE）：** 在 5 分制量表上为 **0.105** `[95% 置信区间: 0.059 - 0.151]`
-  &gt; * **Alliance Assessment Mean Absolute Error (MAE):** **0.105** on a 5-point scale `[95% CI: 0.059 - 0.151]`
-* **治疗保真度阿尔法系数：** **0.423**
-  &gt; * **Therapeutic Fidelity Alpha:** **0.423**
-* **平均动态临床紧急指数（D-CUI）：** **0.370** `[95% 置信区间: 0.322 - 0.419]`
-  &gt; * **Mean Dynamic Clinical Urgency Index (D-CUI):** **0.370** `[95% CI: 0.322 - 0.419]`
-* **督导延迟缩减：** 从每个会话 **72 小时**缩短至 **约 10 秒**。
-  &gt; * **Supervisory Latency Reduction:** From **72 hours** down to **~10 seconds** per session.
-
----
-
-## 📂 元数据与出版详情
-
-* **学科领域：** 计算与语言 (`cs.CL`)；人工智能 (`cs.AI`)；机器学习 (`cs.LG`)
-  &gt; * **Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`)
-* **ACM 分类：** I.2.7; I.2.1; J.3
-  &gt; * **ACM Classifications:** I.2.7; I.2.1; J.3
-* **使用数据集：** DAIC-WOZ（106 个会话）
-  &gt; * **Dataset Used:** DAIC-WOZ (106 sessions)
-* **全文链接：** [查看 PDF](https://arxiv.org/pdf/2608.18438) | [HTML 版本](https://arxiv.org/html/2608.18438v1) | [TeX 源码](https://arxiv.org/src/2608.18438)
-  &gt; * **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2608.18438) | [HTML Version](https://arxiv.org/html/2608.18438v1) | [TeX Source](https://arxiv.org/src/2608.18438)</description>
-    </item>
-    <item>
-      <title>2026-08-21-带浮点运算功能的指针式仪表计算器</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/带浮点运算功能的指针式仪表计算器/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/带浮点运算功能的指针式仪表计算器/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本项目展示了一款名为“Calcumator 2000”的定制机电计算器，它巧妙地将复古工业美学与现代嵌入式编程相结合。该设备摒弃了传统的数字显示屏，转而使用模拟电压表作为显示输出，并配以CNC加工的枫木外壳和高品质NKK触觉开关。
-
-在技术实现上，该计算器基于AVR128DA28微控制器，通过脉冲宽度调制（PWM）驱动多个模拟仪表。为了克服浮点运算的精度问题，作者采用了定点算术逻辑，并设计了专门的指示灯来处理负数和溢出状态。这不仅是一次对早期计算设备显示技术的致敬，也是对嵌入式系统UI设计与硬件交互的一次深度探索。
-
----
-
-## 简介与灵感
-不同寻常的时钟是电子DIY项目中常见的创意，但如何让它们看起来美观大方始终是一个真正的挑战。除了计时设备，人们对计算器的历史也怀有浓厚的兴趣。早期的计算设备由于缺乏合适的显示技术，往往落后于通用计算，只能依赖纸带、阴极射线管或白炽灯面板（例如1957年的卡西欧14-A）。
-
-&gt; Unusual clocks are a common idea for electronics DIY projects, but making them look presentable is always the real challenge. Beyond timekeeping, there is a deep fascination with the history of calculators. Early calculating devices often lagged behind general-purpose computing due to a lack of suitable display technology, relying instead on ticker tape, cathode ray tubes, or incandescent lightbulb panels (such as the 1957 Casio 14-A). 
-
-[![Casio 14-A with a lightbulb-based display (1957)](./images/9a03ca9443d8.jpg)](https://substackcdn.com/image/fetch/$s_!JIvn!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5c3daa99-89b2-4165-a5b9-64b535034adf_2261x1399.jpeg)
-
-令人惊讶的是，很少有计算器使用机电面板仪表作为显示器。为了填补这一空白，作者设计了一款独特的仪表式计算器。
-
-&gt; Surprisingly, very few calculators utilized electromechanical panel meters as displays. To address this gap, a unique meter-based calculator was designed.
-
----
-
-## 制作显示面板
-制作过程始于一张3毫米厚的亚克力板，背面喷涂蓝色油漆：
-
-&gt; The build began with a 3 mm sheet of acrylic, spray-painted blue on the back side:
-
-[![Display panel, rattle-can fun.](./images/e75595726a68.jpg)](https://substackcdn.com/image/fetch/$s_!K-vS!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3c9c8b29-7102-4a7d-af90-6e248d2b7f9f_2000x1334.jpeg)
-
-使用CNC铣床，有选择地去除了油漆并切割出开口，以创建精确的框架：
-
-&gt; Using a CNC mill, the paint was selectively removed and openings were cut to create precise framing:
-
-[![Display panel, machining.](./images/4d959a9e451d.jpg)](https://substackcdn.com/image/fetch/$s_!7pwG!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff4c46309-0d6c-4ffd-a05d-e87ad4f9c6fd_2000x1334.jpeg)
-
-字母区域再次上漆，以增加对比度和立体感。显示屏本身由六个来自亚马逊的通用“SO-45”面板电压表组成，并配有一个从eBay采购的复古边缘式电压表，用于处理浮点值。每个仪表都有一个打印在不干胶纸上的定制表盘（[模板文件可在此处获取](http://lcamtuf.coredump.cx/soft/embedded/meter_calc.pdf)）：
-
-&gt; The lettered areas were painted again for contrast and a three-dimensional appearance. The display itself comprises six generic "SO-45" panel voltmeters from Amazon, paired with a vintage edgewise voltmeter sourced from eBay to handle floating-point values. Each meter features a custom face printed on adhesive paper ([template file available here](http://lcamtuf.coredump.cx/soft/embedded/meter_calc.pdf)):
-
-[![Display panel, meters with original faces.](./images/02390cb39703.jpg)](https://substackcdn.com/image/fetch/$s_!MBrj!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb32c6b93-d5c5-48c0-840a-fac6d0d15fcc_2000x1334.jpeg)
-
-完成后的面板还集成了两个Dialight 656系列面板指示灯（[产品目录页](https://www.dialight.com/wp-content/uploads/2021/07/Dialight_PMI_catalog_April2021.pdf)），用于指示负数结果和系统溢出：
-
-&gt; The completed panel also integrates two Dialight 656 series panel indicators ([catalog page](https://www.dialight.com/wp-content/uploads/2021/07/Dialight_PMI_catalog_April2021.pdf)) to signal negative results and system overflows:
-
-[![Panel close-up.](./images/a174080f66df.jpg)](https://substackcdn.com/image/fetch/$s_!fCbr!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F0d17f3d5-7be9-4ca3-b3d3-4704e1f8cfb6_2000x1334.jpeg)
-
----
-
-## 设计与构建外壳
-由于显示面板非常大，因此采用了非标准的键盘布局：左侧两行排列着十个数字键和一个小数点键，右侧则是一组五个操作键。
-
-&gt; Because the display panel is quite massive, a non-standard keyboard layout was implemented: ten digits and a decimal point arranged in two rows on the left, alongside a cluster of five operator keys on the right.
-
-[![A rough 3D sketch of the enclosure.](./images/169d3d03e56a.jpg)](https://substackcdn.com/image/fetch/$s_!Nsml!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F38b241ec-de94-4d7a-9c39-eb0ee503399e_2486x1468.jpeg)
-
-外壳由车间里重新切割的薄枫木板制成，排版和凹陷的按键矩阵均由CNC路由器加工而成：
-
-&gt; The enclosure was constructed from thin maple lumber stock resawn in the workshop, with typography and the recessed key matrix machined on the CNC router:
-
-[![Behold, typography!](./images/5ec85f3561f6.jpg)](https://substackcdn.com/image/fetch/$s_!Ysom!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6a7be03b-56a3-4709-9535-c5017ab0d50d_2000x1334.jpeg)
-
-粘合过程中使用了大量的夹具以确保紧密贴合：
-
-&gt; The glue-up utilized plenty of clamps to ensure a secure fit:
-
-[![No such thing as too many clamps.](./images/a969c26dd3e5.jpg)](https://substackcdn.com/image/fetch/$s_!jLfw!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F24276410-51f8-4c80-b702-026b06846b9d_2000x1334.jpeg)
-
-键盘依赖于16个优质的18×18毫米NKK JF系列触觉开关（[产品目录](https://www.nkkswitches.com/pdf/JFnonilluminated.pdf)），并配有定制的乙烯基按键贴纸。
-
-&gt; The keypad relies on sixteen premium 18×18 mm NKK JF series tactile switches ([catalog](https://www.nkkswitches.com/pdf/JFnonilluminated.pdf)) paired with custom vinyl key decals. 
-
-[![Calcumator 2000 in all its glory.](./images/10e9178ff79c.jpg)](https://substackcdn.com/image/fetch/$s_!5g6i!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F8495a57a-13fc-4227-bd09-bb251bac2990_2000x1334.jpeg)
-
----
-
-## 电子与软件架构
-计算器的大脑由一个8位[AVR128DA28 MCU](https://lcamtuf.substack.com/p/psa-if-youre-a-fan-of-atmega-try)组成，直接由5V电源适配器供电。
-* **显示控制：** 使用跨越七条数字线（`PD0-PD6`）的脉冲宽度调制（PWM）来驱动仪表。
-* **键盘扫描：** 实现了一个4×4的感应驱动网格（`PA0-PA3` / `PA4-PA7`）。
-* **指示灯：** 使用两条控制线（`PC0`，`PC1`）来控制状态灯。
-
-为了避免标准浮点类型固有的精度问题，作者实现了定点（6+5位）算术运算。完整的带注释[源代码可供下载](https://lcamtuf.coredump.cx/soft/embedded/meter_calc.c)。
-
-&gt; The brains of the calculator consist of an 8-bit [AVR128DA28 MCU](https://lcamtuf.substack.com/p/psa-if-youre-a-fan-of-atmega-try), powered directly by a 5V wall wart. 
-&gt; * **Display Control:** Uses pulse-width modulation across seven digital lines (`PD0-PD6`) to drive the meters.
-&gt; * **Keypad Scanning:** Implements a 4×4 sense-drive grid (`PA0-PA3` / `PA4-PA7`).
-&gt; * **Indicators:** Uses two control lines (`PC0`, `PC1`) for status lamps.
-&gt;
-&gt; To avoid precision issues inherent to standard floating-point types, fixed-point (6+5 digit) arithmetic was implemented. The fully commented [source code is available for download](https://lcamtuf.coredump.cx/soft/embedded/meter_calc.c).</description>
-    </item>
-    <item>
-      <title>2026-08-21-学习状态感知的面向小规模数据集动态生成式数据增强</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/学习状态感知的面向小规模数据集动态生成式数据增强/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/学习状态感知的面向小规模数据集动态生成式数据增强/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>在小规模图像分类任务中，模型往往因训练数据有限而表现受限。利用预训练模型进行生成式数据 augmentation（GDA）是一个极具前景的解决方案，但传统技术通常采用与任务无关的策略，忽略了下游模型的反馈。尽管更新的动态 GDA 方法引入了反馈机制，但它们在确定特定样本的增强强度、跨不同图像区域自适应调整策略，以及在平衡图像多样性与类别语义方面仍然面临挑战。
-
-为了克服这些局限性，本文提出了**学习状态感知动态生成式数据增强（LSADA）**。LSADA 通过当前损失和损失下降速率动态评估每个样本的学习状态，从而分配有针对性的增强强度。此外，它引入了一种解耦的数据增强与扩散融合策略，对类别相关区域应用受控变换，同时生成多样化的类别无关区域，并逐步将它们融合，以在不丢失核心语义的前提下增强图像多样性。在九个公开数据集上进行的实验表明，LSADA 的性能显著优于当前最先进的动态 GDA 方法。
-
----
-
-## 论文元数据
-
-* **arXiv ID:** [arXiv:2608.18907](https://arxiv.org/abs/2608.18907) [cs.CV]
-* **研究领域:** 计算机视觉与模式识别 (`cs.CV`); 人工智能 (`cs.AI`)
-* **提交日期:** 2026年8月19日
-* **作者:** 
-  * Ting Xiang
-  * Chenxi Deng
-  * Jinhui Zhao
-  * Bingting Jiang
-  * Ke Zhang
-  * Changjian Chen
-  * Zhuo Tang
-
----
-
-## 摘要
-
-小规模图像分类常常受限于训练数据的稀缺。基于预训练生成模型的生成式数据增强（GDA）已成为一种有效的解决方案。然而，现有方法依赖于任务无关的增强策略，忽视了下游模型的需求。尽管近期的动态 GDA 方法引入了模型反馈来指导增强，但在可靠确定样本特定增强强度、使增强策略适应不同图像区域、以及平衡图像多样性和类别语义方面，它们仍然举步维艰。
-
-为了解决这些问题，我们提出了学习状态感知动态生成式数据增强（LSADA）。具体而言，LSADA 根据每个样本的当前损失及其损失下降速率构建学习状态，并将其映射到样本特定的增强强度。此外，LSADA 引入了一种解耦的数据增强和扩散融合策略，对类别相关区域应用强度受控的变换，并生成多样化的类别无关区域，随后逐步将其融合，从而在保持类别语义的同时提高图像多样性。在九个公开数据集上的实验表明，LSADA 在六个自然图像数据集上比现有的 SOTA 动态 GDA 方法平均高出 4.5%，在三个医学图像数据集上平均高出 2.5%。
-
-&gt; Small-scale image classification is often limited by the scarcity of training data. Generative data augmentation (GDA) based on pretrained generative models has emerged as an effective solution. However, existing methods rely on task-agnostic augmentation strategies that overlook downstream model needs. Although recent dynamic GDA methods incorporate model feedback to guide augmentation, they still struggle to reliably determine sample-specific augmentation strengths and adapt augmentation strategies to different image regions while balancing image diversity and class semantics.
-&gt; 
-&gt; To address these issues, we propose learning-state-aware dynamic generative data augmentation (LSADA). Specifically, LSADA constructs a learning state for each sample based on its current loss and loss-decrease rate, which is then mapped to a sample-specific augmentation strength. Furthermore, LSADA introduces a decoupled data augmentation and diffusion fusion strategy that applies strength-controlled transformations to class-relevant regions and generates diverse class-irrelevant regions, progressively fusing them to improve image diversity while preserving class semantics. Experiments on nine public datasets show that LSADA outperforms the existing SOTA dynamic GDA method by an average of 4.5% on six natural image datasets and 2.5% on three medical image datasets.
-
----
-
-## 访问与资源
-
-* **全文链接:** [查看 PDF](https://arxiv.org/pdf/2608.18907) | [HTML 版本](https://arxiv.org/html/2608.18907v1) | [TeX 源码](https://arxiv.org/src/2608.18907)
-* **外部引用与工具:**
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18907)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18907)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18907)
-
-&gt; ## Access &amp; Resources
-&gt; 
-&gt; * **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2608.18907) | [HTML Version](https://arxiv.org/html/2608.18907v1) | [TeX Source](https://arxiv.org/src/2608.18907)
-&gt; * **External Citations &amp; Tools:**
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18907)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18907)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18907)</description>
-    </item>
-    <item>
-      <title>Getting the Steam Deck LCD working on a Raspberry Pi</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/如何让初代 Steam Deck 液晶屏在树莓派上完美运行/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/如何让初代 Steam Deck 液晶屏在树莓派上完美运行/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>初代 Steam Deck 所采用的那块性价比极高、素质出色的 7 英寸 LCD 屏幕，现在终于可以通过全新的开源 Linux 内核驱动以及由 Scandent 公司定制的树莓派扩展板（HAT）连接到树莓派上了。这一创新方案为创客们提供了一个远超官方树莓派触控显示屏的高性价比替代选择——不仅成本大幅降低，还拥有更高的分辨率、更好的亮度和高达 216 PPI 的细腻显示效果。
-
-该项目的核心突破在于 Scandent 团队为其开发并开源了 Linux 内核驱动程序，以及将树莓派 MIPI 接口适配到 Steam Deck 专用 39 引脚接口的开源 Pi HAT 设计。虽然该公司无意将其商业化，但这一举措极大地延长了特定消费级显示面板的生命周期，为主流硬件开发者和开源爱好者摆脱“面板停产魔咒”提供了一条极具价值的康庄大道。
-
----
-
-# Getting the Steam Deck LCD working on a Raspberry Pi
-
-*Published: Aug 20, 2026*
-
-## Summary
-The affordable, high-quality 7-inch LCD panel from the original Steam Deck can now be used with a Raspberry Pi, thanks to a new open-source Linux kernel driver and custom Pi HAT designed by Scandent. This setup offers a superior alternative to the official Raspberry Pi Touch Display at a fraction of the cost, boasting higher resolution, better brightness, and a sharp 216 PPI.
-
----
-
-## Introduction
-
-初代 Steam Deck 上所使用的 [BOE TV070WXM-TV0 LCD 液晶屏](https://www.aliexpress.us/item/3256806531632512.html?gatewayAdapt=glo2usa4itemAdapt)现在售价仅为 30 美元左右。它是一块非常实用的 7 英寸触控屏，拥有 400 尼特的亮度以及 1280x800 的分辨率（像素密度高达 216 ppi，显示效果极其细腻）。
-
-&gt; The [BOE TV070WXM-TV0 LCD](https://www.aliexpress.us/item/3256806531632512.html?gatewayAdapt=glo2usa4itemAdapt) used in the original Steam Deck can be had for around $30. It's a serviceable 7" touchscreen with 400 nits of brightness and a resolution of 1280x800 (for a sharp 216 ppi).
-
-&lt;img alt="Steam Deck LCD working on a Raspberry Pi 5" height="auto" src="/blog/2026/steam-deck-lcd-pi-hat/steam-deck-lcd-pi-front-touch.jpeg" width="700"/&gt;
-
-这块屏幕的规格远胜于售价高出一倍、边框巨大且分辨率减半的[树莓派官方 7 英寸触控显示屏](https://www.raspberrypi.com/products/raspberry-pi-touch-display/)！
-
-&gt; The specs are a lot nicer than the [Pi 7" Touch Display](https://www.raspberrypi.com/products/raspberry-pi-touch-display/), which costs twice as much, with giant bezels and half the resolution!
-
-## The Solution: A Custom Driver and Pi HAT
-
-在此之前，Steam Deck 的 LCD 屏是无法直接在树莓派上运行的。不过，[Scandent](https://www.scandent.com) 的团队在其某款自研设备中急需一款标准化且具备大众化供应基础的触控屏。为了解决这个问题，他们专门为其编写了一个 [Linux 内核驱动程序](https://github.com/ScandentLLC/tv070wxm-hat/blob/master/linux-rpi-6.12.y-panel-boe-tv070wxm.patch)，并计划将其合并到主线内核中。
-
-&gt; Until recently, the Steam Deck LCD didn't work with a Raspberry Pi. However, the team at [Scandent](https://www.scandent.com) needed a standardized, mass-market touchscreen for one of their own devices. To solve this, they built a [Linux kernel driver](https://github.com/ScandentLLC/tv070wxm-hat/blob/master/linux-rpi-6.12.y-panel-boe-tv070wxm.patch) for it, which they intend to upstream.
-
-除了软件层面的突破，他们还开源了一款 [Pi HAT 硬件设计](https://github.com/ScandentLLC/tv070wxm-hat/)，能够将树莓派 5 或 CM4 的 MIPI 接口[^1]适配到 Steam Deck LCD 所使用的特殊 39 引脚连接器上。
-
-&gt; Beyond the software, they have also open-sourced a [Pi HAT design](https://github.com/ScandentLLC/tv070wxm-hat/) that adapts the Raspberry Pi 5 or CM4's MIPI connection[^1] to the specialized 39-pin connector found on the Steam Deck LCD.
-
-&lt;img alt="Steam Deck LCD with a Raspberry Pi 5 mounted on its back" height="auto" src="/blog/2026/steam-deck-lcd-pi-hat/steam-deck-lcd-pi-rear.jpeg" width="700"/&gt;
-
-该代码仓库中包含了详细的构建说明以及 KiCAD 项目文件，方便用户自行打板制造该扩展板。Scandent 还非常慷慨地提供了用于测试的硬件原型：
-
-&gt; The repository includes detailed build instructions along with the KiCAD project files if you wish to fabricate your own HAT. Scandent kindly provided prototype hardware for testing:
-
-&lt;img alt="Steam Deck LCD working on a Raspberry Pi 5" height="auto" src="/blog/2026/steam-deck-lcd-pi-hat/steam-deck-lcd-assembly-pi-5-hat.jpg" width="700"/&gt;
-
-## Why This Matters for Makers
-
-Scandent 并没有将这款 HAT 商业化的打算；他们的目标仅仅是为自家的生态系统在未来几年内锁定一款供货稳定、货源充足的触控屏。让硬件更轻易地被电子爱好者获取，同时也进一步巩固了这款特定液晶屏在市场上的生存空间。
-
-&gt; Scandent doesn't plan to commercialize the HAT; their goal was simply to secure a reliable, high-supply touchscreen for their ecosystem over the next few years. Making the hardware more accessible to hobbyists strengthens the market presence of this specific LCD.
-
-许多特种液晶面板通常绑定于特定的消费电子产品。一旦这些产品停产，其使用的显示屏往往也会随之停产，迫使下游用户不得不频繁将项目迁移到新的面板上。简化硬件信号传输和内核驱动的维护，能够极大地缓解硬件开发者的这种“心病”。
-
-&gt; Specialized LCD panels are frequently tied to specific consumer devices. Once those devices stop production, the displays are often discontinued, forcing downstream users to constantly port their projects to new panels. Simplifying hardware signaling and kernel driver maintenance helps alleviate this headache for hardware developers.
-
-## Real-World Performance
-
-在树莓派 5 上对这块 Steam Deck LCD 进行实际测试后，结果表现非常出色：
-* **显示效果：** 肉眼观察下几乎没有闪烁或水波纹，即使在演播室灯光下也能保持极高的亮度。
-* **触控交互：** 在树莓派默认的分辨率缩放比例下，触控目标可能会显得略微偏小，但通过调整缩放比例或设计专用的 HMI/UI 界面，整个系统完全可以非常流畅地使用。
-
-&gt; Testing the Steam Deck LCD on a Raspberry Pi 5 revealed great results:
-&gt; * **Visuals:** Minimal flickering/waviness in person, with strong brightness even under studio lighting.
-&gt; * **Touch Interaction:** Touch targets can feel slightly small at the Pi's default resolution scaling, but adjusting the scaling or designing a custom HMI/UI makes the setup entirely usable. 
-
-也许这会激发某位创客的灵感，从而设计出一套基于 3D 打印外壳和完整硬件堆栈的、基于 RetroPie 的开源掌上 Steam Deck！
-
-&gt; Perhaps this will inspire someone to design a 3D-printed enclosure and complete hardware stack for a RetroPie-based open-source Steam Deck!
-
----
-
-## Footnotes
-
-[^1]: CM5 理论上应当支持，但目前尚未经过实际测试。 
-
-&gt; [^1]: The CM5 should work, but has not yet been tested. 
-
----
-
-## Further reading
-
-* [Raspberry Pi Connect may control Windows soon](/blog/2026/raspberry-pi-connect-may-control-windows-soon/)
-* [Build your own Dial-up ISP with a Raspberry Pi](/blog/2026/build-your-own-dial-up-isp-with-a-raspberry-pi/)
-* [Raspberry Pi's new AI HAT adds 8GB of RAM for local LLMs](/blog/2026/raspberry-pi-ai-hat-2/)</description>
-    </item>
-    <item>
-      <title>概述 (Summary)</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型用于Verilog代码生成：文献综述与未来之路/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-21/大语言模型用于Verilog代码生成：文献综述与未来之路/</guid>
-      <pubDate>Fri, 21 Aug 2026 00:00:00 GMT</pubDate>
-      <description>本文是对文献综述论文《大语言模型用于Verilog代码生成：文献综述与未来之路》（arXiv:2512.00020）的全面介绍。该论文由Guang Yang及16位联合作者共同撰写，系统地调查了大语言模型（LLM）在自动化Verilog代码生成（特别是寄存器传输级，即RTL）中的应用，架起了软件工程（SE）、人工智能（AI）和电子设计自动化（EDA）之间的桥梁。综述综合了102篇论文（其中70篇为同行评审论文，32篇为高质量预印本）的研究成果，并勾勒出了LLM辅助硬件设计的未来发展方向。
-
-通过系统性地回答四个核心研究问题，该研究梳理了当前用于Verilog生成的LLM、评估中采用的数据集与指标、提出的各种生成技术以及LLM对齐方法。在此基础上，作者指出了现有研究中的关键局限性，并为未来在LLM辅助硬件设计领域的探索指明了潜在机遇与路线图。
-
----
-
-# 概述 (Summary)
-
-&gt; This document provides an overview of the literature review paper **"Large Language Model for Verilog Code Generation: Literature Review and the Road Ahead"** (arXiv:2512.00020). Authored by Guang Yang and 16 co-authors, the paper comprehensively surveys the application of Large Language Models (LLMs) to automated Verilog code generation—particularly at the Register Transfer Level (RTL)—bridging Software Engineering (SE), Artificial Intelligence (AI), and Electronic Design Automation (EDA). The survey synthesizes findings from 102 papers (70 peer-reviewed and 32 high-quality preprints) and outlines future directions for LLM-assisted hardware design.
-
-本文档概述了文献综述论文**《大语言模型用于Verilog代码生成：文献综述与未来之路》**（arXiv:2512.00020）。该论文由Guang Yang与16位合著者共同撰写，全面综述了大语言模型（LLM）在自动化Verilog代码生成（特别是在寄存器传输级 RTL 层面）中的应用，完美结合了软件工程（SE）、人工智能（AI）与电子设计自动化（EDA）三大领域。该综述综合了102篇论文（70篇经同行评审，32篇高质量预印本）的研究发现，并规划了LLM辅助硬件设计的未来发展方向。
-
----
-
-# 文献信息 (Bibliographic Information)
-
-&gt; * **arXiv ID:** [arXiv:2512.00020](https://arxiv.org/abs/2512.00020) [cs.AR]
-* **Subjects:** Hardware Architecture (`cs.AR`); Artificial Intelligence (`cs.AI`)
-* **Status:** Accepted in *ACM Computing Surveys*
-* **Submission Date:** 29 October 2025 (Last revised: 14 August 2026, Version v3)
-* **DOI:** [10.48550/arXiv.2512.00020](https://doi.org/10.48550/arXiv.2512.00020)
-
-* **arXiv ID:** [arXiv:2512.00020](https://arxiv.org/abs/2512.00020) [cs.AR]
-* **研究学科:** 硬件体系结构 (`cs.AR`)；人工智能 (`cs.AI`)
-* **收录状态:** 已被 *ACM Computing Surveys* 接受
-* **提交日期:** 2025年10月29日（最后修订：2026年8月14日，版本 v3）
-* **DOI:** [10.48550/arXiv.2512.00020](https://doi.org/10.48550/arXiv.2512.00020)
-
----
-
-# 作者 (Authors)
-
-&gt; * Guang Yang
-* Wei Zheng
-* Xiang Chen
-* Dong Liang
-* Peng Hu
-* Yukui Yang
-* Shaohang Peng
-* Zhenghan Li
-* Jiahui Feng
-* Xiao Wei
-* Kexin Sun
-* Deyuan Ma
-* Haotian Cheng
-* Yiheng Shen
-* Xing Hu
-* Terry Yue Zhuo
-* David Lo
-
-* Guang Yang
-* Wei Zheng
-* Xiang Chen
-* Dong Liang
-* Peng Hu
-* Yukui Yang
-* Shaohang Peng
-* Zhenghan Li
-* Jiahui Feng
-* Xiao Wei
-* Kexin Sun
-* Deyuan Ma
-* Haotian Cheng
-* Yiheng Shen
-* Xing Hu
-* Terry Yue Zhuo
-* David Lo
-
----
-
-# 摘要 (Abstract)
-
-&gt; Code generation has emerged as a critical research area at the intersection of Software Engineering (SE) and Artificial Intelligence (AI), attracting significant attention from both academia and industry. Within this broader landscape, Verilog, as a representative hardware description language (HDL), plays a fundamental role in digital circuit design and verification, making its automated generation particularly significant for Electronic Design Automation (EDA).
-
-代码生成已成为软件工程（SE）与人工智能（AI）交叉领域的一个关键研究方向，吸引了学术界和工业界的广泛关注。在这一宏观背景下，Verilog作为具有代表性的硬件描述语言（HDL），在数字电路设计和验证中扮演着核心角色，这使得其自动化生成对于电子设计自动化（EDA）具有极其重要的意义。
-
-&gt; Consequently, recent research has increasingly focused on applying Large Language Models (LLMs) to Verilog code generation, particularly at the Register Transfer Level (RTL), exploring how these AI-driven techniques can be effectively integrated into hardware design workflows. Despite substantial research efforts exploring LLM applications in this domain, a comprehensive survey synthesizing these developments remains absent from the literature.
-
-因此，近期研究日益聚焦于将大语言模型（LLM）应用于Verilog代码生成，特别是在寄存器传输级（RTL）上，并探索如何将这些AI驱动的技术有效地整合到硬件设计工作流中。尽管在该领域探索LLM应用的研发努力不断增加，但文献中仍缺乏全面综合这些进展的综述。
-
-&gt; This review addresses this gap by providing a systematic literature review of LLM-based methods for Verilog code generation, examining their effectiveness, limitations, and potential for advancing automated hardware design. The review encompasses research work from conferences and journals in the fields of SE, AI, and EDA, encompassing 70 papers published on venues, along with 32 high-quality preprint papers, bringing the total to **102 papers**.
-
-本综述通过提供系统性的文献调研，填补了这一空白。文章系统评估了基于LLM的Verilog代码生成方法的有效性、局限性及其推动自动化硬件设计的潜力。该综述涵盖了来自SE、AI和EDA领域各大会议及期刊的研究工作，包含70篇已发表的论文以及32篇高质量的预印本论文，总计达**102篇**。
-
-&gt; By answering **four key research questions**, the survey aims to:
-1. Identify the LLMs used for Verilog generation.
-2. Examine the datasets and metrics employed in evaluation.
-3. Categorize the techniques proposed for Verilog generation.
-4. Analyze LLM alignment approaches for Verilog generation.
-
-通过回答**四个关键研究问题**，本综述旨在：
-1. 确定用于Verilog生成的LLM。
-2. 检验评估中采用的数据集与评估指标。
-3. 对提出的Verilog生成技术进行分类。
-4. 分析用于Verilog生成的LLM对齐方法。
-
-&gt; Based on these findings, the authors identify critical limitations in existing studies and outline a roadmap highlighting potential opportunities for future research endeavors in LLM-assisted hardware design.
-
-基于这些发现，作者指出了现有研究中的关键局限性，并勾勒出一条路线图，突出了未来在LLM辅助硬件设计领域中潜在的研究机遇。
-
----
-
-# 全文与资源 (Full-Text &amp; Resources)
-
-&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2512.00020)
-* **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2512.00020v3)
-* **Source Code/Files:** [TeX Source](https://arxiv.org/src/2512.00020)
-* **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-
-* **PDF 版本:** [查看 PDF](https://arxiv.org/pdf/2512.00020)
-* **HTML 版本:** [arXiv HTML（实验性）](https://arxiv.org/html/2512.00020v3)
-* **源代码/文件:** [TeX 源码](https://arxiv.org/src/2512.00020)
-* **开源许可:** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) ![许可图标](./images/345c7ad61f1b.png)</description>
     </item>
   </channel>
 </rss>
