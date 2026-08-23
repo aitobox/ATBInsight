@@ -137,6 +137,7 @@ title: 标签浏览
 
 - [无法追责的授权、日渐衰退的技能：绘制职场AI代理的风险图谱](blog/posts/2026-08-12-无法追责的授权、日渐衰退的技能：绘制职场AI代理的风险图谱.md)
 - [Mechanist：将人工智能作为探索智能机制的科学仪器](blog/posts/2026-08-14-Mechanist：将人工智能作为探索智能机制的科学仪器.md)
+- [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 
 ## AI代码评审
 
@@ -153,6 +154,7 @@ title: 标签浏览
 ## AI助手
 
 - [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
+- [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 
 ## AI基准测试
 
@@ -1420,6 +1422,7 @@ title: 标签浏览
 - [使用 NVIDIA NeMo AutoModel 加速 Transformer 微调](blog/posts/2026-08-07-使用 NVIDIA NeMo AutoModel 加速 Transformer 微调.md)
 - [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 - [构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制](blog/posts/2026-08-11-构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制.md)
+- [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 
 ## NVIDIA A100
 
@@ -1432,6 +1435,10 @@ title: 标签浏览
 ## NeMo
 
 - [使用 NVIDIA NeMo AutoModel 加速 Transformer 微调](blog/posts/2026-08-07-使用 NVIDIA NeMo AutoModel 加速 Transformer 微调.md)
+
+## NeMo Guardrails
+
+- [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 
 ## NeMo Retriever
 
@@ -1463,6 +1470,7 @@ title: 标签浏览
 - [针对深度 OCR 系统的对抗性攻击](blog/posts/2026-08-12-针对深度 OCR 系统的对抗性攻击.md)
 - [OmniHandwritingOCR：用于评估多模态大语言模型手写OCR场景的诊断性基准](blog/posts/2026-08-21-OmniHandwritingOCR：用于评估多模态大语言模型手写OCR场景的诊断性基准.md)
 - [MedStruct-S：面向OCR临床报告的键发现、键条件问答与半结构化提取基准](blog/posts/2026-08-21-MedStruct-S：面向OCR临床报告的键发现、键条件问答与半结构化提取基准.md)
+- [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 
 ## OEIS
 
@@ -1562,6 +1570,10 @@ title: 标签浏览
 
 - [PICopilot：基于大语言模型的智能体框架，助力光子集成电路脚本化设计](blog/posts/2026-08-07-PICopilot：基于大语言模型的智能体框架，助力光子集成电路脚本化设计.md)
 
+## POSIX
+
+- [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
+
 ## PPA优化
 
 - [SynAct：用于自适应综合优化的推理-行动大语言模型智能体](blog/posts/2026-08-16-SynAct：用于自适应综合优化的推理-行动大语言模型智能体.md)
@@ -1657,6 +1669,8 @@ title: 标签浏览
 - [如何错误地计算余弦值](blog/posts/2026-08-09-如何错误地计算余弦值.md)
 - [零知识证明浅析](blog/posts/2026-08-09-零知识证明浅析.md)
 - [一种简单的归约区间方法](blog/posts/2026-08-11-一种简单的归约区间方法.md)
+- [轨道倾角带来的差异](blog/posts/2026-08-24-轨道倾角带来的差异.md)
+- [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 
 ## Q-CARE
 
@@ -1717,6 +1731,7 @@ title: 标签浏览
 - [GRIP：基于信息受限前提的扎实推理](blog/posts/2026-08-19-GRIP：基于信息受限前提的扎实推理.md)
 - [意图驱动的动态分块：基于预测信息需求的文档切分方法](blog/posts/2026-08-20-意图驱动的动态分块：基于预测信息需求的文档切分方法.md)
 - [CoAL-RAG：一种兼顾复杂度感知的法律检索增强生成方法](blog/posts/2026-08-20-CoAL-RAG：一种兼顾复杂度感知的法律检索增强生成方法.md)
+- [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 
 ## RAG评估
 
@@ -1832,6 +1847,7 @@ title: 标签浏览
 - [并发服务器：第 7 部分 - Rust 语言实现](blog/posts/2026-08-16-并发服务器：第 7 部分 - Rust 语言实现.md)
 - [基于静态分析引导的智能体 AI 翻译：使 Rust 成为全栈生物信息学语言](blog/posts/2026-08-16-基于静态分析引导的智能体 AI 翻译：使 Rust 成为全栈生物信息学语言.md)
 - [训练强化学习模型玩转 Bonk.io](blog/posts/2026-08-16-训练强化学习模型玩转 Bonk.io.md)
+- [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 
 ## S3
 
@@ -1896,6 +1912,7 @@ title: 标签浏览
 ## SQLite
 
 - [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
+- [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
 
 ## SQL优化
 
@@ -2018,6 +2035,10 @@ title: 标签浏览
 ## Supabase Wrappers
 
 - [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
+
+## Syncthing
+
+- [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
 
 ## SynthID
 
@@ -2228,6 +2249,10 @@ title: 标签浏览
 
 - [基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型](blog/posts/2026-08-07-基于Volve油田的基础井况异常检测：构建标签、基线模型与双头模型.md)
 
+## WGS84
+
+- [地球的形状：大地测量学史](blog/posts/2026-08-24-地球的形状：大地测量学史.md)
+
 ## WebAI
 
 - [在 Transformers.js 中体验提议中的跨域存储 API](blog/posts/2026-08-07-在 Transformers.js 中体验提议中的跨域存储 API.md)
@@ -2290,6 +2315,7 @@ title: 标签浏览
 ## Zig
 
 - [Zig 的 Io.Threaded 设计精妙](blog/posts/2026-08-07-Zig 的 Io.Threaded 设计精妙.md)
+- [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 
 ## Zsh
 
@@ -2298,6 +2324,10 @@ title: 标签浏览
 ## arXiv
 
 - [大语言模型中思维链推理的平均场动力学](blog/posts/2026-08-07-大语言模型中思维链推理的平均场动力学.md)
+
+## deepDoctection
+
+- [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 
 ## do-算子
 
@@ -3549,6 +3579,10 @@ title: 标签浏览
 
 - [用于论证分析的逻辑嵌入](blog/posts/2026-08-19-用于论证分析的逻辑嵌入.md)
 
+## 军事测绘
+
+- [地球的形状：大地测量学史](blog/posts/2026-08-24-地球的形状：大地测量学史.md)
+
 ## 农业AI
 
 - [面向放牧生产系统的牛群生长模式与增重预测混合机器学习框架](blog/posts/2026-08-07-面向放牧生产系统的牛群生长模式与增重预测混合机器学习框架.md)
@@ -3953,6 +3987,10 @@ title: 标签浏览
 
 - [LoCA：视觉基础模型的空间感知低秩卷积自适应](blog/posts/2026-08-11-LoCA：视觉基础模型的空间感知低秩卷积自适应.md)
 - [可解释计算机视觉中的类激活映射：CNN、Transformer与基础模型时代视觉解释的方法论中心综述](blog/posts/2026-08-14-可解释计算机视觉中的类激活映射：CNN、Transformer与基础模型时代视觉解释的方法论中心综述.md)
+
+## 历史
+
+- [地球的形状：大地测量学史](blog/posts/2026-08-24-地球的形状：大地测量学史.md)
 
 ## 历史回测
 
@@ -5019,6 +5057,10 @@ title: 标签浏览
 
 - [BUZZY：通过对比打分缓解多模态多项选择问答中的文本诱导偏差](blog/posts/2026-08-18-BUZZY：通过对比打分缓解多模态多项选择问答中的文本诱导偏差.md)
 
+## 大地测量学
+
+- [地球的形状：大地测量学史](blog/posts/2026-08-24-地球的形状：大地测量学史.md)
+
 ## 大型视频语言模型
 
 - [TTSD-FAR：面向大型视频-语言模型中缺失模态情感识别_带有费雪锚定恢复的测试时自蒸馏方法](blog/posts/2026-08-21-TTSD-FAR：面向大型视频-语言模型中缺失模态情感识别_带有费雪锚定恢复的测试时自蒸馏方法.md)
@@ -5069,6 +5111,7 @@ title: 标签浏览
 - [Tripwire：通过统计认证的安全神经元触发对齐拒绝机制](blog/posts/2026-08-18-Tripwire：通过统计认证的安全神经元触发对齐拒绝机制.md)
 - [大模型拒绝机制中的对称性破缺：答案释放比恢复拒绝更具局部性](blog/posts/2026-08-19-大模型拒绝机制中的对称性破缺：答案释放比恢复拒绝更具局部性.md)
 - [HarmProfile：刻画前沿大语言模型中的有害分布](blog/posts/2026-08-19-HarmProfile：刻画前沿大语言模型中的有害分布.md)
+- [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 
 ## 大模型对齐
 
@@ -5473,6 +5516,7 @@ title: 标签浏览
 - [AI 的十万个为什么：大语言模型的准确定性与“AI 垃圾内容”的指纹特征](blog/posts/2026-08-21-AI 的十万个为什么：大语言模型的准确定性与“AI 垃圾内容”的指纹特征.md)
 - [什么是推理？](blog/posts/2026-08-21-什么是推理？.md)
 - [Claude 如何为 AI 生成的文本添加水印](blog/posts/2026-08-23-Claude 如何为 AI 生成的文本添加水印.md)
+- [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 
 ## 大语言模型代理
 
@@ -5499,6 +5543,10 @@ title: 标签浏览
 ## 大语言模型评估
 
 - [法律检索增强生成（RAG）系统的幻觉问题究竟有多严重？](blog/posts/2026-08-18-法律检索增强生成（RAG）系统的幻觉问题究竟有多严重？.md)
+
+## 天体力学
+
+- [轨道倾角带来的差异](blog/posts/2026-08-24-轨道倾角带来的差异.md)
 
 ## 天气预报
 
@@ -7336,6 +7384,10 @@ title: 标签浏览
 
 - [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
 
+## 数据库同步
+
+- [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
+
 ## 数据库安全
 
 - [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
@@ -7478,6 +7530,10 @@ title: 标签浏览
 ## 文档处理
 
 - [GUIDE：企业级文档到工件生成的受控统一智能框架](blog/posts/2026-08-14-GUIDE：企业级文档到工件生成的受控统一智能框架.md)
+
+## 文档智能
+
+- [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 
 ## 文档检索
 
@@ -10382,6 +10438,10 @@ title: 标签浏览
 
 - [语义 Lenia：大语言模型语义空间中稳态孤子的涌现](blog/posts/2026-08-14-语义 Lenia：大语言模型语义空间中稳态孤子的涌现.md)
 
+## 空间定位
+
+- [地球的形状：大地测量学史](blog/posts/2026-08-24-地球的形状：大地测量学史.md)
+
 ## 空间探测
 
 - [NASA水手9号探测器是如何进行图像编码的](blog/posts/2026-08-15-NASA水手9号探测器是如何进行图像编码的.md)
@@ -10689,6 +10749,7 @@ title: 标签浏览
 - [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
 - [Zig 的 Io.Threaded 设计精妙](blog/posts/2026-08-07-Zig 的 Io.Threaded 设计精妙.md)
 - [周末趣谈：你的进程内存其实就是一个文件](blog/posts/2026-08-21-周末趣谈：你的进程内存其实就是一个文件.md)
+- [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
 
 ## 纠偏机制
 
@@ -10965,6 +11026,10 @@ title: 标签浏览
 - [个性化技能能帮助编程智能体吗？开发者交互历史的实证研究](blog/posts/2026-08-14-个性化技能能帮助编程智能体吗？开发者交互历史的实证研究.md)
 - [语言服务器能为编程智能体节省Token吗？测量方法与初步研究](blog/posts/2026-08-18-语言服务器能为编程智能体节省Token吗？测量方法与初步研究.md)
 - [工程化可靠的编程智能体：评估与运维模型周边的系统](blog/posts/2026-08-18-工程化可靠的编程智能体：评估与运维模型周边的系统.md)
+
+## 编程语言
+
+- [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 
 ## 编译器
 
@@ -11581,6 +11646,10 @@ title: 标签浏览
 
 - [OlmoEarth 平台：行星级地理空间推理](blog/posts/2026-08-07-OlmoEarth 平台：行星级地理空间推理.md)
 
+## 行星轨道
+
+- [轨道倾角带来的差异](blog/posts/2026-08-24-轨道倾角带来的差异.md)
+
 ## 表征交接
 
 - [基于OpenArm的实验室移动操作之表征交接](blog/posts/2026-08-11-基于OpenArm的实验室移动操作之表征交接.md)
@@ -11929,6 +11998,7 @@ title: 标签浏览
 - [FUSE：基于面部视频的帧统一应激估计](blog/posts/2026-08-20-FUSE：基于面部视频的帧统一应激估计.md)
 - [划分支撑集，重建残差：面向视频生成与世界模型的免训练稀疏注意力机制](blog/posts/2026-08-21-划分支撑集，重建残差：面向视频生成与世界模型的免训练稀疏注意力机制.md)
 - [学习状态感知的面向小规模数据集动态生成式数据增强](blog/posts/2026-08-21-学习状态感知的面向小规模数据集动态生成式数据增强.md)
+- [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 
 ## 计算机视觉与自然语言处理
 
@@ -12587,6 +12657,10 @@ title: 标签浏览
 ## 轨道AI
 
 - [轨道AI计算：不同卫星规模下的碳排放权衡](blog/posts/2026-08-19-轨道AI计算：不同卫星规模下的碳排放权衡.md)
+
+## 轨道倾角
+
+- [轨道倾角带来的差异](blog/posts/2026-08-24-轨道倾角带来的差异.md)
 
 ## 转化率
 
