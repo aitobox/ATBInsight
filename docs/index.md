@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-08-25**: [使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞](blog/posts/2026-08-25-使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞.md)
 - **2026-08-24**: [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
 - **2026-08-23**: [Claude 如何为 AI 生成的文本添加水印](blog/posts/2026-08-23-Claude 如何为 AI 生成的文本添加水印.md)
 - **2026-08-22**: [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
