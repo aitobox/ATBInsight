@@ -1,0 +1,750 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-25-BF1%EF%BC%9A%E9%9D%A2%E5%90%91%E9%AB%98%E6%95%88%E9%95%BF%E6%96%87%E6%9C%AC%20Transformer%20%E7%9A%84%E5%9B%A0%E6%9E%9C%E4%BA%8C%E5%85%83%E7%A8%80%E7%96%8F%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>BF1：面向高效长文本 Transformer 的因果二元稀疏注意力改造方案 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              BF1：面向高效长文本 Transformer 的因果二元稀疏注意力改造方案
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bf1-a-causal-dyadic-sparse-attention-retrofit-for-efficient-long-context-transformers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BF1: A Causal Dyadic Sparse-Attention Retrofit for Efficient Long-Context Transformers
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bf1-a-causal-dyadic-sparse-attention-retrofit-for-efficient-long-context-transformers_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BF1: A Causal Dyadic Sparse-Attention Retrofit for Efficient Long-Context Transformers
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BF1: A Causal Dyadic Sparse-Attention Retrofit for Efficient Long-Context Transformers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#abstract-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Abstract Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abstract-summary_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Abstract Summary
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Abstract Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-design-elements-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Design Elements &amp; Mechanisms
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-design-elements-mechanisms_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Design Elements &amp; Mechanisms
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empirical-evaluation-language-modeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Empirical Evaluation &amp; Language Modeling
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empirical-evaluation-language-modeling_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Empirical Evaluation &amp; Language Modeling
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着上下文长度的增加，稠密因果注意力（Dense causal attention）机制的计算成本会变得高昂，即便使用精确内核（exact kernels）进行优化也难以克服这一瓶颈。本文引入了 <strong>BF1</strong>，这是一种确定性的、块对齐的二元稀疏注意力（dyadic sparse-attention）架构，旨在作为高效长上下文 Transformer 的即插即用改造方案。</p>
+<p>BF1 通过结合小型精确局部邻域、全局首个块以及按对数间距排列的历史块，构建了独特的注意力拓扑结构。在固定的块宽度下，每个改造后的层仅处理 <span class="arithmatex">\(\mathcal{O}(n \log n)\)</span> 个选定的 Token 交互，并保持 <span class="arithmatex">\(\mathcal{O}(\log n)\)</span> 的图通信深度。在系统性能方面，基于 NVIDIA RTX PRO 6000 Blackwell GPU 和优化的 BF16 实现评估表明，BF1 在 2K 到 4K Token 之间超越了稠密注意力的效率，并在 32K Token 时实现了 <strong>10.91倍的单层预填充加速</strong>。此外，将 Qwen3-0.6B 中 28 个注意力层中的 8 个进行改造，可将首 Token 预热全模型时间在 8K、16K 和 32K 长度下分别减少 <strong>7.7%</strong>、<strong>11.3%</strong> 和 <strong>15.3%</strong>，同时保留了其余稠密层的二次方扩展能力。经验证，在同等预算下，BF1 在困惑度（Perplexity）和语言建模任务中均展现出显著的性能优势与统计显著性。</p>
+<hr />
+<h1 id="bf1-a-causal-dyadic-sparse-attention-retrofit-for-efficient-long-context-transformers">BF1: A Causal Dyadic Sparse-Attention Retrofit for Efficient Long-Context Transformers</h1>
+<blockquote>
+<h1 id="bf1-a-causal-dyadic-sparse-attention-retrofit-for-efficient-long-context-transformers_1">BF1: A Causal Dyadic Sparse-Attention Retrofit for Efficient Long-Context Transformers</h1>
+</blockquote>
+<p><a href="http://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="License icon" src=".././images/fb423b2203a9.png" /></a></p>
+<blockquote>
+<p><a href="http://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="License icon" src=".././images/fb423b2203a9.png" /></a></p>
+</blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.20427">arXiv:2608.20427</a> [cs.LG]</li>
+<li><strong>Authors:</strong> Hina Dixit</li>
+<li><strong>Submitted:</strong> 19 August 2026</li>
+<li><strong>Subjects:</strong> Machine Learning (cs.LG); Artificial Intelligence (cs.AI)</li>
+<li><strong>Links:</strong> <a href="https://arxiv.org/pdf/2608.20427">View PDF</a> | <a href="https://doi.org/10.48550/arXiv.2608.20427">DOI</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.20427">arXiv:2608.20427</a> [cs.LG]</li>
+<li><strong>Authors:</strong> Hina Dixit</li>
+<li><strong>Submitted:</strong> 19 August 2026</li>
+<li><strong>Subjects:</strong> Machine Learning (cs.LG); Artificial Intelligence (cs.AI)</li>
+<li><strong>Links:</strong> <a href="https://arxiv.org/pdf/2608.20427">View PDF</a> | <a href="https://doi.org/10.48550/arXiv.2608.20427">DOI</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="abstract-summary">Abstract Summary</h2>
+<blockquote>
+<h2 id="abstract-summary_1">Abstract Summary</h2>
+</blockquote>
+<p>Dense causal attention becomes prohibitively expensive at long contexts, even when optimized with exact kernels. This paper introduces <strong>BF1</strong>, a deterministic, block-aligned dyadic sparse-attention architecture designed as a drop-in retrofit for efficient long-context Transformers. </p>
+<blockquote>
+<p>Dense causal attention becomes prohibitively expensive at long contexts, even when optimized with exact kernels. This paper introduces <strong>BF1</strong>, a deterministic, block-aligned dyadic sparse-attention architecture designed as a drop-in retrofit for efficient long-context Transformers. </p>
+</blockquote>
+<h3 id="key-design-elements-mechanisms">Key Design Elements &amp; Mechanisms</h3>
+<ul>
+<li><strong>Attention Topology:</strong> Combines a small exact local neighborhood, a global first block, and logarithmically spaced historical blocks. </li>
+<li><strong>Complexity:</strong> For a fixed block width, every converted layer operates on <span class="arithmatex">\(\mathcal{O}(n \log n)\)</span> selected token interactions and maintains an <span class="arithmatex">\(\mathcal{O}(\log n)\)</span> graph communication depth.</li>
+<li><strong>Systems Performance:</strong> Evaluated on an NVIDIA RTX PRO 6000 Blackwell GPU using an optimized BF16 implementation:</li>
+<li>Outperforms dense attention efficiency between <strong>2K and 4K tokens</strong>.</li>
+<li>Reaches a <strong>10.91× per-layer prefill speedup</strong> at 32K tokens.</li>
+<li>Retrofitting 8 out of 28 attention layers in Qwen3-0.6B reduces warm whole-model time to the first token by <strong>7.7% (8K)</strong>, <strong>11.3% (16K)</strong>, and <strong>15.3% (32K)</strong>, while retaining quadratic scaling for the remaining dense layers.</li>
+</ul>
+<blockquote>
+<h3 id="key-design-elements-mechanisms_1">Key Design Elements &amp; Mechanisms</h3>
+<ul>
+<li><strong>Attention Topology:</strong> Combines a small exact local neighborhood, a global first block, and logarithmically spaced historical blocks. </li>
+<li><strong>Complexity:</strong> For a fixed block width, every converted layer operates on <span class="arithmatex">\(\mathcal{O}(n \log n)\)</span> selected token interactions and maintains an <span class="arithmatex">\(\mathcal{O}(\log n)\)</span> graph communication depth.</li>
+<li><strong>Systems Performance:</strong> Evaluated on an NVIDIA RTX PRO 6000 Blackwell GPU using an optimized BF16 implementation:</li>
+<li>Outperforms dense attention efficiency between <strong>2K and 4K tokens</strong>.</li>
+<li>Reaches a <strong>10.91× per-layer prefill speedup</strong> at 32K tokens.</li>
+<li>Retrofitting 8 out of 28 attention layers in Qwen3-0.6B reduces warm whole-model time to the first token by <strong>7.7% (8K)</strong>, <strong>11.3% (16K)</strong>, and <strong>15.3% (32K)</strong>, while retaining quadratic scaling for the remaining dense layers.</li>
+</ul>
+</blockquote>
+<h3 id="empirical-evaluation-language-modeling">Empirical Evaluation &amp; Language Modeling</h3>
+<p>Under a matched 1,000-step, 16.384M-token adaptation protocol:
+* <strong>Perplexity Rankings:</strong> BF1 ranks first across three training seeds, achieving a mean perplexity of <strong>1.68639</strong> (compared to 1.69154 for a matched static-random nonlocal graph, 1.69258 for dense continued training, and 1.81505 for equal-budget local sliding).
+* <strong>Statistical Significance:</strong> At seed 1234, packed-report paired intervals place Dense-CT 0.3169–0.4055% above BF1, and the static-random graph 17 0.2441–0.3642% above BF1.</p>
+<p>Overall, BF1 establishes itself as a reproducible sparse operator and selective retrofit primitive that delivers concrete systems value in long-context scenarios.</p>
+<blockquote>
+<h3 id="empirical-evaluation-language-modeling_1">Empirical Evaluation &amp; Language Modeling</h3>
+<p>Under a matched 1,000-step, 16.384M-token adaptation protocol:
+* <strong>Perplexity Rankings:</strong> BF1 ranks first across three training seeds, achieving a mean perplexity of <strong>1.68639</strong> (compared to 1.69154 for a matched static-random nonlocal graph, 1.69258 for dense continued training, and 1.81505 for equal-budget local sliding).
+* <strong>Statistical Significance:</strong> At seed 1234, packed-report paired intervals place Dense-CT 0.3169–0.4055% above BF1, and the static-random graph 17 0.2441–0.3642% above BF1.</p>
+<p>Overall, BF1 establishes itself as a reproducible sparse operator and selective retrofit primitive that delivers concrete systems value in long-context scenarios.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">稀疏注意力</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">长文本处理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">机器学习</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
