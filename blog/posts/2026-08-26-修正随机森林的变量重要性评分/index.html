@@ -1,0 +1,747 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-26-%E4%BF%AE%E6%AD%A3%E9%9A%8F%E6%9C%BA%E6%A3%AE%E6%9E%97%E7%9A%84%E5%8F%98%E9%87%8F%E9%87%8D%E8%A6%81%E6%80%A7%E8%AF%84%E5%88%86/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>修正随机森林的变量重要性评分 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              修正随机森林的变量重要性评分
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        摘要 (Abstract)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstract_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#article-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章详情 (Article Details)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#article-details_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Article Details
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-full-text-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        获取全文与资源 (Access Full Text &amp; Resources)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-full-text-resources_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access Full Text &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references-external-citations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        参考文献与外部引用 (References &amp; External Citations)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references-external-citations_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        References &amp; External Citations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">修正随机森林的变量重要性评分</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随机森林（Random Forests, RF）在统计数据分析中被广泛应用于模型解释、模型选择和成本受限学习等任务。然而，传统随机森林计算变量重要性的方法忽略了变量之间的相关性。这导致与许多其他变量相关的特征往往会获得较低的重要性评分，或者被强相关的特征完全掩盖（重要性趋近于零）。</p>
+<p>为了缓解这一问题，作者提出根据变量的条件相关性（以响应变量为条件）对变量进行分组，并开发了两种高效的方法：单个变量分离法或成对条件相关聚类法。实验表明，这两种方法都能对变量重要性评分做出合理的修正。</p>
+<hr />
+<h2 id="abstract">摘要 (Abstract)</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+<p>Random Forests (RF) are widely used in statistical data analysis for tasks such as model interpretation, model selection, and cost-bounded learning. However, traditional RF variable importance calculations ignore correlations among variables. As a result, variables correlated with many others tend to receive lower importance scores or become completely masked (near zero) by strongly correlated counterparts. To mitigate this issue, the authors propose grouping variables by their conditional correlations (conditional on the response variable) using two efficient methods: individual variable separation or pairwise conditional correlation clustering. Experiments demonstrate that both approaches yield sensible corrections to variable importance scores.</p>
+</blockquote>
+<p>随机森林（RF）产生的变量重要性在统计数据分析中得到了广泛应用，并在协助模型解释、模型选择与诊断以及成本受限学习等多种任务中发挥了重要作用。然而，RF 中变量重要性的计算并未考虑变量之间的相关性，与许多其他变量相关的变量往往会获得较低的重要性指数，或者被其他强相关变量完全掩盖（即重要性指数接近于零）。为了在计算变量重要性时防止不相关联的相关变量带来的影响，我们提出根据变量的条件相关性（以响应变量为条件）对变量进行分组。我们探讨了两种计算高效的方案：一种是将变量逐个分组，然后将目标变量与所有相关变量分离；另一种则是利用聚类方法，根据成对条件相关性对变量进行分组。我们的实验表明，这两种方法都能对变量的重要性进行合理的修正。</p>
+<blockquote>
+<h2 id="abstract_1">Abstract</h2>
+<p>Variable importance produced by Random Forests (RF) is used widely in statistical data analysis, and has played an important role in a variety of tasks such as assisting model interpretation, model selection and diagnosis, and cost-bounded learning etc. However, the calculation of variable importance in RF does not take into account of the correlations among variables, and variables that are correlated to many other variables tend to receive a lower importance index or being completely masked (i.e., with an importance index near zero) by other strongly correlated variables. To prevent influence from unwanted correlated variables in calculating variable importance, we propose to group variables by their conditional correlations (conditional on the response variable). We explore two computationally efficient options, with one grouping variables individually, and then separates the variable of interest from all correlated variables, while the other uses clustering to group variables according to their pair-wise conditional correlations. Our experiments show that both lead to sensible corrections to the importance of variables.</p>
+</blockquote>
+<hr />
+<h2 id="article-details">文章详情 (Article Details)</h2>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2606.10770">arXiv:2606.10770</a></li>
+<li><strong>主题分类:</strong> 方法论 (<code>stat.ME</code>); 人工智能 (<code>cs.AI</code>); 机器学习 (<code>cs.LG</code>)</li>
+<li><strong>提交日期:</strong> 2026年6月9日</li>
+<li><strong>作者:</strong> Guancheng Zhou, Haiping Xu, Jason Liu, Donghui Yan</li>
+<li><strong>评论:</strong> 22 页, 10 张图表</li>
+</ul>
+<blockquote>
+<h2 id="article-details_1">Article Details</h2>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2606.10770">arXiv:2606.10770</a></li>
+<li><strong>Subject Categories:</strong> Methodology (<code>stat.ME</code>); Artificial Intelligence (<code>cs.AI</code>); Machine Learning (<code>cs.LG</code>)</li>
+<li><strong>Submitted on:</strong> June 9, 2026</li>
+<li><strong>Authors:</strong> Guancheng Zhou, Haiping Xu, Jason Liu, Donghui Yan</li>
+<li><strong>Comments:</strong> 22 pages, 10 figures</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="access-full-text-resources">获取全文与资源 (Access Full Text &amp; Resources)</h2>
+<ul>
+<li><strong>PDF 版本:</strong> <a href="https://arxiv.org/pdf/2606.10770">查看 PDF</a></li>
+<li><strong>HTML 版本:</strong> <a href="https://arxiv.org/html/2606.10770v1">实验性 HTML</a></li>
+<li><strong>TeX 源码:</strong> <a href="https://arxiv.org/src/2606.10770">源码文件</a></li>
+<li><strong>许可协议:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0</a> <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"/></li>
+</ul>
+<blockquote>
+<h2 id="access-full-text-resources_1">Access Full Text &amp; Resources</h2>
+<ul>
+<li><strong>PDF Version:</strong> <a href="https://arxiv.org/pdf/2606.10770">View PDF</a></li>
+<li><strong>HTML Version:</strong> <a href="https://arxiv.org/html/2606.10770v1">Experimental HTML</a></li>
+<li><strong>TeX Source:</strong> <a href="https://arxiv.org/src/2606.10770">Source Files</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"/></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="references-external-citations">参考文献与外部引用 (References &amp; External Citations)</h2>
+<ul>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2606.10770">NASA ADS</a></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2606.10770">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2606.10770">Semantic Scholar</a></li>
+</ul>
+<blockquote>
+<h2 id="references-external-citations_1">References &amp; External Citations</h2>
+<ul>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2606.10770">NASA ADS</a></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2606.10770">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2606.10770">Semantic Scholar</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">随机森林</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">变量重要性</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">机器学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型解释</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">条件相关性</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

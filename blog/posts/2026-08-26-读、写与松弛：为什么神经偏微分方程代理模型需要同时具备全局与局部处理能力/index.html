@@ -1,0 +1,701 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-26-%E8%AF%BB%E3%80%81%E5%86%99%E4%B8%8E%E6%9D%BE%E5%BC%9B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E7%A5%9E%E7%BB%8F%E5%81%8F%E5%BE%AE%E5%88%86%E6%96%B9%E7%A8%8B%E4%BB%A3%E7%90%86%E6%A8%A1%E5%9E%8B%E9%9C%80%E8%A6%81%E5%90%8C%E6%97%B6%E5%85%B7%E5%A4%87%E5%85%A8%E5%B1%80%E4%B8%8E%E5%B1%80%E9%83%A8%E5%A4%84%E7%90%86%E8%83%BD%E5%8A%9B/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>读、写与松弛：为什么神经偏微分方程代理模型需要同时具备全局与局部处理能力 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              读、写与松弛：为什么神经偏微分方程代理模型需要同时具备全局与局部处理能力
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要 (Summary)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📑 元数据 (Metadata)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📝 摘要 (Abstract)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 链接与资源 (Links &amp; Resources)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">读、写与松弛：为什么神经偏微分方程代理模型需要同时具备全局与局部处理能力</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>近年来，基于网格的数值模拟高度依赖于两类截然不同的神经代理模型：通过潜在令牌（latent tokens）路由信息的全局模型，以及在网格边上执行消息传递（message passing）的局部模型。然而，这两类模型在应对高维问题以及复杂的工业级网格时都显得力不从心。本文深入探讨了这两种模型背后的数学机理，指出全局潜在令牌注意力机制本质上充当了<strong>空间低通滤波器</strong>，而局部消息传递则缺乏跨越广阔网格空间所需的全局感受野。</p>
+<p>从误差谱的角度来看，这两种算子恰好构成了<strong>多重网格循环（multigrid cycle）</strong>的两个半部：它们分别修正频谱两端的误差且无法互相替代。为了弥补这一鸿沟，作者提出了<strong>读-写-松弛（Read-Write-Relax, RWR）</strong>这一统一框架，将潜在注意力与消息传递松弛操作交织结合。RWR 显著提升了大规模工程问题中的预测精度、数据效率和可扩展性，为解决复杂工业仿真开辟了新途径。</p>
+<hr />
+<h2 id="summary">📌 摘要 (Summary)</h2>
+<blockquote>
+<p>Recent advancements in mesh-based simulations rely heavily on two distinct types of neural surrogates: <strong>global models</strong> (which route information through latent tokens) and <strong>local models</strong> (which use message passing across mesh edges). However, both struggle with high-dimensional problems and complex industrial meshes. </p>
+<p>This paper shows that global latent-token attention acts as a <strong>spatial low-pass filter</strong>, while local message passing lacks the reach required to span large mesh spaces. Together, these two operators form the halves of a <strong>multigrid cycle</strong>: each corrects errors at opposite ends of the spectrum. To bridge this gap, the authors introduce <strong>Read-Write-Relax (RWR)</strong>, a unified formulation that interleaves latent attention with message-passing relaxation. RWR drastically improves accuracy, data efficiency, and scalability for large-scale engineering problems.</p>
+</blockquote>
+<p>近期基于网格的模拟技术的进步，很大程度上依赖于两类截然不同的神经代理模型：通过少量潜在令牌路由信息的全局模型，以及在网格边上执行消息传递的局部模型。然而，这两类模型共同的局限性在于无法处理超出低维度、小规模或过度简化网格的问题——而这恰恰是工业级问题所在的仿真区间。</p>
+<blockquote>
+<p>Recent mesh-based simulation advances have, in no small part, relied on neural surrogates of two distinct families: global models that route information through a small set of latent tokens, and local models that perform message passing across mesh edges. Consistent with both classes is the inability to perform beyond low-dimensional problems and small-scale or oversimplified meshes, the simulation regimes where industrial problems reside. </p>
+</blockquote>
+<p>我们的工作明确展示了这一点，并提出了一种统一的表述形式。在全局方法中，潜在令牌注意力充当了空间低通滤波器，而局部消息传递则缺乏在大型网格空间中传播信息所需的全局感受野。从误差的角度来看，这两种算子恰好是一个多重网格循环的两半：一个修正低频段的误差，另一个修正高频段的误差，且两者无法互相替代。</p>
+<blockquote>
+<p>Our work shows this explicitly and presents a unified formulation. In global approaches, latent-token attention acts as a spatial low-pass filter, while local message passing lacks the global reach necessary to propagate information across large mesh spaces. Viewed through the error, the two operators are the halves of a multigrid cycle: one corrects errors at the lower end of the spectrum, the other at the higher end, and neither can do the other's job. </p>
+</blockquote>
+<p>我们引入了<strong>读-写-松弛（Read-Write-Relax, RWR）</strong>方法，在统一框架下将潜在注意力与消息传递松弛交织在一起。这种交织式处理器降低了全频谱的误差，使得 RWR 在我们所有的工业和公开基准测试的几乎每一次对比中都成为最精确的模型。同时，它在数据稀缺的情况下表现出显著的数据效率，对工程关注的物理量具有极高的准确性，并将全场预测扩展到了具有挑战性的大规模问题中。</p>
+<blockquote>
+<p>We introduce <strong>Read-Write-Relax (RWR)</strong>, which interleaves latent attention with message-passing relaxation under a unified formulation. The interleaved processor lowers error across the entire spectrum, making RWR the most accurate model in nearly every comparison across our industrial and public benchmarks. It is also markedly data-efficient in the scarce-data regimes, accurate on the engineering quantities of interest, and scales full-field predictions to challenging, large-scale problems.</p>
+</blockquote>
+<hr />
+<h2 id="metadata">📑 元数据 (Metadata)</h2>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.21677">arXiv:2608.21677</a> [cs.LG]</li>
+<li><strong>Submitted On:</strong> August 21, 2026</li>
+<li><strong>Primary Subject:</strong> Machine Learning (<code>cs.LG</code>)</li>
+<li><strong>Other Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>); Computational Engineering, Finance, and Science (<code>cs.CE</code>); Applied Physics (<code>physics.app-ph</code>); Computational Physics (<code>physics.comp-ph</code>)</li>
+<li><strong>Authors:</strong> </li>
+<li>Anuj Kumar</li>
+<li>Heiko Zimmermann</li>
+<li>Josiah Bjorgaard</li>
+<li>Jacan Chaplais</li>
+<li>Nikolaos Bouklas</li>
+<li>Matteo Salvador</li>
+<li>Alexander Lavin</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.21677">arXiv:2608.21677</a> [cs.LG]</li>
+<li><strong>提交时间:</strong> 2026年8月21日</li>
+<li><strong>主分类:</strong> 机器学习 (<code>cs.LG</code>)</li>
+<li><strong>其他分类:</strong> 人工智能 (<code>cs.AI</code>)；计算工程、金融与科学 (<code>cs.CE</code>)；应用物理学 (<code>physics.app-ph</code>)；计算物理学 (<code>physics.comp-ph</code>)</li>
+<li><strong>作者:</strong> </li>
+<li>Anuj Kumar</li>
+<li>Heiko Zimmermann</li>
+<li>Josiah Bjorgaard</li>
+<li>Jacan Chaplais</li>
+<li>Nikolaos Bouklas</li>
+<li>Matteo Salvador</li>
+<li>Alexander Lavin</li>
+</ul>
+<hr />
+<h2 id="abstract">📝 摘要 (Abstract)</h2>
+<p><em>(注：摘要部分已在上方“Summary”小节中进行了中英对照翻译，此处不再重复)</em></p>
+<hr />
+<h2 id="links-resources">🔗 链接与资源 (Links &amp; Resources)</h2>
+<blockquote>
+<ul>
+<li><strong>Full-Text Access:</strong> <a href="https://arxiv.org/pdf/2608.21677">View PDF</a> | <a href="https://arxiv.org/html/2608.21677v1">HTML (Experimental)</a> | <a href="https://arxiv.org/src/2608.21677">TeX Source</a></li>
+<li><strong>Citations &amp; Tools:</strong> </li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.21677">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2608.21677">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.21677">NASA ADS</a></li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>全文访问:</strong> <a href="https://arxiv.org/pdf/2608.21677">查看 PDF</a> | <a href="https://arxiv.org/html/2608.21677v1">HTML (实验性)</a> | <a href="https://arxiv.org/src/2608.21677">TeX 源码</a></li>
+<li><strong>引用与工具:</strong> </li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.21677">谷歌学术</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2608.21677">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.21677">NASA ADS</a></li>
+</ul>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">神经偏微分方程代理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">多重网格</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">图神经网络</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">注意力机制</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">流体与工程仿真</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
