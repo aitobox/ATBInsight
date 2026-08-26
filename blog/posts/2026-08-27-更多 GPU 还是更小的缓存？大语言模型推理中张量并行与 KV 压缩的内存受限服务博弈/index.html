@@ -1,0 +1,722 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-27-%E6%9B%B4%E5%A4%9A%20GPU%20%E8%BF%98%E6%98%AF%E6%9B%B4%E5%B0%8F%E7%9A%84%E7%BC%93%E5%AD%98%EF%BC%9F%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86%E4%B8%AD%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%E4%B8%8E%20KV%20%E5%8E%8B%E7%BC%A9%E7%9A%84%E5%86%85%E5%AD%98%E5%8F%97%E9%99%90%E6%9C%8D%E5%8A%A1%E5%8D%9A%E5%BC%88/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>更多 GPU 还是更小的缓存？大语言模型推理中张量并行与 KV 压缩的内存受限服务博弈 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              更多 GPU 还是更小的缓存？大语言模型推理中张量并行与 KV 压缩的内存受限服务博弈
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-kv-more-gpus-or-a-smaller-cache-tensor-parallelism-versus-kv-compression-for-memory-bound-llm-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        更多 GPU 还是更小的缓存？大语言模型推理中张量并行与 KV 压缩的内存受限服务博弈 (More GPUs or a Smaller Cache? Tensor Parallelism versus KV Compression for Memory-Bound LLM Serving)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="更多 GPU 还是更小的缓存？大语言模型推理中张量并行与 KV 压缩的内存受限服务博弈 (More GPUs or a Smaller Cache? Tensor Parallelism versus KV Compression for Memory-Bound LLM Serving)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 执行摘要 (Executive Summary)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔍 核心发现 (Key Findings)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paper-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📑 论文元数据 (Paper Metadata)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-text-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 全文与资源 (Full-Text &amp; Resources)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型（LLM）服务部署中，当键值（KV）缓存内存耗尽时，工程团队通常需要在硬件扩展（如增加张量并行度）与算法优化（如 KV 缓存压缩）之间做出抉择。以往的研究往往将硬件吞吐量与算法压缩率割裂评估，缺乏在统一成本维度下的直接对比。为此，本文作者通过在 A100、A40 和 H100 硬件上校准的配置文件模拟器，对不同张量并行配置与多种 KV 压缩策略进行了全面评估，首次在“每百万 Token 成本与延迟”的统一指标下寻找成本等效的交叉点。</p>
+<p>研究的核心发现表明：在绝大多数适用场景下，KV 压缩在经济性上完胜增加 GPU 的方案，成本可降低 1.20 倍到 2.00 倍。对于参数量小于约 36B 的模型，增加 GPU 纯属浪费；而对于超大规模模型，由于受限于模型权重本身的显存占用，张量并行则转变为硬性需求。总体而言，KV 压缩作为极致的容量倍增器，能够将每美元的容量提升高达 16.5 倍，为优化 LLM 推理部署成本提供了关键的决策依据。</p>
+<hr />
+<h1 id="gpu-kv-more-gpus-or-a-smaller-cache-tensor-parallelism-versus-kv-compression-for-memory-bound-llm-serving">更多 GPU 还是更小的缓存？大语言模型推理中张量并行与 KV 压缩的内存受限服务博弈 (More GPUs or a Smaller Cache? Tensor Parallelism versus KV Compression for Memory-Bound LLM Serving)</h1>
+<p><strong>arXiv:</strong> <a href="https://arxiv.org/abs/2608.23962">2608.23962</a> [cs.AI]<br />
+<strong>Submitted:</strong> 25 Aug 2026<br />
+<strong>Authors:</strong> Srikanta Datta Tumkur, Mehar Simhadri, Anshu Bansal, Jay Iyer, Sai Pavan Kumar, Sai Kapil Kumar, Ramesh Nampelly, Raj Dandekar  </p>
+<hr />
+<h2 id="executive-summary">📌 执行摘要 (Executive Summary)</h2>
+<p>当大语言模型（LLM）服务部署耗尽键值（KV）缓存内存时，工程师通常会在两种优化策略中进行选择：
+1. <strong>硬件扩展（张量并行）：</strong> 将模型权重和 KV 缓存分片到多个设备（2、4 或 8 个 GPU）上。这增加了内存余量，但代价是每层的 all-reduce 通信开销以及显着增加的硬件账单。
+2. <strong>算法扩展（KV 压缩）：</strong> 在单个 GPU 上通过量化和驱逐（eviction）在原地缩减缓存，以输出质量的微小下降换取硬件成本的节约。</p>
+<blockquote>
+<p>When Large Language Model (LLM) serving deployments run out of Key-Value (KV) cache memory, engineers typically choose between two optimization strategies:
+1. <strong>Hardware Scaling (Tensor Parallelism):</strong> Sharding model weights and the KV cache across multiple devices (2, 4, or 8 GPUs). This increases memory headroom at the cost of all-reduce communication overhead per layer and significantly higher hardware bills.
+2. <strong>Algorithmic Scaling (KV Compression):</strong> Shrinking the cache in-place via quantization and eviction on a single GPU, trading a minor drop in output quality for hardware cost savings.</p>
+</blockquote>
+<p>从历史上看，硬件论文报告的是吞吐量曲线，而压缩论文报告的是内存比例，这导致这两种方法很少在相同的成本轴上进行比较。本文在统一指标下评估了张量并行配置（第 1 到第 8 级）与 KV 压缩配置（16/8/4 位，保留率低至 0.25）：<strong>每百万 token 成本与延迟</strong>。使用在 A100、A40 和 H100 硬件上校准的配置文件模拟器，作者搜寻了成本等效的交叉点——并发现<strong>根本不存在这样的交叉点</strong>。</p>
+<blockquote>
+<p>Historically, hardware papers report throughput curves while compression papers report memory ratios, leaving the two approaches rarely compared on the same cost axis. This paper evaluates tensor-parallel configurations (degrees 1 through 8) against KV-compressed configurations (16/8/4-bit, keep-ratios down to 0.25) on a unified metric: <strong>cost per million tokens against latency</strong>. Using a profiled simulator calibrated on A100, A40, and H100 hardware, the authors search for the cost-equivalence crossover—and find that <strong>none exists</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="key-findings">🔍 核心发现 (Key Findings)</h2>
+<ul>
+<li><strong>压缩在经济上占绝对优势：</strong> 在测试的模型（Llama-2 7B 和 70B）、三种 GPU 架构以及各种内存限制下，KV 压缩比增加 GPU <strong>便宜 1.20 倍到 2.00 倍</strong>。</li>
+<li><strong>模型大小阈值：</strong> </li>
+<li><em>低于约 36B 参数（对于 80 GB 显卡）：</em> 压缩占据绝对主导地位。在 80 GB 设备上的标准上下文窗口内，较小的模型（例如 Llama-2-7B）甚至无法耗尽其 KV 预算，这使得额外的 GPU 成为白白浪费的开销。</li>
+<li><em>高于约 36B 参数：</em> 张量并行从一种选择转变为硬性要求。例如，Llama-2-70B 在单个 A100 上于<em>任何</em> KV 设置下都不可行，因为绑定资源是 KV 压缩无法触及的模型权重。</li>
+<li><strong>延迟与容量权衡：</strong> </li>
+<li><strong>张量并行</strong>是唯一能够积极改善延迟的手段（尽管由于批处理争用，压缩可能会使每个 token 的延迟降低 8% 到 93%）。</li>
+<li><strong>KV 压缩</strong>是终极容量倍增器，每美元的容量增加了 <strong>16.5 倍</strong>（相比之下，八倍的 GPU 支出增加仅带来微不足道的 1.21 倍增长）。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Compression Dominates Economically:</strong> Across tested models (Llama-2 7B and 70B), three GPU architectures, and various memory constraints, KV compression is <strong>1.20x to 2.00x cheaper</strong> than adding GPUs.</li>
+<li><strong>The Model Size Threshold:</strong> </li>
+<li><em>Below ~36B parameters (for an 80 GB card):</em> Compression completely dominates. Smaller models (e.g., Llama-2-7B) cannot even exhaust their KV budget within standard context windows on an 80 GB device, making extra GPUs wasted expenditure.</li>
+<li><em>Above ~36B parameters:</em> Tensor parallelism shifts from a choice to a hard requirement. For example, Llama-2-70B is infeasible on a single A100 at <em>any</em> KV setting because the binding resource is the model weights, which KV compression does not touch.</li>
+<li><strong>Latency vs. Capacity Trade-offs:</strong> </li>
+<li><strong>Tensor Parallelism</strong> is the only lever that actively improves latency (though compression can degrade per-token latency by 8% to 93% due to batching contention).</li>
+<li><strong>KV Compression</strong> is the ultimate capacity multiplier, increasing capacity per dollar by <strong>16.5x</strong> (compared to a modest 1.21x increase for an eightfold expansion in GPU spending).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="paper-metadata">📑 论文元数据 (Paper Metadata)</h2>
+<ul>
+<li><strong>学科主题：</strong> 人工智能 (<code>cs.AI</code>)</li>
+<li><strong>DOI：</strong> <a href="https://doi.org/10.48550/arXiv.2608.23962">10.48550/arXiv.2608.23962</a></li>
+<li><strong>许可证：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> <em>(参见下方许可证图标)</em><br />
+  <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article">
+  <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" width="16" />
+  <span>查看许可证 (View License)</span>
+  </a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>)</li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.23962">10.48550/arXiv.2608.23962</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a> <em>(See license icon below)</em><br />
+  <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article">
+  <img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" width="16" />
+  <span>View License</span>
+  </a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="full-text-resources">🔗 全文与资源 (Full-Text &amp; Resources)</h2>
+<ul>
+<li><a href="https://arxiv.org/pdf/2608.23962">查看 PDF (View PDF)</a></li>
+<li><a href="https://arxiv.org/html/2608.23962v1">HTML 版本 - 实验性 (HTML Version (Experimental))</a></li>
+<li><a href="https://arxiv.org/src/2608.23962">TeX 源码 (TeX Source)</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://arxiv.org/pdf/2608.23962">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2608.23962v1">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2608.23962">TeX Source</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">LLM推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">张量并行</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">KV缓存压缩</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">硬件成本</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能评估</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

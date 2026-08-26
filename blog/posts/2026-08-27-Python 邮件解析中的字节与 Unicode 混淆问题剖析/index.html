@@ -1,0 +1,790 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-27-Python%20%E9%82%AE%E4%BB%B6%E8%A7%A3%E6%9E%90%E4%B8%AD%E7%9A%84%E5%AD%97%E8%8A%82%E4%B8%8E%20Unicode%20%E6%B7%B7%E6%B7%86%E9%97%AE%E9%A2%98%E5%89%96%E6%9E%90/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Python 邮件解析中的字节与 Unicode 混淆问题剖析 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Python 邮件解析中的字节与 Unicode 混淆问题剖析
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nmh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        背景：(N)MH 中的邮件处理
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uffff" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        症状：神秘的 <code>U+FFFF</code> 字符
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parserparsestr" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        根本原因：通过 <code>Parser.parsestr()</code> 进行双重解码
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="根本原因：通过 Parser.parsestr() 进行双重解码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        故障剖析
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Breakdown
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        解决方案
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        边栏：代码追踪
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">Python 邮件解析中的字节与 Unicode 混淆问题剖析</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>将旧版的 Python 2 脚本迁移到 Python 3 时，常常会引入一些与字符串类型相关的隐蔽 Bug。本文详细记录了一个独特的邮件解析问题：当把预解码的 Unicode 字符串（而不是原始字节）传入 <code>email.parser.Parser.parsestr()</code> 时，会导致“双重解码”（Double-Decoding），从而产生夹杂着神秘 <code>U+FFFF</code> 替换字符的损坏文本。</p>
+<p>文章深入分析了该问题的根本原因——由于 Python 3 在标准输入中自动对 <code>8bit</code> 传输编码的文本进行了预解码，导致后续解析器将其再次当作字节处理并触发错误。最终的解决方案是改用 <code>email.parser.BytesParser</code>，并通过 <code>sys.stdin.buffer</code> 在字节级别处理标准输入，从而彻底规避此类类型混淆。</p>
+<hr />
+<h2 id="nmh">背景：(N)MH 中的邮件处理</h2>
+<blockquote>
+<p>Background: Email Handling in (N)MH</p>
+<p><em>“离我上次发现在 Python 3 中因为字节/Unicode 混淆问题而‘搬起石头砸了自己的脚’已经过去‘0’天了，尽管这次犯错的方式异常富有创造力且极其隐蔽（即：它没有抛出异常，而是生成了损坏的文本）。”</em> 
+— <a href="https://mastodon.social/@cks/117157194924916649">发布在 Fediverse</a></p>
+<p><em>“It has been '0' days since I discovered that I shot myself in the foot in Python 3 with a bytes/Unicode confusion issue, although this one was an unusually creative and subtle way to get things wrong (ie, it had no exceptions, it generated corrupted text).”</em> 
+— <a href="https://mastodon.social/@cks/117157194924916649">On the Fediverse</a></p>
+</blockquote>
+<p>我使用历史悠久的 <a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/ToolsEmail">(N)MH</a> 来处理电子邮件。尽管功能强大，但 NMH 需要进行一些辅助设置，才能在回复时正确引用 MIME 编码的邮件——具体来说，需要一个程序来对你希望引用的每一个基于文本的正文部分进行 MIME 解码和美化打印。</p>
+<p>我为此任务编写了一个长期运行的 Python 程序，最近我将其从 Python 2 迁移到了 Python 3（这个过程带来了<a href="https://utcc.utoronto.ca/~cks/space/blog/python/EmailPackagesNotes">许多宝贵的经验教训</a>）。</p>
+<blockquote>
+<p>I handle my email using the venerable <a href="https://utcc.utoronto.ca/~cks/space/blog/sysadmin/ToolsEmail">(N)MH</a>. While powerful, NMH requires some auxiliary setup to properly quote MIME-encoded email in replies—specifically, a program that MIME-decodes and pretty-prints every text-based body part you wish to quote. </p>
+<p>I have a long-standing Python program for this task, which I recently migrated from Python 2 to Python 3 (a process that brought <a href="https://utcc.utoronto.ca/~cks/space/blog/python/EmailPackagesNotes">several learning experiences</a>).</p>
+</blockquote>
+<hr />
+<h2 id="uffff">症状：神秘的 <code>U+FFFF</code> 字符</h2>
+<blockquote>
+<p>The Symptom: Mysterious <code>U+FFFF</code> Characters</p>
+</blockquote>
+<p>最近，我回复的几封邮件开始出现异常，引用的正文中随机散落着渲染为反白 <strong><code>?</code></strong> 字形的 Unicode 字符。</p>
+<blockquote>
+<p>Recently, several emails I replied to started showing up with Unicode characters rendered as a reverse-video <strong><code>?</code></strong> glyph scattered randomly throughout the quoted body. </p>
+</blockquote>
+<p>经过调查，这些字符被证实是 <code>U+FFFF</code>。然而，我所回复的原始邮件看起来完全正常。我经过了一番深入挖掘，才发现自己是如何无意中破坏了整个处理流水线的。</p>
+<blockquote>
+<p>Upon investigation, these turned out to be <code>U+FFFF</code> characters. However, the original messages I was replying to appeared completely normal. It took some digging to uncover how I had accidentally sabotaged my own pipeline.</p>
+</blockquote>
+<hr />
+<h2 id="parserparsestr">根本原因：通过 <code>Parser.parsestr()</code> 进行双重解码</h2>
+<blockquote>
+<p>The Root Cause: Double-Decoding via <code>Parser.parsestr()</code></p>
+</blockquote>
+<p>我的 MIME 正文解码器通过命令行参数接收 <code>Content-Type</code> 和 <code>Content-Transfer-Encoding</code>，并通过标准输入（由 NMH 的工作方式决定）摄入原始的 MIME 正文文本。</p>
+<blockquote>
+<p>My MIME body part decoder receives the <code>Content-Type</code> and <code>Content-Transfer-Encoding</code> via command-line arguments and ingests the raw MIME body text via standard input (dictated by how NMH operates). </p>
+</blockquote>
+<p>为了解析正文部分，我采用了直观的方法：
+1. 构造一个 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a>。
+2. 读取标准输入以获取 MIME 部分的正文。
+3. 将一组最简 MIME 头部与正文组装在一起。
+4. 将结果直接传给 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a>。</p>
+<blockquote>
+<p>To parse the body part, I implemented the intuitive approach:
+1. Construct an <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a>.
+2. Read standard input to get the body of the MIME part.
+3. Assemble a minimal set of MIME headers alongside the body.
+4. Pass the result directly to <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a>.</p>
+</blockquote>
+<p>这种方法的缺陷在于 Python 3 在数据摄入期间处理字符串类型的方式。</p>
+<blockquote>
+<p>The flaw in this approach lies in how Python 3 handles string types during ingestion.</p>
+</blockquote>
+<h3 id="_2">故障剖析</h3>
+<blockquote>
+<h3 id="the-breakdown">The Breakdown</h3>
+</blockquote>
+<ol>
+<li><strong>输入（The Input）：</strong> 被回复的邮件具有 <code>text/plain; charset=utf-8</code> 的内容类型、<code>8bit</code> 的内容传输编码，并且包含范围在 <code>U+0080</code> 到 <code>U+00FF</code> 之间的 Unicode 码点（具体来说，是<a href="https://utcc.utoronto.ca/~cks/space/blog/programming/EmacsSpecialSpaceCharacters">我的老冤家 <code>U+00A0</code></a>）。</li>
+<li><strong>不匹配（The Mismatch）：</strong> 由于传输编码是 <code>8bit</code>，这些字符在通过 <code>sys.stdin</code> 传入的原始输入中直接表现为 UTF-8 字节。</li>
+<li><strong>陷阱（The Trap）：</strong> 当我直接作为文本从 <code>sys.stdin</code> 读取它们时，Python 3 很“贴心”地将流解码为 UTF-8，在我解码出的 Unicode 字符串内部重新生成了 <code>U+00A0</code> 字符。</li>
+<li><strong>双重解码（The Double-Decode）：</strong> 随后，我将这个已经解码过的字符串（我把它当作原始的 UTF-8 实体对待）传给了 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a>。解析器试图<em>再次</em>进行 UTF-8 解码（实际上是将我字符串中的 Unicode 码点当作原始字节来处理），在其 <code>U+00A0</code> 码点所在的位置遇到了无效的 UTF-8 序列，并为每个失败的序列插入了一个 <code>U+FFFF</code> 标记。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>The Input:</strong> The replied-to messages had a content-type of <code>text/plain; charset=utf-8</code>, a content-transfer-encoding of <code>8bit</code>, and contained Unicode codepoints in the range <code>U+0080</code> through <code>U+00FF</code> (specifically, <a href="https://utcc.utoronto.ca/~cks/space/blog/programming/EmacsSpecialSpaceCharacters">my old nemesis <code>U+00A0</code></a>).</li>
+<li><strong>The Mismatch:</strong> Because the transfer encoding was <code>8bit</code>, these characters were represented directly as UTF-8 bytes in the raw input passed via <code>sys.stdin</code>. </li>
+<li><strong>The Trap:</strong> When I read them directly from <code>sys.stdin</code> as text, Python 3 helpfully decoded the stream as UTF-8, recreating the <code>U+00A0</code> characters inside my decoded Unicode string.</li>
+<li><strong>The Double-Decode:</strong> I then passed this already-decoded string—which I treated as a raw UTF-8 entity—into <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a>. The parser attempted to decode UTF-8 <em>again</em> (effectively treating the Unicode codepoints in my string as raw bytes), encountered invalid UTF-8 sequences where those <code>U+00A0</code> codepoints lived, and inserted a <code>U+FFFF</code> marker for each failure.</li>
+</ol>
+</blockquote>
+<p><em>(注：如果你对 <code>U+00FF</code> 以上的码点犯这个错误，<a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a> 最终会返回 <code>\u20ac</code> 风格的转义字符，从而使底层错误变得更加明显。)</em></p>
+<blockquote>
+<p><em>(Note: If you make this mistake with codepoints above <code>U+00FF</code>, <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser.parsestr"><code>Parser.parsestr()</code></a> will eventually return <code>\u20ac</code>-style escapes, making the underlying error much more obvious.)</em></p>
+</blockquote>
+<hr />
+<h2 id="_3">解决方案</h2>
+<blockquote>
+<p>The Solution</p>
+</blockquote>
+<p>正确的方法是从 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a> 切换到 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.BytesParser"><code>email.parser.BytesParser</code></a> 及其 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.BytesParser.parsebytes"><code>parsebytes()</code></a> 方法。</p>
+<blockquote>
+<p>The correct approach is to switch from <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a> to <a href="https://docs.python.org/3/library/email.parser.html#email.parser.BytesParser"><code>email.parser.BytesParser</code></a> and its <a href="https://docs.python.org/3/library/email.parser.html#email.parser.BytesParser.parsebytes"><code>parsebytes()</code></a> method. </p>
+</blockquote>
+<p>通过使用 <code>sys.stdin.buffer</code> 以原始二进制模式读取标准输入，一切都将对齐：原始二进制数据被直接交给了负责解码原始二进制数据的组件。</p>
+<blockquote>
+<p>By reading standard input in raw binary mode via <code>sys.stdin.buffer</code>, everything aligns correctly: raw binary data is handed directly to the component responsible for decoding raw binary data.</p>
+<p><strong>为什么这个问题没有立即暴露出来？</strong> 
+这个 Bug 严格要求内容传输编码（content-transfer-encoding）为 <code>8bit</code> 而不是 <code>7bit</code>。如果该 MIME 部分已被清洗为 <code>7bit</code>，<code>sys.stdin</code> 中就不会存在原始的 UTF-8 字节供 Python 提前解码为 Unicode 码点。</p>
+<blockquote>
+<p><strong>Why didn't this surface immediately?</strong> 
+This bug strictly required a content-transfer-encoding of <code>8bit</code> rather than <code>7bit</code>. Had the MIME part been cleaned down to <code>7bit</code>, there would have been no raw UTF-8 bytes in <code>sys.stdin</code> for Python to prematurely decode into Unicode codepoints.</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2 id="_4">边栏：代码追踪</h2>
+<blockquote>
+<p>Sidebar: Tracing the Code</p>
+</blockquote>
+<p>如果你在这些条件下将 <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a> 与 Unicode 字符串配合使用：</p>
+<blockquote>
+<p>If you use <a href="https://docs.python.org/3/library/email.parser.html#email.parser.Parser"><code>email.parser.Parser</code></a> with a Unicode string under these conditions:</p>
+</blockquote>
+<ol>
+<li>生成的 <a href="https://docs.python.org/3/library/email.message.html#email.message.EmailMessage"><code>email.message.EmailMessage</code></a> 对象会将你的 Unicode 字符串直接存储在其私有属性 <code>._payload</code> 中。</li>
+<li>调用 <a href="https://docs.python.org/3/library/email.message.html#email.message.EmailMessage.get_content"><code>.get_content()</code></a> 会触发策略系统（policy system），进而回调 <a href="https://docs.python.org/3/library/email.compat32-message.html#email.message.Message.get_payload"><code>.get_payload(decode=True)</code></a>。</li>
+<li>这会使用类似 <code>'str.encode("raw-unicode-escape")'</code> 的方式将你的 Unicode 字符串转换为字节串（bytestring），把 <code>U+00FF</code> 以上的 Unicode 值转换为 <code>\uNNNN</code> 转义形式，同时将 <code>U+0080</code> 到 <code>U+00FF</code> 的字符保留为原始单字节。</li>
+<li>最后，该字节串会通过 <code>'bytes.decode("utf-8", errors="replace")'</code> 进行处理，从而将原始的 <code>\xa0</code> 字节替换为替换字符 <code>U+FFFF</code>。</li>
+</ol>
+<blockquote>
+<ol>
+<li>The resulting <a href="https://docs.python.org/3/library/email.message.html#email.message.EmailMessage"><code>email.message.EmailMessage</code></a> object stores your Unicode string directly inside its <code>._payload</code> private attribute.</li>
+<li>Calling <a href="https://docs.python.org/3/library/email.message.html#email.message.EmailMessage.get_content"><code>.get_content()</code></a> triggers the policy system, which calls back to <a href="https://docs.python.org/3/library/email.compat32-message.html#email.message.Message.get_payload"><code>.get_payload(decode=True)</code></a>.</li>
+<li>This converts your Unicode string into a bytestring using something akin to <code>'str.encode("raw-unicode-escape")'</code>, transforming Unicode values above <code>U+00FF</code> into <code>\uNNNN</code> escapes while leaving <code>U+0080</code> through <code>U+00FF</code> as raw single bytes.</li>
+<li>Finally, this bytestring is processed via <code>'bytes.decode("utf-8", errors="replace")'</code>, which replaces the raw <code>\xa0</code> byte with the replacement character <code>U+FFFF</code>.</li>
+</ol>
+</blockquote>
+<p>更多参考信息，请查看 <a href="https://github.com/python/cpython/blob/main/Lib/email/contentmanager.py#L65"><code>email/contentmanager.py</code></a> 和 <a href="https://github.com/python/cpython/blob/main/Lib/email/message.py#L249"><code>email/message.py</code></a>（<a href="https://github.com/python/cpython/blob/main/Lib/email/message.py#L1137">以及第 1137 行</a>）中的实现细节——把这些笔记留在这里，希望我（最好）永远不需要第三次去研究它。</p>
+<blockquote>
+<p>For further reference, check out the implementation details in <a href="https://github.com/python/cpython/blob/main/Lib/email/contentmanager.py#L65"><code>email/contentmanager.py</code></a> and <a href="https://github.com/python/cpython/blob/main/Lib/email/message.py#L249"><code>email/message.py</code></a> (<a href="https://github.com/python/cpython/blob/main/Lib/email/message.py#L1137">and line 1137</a>)—notes left here so I (hopefully) never have to research this a third time.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Python</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">邮件解析</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Unicode</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">编码问题</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">调试</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
