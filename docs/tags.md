@@ -32,6 +32,10 @@ title: 标签浏览
 
 - [PD-GS：基于音素驱动3DGS的音频驱动说话人脸生成](blog/posts/2026-08-07-PD-GS：基于音素驱动3DGS的音频驱动说话人脸生成.md)
 
+## 3D打印
+
+- [构建一个可放入登机箱的迷你家庭实验室](blog/posts/2026-08-30-构建一个可放入登机箱的迷你家庭实验室.md)
+
 ## 3D生成
 
 - [VibeWorlding：多模态智能体能否端到端构建3D开放世界？](blog/posts/2026-08-21-VibeWorlding：多模态智能体能否端到端构建3D开放世界？.md)
@@ -264,6 +268,10 @@ title: 标签浏览
 
 - [关键开源包中 AI 披露的过去一年](blog/posts/2026-08-06-关键开源包中AI披露的过去一年.md)
 
+## AI开源模型
+
+- [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
+
 ## AI推理
 
 - [连续交互扩散：面向异步工具增强推理的扩散原生运行时](blog/posts/2026-08-14-连续交互扩散：面向异步工具增强推理的扩散原生运行时.md)
@@ -308,6 +316,7 @@ title: 标签浏览
 - [SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统](blog/posts/2026-08-27-SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统.md)
 - [SimVerity：模拟智能体成功何时能在物理部署中转化为现实？](blog/posts/2026-08-29-SimVerity：模拟智能体成功何时能在物理部署中转化为现实？.md)
 - [SimVerity：模拟智能体成功何时能在物理部署中持续？](blog/posts/2026-08-29-SimVerity：模拟智能体成功何时能在物理部署中持续？.md)
+- [Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库](blog/posts/2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库.md)
 
 ## AI检测
 
@@ -1085,6 +1094,10 @@ title: 标签浏览
 
 - [基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布](blog/posts/2026-08-20-基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布.md)
 
+## GLM-5.3-Flash
+
+- [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
+
 ## GLU
 
 - [通过对跖分离技术对无偏置 GLU 前馈模块进行密码分析提取](blog/posts/2026-08-11-通过对跖分离技术对无偏置 GLU 前馈模块进行密码分析提取.md)
@@ -1288,6 +1301,10 @@ title: 标签浏览
 ## Haskell
 
 - [顽固派的语言服务器初体验](blog/posts/2026-08-26-顽固派的语言服务器初体验.md)
+
+## Homelab
+
+- [构建一个可放入登机箱的迷你家庭实验室](blog/posts/2026-08-30-构建一个可放入登机箱的迷你家庭实验室.md)
 
 ## Hugging Face
 
@@ -2380,6 +2397,10 @@ title: 标签浏览
 
 - [微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程](blog/posts/2026-08-18-微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程.md)
 
+## Qwen3.8-Flash-Next
+
+- [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
+
 ## Q学习
 
 - [结合世界模型的Q学习 (Q-Learning With World Models)](blog/posts/2026-08-20-结合世界模型的Q学习 -Q-Learning With World Models.md)
@@ -3033,6 +3054,7 @@ title: 标签浏览
 ## TypeScript
 
 - [规范优先的AI编码智能体收敛实践：在无测试预言机、无人工代码审查的情况下，对71.7万行代码库中189个文件的核心架构不变式进行拆解的案例研究](blog/posts/2026-08-16-规范优先的AI编码智能体收敛实践：在无测试预言机、无人工代码审查的情况下，对71.7万行代码库中189个文件的核心架构不变式进行拆解的案例研究.md)
+- [Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库](blog/posts/2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库.md)
 
 ## UAI 2026
 
@@ -3065,6 +3087,7 @@ title: 标签浏览
 ## UniFi
 
 - [排查 Ubiquiti 设备的 AT&T 5G 备用网络连接问题](blog/posts/2026-08-27-排查 Ubiquiti 设备的 AT&T 5G 备用网络连接问题.md)
+- [构建一个可放入登机箱的迷你家庭实验室](blog/posts/2026-08-30-构建一个可放入登机箱的迷你家庭实验室.md)
 
 ## UniTraffic-Agent
 
@@ -3104,6 +3127,10 @@ title: 标签浏览
 ## Vacuum
 
 - [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
+
+## Vercel
+
+- [Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库](blog/posts/2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库.md)
 
 ## Verilog
 
@@ -3147,6 +3174,7 @@ title: 标签浏览
 ## WebGPU
 
 - [如何在 Chrome 扩展程序中使用 Transformers.js](blog/posts/2026-08-07-如何在 Chrome 扩展程序中使用 Transformers.js.md)
+- [Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库](blog/posts/2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库.md)
 
 ## WebRider
 
@@ -12427,6 +12455,7 @@ title: 标签浏览
 
 - [HELIX：面向递归自我提升的模型与运行壳协同演化](blog/posts/2026-08-18-HELIX：面向递归自我提升的模型与运行壳协同演化.md)
 - [基于目标侧阅读器适配的跨模型记忆迁移](blog/posts/2026-08-21-基于目标侧阅读器适配的跨模型记忆迁移.md)
+- [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
 
 ## 模型校准
 
@@ -14067,6 +14096,10 @@ title: 标签浏览
 
 - [通过CT阅片过程中的3D注视模式预测放射科医生的专业水平](blog/posts/2026-08-27-通过CT阅片过程中的3D注视模式预测放射科医生的专业水平.md)
 
+## 着色器
+
+- [Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库](blog/posts/2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库.md)
+
 ## 矢量瓦片
 
 - [使用 PostGIS 生成矢量瓦片](blog/posts/2026-08-13-使用 PostGIS 生成矢量瓦片.md)
@@ -14317,6 +14350,10 @@ title: 标签浏览
 ## 硬件测试
 
 - [技术笔记：在家自制 V-I 特性曲线图](blog/posts/2026-08-21-技术笔记：在家自制 V-I 特性曲线图.md)
+
+## 硬件组装
+
+- [构建一个可放入登机箱的迷你家庭实验室](blog/posts/2026-08-30-构建一个可放入登机箱的迷你家庭实验室.md)
 
 ## 硬件设计
 
@@ -15349,6 +15386,7 @@ title: 标签浏览
 ## 线性注意力
 
 - [TreeWY：门控DeltaNet混合模型的投机验证](blog/posts/2026-08-25-TreeWY：门控DeltaNet混合模型的投机验证.md)
+- [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
 
 ## 线性规划
 
@@ -18313,6 +18351,10 @@ title: 标签浏览
 ## 迭代检测与译码
 
 - [面向大规模与高阶MIMO检测的“学习转换”（Learning-to-Transition）框架](blog/posts/2026-08-18-面向大规模与高阶MIMO检测的“学习转换”（Learning-to-Transition）框架.md)
+
+## 迷你机架
+
+- [构建一个可放入登机箱的迷你家庭实验室](blog/posts/2026-08-30-构建一个可放入登机箱的迷你家庭实验室.md)
 
 ## 迷失在中间效应
 
