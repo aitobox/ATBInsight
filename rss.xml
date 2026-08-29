@@ -5,6 +5,363 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-08-30-构建一个可放入登机箱的迷你家庭实验室</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-30/构建一个可放入登机箱的迷你家庭实验室/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-30/构建一个可放入登机箱的迷你家庭实验室/</guid>
+      <pubDate>Sun, 30 Aug 2026 00:00:00 GMT</pubDate>
+      <description>为了准备即将到来的 VCF Midwest 展会（展示老旧 Mac NTP 时间历史同步），作者构建了一套功能齐全、便携的网络协议栈。这套设备基于 Ubiquiti（优比快）硬件，收纳在 3U 的 DeskPi RackMate TT 迷你机架内。这个尺寸刚好能塞进登机箱的家庭实验室支持 1–10 Gbps 网络、多路 WAN 连接（包含 5G 备用链路）、12 个有线以太网端口，并能通过 APC UPS 提供超过一小时的电池续航。
+
+尽管对于老旧电脑演示来说，这样的配置显然有些大材小用，但该构建方案提供了一个强大、灵活且完全本地优先的移动测试环境。本文详细记录了硬件选型、UniFi 生态体验、3D 打印机架改装以及实际出行测试的心得。
+
+---
+
+## 简介 (Introduction)
+
+&gt; I'm traveling to Chicago for [VCF Midwest](https://vcfmw.org) next month. I'll be demoing NTP time history on vintage Macs, with my own GPS-derived NTP service hosted on an Xserve G5, synced via NTP or a strange [AppleTalk timing extension from the 1990s](https://netatalk.io/manual/en/timelord.8).
+
+我将在下个月前往芝加哥参加 [VCF Midwest](https://vcfmw.org)。我将在老旧的 Mac 上演示 NTP 时间历史同步，届时将使用托管在 Xserve G5 上的自建 GPS 派生 NTP 服务，通过 NTP 或一个奇怪的 [20世纪90年代 AppleTalk 计时扩展](https://netatalk.io/manual/en/timelord.8)进行同步。
+
+&lt;img alt="Ubiquiti mini rack network with UPS" height="auto" src="/blog/2026/mini-homelab-network-fits-in-carry-on/ubiquiti-mini-rack-network-with-ups.jpg" width="700"/&gt;
+
+&gt; So I built a little 'portable homelab' (pictured above) that supports 1-10 Gbps networking, can run off a small battery for at least an hour, switches between multiple WANs (so I can get my own 5G Internet connection, in case I need it), and gives me 12 wired Ethernet connections.
+
+因此，我构建了一个小型“便携式家庭实验室”（如上图所示），它支持 1-10 Gbps 网络，能靠小电池运行至少一小时，可在多个 WAN 之间切换（以便在需要时使用我自己的 5G 网络连接），并提供了 12 个有线以太网接口。
+
+&gt; Is it overkill for this particular scenario? *Absolutely*. Would it look different if Micro Center hadn't sponsored the build as part of their [Columbus OH grand re-opening event](https://www.youtube.com/@Level2Jeff)? *You bet*.
+
+对于这个特定的场景来说，它是不是大材小用？*当然是*。如果不是 Micro Center 赞助了这次构建作为其[俄亥俄州哥伦布市盛大重张活动](https://www.youtube.com/@Level2Jeff)的一部分，它会长这样吗？*那肯定的*。
+
+&gt; That said, it's not far off some of the other networking mini-rack builds I've seen in the [Project MINI RACK Build Showcase](https://mini-rack.jeffgeerling.com/#build-showcase). And I'm happy to have more flexibility when I'm on the road trying to keep *other* weird stuff (like vintage computers) running. It's better to go overkill on the network stack since I don't want to debug *that* alongside the Macs.
+
+话虽如此，它与我在 [Project MINI RACK Build Showcase](https://mini-rack.jeffgeerling.com/#build-showcase) 中看到的一些其他网络迷你机架构建相差无几。而且我很很高兴能在出差路上拥有更多灵活性，去维护*其他*奇奇怪怪的设备（比如老旧电脑）。在网络协议栈上过度配置总归是更好的选择，因为我可不想在调试 Mac 的同时还要去修网络。
+
+---
+
+## 探索 Ubiquiti (Exploring Ubiquiti)
+
+&gt; This is my first experience with UniFi. I've run routers on bare Debian Linux installs, consumer routers with OpenWRT/AsusWRT (my home router is still running that!), and my studio router is currently a mini fanless PC running OPNsense.
+
+这是我第一次使用 UniFi。我曾在裸机 Debian Linux 上运行过路由器，用过搭载 OpenWRT/AsusWRT 的消费级路由器（我家里的路由器现在还在用这个！），而我工作室的路由器目前则是一台运行 OPNsense 的无风扇迷你 PC。
+
+&gt; I figured it was time to see if the UniFi kool-aid is as good as all the influencers say it is.
+
+我觉得是时候看看 UniFi 的“毒药”（译者注：指粉丝群体的盲目追捧或生态黏性）是否真如网红们说的那般美妙了。
+
+&gt; First impressions? It's a nice walled garden.
+
+第一印象？这是一个相当精致的“围墙花园”。
+
+&gt; There are plenty of pitfalls to the UniFi's proprietary ecosystem, but if you want to play in their sandbox, it's easy to pick up.
+
+UniFi 的专有生态系统有很多陷阱，但如果你想在他们的沙盒里玩，上手还是相当容易的。
+
+&gt; The things I like after messing with this particular Ubiquiti setup:
+&gt; * Everything is local-first, and doesn't need any account tie-in
+&gt; * Optional cloud integration adds on functionality like remote management and easier site-to-site VPN setup
+&gt; * There are no licensing fees for core functionality
+&gt; * Most of the hardware is plug-and-play, and easy to manage in one web UI
+
+在折腾了这套 Ubiquiti 设备后，我喜欢的地方包括：
+* 一切都是本地优先，不需要绑定任何账户
+* 可选的云集成带来了远程管理和更简便的站点到站点 VPN 设置等功能
+* 核心功能没有任何许可费用
+* 大多数硬件都是即插即用的，并且易于在一个 Web UI 中进行管理
+
+&gt; There are two sides to every coin, and the big sore point I have is the lack of control over the hardware I bought. I don't see any way to unlock the bootloader, so even though the Gateway is running an Arm SoC, there's no way to load my own OS on it.
+
+任何事物都有两面性，我最大的痛点在于缺乏对所购硬件的控制权。我找不到任何解锁引导加载程序的方法，所以尽管网关运行的是 Arm SoC，也无法在其上加载我自己的操作系统。
+
+&gt; Not that I'd want to, *today*... but in 10, 20, or however many years, when Ubiquiti drops support for the Gateway I bought, it looks like it'll go straight to e-waste.
+
+倒不是说我*现在*就想这么做……但如果在 10 年、20 年或多年以后，当 Ubiquiti 停止支持我买的网关时，它看起来就会直接变成电子垃圾。
+
+&gt; But my main goal was to test if I set up everything from scratch without connecting the Cloud Gateway to the Internet, and never connect any sort of Ubiquiti account to the hardware at all. And I could!
+
+但我的主要目标是测试：在不将云网关连接到互联网、且完全不将任何 Ubiquiti 账户连接到硬件的情况下，从头开始设置一切是否可行。事实证明完全可以！
+
+---
+
+## 硬件构建 (The Build)
+
+&gt; Here are all the components used in the build (linked via Micro Center where purchased, though items are also available direct from Ubiquiti):
+&gt; 
+&gt; * [UniFi Cloud Gateway Fiber](https://www.microcenter.com/product/695361/ubiquiti-cloud-gateway-fiber)
+&gt; * [UniFi Flex 2.5G PoE](https://www.microcenter.com/product/695379/ubiquiti-flex-25g-poe-8-port-poe-compliant-managed-network-switch-(psu-not-included))
+&gt; * [Ubiquiti 210 Watt AC Power Adapter for PoE Switch](https://www.microcenter.com/product/697310/ubiquiti-210-watt-ac-power-adapter-for-poe-switch)
+&gt; * [UniFi 5G Backup](https://www.microcenter.com/product/712077/ubiquiti-unifi-5g-backup)
+&gt; * [U7 Lite](https://www.microcenter.com/product/692982/ubiquiti-unifi-u7-lite-compact-ceiling-mounted-wifi-7-access-point)
+&gt; * [APC UPS BE600M1](https://www.microcenter.com/product/647002/apc-battery-backup-and-surge-protector-ups-(be600m1))
+
+以下是本次构建所使用的所有组件（购买渠道链接至 Micro Center，部分商品也可直接从 Ubiquiti 购买）：
+
+* [UniFi Cloud Gateway Fiber](https://www.microcenter.com/product/695361/ubiquiti-cloud-gateway-fiber)
+* [UniFi Flex 2.5G PoE](https://www.microcenter.com/product/695379/ubiquiti-flex-25g-poe-8-port-poe-compliant-managed-network-switch-(psu-not-included))
+* [Ubiquiti 210 Watt AC Power Adapter for PoE Switch](https://www.microcenter.com/product/697310/ubiquiti-210-watt-ac-power-adapter-for-poe-switch)
+* [UniFi 5G Backup](https://www.microcenter.com/product/712077/ubiquiti-unifi-5g-backup)
+* [U7 Lite](https://www.microcenter.com/product/692982/ubiquiti-unifi-u7-lite-compact-ceiling-mounted-wifi-7-access-point)
+* [APC UPS BE600M1](https://www.microcenter.com/product/647002/apc-battery-backup-and-surge-protector-ups-(be600m1))
+
+&gt; I used some extra patch cables I had laying around for the Ethernet connections, but did add on an extra DAC cable since the Ubiquiti DACs are either too short or much too long for this particular setup. Here's the DAC I'm using, and it's all getting mounted inside a RackMate TT:
+&gt; 
+&gt; * [DeskPi RackMate TT](https://amzn.to/4cgPkrL)
+&gt; * [2' Twinax DAC (for 10Gbps Uplink)](https://amzn.to/4y6Y9Nn)
+
+以太网连接我用了手头多余的跳线，不过额外加购了一条 DAC（直连铜缆）线，因为 Ubiquiti 的 DAC 要么太短，要么对这个特定的机架来说太长了。以下是我使用的 DAC，所有设备都将安装在 RackMate TT 内部：
+
+* [DeskPi RackMate TT](https://amzn.to/4cgPkrL)
+* [2英尺 Twinax DAC（用于 10Gbps 上联）](https://amzn.to/4y6Y9Nn)</description>
+    </item>
+    <item>
+      <title>2026-08-30-Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-30/Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-30/Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 库/</guid>
+      <pubDate>Sun, 30 Aug 2026 00:00:00 GMT</pubDate>
+      <description>Vercel 近期开源了 `vgpu`——一个最初用于驱动 vercel.com 网站着色器的 TypeScript WebGPU 库。该库旨在降低普通 Web 开发团队和 AI 智能体使用高性能图形的门槛，它将 `.wgsl` 文件视为可导入的模块，在浏览器和无头（headless）Node.js 环境中提供统一的 API，并支持无隐藏全局状态的严格 CI 快照测试。
+
+从技术核心来看，`vgpu` 具备 WGSL 模块化系统、自动反射绑定以及跨运行时的单一 API（支持浏览器、基于 Dawn 的 Node.js 和模拟适配器）。此外，该库对 AI 智能体（Agent）极其友好，内置了 CLI、面向智能体的文档（如 `llms.txt`）、OpenAPI 3.1 描述以及 Model Context Protocol（MCP）集成，使其成为现代 AI 时代构建图形着色器的强大利器。
+
+---
+
+## Vercel 开源 vgpu：面向 AI 智能体着色器的 TypeScript WebGPU 4 库
+&gt; ## Vercel AI Open-Sources vgpu: A TypeScript WebGPU Library for AI Agent Shaders
+
+## 摘要
+&gt; ## Summary
+Vercel 已将 **`vgpu`** 开源，这是一个 TypeScript WebGPU 库，最初在内部开发用于驱动 vercel.com 上的着色器。`vgpu` 旨在让普通 Web 团队和 AI 智能体更轻松地使用高性能图形，它将 `.wgsl` 文件视为可导入的模块，在浏览器和无头 Node.js 之间提供统一的 API，并支持零隐藏全局状态的严格 CI 快照测试。
+
+&gt; Vercel has open-sourced **`vgpu`**, a TypeScript WebGPU library originally built internally to power shaders on vercel.com. Designed to make high-performance graphics more accessible for standard web teams and AI agents, `vgpu` treats `.wgsl` files as importable modules, provides a unified API across browsers and headless Node.js, and supports rigorous CI snapshot testing with zero hidden global state.
+
+---
+
+## 它可部署吗？
+&gt; ## Is It Deployable?
+**可以。** `vgpu` 采用 [MIT 许可证](https://github.com/vercel-labs/vgpu/blob/main/LICENSE)并已发布到 npm，这意味着只需运行 `pnpm add vgpu` 即可开始使用。由于它是一个独立的库而不是托管服务，因此它不需要任何账户、配额或推理费用。
+
+&gt; **Yes.** `vgpu` is [MIT licensed](https://github.com/vercel-labs/vgpu/blob/main/LICENSE) and published to npm, meaning `pnpm add vgpu` is all it takes to get started. Because it is a standalone library rather than a hosted service, it requires no accounts, quotas, or inference bills.
+
+---
+
+## 单一上下文，无隐藏全局状态
+&gt; ## One Context, No Hidden Global State
+调用 `init()` 可获取适配器和设备，并返回一个单一的 `Gpu` 句柄，所有其他操作都挂载在该句柄上。浏览器的快速上手代码仅需几行：
+
+&gt; Calling `init()` acquires an adapter and device, returning a single `Gpu` handle from which everything else hangs. The browser quick start requires only a few lines of code:
+
+```typescript
+const gpu = await init();
+const surface = gpu.surface(canvas, { dpr: [1, 2] });
+const wave = gpu.effect(WAVE_WGSL, { set: { speed: 2 } });
+gpu.frame.loop(() =&gt; { wave.set({ time: gpu.time }); wave.draw(); });
+```
+
+* `surface` 包装了画布，同时将设备像素比（dpr）限制在 1 到 2 之间。
+* `effect` 将 WGSL 编译为全屏效果，其中的 Uniform 变量通过 `set()` 直接按其 WGSL 名称进行寻址。
+* 帧执行是显式的——渲染通道（passes）、清屏和绘制操作均通过直接调用来处理，而不是通过隐式的场景图（scene-graph）状态。
+
+&gt; * `surface` wraps the canvas while clamping the device pixel ratio between 1 and 2.
+* `effect` compiles WGSL into a fullscreen effect where uniforms are directly addressed by their WGSL names using `set()`. 
+* Frame execution is explicit—passes, clears, and draws are handled via direct calls rather than implicit scene-graph state.
+
+---
+
+## 将 WGSL 作为模块系统
+&gt; ## WGSL as a Module System
+`vgpu` 的核心差异化优势在于其先进的着色器工具链：
+* **模块导入：** `.wgsl` 文件可以像 TypeScript 模块一样进行导入和导出。
+* **自动反射：** `vgpu` 会解析模块图、反射绑定、剥离未使用的声明，并在构建时输出紧凑的着色器源码。这消除了经常与着色器不同步的手动绑定声明。
+* **体积与 CI 预算：** 完整的全屏效果经 gzip 压缩后仅占 25 KB，且在 CI 中严格强制执行体积预算。
+
+&gt; The core differentiator of `vgpu` is its advanced shader tooling:
+* **Module Imports:** `.wgsl` files import and export just like TypeScript modules.
+* **Automatic Reflection:** `vgpu` resolves the module graph, reflects bindings, strips unused declarations, and emits compact shader source code at build time. This eliminates manual binding declarations that frequently fall out of sync with shaders.
+* **Size &amp; CI Budgets:** A complete fullscreen effect ships in just 25 KB gzipped, with size budgets strictly enforced in CI.
+
+---
+
+## 三个运行时，一个 API
+&gt; ## Three Runtimes, One API
+该软件包为 `vgpu`、`vgpu/node`、`vgpu/mock`、`vgpu/scene`、`vgpu/client` 和 `vgpu/core` 提供了子路径导出（subpath exports）。
+
+Node.js 子路径由 Dawn 提供支持，完全在离屏（offscreen）渲染：
+
+&gt; The package provides subpath exports for `vgpu`, `vgpu/node`, `vgpu/mock`, `vgpu/scene`, `vgpu/client`, and `vgpu/core`. 
+
+&gt; The Node.js subpath is backed by Dawn and renders entirely offscreen:
+
+```typescript
+const target = gpu.target({ size: [256, 256], format: "rgba8unorm" });
+const pixels = await target.read();
+```
+
+这种无头渲染使 CI 快照测试变得切实可行。借助 `pixelmatch` 和 `pngjs` 作为直接依赖项，CI 可以编译着色器、渲染无头帧并自动比较快照。此外，对于不应触及物理硬件的测试，该库还内置了一个确定性的模拟适配器（mock adapter）。
+
+&gt; This headless rendering makes CI snapshot testing practical. Using `pixelmatch` and `pngjs` as direct dependencies, CI can compile shaders, render headless frames, and automatically compare snapshots. Additionally, a deterministic mock adapter is included for tests that shouldn't touch physical hardware.
+
+---
+
+## 智能体交互表面（Agent Surface）
+&gt; ## The Agent Surface
+Vercel 构建 `vgpu` 的初衷是将其打造成一个面向智能体（Agent-first）的库。生态系统的核心特性包括：
+* **内置 CLI：** 该软件包附带一个 `vgpu` 二进制文件，支持诸如 `npx vgpu docs`、`npx vgpu examples` 和 `npx vgpu check` 等命令，无需全局安装。
+* **智能体文档：** `vgpu.sh` 发布了 `agents.md`、`llms.txt` 以及完整的文档导出，并搭配了一个带有 OpenAPI 3.1 描述的无 Token 示例发现 API。
+* **MCP 集成：** 一个托管的只读模型上下文协议（MCP）服务器可在 `vgpu.sh/api/mcp` 访问（将 `@modelcontextprotocol/server` 作为直接依赖项），同时在仓库内部还提供了一个可安装的智能体技能（skill）。
+
+&gt; Vercel built `vgpu` to be an agent-first library. Key ecosystem features include:
+* **Built-in CLI:** The package ships with a `vgpu` binary, enabling commands like `npx vgpu docs`, `npx vgpu examples`, and `npx vgpu check` without requiring global installations.
+* **Agent Documentation:** `vgpu.sh` publishes `agents.md`, `llms.txt`, and full documentation exports, paired with a tokenless examples discovery API featuring an OpenAPI 3.1 description.
+* **MCP Integration:** A hosted read-only Model Context Protocol (MCP) server is available at `vgpu.sh/api/mcp` (using `@modelcontextprotocol/server` as a direct dependency), alongside an installable agent skill directly inside the repository.
+
+---
+
+## 对比
+&gt; ## Comparison
+
+&lt;figure&gt;&lt;img fetchpriority="high" decoding="async" width="1800" height="1894" src="./images/d546d20cbd09.png" alt="" srcset="./images/d546d20cbd09.png 1800w, http://localhost/proxy/_lPL-o-mmadfrMb3aIwc_4iJt-95zFsQ56fbHfZptRg=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMjg1eDMwMC5wbmc= 285w, http://localhost/proxy/XCRuspvz_LmgPBXd9yEPTlFw2gCqbv1tR4atMVa-nyg=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtNzY4eDgwOC5wbmc= 768w, http://localhost/proxy/Dg0pK3oX5NXOE1IvzIT88V23sqAOr7aTuNVkM4yLS3E=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtOTczeDEwMjQucG5n 973w, http://localhost/proxy/E2lcKoh8tkYmrFG9Tcb14vOUCTEn2e__oZpoUvrgf3A=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMTQ5eDE1Ny5wbmc= 149w, http://localhost/proxy/vIbCseGi-FUbCjRpD78U90rOn4U2G9XsGpVnxKxDyEE=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMTQ2MHgxNTM2LnBuZw== 1460w, http://localhost/proxy/u3kIAZ6aEmFldbxrWiqGt-tBDRHDpRLyrYJeji9d5cE=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMjk5eDMxNS5wbmc= 299w, http://localhost/proxy/-H7TKWBYLfsI3q-vT-09k9m9Vkd--UaN6r-8Ql-aWpo=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtNjk1eDczMS5wbmc= 695w, http://localhost/proxy/JhLBkhM7qYbKwweztGzKB02_gkuO64VThckRuAEG1jc=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMTA2N3gxMTIzLnBuZw== 1067w, http://localhost/proxy/zjK4paXSZm1vap8qQNbFNOzqAGwqtnoBzjuXWZc1XZQ=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMzQ1eDM2My5wbmc= 345w, http://localhost/proxy/wh_S8eor-jWf9L8dqpFDSAkikKCPw_2R59P7JDUlQ70=/aHR0cHM6Ly93d3cubWFya3RlY2hwb3N0LmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAyNi8wOC92Z3B1LWNvbXBhcmlzb24tdGFibGUtMjR4MjQucG5n 24w" sizes="(max-width: 1800px) 100vw, 1800px" loading="lazy"/&gt;&lt;/figure&gt;
+
+---
+
+## 要点总结
+&gt; ## Key Takeaways
+
+* Vercel 已开源 `vgpu`，这是一个专为处理 vercel.com 上的着色器而构建的 WebGPU 库。
+* 单一的 API 界面可在浏览器、通过 Dawn 运行的无头 Node.js 以及确定性模拟器中无缝执行。
+* `.wgsl` 文件的功能类似于 TypeScript 模块，并配有内置的绑定反射和布局管理功能。
+* 全屏效果打包后经 gzip 压缩仅约 25 KB，且文件体积通过 CI 检查严格强制执行。
+* 它采用 MIT 许可证，在 npm 上可用（v0.3.1），并包含专用的 CLI、`llms.txt` 以及托管的只读 MCP 端点。
+
+&gt; * Vercel has open-sourced `vgpu`, the WebGPU library built to handle shaders on vercel.com.
+* A single API surface executes seamlessly in browsers, headless Node.js via Dawn, and deterministic mocks.
+* `.wgsl` files function like TypeScript modules, complete with built-in binding reflection and layout management.
+* Fullscreen effects ship within a lightweight 25 KB gzipped footprint, with sizes enforced via CI checks.
+* It is MIT licensed, available on npm (v0.3.1), and includes a dedicated CLI, `llms.txt`, and a hosted read-only MCP endpoint.
+
+---</description>
+    </item>
+    <item>
+      <title>2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-08-30/GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-08-30/GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构/</guid>
+      <pubDate>Sun, 30 Aug 2026 00:00:00 GMT</pubDate>
+      <description>在短短一周内，中国两家知名的 AI 实验室 Z.ai 与阿里巴巴的通义千问（Qwen）团队各自独立发布了前沿开源模型（分别为 GLM-5.3-Flash 和 Qwen3.8-Flash-Next），两者的底层架构竟然惊人地一致。尽管两支团队是独立研发，但他们不约而同地采用了 3:1 的混合注意力模型、4 倍压缩索引器（将注意力预算上限限制在 2,000 个 Token）、四分支残差流，以及带有分离参数矩阵的 Muon 优化器。
+
+本文深入探讨了这两款模型令人瞩目的架构收敛性、它们在位置编码上的唯一分歧点，以及 MiniMax 采取的不同路线。通过剖析这些底层技术细节，我们可以一窥当前中国开源 AI 领域在架构设计上的最新风向与交叉融合趋势。
+
+---
+
+## 执行摘要 (Executive Summary)
+
+&gt; Within a single week, two prominent Chinese AI laboratories—Z.ai and Alibaba’s Qwen team—independently released frontier open-weight models (GLM-5.3-Flash and Qwen3.8-Flash-Next, respectively) that share an almost identical underlying architecture. Despite developing these systems separately, both teams converged on a 3:1 hybrid attention model, a compressed 4x indexer capping attention budgets at 2,000 tokens, a four-branch residual stream, and the Muon optimizer with split parameter matrices. This article explores their striking architectural convergence, their single point of disagreement regarding positional embeddings, and the dissenting approach taken by MiniMax.
+
+在短短一周内，中国两家知名的 AI 实验室（Z.ai 与阿里巴巴的 Qwen 团队）各自独立发布了前沿开源模型（分别为 GLM-5.3-Flash 和 Qwen3.8-Flash-Next），两者共享了几乎完全相同的底层架构。尽管两支团队是独立开发这些系统的，但他们不约而同地收敛于 3:1 混合注意力模型、将注意力预算限制在 2,000 个 Token 的 4 倍压缩索引器、四分支残差流以及带有分离参数矩阵的 Muon 优化器。本文探讨了他们引人注目的架构收敛性、在位置编码上的单一分歧点，以及 MiniMax 所采取的不同方法。
+
+---
+
+## 两款新模型简述 (The Two Releases in Brief)
+
+&gt; * **GLM-5.3-Flash (Z.ai):** A 320B-parameter multimodal MoE model with 18B active parameters, released under the MIT license on Hugging Face. Trained on a 30T-token corpus, it supports a 1M-token context window, approaches Claude Opus 4.8 on coding/agentic benchmarks, and lists at $0.15/M input and $0.50/M output tokens.
+&gt; * **Qwen3.8-Flash-Next (Alibaba Qwen):** A preview of the Qwen4 architecture featuring a 125B main model plus a 51B n-gram embedding table, with 6B parameters activated per token. It offers a 262K native context (extensible to 1M via YaRN) and required roughly one-ninth the training compute of its predecessor.
+
+* **GLM-5.3-Flash (Z.ai)：** 一个拥有 3200 亿参数的多模态 MoE 模型，激活参数为 180 亿，在 Hugging Face 上以 MIT 许可证开源。该模型在 30T Token 的语料库上进行训练，支持 100 万 Token 的上下文窗口，在编程和智能体（agentic）基准测试中接近 Claude Opus 4.8，其定价为每百万输入 Token 0.15 美元、每百万输出 Token 0.50 美元。
+* **Qwen3.8-Flash-Next (阿里 Qwen)：** Qwen4 架构的预览版，采用 1250 亿的主模型加上 510 亿的 n-gram 嵌入表，每处理一个 Token 激活 60 亿参数。它提供 262K 的原生上下文（通过 YaRN 可扩展至 1M），其训练计算量仅为其前代模型的约九分之一。
+
+---
+
+## 收敛点 1：四分之三的注意力层是线性注意力 (Convergence Point 1: Three of Every Four Attention Layers Are Linear)
+
+&gt; Both models utilize a **3:1 ratio** of linear attention to full attention:
+&gt; * **GLM-5.3-Flash:** Stacks 45 layers—34 linear-attention layers (using Moonshot AI's Kimi Delta Attention with per-channel gating) and 11 full-attention layers.
+&gt; * **Qwen3.8-Flash-Next:** Stacks 48 layers in repeating blocks of 3 Gated DeltaNet (GDN) layers and 1 Qwen Sparse Attention (QSA) layer.
+&gt; 
+&gt; By compressing history into a fixed-size recurrent state, linear layers maintain constant compute per token regardless of context length, while the remaining quarter of layers handle precise long-range retrieval.
+
+两款模型均采用了线性注意力与完整注意力的 **3:1 比例**：
+* **GLM-5.3-Flash：** 堆叠了 45 层——包含 34 层线性注意力层（使用月之暗面 Moonshot AI 的带逐通道门控的 Kimi Delta Attention）和 11 层完整注意力层。
+* **Qwen3.8-Flash-Next：** 堆叠了 48 层，由 3 个门控 DeltaNet (GDN) 层和 1 个 Qwen 稀疏注意力 (QSA) 层组成的重复块构成。
+
+通过将历史记录压缩为固定大小的循环状态，线性层在无论上下文长度如何的情况下都能保持恒定的每 Token 计算量，而其余四分之一的层则负责处理精确的长距离检索。
+
+---
+
+## 收敛点 2：压缩 4 倍、评分、保留 2048 个 Token (Convergence Point 2: Compress 4x, Score, Keep 2048 Tokens)
+
+&gt; Neither model applies full attention uniformly over the entire context:
+&gt; * **GLM** uses a 32-head lightning indexer with top-2048 selection and introduces *IndexPool* to compress four indexer key vectors into one via weighted pooling.
+&gt; * **Qwen's QSA** operates at a micro-block granularity, scoring 4-token blocks and keeping the top 512 blocks (exactly 2048 tokens).
+&gt; 
+&gt; This shared pattern cuts attention compute by roughly 3x and reduces the KV cache size by over 4x.
+
+两款模型都没有在整个上下文中均匀地应用完整注意力：
+* **GLM** 使用带有 top-2048 选择的 32 头闪电索引器（lightning indexer），并引入了 *IndexPool*，通过加权池化将四个索引器键向量压缩为一个。
+* **Qwen 的 QSA** 以微块（micro-block）粒度运行，对 4 个 Token 的块进行打分并保留前 512 个块（正好 2048 个 Token）。
+
+这种共同的模式将注意力计算量减少了约 3 倍，并将 KV 缓存大小减少了 4 倍以上。
+
+---
+
+## 收敛点 3：四个残差流取代单一残差流 (Convergence Point 3: Four Residual Streams Instead of One)
+
+&gt; Abandoning the single residual stream standard since 2017, both models widen the stream into **four parallel branches**:
+&gt; * **GLM** adopts Manifold-Constrained Hyper-Connections (mHC).
+&gt; * **Qwen** utilizes its custom *Gated Residual* variant, which eliminates extra branch-mixing steps to reduce memory-access overhead and suppresses activation outliers to support FP8 residual storage.
+
+抛弃了自 2017 年以来作为标准的单一残差流，两款模型都将残差流扩展为 **四个并行分支**：
+* **GLM** 采用了流形约束超连接（Manifold-Constrained Hyper-Connections, mHC）。
+* **Qwen** 利用其定制的 *Gated Residual*（门控残差）变体，该变体消除了额外的分支混合步骤以减少内存访问开销，并抑制激活异常值以支持 FP8 残差存储。
+
+---
+
+## 收敛点 4：Muon 优化器，且融合矩阵按组件拆分 (Convergence Point 4: Muon, With Fused Matrices Split Per Component)
+
+&gt; Both models train using the **Muon optimizer**, paired with a specific refinement: fused projection matrices (such as QKV, SwiGLU, and GDN projections) are split into independent components before Muon orthogonalizes them. Qwen additionally refitted its scaling laws and dropped batch-size warmup, saving nearly 19% in optimizer steps.
+
+两款模型均使用 **Muon 优化器** 进行训练，并配有一个特定的改进：在 Muon 对融合投影矩阵（如 QKV、SwiGLU 和 GDN 投影）进行正交化之前，先将其拆分为独立的组件。Qwen 还重新拟合了其缩放定律（scaling laws）并取消了批大小预热（batch-size warmup），节省了近 19% 的优化器步数。
+
+---
+
+## 意见分歧点：位置编码 (Where They Disagree: Positional Encoding)
+
+&gt; * **GLM-5.3-Flash drops Rotary Position Embeddings (RoPE)** in its sparse MLA layers (`qk_rope_head_dim = 0`), relying entirely on implicit position flow through recurrent linear layers (NoPE).
+&gt; * **Qwen kept RoPE.** While pre-training loss curves showed no difference, Qwen discovered that NoPE variants frequently failed to terminate generation post-RLHF, highlighting how pre-training metrics can mask downstream behavioral flaws.
+
+* **GLM-5.3-Flash 在其稀疏 MLA 层中放弃了旋转位置编码 RoPE**（`qk_rope_head_dim = 0`），完全依靠通过循环线性层的隐式位置流（NoPE）。
+* **Qwen 保留了 RoPE。** 尽管预训练损失曲线显示没有差异，但 Qwen 发现 NoPE 变体在 RLHF 后经常无法终止生成，这凸显了预训练指标如何掩盖下游行为缺陷。
+
+---
+
+## 更广泛的收敛与唯一的异类 (The Broader Convergence and the One Dissenter)
+
+&gt; This hybrid design reflects a wider cross-pollination trend across Chinese open-source labs, blending concepts from DeepSeek (DSA, mHC) and Moonshot (KDA). 
+&gt; 
+&gt; However, **MiniMax** remains a notable dissenter. Finding that linear and sliding-window attention severely degraded multi-hop reasoning beyond 32K context during M2 and M3 developments, MiniMax relies exclusively on sparse softmax attention (*MiniMax Sparse Attention* or MSA) without incorporating any linear-attention layers.
+
+这种混合设计反映了中国开源实验室之间更广泛的交叉融合趋势，融合了来自 DeepSeek（DSA、mHC）和月之暗面（KDA）的概念。
+
+然而，**MiniMax** 仍然是一个引人注目的异类。MiniMax 在 M2 和 M3 的研发过程中发现，线性注意力和滑动窗口注意力在上下文超过 32K 时会严重降低多跳推理能力，因此它完全依赖稀疏 softmax 注意力（*MiniMax Sparse Attention* 或 MSA），而没有融合任何线性注意力层。
+
+---
+
+## 核心要点 (Key Takeaways)
+
+&gt; * **Attention Ratio:** GLM-5.3-Flash (34:11) and Qwen3.8-Flash-Next (36:12) independently landed on nearly identical 3:1 linear-to-full attention splits.
+&gt; * **Context Budget:** Both compress context 4x and cap sparse attention at a 2048-token budget.
+&gt; * **Residual Streams:** Both replace traditional single residual streams with 4 gated branches.
+&gt; * **Positional Encoding Split:** GLM removes RoPE entirely (NoPE), whereas Qwen retains it to prevent generation-termination issues post-training.
+&gt; * **Alternative Approaches:** MiniMax rejects linear attention entirely due to reasoning penalties at scale, utilizing sparse softmax attention instead.
+
+* **注意力比例：** GLM-5.3-Flash (34:11) 和 Qwen3.8-Flash-Next (36:12) 独立地采用了几乎相同的 3:1 线性与完整注意力分割。
+* **上下文预算：** 两者都将上下文压缩 4 倍，并将稀疏注意力的预算上限设为 2048 个 Token。
+* **残差流：** 两者都用 4 个门控分支替代了传统的单一残差流。
+* **位置编码分歧：** GLM 完全删除了 RoPE (NoPE)，而 Qwen 则保留了它，以防止训练后出现生成终止问题。
+* **替代路线：** MiniMax 由于担心大规模推理受损，完全拒绝了线性注意力，转而使用稀疏 softmax 注意力。
+
+---
+
+**Sources:** 
+[GLM-5.3-Flash on Hugging Face](https://huggingface.co/zai-org/GLM-5.3-Flash) | [Z.ai Docs](https://docs.z.ai/guides/vlm/glm-5.3-flash) | [GLM-5 Technical Report](https://arxiv.org/abs/2602.15763) | [Qwen3.8-Flash-Next on Hugging Face](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | [Qwen3.8-Flash-Next GitHub](https://github.com/QwenLM/Qwen3.8-Flash-Next) | [NVIDIA Technical Blog](https://developer.nvidia.com/blog/experiment-with-qwen3-8-flash-next-on-nvidia-gb300-nvl72-for-agentic-coding/) | [MiniMax-M2 Report](https://arxiv.org/abs/2605.26494) | [MiniMax Sparse Attention](https://arxiv.org/abs/2606.13392)
+
+*Originally published on [MarkTechPost](https://www.marktechpost.com/2026/08/28/glm-5-3-flash-vs-qwen3-8-flash-next-two-chinese-ai-labs-independently-converge-on-the-same-model-architecture/).*</description>
+    </item>
+    <item>
       <title>频率至关重要：用于剪枝与量化的快速模型无关数据筛选方法</title>
       <link>https://insight.aitobox.com/blog/posts/2026-08-29/频率至关重要：用于剪枝与量化的快速模型无关数据筛选方法/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-08-29/频率至关重要：用于剪枝与量化的快速模型无关数据筛选方法/</guid>
@@ -3111,183 +3468,6 @@ HarnessLens 是一个创新的、具备预算感知能力的框架，专为自�
 &gt; ## Submission History
 &gt; 
 &gt; * **[v1]** Thu, 27 Aug 2026 13:52:31 UTC (348 KB)</description>
-    </item>
-    <item>
-      <title>A Multi-Framework Comparison of Outline Stages in Long-Form Generation with LLMs</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-29/大语言模型长文本生成中大纲阶段的多框架对比研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-29/大语言模型长文本生成中大纲阶段的多框架对比研究/</guid>
-      <pubDate>Sat, 29 Aug 2026 00:00:00 GMT</pubDate>
-      <description>长文本生成暴露了大语言模型（LLM）在架构上的显著局限性。即使是强大的 70B 参数模型，在超过 16k 令牌后也会经历“长度崩塌”（length collapse），而多章节生成则经常因“中间迷失”（lost-in-the-middle）现象导致属性漂移。
-
-为了解决这一问题，“先大纲、后写作”（outline-first, write-later）的范式已被广泛采用。然而，目前的研究通常评估最终生成的文本，而不是大纲本身——这混淆了本应解耦的两个不同评估阶段。本文针对 7 个具有代表性的长文本生成框架，在 3 种粒度（单章节、多章节和整本书）上引入了统一的直接对比基准，并配套提出了基于锚点的大模型裁判（LLM-as-a-judge）评估协议。
-
----
-
-# A Multi-Framework Comparison of Outline Stages in Long-Form Generation with LLMs
-
-**Authors:** Yifan Song  
-**Submitted:** August 13, 2026  
-**Primary Subject:** Computation and Language (cs.CL)  
-**Secondary Subjects:** Artificial Intelligence (cs.AI)  
-**arXiv:** [2608.26177 [cs.CL]](https://arxiv.org/abs/2608.26177)  
-
----
-
-## 📋 Executive Summary
-
-大语言模型（LLMs）在长文本生成任务中暴露出显著的架构局限性。即便是强大的 70B 参数模型，在处理超过 16k 令牌的内容时也会遭遇“长度崩塌”，而多章节生成则常因“中间迷失”现象引发属性漂移。
-
-&gt; Long-form text generation exposes significant architectural limitations in Large Language Models (LLMs). Even powerful 70B-parameter models experience "length collapse" past 16k tokens, while multi-chapter generation frequently induces attribute drift caused by the "lost-in-the-middle" phenomenon.
-
-为此，“先大纲、后写作”的范式得到了广泛应用。然而，目前的研究通常只评估最终生成的文本，而非大纲本身——这混淆了两个本应解耦的独立评估阶段。
-
-&gt; To address this, the **"outline-first, write-later"** paradigm has become widely adopted. However, current research typically evaluates final generated text rather than the outline itself—conflating two distinct evaluation stages that should be decoupled.
-
-本文针对 7 个具有代表性的长文本生成框架，在 3 种粒度（单章节、多章节以及整本书）上引入了统一的直接对比基准，并提出了基于锚点的 LLM-as-a-judge（大模型作为裁判）评估协议。
-
-&gt; This paper introduces a unified head-to-head benchmark across 7 representative long-form generation frameworks over 3 granularities (single-chapter, multi-chapter, and whole-book), alongside an anchor-based LLM-as-a-judge evaluation protocol.
-
----
-
-## 🔍 Key Findings &amp; Abstract
-
-* **框架专业化：** 在 21 个“框架-粒度”测试单元中，没有任何单一框架能够实现普遍领先。性能在很大程度上取决于框架固有的输出形式与目标生成粒度的匹配程度。例如，*SuperWriter* 在受长度限制的单章节任务中表现出色，但其优势在整本书生成模式下有所减弱。
-
-&gt; * **Framework Specialization:** Across 21 framework-granularity test cells, no single framework universally dominates. Performance heavily relies on how well a framework's intrinsic output form matches the target generation granularity. For instance, *SuperWriter* excels in length-constrained single-chapter tasks, but its advantage diminishes in whole-book generation modes.
-
-* **大纲与写作的解耦：** 基于大纲质量的排名与最终写作质量的排名仅呈中等程度的相关性，这为大纲-写作解耦原则提供了实证支持。
-
-&gt; * **Outline vs. Writing Decoupling:** Rankings based on outline quality correlate only moderately with final writing rankings, providing empirical support for the outline-writing decoupling principle.
-
-* **局限性：** 当前的计算限制约束了写作端的评估子集。未来的迭代将扩大样本规模并整合跨模型评估器，以增强统计严谨性。
-
-&gt; * **Limitations:** Current computational constraints restricted the writing-side evaluation subset. Future iterations will scale sample sizes and integrate cross-model evaluators to enhance statistical rigor.
-
----
-
-## 📑 Metadata &amp; Access Links
-
-* **评论：** 20 页，13 张表
-* **DOI：** [10.48550/arXiv.2608.26177](https://doi.org/10.48550/arXiv.2608.26177)
-* **全文资源：**
-  * [查看 PDF](https://arxiv.org/pdf/2608.26177)
-  * [HTML 版本（实验性）](https://arxiv.org/html/2608.26177v1)
-  * [TeX 源码](https://arxiv.org/src/2608.26177)
-
-&gt; * **Comments:** 20 pages, 13 tables
-&gt; * **DOI:** [10.48550/arXiv.2608.26177](https://doi.org/10.48550/arXiv.2608.26177)
-&gt; * **Full-Text Resources:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2608.26177)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2608.26177v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2608.26177)</description>
-    </item>
-    <item>
-      <title>大语言模型创造力自动评估的局限性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-29/大语言模型创造力自动评估的局限性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-29/大语言模型创造力自动评估的局限性/</guid>
-      <pubDate>Sat, 29 Aug 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型（LLM）在创意写作领域的应用日益广泛，如何客观、准确地评估其生成内容的创造力成为了一个关键挑战。本文由 Alessandro Tutone 等研究人员撰写，深入探讨了当前自动化评估方法在衡量大语言模型创造力方面的有效性。
-
-研究团队通过收集人类对来自 *WritingPrompts* 数据集的人类创作与 AI 生成短篇故事在 11 个创造力维度上的评估，将其与自动化客观指标以及“LLM-as-a-Judge”（大模型作为裁判）框架的评分进行了系统性对比。结果表明，现有的自动化评估方法与人类主观判断之间存在严重的错位：传统自动化指标与人类感知几乎呈零相关；而基于大模型的裁判则表现出对 AI 生成内容的系统性偏见，更青睐其表面文采，却忽视了人类创造力中至关重要的不可预测性和深度。该研究凸显了将多维度、主观性的创造力简化为计算指标的内在局限性。
-
----
-
-# 大语言模型创造力自动评估的局限性
-
-**作者：** Alessandro Tutone, Giorgio Franceschelli, Mirco Musolesi  
-**日期：** 2026年8月24日（v2版本：2026年8月27日）  
-**DOI：** [10.48550/arXiv.2608.23705](https://doi.org/10.48550/arXiv.2608.23705)  
-**学科：** 计算与语言 (cs.CL)；人工智能 (cs.AI)；计算机与社会 (cs.CY)
-
----
-
-## 摘要 (Summary)
-这项研究调查了当前用于评估大语言模型（LLM）创造力的自动化方法的有效性。通过对比人类对短篇故事（来自 *WritingPrompts* 数据集）的判断与自动化指标及“LLM-as-a-Judge”框架的结果，作者发现了一个关键的错位。研究表明，自动化指标与人类感知表现出接近零的相关性，而基于 LLM 的裁判对 AI 生成的内容表现出系统性偏见，偏爱风格上的润饰，而非人类创造力特征所具有的不可预测性和深度。这些发现强调了量化创造力这一主观且多维度表达的固有难度。
-
-&gt; This research investigates the efficacy of current automated methods for evaluating creativity in Large Language Models (LLMs). By comparing human judgments of short stories (from the *WritingPrompts* dataset) against automated metrics and "LLM-as-a-Judge" frameworks, the authors identify a critical misalignment. The study reveals that automated metrics show near-zero correlation with human perception, while LLM-based judges exhibit a systematic bias toward AI-generated content, favoring stylistic polish over the unpredictability and depth characteristic of human creativity. The findings underscore the inherent difficulty in quantifying the subjective, multidimensional nature of creative expression.
-
----
-
-## 摘要正文 (Abstract)
-大语言模型（LLM）生成文本的能力日益增强，在需要创造力的领域甚至能够挑战人类表现，然而评估 LLM 生成内容中的创造力仍然是一项重大挑战。
-
-在此，我们探讨了当前的自动评估方法是否能够可靠地捕捉人类对创造力的判断。我们收集了人类对来自 *WritingPrompts* 数据集的人类和 AI 生成的短篇故事在 11 个创造力维度上的评估，并将这些判断与自动客观指标及 LLM-as-a-Judge 评估进行了对比。
-
-我们的实验揭示了自动评估与人类评估之间存在实质性的错位。特别是，基于 LLM 的裁判对 AI 生成的故事表现出系统性的偏好，一致地偏爱其风格特征，而忽视了人类创作文本的不可预测性及其他特质。此外，相关性分析表明，广泛使用的自动指标在人类生成和 AI 生成的故事中，与人类判断的对齐度都接近于零，这表明它们未能捕捉到创造力的重要维度。这些发现凸显了当前创意文本自动评估方法中的根本局限性，并强调了将创造力的多维度和主观本质简化为计算指标的难度。
-
-&gt; Large Language Models (LLMs) are increasingly capable of generating text that challenges human performance in domains requiring creativity, yet evaluating creativity in LLM-generated content remains a significant challenge. 
-&gt; 
-&gt; Here, we investigate whether current automatic evaluation methods can reliably capture human judgments of creativity. We collect human evaluations of human- and AI-generated short stories from the *WritingPrompts* dataset across 11 dimensions of creativity, and compare these judgments with automated objective metrics and LLM-as-a-Judge evaluations. 
-&gt; 
-&gt; Our experiments reveal substantial misalignment between automatic evaluations and human assessments. In particular, LLM-based judges exhibit a systematic preference for AI-generated stories, consistently favoring their stylistic characteristics over the unpredictability and other qualities of human-authored texts. Furthermore, correlation analyses show that widely used automatic metrics exhibit near-zero alignment with human judgments across both human- and AI-generated stories, suggesting that they fail to capture important dimensions of creativity. These findings highlight fundamental limitations in current approaches to the automatic evaluation of creative text and underscore the difficulty of reducing the multidimensional and subjective nature of creativity to computational metrics.
-
----
-
-## 访问论文 (Accessing the Paper)
-*   **[查看 PDF](https://arxiv.org/pdf/2608.23705)**
-*   **[HTML 版本（实验性）](https://arxiv.org/html/2608.23705v2)**
-*   **[TeX 源码](https://arxiv.org/src/2608.23705)**
-
-&gt; *   **[View PDF](https://arxiv.org/pdf/2608.23705)**
-&gt; *   **[HTML Version (Experimental)](https://arxiv.org/html/2608.23705v2)**
-&gt; *   **[TeX Source](https://arxiv.org/src/2608.23705)**
-
----
-
-## 参考文献与引用 (References &amp; Citations)
-*   [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.23705)
-*   [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.23705)
-*   [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.23705)
-
-&gt; *   [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.23705)
-&gt; *   [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.23705)
-&gt; *   [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.23705)</description>
-    </item>
-    <item>
-      <title>2026-08-29-大规模供应链运营中可靠的大模型驱动决策引擎：架构、安全与性能保证</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-08-29/大规模供应链运营中可靠的大模型驱动决策引擎：架构、安全与性能保证/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-08-29/大规模供应链运营中可靠的大模型驱动决策引擎：架构、安全与性能保证/</guid>
-      <pubDate>Sat, 29 Aug 2026 00:00:00 GMT</pubDate>
-      <description>现代大规模供应链面临着高度的不确定性、快速的动态变化以及频繁的供应链中断，这使得传统的基于规则和纯优化系统难以提供及时且具韧性的决策。为了填补这一空白，本文引入了**大模型驱动的决策引擎（LLM-Powered Decision Engine, LLM-DE）**——一个将大语言模型（LLM）的语义推理能力与数学优化、概率预测以及安全约束决策过滤相结合的混合框架。
-
-通过统一异构数据源（如交易需求信号和非结构化中断报告），LLM-DE 实现了端到端的运营工作流，包括需求预测、库存优化、运输路线规划和中断缓解。该架构保证了更安全、更智能、更具可扩展性的供应链决策，为下一代智能供应链基础设施奠定了务实且理论的基础。
-
----
-
-## Reliable LLM-Powered Decision Engines for Large-Scale Supply Chain Operations: Architecture, Safety, and Performance Guarantees
-
-[![license icon]( ./images/345c7ad61f1b.png )](http://creativecommons.org/licenses/by/4.0/)
-
-## Summary
-Modern large-scale supply chains face high uncertainty, rapid dynamics, and frequent disruptions, making traditional rule-based and optimization-only systems inadequate for timely and resilient decision-making. To bridge this gap, this paper introduces the **LLM-Powered Decision Engine (LLM-DE)**—a hybrid framework that integrates the semantic reasoning capabilities of Large Language Models (LLMs) with mathematical optimization, probabilistic forecasting, and safety-constrained decision filtering. 
-
-By unifying heterogeneous data sources (such as transactional demand signals and unstructured disruption reports), LLM-DE enables end-to-end operational workflows, including demand forecasting, inventory optimization, transportation routing, and disruption mitigation. The proposed architecture guarantees safer, smarter, and more scalable supply chain decisions, offering both a pragmatic and theoretical foundation for next-generation intelligent supply chain infrastructures.
-
----
-
-## Article Details
-
-* **arXiv Identifier:** [arXiv:2608.24889](https://arxiv.org/abs/2608.24889) [cs.AI]
-* **Primary Subject:** Artificial Intelligence (`cs.AI`)
-* **Author:** Nirmal Kumar Jingar
-* **Submitted On:** 16 May 2026
-* **Journal Reference:** IC_ASET 2026
-* **Related DOI:** [10.1109/IC_ASET69920.2026.11502212](https://doi.org/10.1109/IC_ASET69920.2026.11502212)
-
----
-
-## Abstract
-Current large-scale supply chains are highly uncertain, dynamic, and disruption prone that are challenging to serve up timely and resilient decisions through traditional rule-based and optimization-only systems. The increasing supply of heterogeneous data sources, such as transactional demand signals and unstructured disruption report, presents a chance of intelligent systems, which could reason, adapt and optimize at the same time. 
-
-A hybrid architecture that combines large language models (LLMs) with mathematical optimization, probabilistic forecasting, and safety-constrained decision filtering is proposed in this paper as a performance of a Decision Engine, which is called LLM-Powered Decision Engine (LLM-DE). In comparison to purely data-driven or heuristic solutions, LLM-DE integrates semantic reasoning with LLM with a set of performance and safety guarantees that allow safe decision-making in large-scale supply chain processes. The suggested framework enables the end-to-end decision making such as demand forecasting, inventory optimization, and transportation routing and disruption mitigation. 
-
-The findings affirm that language-based reasoning combined with optimization and formal constraints can be used to come up with not only smarter but also safer and more scalable supply chain decisions. This research provides a new architecture, a complete pipeline of algorithm, and a formulation based on mathematical constructs of the operational decision systems incorporating LLM. The proposed model offers a pragmatic and theoretical basis of the next-generation intelligent supply chain infrastructures that can be implemented to work dependably in the face of uncertainty and massive complexity.
-
-&gt; 当前的大规模供应链具有高度的不确定性、动态性和易中断性，传统的基于规则和纯优化系统很难针对这些挑战做出及时且具韧性的决策。交易需求信号和非结构化中断报告等异构数据源的不断增多，为构建能够同时进行推理、适应和优化的智能系统提供了契机。
-&gt; 
-&gt; 本文提出了一种将大语言模型（LLM）与数学优化、概率预测以及安全约束决策过滤相结合的混合架构，作为一种名为“大模型驱动的决策引擎”（LLM-DE）的决策引擎性能实现。与纯粹的数据驱动或启发式解决方案相比，LLM-DE 将大模型的语义推理与一系列性能和安全保证相结合，从而允许在大规模供应链流程中进行安全决策。所提出的框架支持端到端的决策制定，如需求预测、库存优化、运输路径规划以及中断缓解。
-&gt; 
-&gt; 研究结果证实，基于语言的推理与优化及形式化约束相结合，不仅可以做出更智能的供应链决策，还能使其更加安全和可扩展。本研究提供了一种新架构、完整的算法流水线，以及基于结合了 LLM 的运营决策系统数学结构的建模方法。所提出的模型为下一代智能供应链基础设施提供了务实且理论的基础，使其能够在面对不确定性和巨大复杂性时依然可靠运行。</description>
     </item>
   </channel>
 </rss>
