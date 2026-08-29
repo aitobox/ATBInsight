@@ -1,0 +1,787 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-29-post-graph-rag%EF%BC%9A%E5%8E%9F%E7%94%9F%E4%BA%8E%20PostgreSQL%20%E7%9A%84%E5%9B%BE%20RAG%20%E5%BC%95%E6%93%8E/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        执行摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        关键特性与架构
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="关键特性与架构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 统一的 PostgreSQL 基础设施
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-unified-postgresql-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Unified PostgreSQL Infrastructure
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 提取阶段的不变性约束
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-extraction-time-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Extraction-Time Invariants
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 时序层
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-temporal-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Temporal Layer
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        性能与工程测量
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-engineering-measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance &amp; Engineering Measurements
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p><code>post-graph-rag</code> 旨在解决传统多存储架构 Graph RAG 实现中常见的逻辑缺陷与基础设施冗余问题。传统的 Graph RAG 系统通常依赖于向量数据库、图数据库和文档存储的组合，这不仅带来了巨大的同步开销，还常因缺乏质量控制导致图结构被噪声污染，且难以处理事实的时序演变。</p>
+<p>该引擎的核心创新在于将文本分块（通过 <code>pgvector</code> 实现向量化）、规范化实体图以及社区摘要统一整合进单一的 PostgreSQL 数据库中。通过引入提取阶段的“不变性约束”（Invariants），该系统能够有效过滤噪声、规范化谓词并解析实体。此外，它还内置了时序层，支持对事实演变的追踪及“截至某时”（as-of）的查询，在保持高性能的同时，显著提升了图的密度与查询质量。</p>
+<hr />
+<h2 id="_2">执行摘要</h2>
+<p><code>post-graph-rag</code> 是一个开源的、原生于 PostgreSQL 的图检索增强生成（Graph RAG）引擎，旨在解决传统多存储 Graph RAG 实现中常见的架构和逻辑缺陷。</p>
+<blockquote>
+<p><code>post-graph-rag</code> is an open-source, PostgreSQL-native Graph Retrieval-Augmented Generation (RAG) engine designed to solve the infrastructural and logical flaws common in traditional multi-store Graph RAG implementations. </p>
+</blockquote>
+<p>传统的 Graph RAG 引擎通常存在三个主要问题：
+1. <strong>基础设施开销：</strong> 需要独立的向量存储、图数据库和文档存储，且必须保持数据同步。
+2. <strong>图质量低下：</strong> 提取流水线盲目接收输出，导致图中充斥着无意义或过于模糊的边。
+3. <strong>缺乏时序感知：</strong> 引擎只是随时间累积数据，将过时的事实与当前事实同等对待。</p>
+<blockquote>
+<p>Traditional Graph RAG engines typically suffer from three major issues:
+1. <strong>Infrastructure Overhead:</strong> Requiring separate vector stores, graph databases, and document stores that must be kept consistently in sync.
+2. <strong>Poor Graph Quality:</strong> Extraction pipelines that blindly accept outputs, polluting the graph with meaningless or overly vague edges.
+3. <strong>Lack of Temporal Awareness:</strong> Engines that simply accumulate data over time, treating superseded facts and current facts identically.</p>
+</blockquote>
+<p><code>post-graph-rag</code> 将文本分块（通过 <code>pgvector</code> 提供嵌入）、规范化实体图和社区摘要整合到一个 PostgreSQL 数据库中。它引入了提取时的不变性约束来过滤噪声、规范化谓词、将实体解析为规范顶点，并结合了一个能够追踪事实演变并回答“截至某时”查询的时序层。</p>
+<blockquote>
+<p><code>post-graph-rag</code> consolidates text chunks (with embeddings via <code>pgvector</code>), a canonical entity graph, and community summaries into a single PostgreSQL database. It introduces extraction-time invariants to filter out noise, normalizes predicates, resolves entities to canonical vertices, and incorporates a temporal layer capable of tracking the evolution of facts and answering as-of queries.</p>
+</blockquote>
+<hr />
+<h2 id="_3">关键特性与架构</h2>
+<h3 id="1-postgresql">1. 统一的 PostgreSQL 基础设施</h3>
+<ul>
+<li><strong>单一数据库解决方案：</strong> 消除了同步不同向量数据库、图存储和文档存储的复杂性。</li>
+<li><strong>核心技术：</strong> 利用 <code>pgvector</code> 进行相似度搜索，并结合针对图遍历优化的关系边表。</li>
+</ul>
+<blockquote>
+<h3 id="1-unified-postgresql-infrastructure">1. Unified PostgreSQL Infrastructure</h3>
+<ul>
+<li><strong>Single Database Solution:</strong> Eliminates the complexity of synchronizing disparate vector databases, graph stores, and document stores.</li>
+<li><strong>Core Technologies:</strong> Utilizes <code>pgvector</code> for similarity search alongside relational edge tables optimized for graph traversal.</li>
+</ul>
+</blockquote>
+<h3 id="2">2. 提取阶段的不变性约束</h3>
+<p>在数据写入数据库之前，引擎会运行严格的验证不变性约束：
+* 拒绝模糊的谓词、代词名称和纯数量描述。
+* 将谓词规范化为可选的受控词汇表。
+* 利用模型提供的别名将实体解析为每个规范名称下的单一顶点。
+* 保留负面关系：通过在否定标志下附加正面谓词，而不是丢弃有用的上下文。</p>
+<blockquote>
+<h3 id="2-extraction-time-invariants">2. Extraction-Time Invariants</h3>
+<p>Before any data is written to the database, the engine runs strict validation invariants:
+* Rejects vague predicates, pronominal names, and bare quantities.
+* Normalizes predicates onto an optional controlled vocabulary.
+* Resolves entities to a single vertex per canonical name utilizing model-supplied aliases.
+* Preserves negative relations by attaching the positive predicate under a negation flag rather than discarding useful context.</p>
+</blockquote>
+<h3 id="3">3. 时序层</h3>
+<ul>
+<li><strong>有效性追踪：</strong> 允许关系携带直接从源文本中提取的有效期。</li>
+<li><strong>文档顺序覆盖：</strong> 根据文档顺序自动覆盖早期不兼容的断言。</li>
+<li><strong>历史查询：</strong> 全面支持时间点（"as-of"）查询。</li>
+</ul>
+<blockquote>
+<h3 id="3-temporal-layer">3. Temporal Layer</h3>
+<ul>
+<li><strong>Validity Tracking:</strong> Allows relationships to carry a validity period extracted directly from the source text.</li>
+<li><strong>Document-Order Superseding:</strong> Automatically supersedes earlier incompatible assertions using document order.</li>
+<li><strong>Historical Queries:</strong> Fully supports point-in-time ("as-of") queries.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">性能与工程测量</h2>
+<p>在三个不同的语料库上使用相同的提取和嵌入模型与 <strong>LightRAG</strong> 进行对比评估时，<code>post-graph-rag</code> 表现出：</p>
+<ul>
+<li><strong>更高的图密度：</strong> 在所有场景下构建的图密度更高，每个实体的关系数最高可达 <strong><span class="arithmatex">\(2.4\times\)</span></strong>。</li>
+<li><strong>改进的查询能力：</strong> 每个关系的唯一边标签计数更低（0.46 到 0.58，若使用受控词汇表则为 0.11，而 LightRAG 为 0.77 到 1.33）。</li>
+<li><strong>竞争性的延迟：</strong> 在保持较低延迟配置的同时，提供可比的查询响应。</li>
+<li><strong>时序演变：</strong> 在一个新颖的序列和十年的备案文件中，分别成功覆盖了 13 个和 8 个关系（而基准引擎记录为零）。</li>
+</ul>
+<blockquote>
+<h2 id="performance-engineering-measurements">Performance &amp; Engineering Measurements</h2>
+<p>When evaluated against <strong>LightRAG</strong> across three distinct corpora using identical extraction and embedding models, <code>post-graph-rag</code> demonstrated:</p>
+<ul>
+<li><strong>Higher Graph Density:</strong> Builds denser graphs everywhere, achieving up to <strong><span class="arithmatex">\(2.4\times\)</span> the relations per entity</strong>.</li>
+<li><strong>Improved Queryability:</strong> Features lower distinct edge label counts per relation (0.46 to 0.58, or 0.11 with a controlled vocabulary, compared to LightRAG's 0.77 to 1.33).</li>
+<li><strong>Competitive Latency:</strong> Answers queries comparably while maintaining lower latency profiles.</li>
+<li><strong>Temporal Evolution:</strong> Successfully superseded 13 and 8 relationships respectively on a novel sequence and a decade of filings (whereas the baseline baseline engine recorded zero).</li>
+</ul>
+</blockquote>
+<p><em>(注：这些数据代表工程测量结果，而非正式的基准测试声明。)</em></p>
+<blockquote>
+<p><em>(Note: These figures represent engineering measurements rather than formal benchmark claims.)</em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">GraphRAG</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">pgvector</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">知识图谱</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">检索增强生成</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,759 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-08-29-%E4%B8%BA%E4%BB%80%E4%B9%88RAG%E4%BC%9A%E4%BA%A7%E7%94%9F%E5%B9%BB%E8%A7%89%EF%BC%9A%E5%BC%95%E5%85%A5%E2%80%9C%E7%9F%A5%E8%AF%86%E7%BC%BA%E5%8F%A3%E9%87%91%E4%B8%9D%E9%9B%80%E2%80%9D%E7%9A%84%E6%A3%80%E7%B4%A2%E5%A2%9E%E5%BC%BA%E7%94%9F%E6%88%90%E7%B3%BB%E7%BB%9F%E6%83%A9%E7%BD%9A%E6%84%9F%E7%9F%A5%E8%AF%84%E4%BC%B0/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>为什么RAG会产生幻觉：引入“知识缺口金丝雀”的检索增强生成系统惩罚感知评估 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              为什么RAG会产生幻觉：引入“知识缺口金丝雀”的检索增强生成系统惩罚感知评估
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-rags-hallucinate-penalty-aware-evaluation-of-retrieval-augmented-generation-systems-with-knowledge-gap-canaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Why RAGs Hallucinate: Penalty-Aware Evaluation of Retrieval-Augmented Generation Systems with Knowledge-Gap Canaries
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 执行摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 Executive Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📑 摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📑 Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🛠️ 框架组件
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#framework-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🛠️ Framework Components
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 资源与全文获取
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-full-text-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 Resources &amp; Full-Text Access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">为什么RAG会产生幻觉：引入“知识缺口金丝雀”的检索增强生成系统惩罚感知评估</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>检索增强生成（RAG）系统极易产生无根据的生成（即幻觉），这在很大程度上是因为传统的评估框架变相奖励了“盲目猜测”。标准的基于体量的准确率指标会给那些回答了每个查询的系统打出高分，哪怕其知识库中根本没有足够的信息来支持答案——这反而惩罚了那些选择弃权的谨慎系统。为了解决这一评估缺陷，本文引入了一种由“知识缺口金丝雀”（Knowledge-Gap Canaries）驱动的惩罚感知评估框架。</p>
+<p>通过在1,000个验证过的问题上对三个商业RAG系统和一个无检索基线进行测试，该框架揭示了一个重要现象：当系统真正给出回答时，其准确率其实非常接近（97.0%–98.0%），但在违反知识缺口的倾向（幻觉倾向）上却存在巨大差异（金丝雀违规率从16.7%到98.1%不等）。归根结底，惩罚感知指标证明了区分RAG系统优劣的关键，不在于它们答对什么，而在于它们是否真正知道何时“不该开口”。</p>
+<blockquote>
+<h2 id="why-rags-hallucinate-penalty-aware-evaluation-of-retrieval-augmented-generation-systems-with-knowledge-gap-canaries">Why RAGs Hallucinate: Penalty-Aware Evaluation of Retrieval-Augmented Generation Systems with Knowledge-Gap Canaries</h2>
+<p><strong>Authors:</strong> Alden Do Rosario, Hussein Younes, Felipe Pires<br />
+<strong>Submitted:</strong> 26 Aug 2026<br />
+<strong>Primary Subject:</strong> Computation and Language (<code>cs.CL</code>)<br />
+<strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2608.26385">2608.26385</a><br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.26385">10.48550/arXiv.2608.26385</a>  </p>
+</blockquote>
+<hr />
+<h2 id="_2">📌 执行摘要</h2>
+<p>基于体量的准确率指标会奖励检索增强生成（RAG）系统的猜测行为：一个对所有问题都进行回答的系统，其得分会超过那些在知识库无法支持答案时选择拒绝回答的系统。在 Kalai 等人（2025）置信度目标分析的基础上，我们针对已部署的 RAG 产品提出了一种惩罚感知评估框架，该框架结合了以下几个核心要素：</p>
+<ol>
+<li><strong>不对称评分机制</strong>（正确记 <code>+1</code>，错误记 <code>-4</code>，弃权记 <code>0</code>）。</li>
+<li><strong>知识缺口金丝雀</strong>——其答案在知识库中被证实不存在的问题，以此确保任何提供的答案都构成了来自参数化记忆的无根据生成。</li>
+<li><strong>故障归因流水线</strong>——系统性地分离检索、生成以及弃权策略方面的失败。</li>
+</ol>
+<p>我们将该框架应用于三个商业 RAG 系统以及一个无检索基线，测试数据集为 <em>SimpleQA-Verified</em>（包含 1,000 个问题 <span class="arithmatex">\(\times\)</span> 3 次重复，由跨系列的三裁判小组进行盲评，一致率高达 98.9%）。结果发现，各系统在回答时的准确率高度集聚（97.0–98.0%），而金丝雀违规率则相差约六倍（16.7% 对 98.1%）。</p>
+<p>区分这些系统的不仅是它们答对了什么，更是它们在不该回答时是否选择了保持沉默。惩罚感知评分也据此对基于体量的系统排名进行了重新排序。这种排名顺序在从 <span class="arithmatex">\(k=1\)</span> 到 <span class="arithmatex">\(k=9\)</span> 的不同惩罚设置下保持稳定。</p>
+<blockquote>
+<h2 id="executive-summary">📌 Executive Summary</h2>
+<p>Retrieval-Augmented Generation (RAG) systems are heavily prone to ungrounded generation (hallucination) largely because conventional evaluation frameworks reward guessing. Standard volume-based accuracy metrics give high scores to systems that answer every query, even when their knowledge base contains insufficient information to support an answer—punishing cautious systems that choose to abstain. </p>
+<p>To resolve this evaluation flaw, this paper introduces a <strong>penalty-aware evaluation framework</strong> powered by <strong>"knowledge-gap canaries"</strong>. Tested across three commercial RAG systems and a no-retrieval baseline using 1,000 verified questions, the framework reveals that while systems cluster closely in accuracy when they actually answer (97.0%–98.0%), they diverge drastically in their tendency to violate knowledge gaps (with canary violation rates ranging from 16.7% to 98.1%). Ultimately, penalty-aware metrics prove that RAG systems are distinguished not by what they get right, but by whether they appropriately know when <em>not</em> to speak.</p>
+</blockquote>
+<hr />
+<h2 id="_3">📑 摘要</h2>
+<p>基于体量的准确率会奖励 RAG 系统的猜测行为：回答一切的系统得分高于在知识库无法支持答案时选择拒绝的系统。基于 Kalai 等人（2025）的置信度目标分析，我们为已部署的 RAG 产品提出了一种惩罚感知评估框架，包含：</p>
+<ol>
+<li><strong>不对称评分</strong>（正确 <code>+1</code>，错误 <code>-4</code>，弃权 <code>0</code>）。</li>
+<li><strong>知识缺口金丝雀</strong>——答案在知识库中经证实不存在的问题，确保任何提供的答案都属于来自参数化记忆的无根据生成。</li>
+<li><strong>失败归因流水线</strong>，系统性地区分检索、生成和弃权策略的失败。</li>
+</ol>
+<p>将该框架应用于三个商业 RAG 系统和一个无检索基线（基于 <em>SimpleQA-Verified</em>，1,000个问题 <span class="arithmatex">\(\times\)</span> 3 次重复，跨系列三裁判盲评，一致率 98.9%），我们发现各系统在回答时的准确率紧密聚类（97.0–98.0%），而金丝雀违规率相差约六倍（16.7% 比 98.1%）。</p>
+<p>系统之间的差异与其说是它们正确回答了什么，不如说是它们在不应回答时是否克制自己。惩罚感知评分相应地重新排列了基于体量的排名。这种重新排序在 <span class="arithmatex">\(k=1\)</span> 到 <span class="arithmatex">\(k=9\)</span> 的惩罚设置下保持稳定。</p>
+<blockquote>
+<h2 id="abstract">📑 Abstract</h2>
+<p>Volume-based accuracy rewards retrieval-augmented generation (RAG) systems for guessing: a system that answers everything outscores one that declines when its knowledge base cannot support an answer. Building on the confidence-target analysis of Kalai et al. (2025), we present a penalty-aware evaluation framework for deployed RAG products, combining:</p>
+<ol>
+<li><strong>Asymmetric scoring</strong> (correct <code>+1</code>, wrong <code>-4</code>, abstain <code>0</code>).</li>
+<li><strong>Knowledge-gap canaries</strong>—questions whose answers are verifiably absent from the knowledge base, ensuring that any provided answer constitutes ungrounded generation from parametric memory.</li>
+<li><strong>A failure-attribution pipeline</strong> that systematically separates retrieval, generation, and abstention-policy failures.</li>
+</ol>
+<p>Applying the framework to three commercial RAG systems and a no-retrieval baseline on <em>SimpleQA-Verified</em> (1,000 questions <span class="arithmatex">\(\times\)</span> 3 repeats, graded blind by a cross-family three-judge panel with 98.9% unanimity), we find that accuracy when answering is closely clustered across systems (97.0–98.0%), while canary violation rates differ roughly sixfold (16.7% vs. 98.1%). </p>
+<p>The systems are separated less by what they answer correctly than by whether they answer at all when they should not, and penalty-aware scoring reorders the volume-based ranking accordingly. This reordering remains stable across penalty settings from <span class="arithmatex">\(k=1\)</span> to <span class="arithmatex">\(k=9\)</span>.</p>
+</blockquote>
+<hr />
+<h2 id="_4">🛠️ 框架组件</h2>
+<ul>
+<li><strong>不对称评分系统：</strong> 对错误输出施加严厉惩罚（<span class="arithmatex">\(-4\)</span>）而正确输出给予较轻奖励（<span class="arithmatex">\(+1\)</span>），在数学上使盲目猜测无利可图，同时对弃权采取中立态度（<span class="arithmatex">\(0\)</span>）。</li>
+<li><strong>知识缺口金丝雀：</strong> 专门策划的、在系统指定知识库中不存在的探针。这隔离了源自预训练记忆而非验证检索的参数化幻觉。</li>
+<li><strong>失败归因流水线：</strong> 剖析系统错误，以精确诊断失败是源于检索阶段、生成层还是不当的弃权策略。</li>
+</ul>
+<blockquote>
+<h2 id="framework-components">🛠️ Framework Components</h2>
+<ul>
+<li><strong>Asymmetric Scoring System:</strong> Penalizes incorrect outputs severely (<span class="arithmatex">\(-4\)</span>) compared to correct outputs (<span class="arithmatex">\(+1\)</span>), rendering blind guessing mathematically unprofitable while treating abstention neutrally (<span class="arithmatex">\(0\)</span>).</li>
+<li><strong>Knowledge-Gap Canaries:</strong> Specially curated probes that do not exist within the system's designated knowledge base. This isolates parametric hallucinations born from pre-training memory instead of verified retrieval.</li>
+<li><strong>Failure-Attribution Pipeline:</strong> Dissects system errors to precisely diagnose whether a failure originates at the retrieval stage, the generation layer, or an improper abstention policy.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">🔗 资源与全文获取</h2>
+<ul>
+<li><strong>全文 PDF：</strong> <a href="https://arxiv.org/pdf/2608.26385">查看 PDF</a></li>
+<li><strong>HTML 版本：</strong> <a href="https://arxiv.org/html/2608.26385v1">arXiv HTML (实验性)</a></li>
+<li><strong>源码与审计日志：</strong> <a href="https://github.com/adorosario/why-rags-hallucinate">GitHub 仓库</a></li>
+</ul>
+<blockquote>
+<h2 id="resources-full-text-access">🔗 Resources &amp; Full-Text Access</h2>
+<ul>
+<li><strong>Full-Text PDF:</strong> <a href="https://arxiv.org/pdf/2608.26385">View PDF</a></li>
+<li><strong>HTML Version:</strong> <a href="https://arxiv.org/html/2608.26385v1">arXiv HTML (Experimental)</a></li>
+<li><strong>Source Code &amp; Audit Logs:</strong> <a href="https://github.com/adorosario/why-rags-hallucinate">GitHub Repository</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">RAG</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">幻觉</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型评估</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">知识缺口</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">检索增强生成</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
