@@ -1,0 +1,735 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-01-%E7%A5%9E%E7%BB%8F%E7%AE%97%E5%AD%90%E7%9A%84%E4%BF%9D%E8%A7%92%E4%B8%8D%E7%A1%AE%E5%AE%9A%E6%80%A7%E9%87%8F%E5%8C%96%E4%BF%9D%E8%AF%81/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>神经算子的保角不确定性量化保证 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              神经算子的保角不确定性量化保证
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        神经算子的保角不确定性量化保证
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="神经算子的保角不确定性量化保证">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要与总结
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 Summary
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📌 Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Contributions:
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 摘要原文
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 链接与资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#links-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 Links &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着科学计算和人工智能的深度融合，神经算子（Neural Operators）作为一种能够快速逼近无限维函数空间之间映射的代理模型，受到了广泛关注。然而，现有预测结果普遍缺乏可靠的不确定性量化（UQ），这在安全攸关的工程和科学应用中构成了巨大隐患。为此，Tom Stent 和 Nicolas Boullé 在本论文中开发了一个<strong>分裂保角框架（split conformal framework）</strong>，旨在严格确保神经算子输出周围经过校准的逐点置信带，能够在评估域的至少 <span class="arithmatex">\(1 - \gamma\)</span> 比例上包含真实解，并且在测试和校准输入上的概率至少为 <span class="arithmatex">\(1 - \alpha\)</span>（其中 <span class="arithmatex">\(\alpha, \gamma \in (0,1)\)</span>）。</p>
+<p>该研究的核心贡献在于：首先通过将归一化残差场约简为其空间 <span class="arithmatex">\((1-\gamma)\)</span>-分位数，并利用保留的校准数据集计算缩放因子，从而建立了一种高效的保角校准方法；其次，在理论上证明了定义在任意概率空间上的可测残差场的边际覆盖保证（涵盖连续域和固定离散化）；最后，通过达西流（Darcy flow）和纳维-斯托克斯方程（Navier-Stokes equations）的数值实验验证了该方法，结果表明其校准产生的不确定性带在严格保持目标覆盖率的同时，比现有修正方法更加紧凑。</p>
+<hr />
+<h1 id="_2">神经算子的保角不确定性量化保证</h1>
+<p><strong>作者：</strong> Tom Stent, Nicolas Boullé<br />
+<strong>主要学科：</strong> 数值分析 (<code>math.NA</code>)<br />
+<strong>次要学科：</strong> 人工智能 (<code>cs.AI</code>)、概率论 (<code>math.PR</code>)<br />
+<strong>提交时间：</strong> 2026年8月28日<br />
+<strong>arXiv:</strong> <a href="https://arxiv.org/abs/2608.28515">2608.28515</a> [math.NA]<br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.28515">10.48550/arXiv.2608.28515</a>  </p>
+<blockquote>
+<p><strong>Authors:</strong> Tom Stent, Nicolas Boullé<br />
+<strong>Primary Subject:</strong> Numerical Analysis (<code>math.NA</code>)<br />
+<strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>), Probability (<code>math.PR</code>)<br />
+<strong>Submitted:</strong> 28 August 2026<br />
+<strong>arXiv:</strong> <a href="https://arxiv.org/abs/2608.28515">2608.28515</a> [math.NA]<br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2608.28515">10.48550/arXiv.2608.28515</a>  </p>
+</blockquote>
+<hr />
+<h2 id="_3">📌 摘要与总结</h2>
+<p>神经算子为逼近函数空间之间的算子提供了快速的代理模型，但它们的预测往往缺乏不确定性量化。我们开发了一个分裂保角框架，以确保神经算子输出周围经校准的逐点置信带在评估域的至少 <span class="arithmatex">\(1-\gamma\)</span> 比例上包含真实解，并且在测试和校准输入上的概率至少为 <span class="arithmatex">\(1-\alpha\)</span>，其中 <span class="arithmatex">\(\alpha,\gamma\in(0,1)\)</span>。我们的方法将归一化残差场约简为其空间 <span class="arithmatex">\((1-\gamma)\)</span>-分位数，并使用留出的校准数据集计算缩放因子。我们证明了定义在任意概率空间上的可测残差场的边际覆盖保证，涵盖了连续域和固定离散化。在对数据分布的温和假设下，我们证明了条件于校准集的覆盖率服从贝塔分布，并通过达西流和纳维-斯托克斯方程的数值实验验证了这一点，其中我们的校准产生的置信带在保持目标覆盖率的同时，比现有修正方法更加紧凑。</p>
+<blockquote>
+<h2 id="summary">📌 Summary</h2>
+<p>Neural operators provide fast surrogate models for approximating operators between infinite-dimensional function spaces, but their predictions frequently lack reliable uncertainty quantification. In this paper, Tom Stent and Nicolas Boullé develop a <strong>split conformal framework</strong> to ensure that a calibrated pointwise confidence band around a neural operator’s output contains the true solution on at least a <span class="arithmatex">\(1 - \gamma\)</span> fraction of the evaluation domain, with a probability of at least <span class="arithmatex">\(1 - \alpha\)</span> over test and calibration inputs (where <span class="arithmatex">\(\alpha, \gamma \in (0,1)\)</span>). </p>
+<h3 id="key-contributions">Key Contributions:</h3>
+<ul>
+<li><strong>Methodology:</strong> Reduces a normalized residual field to its spatial <span class="arithmatex">\((1-\gamma)\)</span>-quantile and computes a scaling factor via a held-out calibration dataset.</li>
+<li><strong>Theoretical Guarantees:</strong> Proves marginal coverage guarantees for measurable residual fields defined on arbitrary probability spaces (covering both continuum domains and fixed discretizations). Under mild data distribution assumptions, the coverage conditional on the calibration set follows a Beta distribution.</li>
+<li><strong>Empirical Validation:</strong> Demonstrated on <strong>Darcy flow</strong> and <strong>Navier–Stokes equations</strong>, where the calibration yields uncertainty bands that are consistently tighter than existing corrections while strictly maintaining target coverage.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">📋 摘要原文</h2>
+<blockquote>
+<p>神经算子为逼近函数空间之间的算子提供了快速的代理模型，但它们的预测通常缺乏不确定性量化。我们开发了一个分裂保角框架，以保证神经算子输出周围的校准逐点置信带在评估域的至少 <span class="arithmatex">\(1-\gamma\)</span> 比例上包含真实解，并且在测试和校准输入上的概率至少为 <span class="arithmatex">\(1-\alpha\)</span>，其中 <span class="arithmatex">\(\alpha,\gamma\in(0,1)\)</span>。我们的方法将归一化残差场约简为其空间 <span class="arithmatex">\((1-\gamma)\)</span>-分位数，并使用留出的校准数据集计算缩放因子。我们证明了定义在任意概率空间上的可测残差场的边际覆盖保证，涵盖了连续域和固定离散化。在对数据分布的温和假设下，我们证明了条件于校准集的覆盖率服从贝塔分布，并通过达西流和纳维--斯托克斯方程的数值实验进行了验证，其中我们的校准产生的置信带在保持目标覆盖率的同时，比现有修正方法更加紧凑。</p>
+<h2 id="abstract">📋 Abstract</h2>
+<blockquote>
+<p>Neural operators provide fast surrogate models for approximating operators between function spaces, but their predictions often lack uncertainty quantification. We develop a split conformal framework to guarantee that a calibrated pointwise band around the neural operator output contains the true solution on at least a <span class="arithmatex">\(1-\gamma\)</span> fraction of the evaluation domain, with probability at least <span class="arithmatex">\(1-\alpha\)</span> over test and calibration inputs, where <span class="arithmatex">\(\alpha,\gamma\in(0,1)\)</span>. Our method reduces a normalized residual field to its spatial <span class="arithmatex">\((1-\gamma)\)</span>-quantile and computes a scaling factor using a held-out calibration dataset. We prove marginal coverage guarantees for measurable residual fields defined on arbitrary probability spaces, covering both continuum domains and fixed discretizations. Under mild assumptions on the data distribution, we show that the coverage conditional on the calibration set follows a Beta distribution, which we verify with numerical experiments on Darcy flow and Navier--Stokes equations, where our calibration yields bands consistently tighter than existing corrections while retaining the target coverage.</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2 id="_5">🔗 链接与资源</h2>
+<ul>
+<li><strong>全文访问：</strong> <a href="https://arxiv.org/pdf/2608.28515">查看 PDF</a> | <a href="https://arxiv.org/html/2608.28515v1">HTML（实验性）</a> | <a href="https://arxiv.org/src/2608.28515">TeX 源码</a></li>
+<li><strong>引用与指标：</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.28515">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.28515">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.28515">Semantic Scholar</a></li>
+</ul>
+<blockquote>
+<h2 id="links-resources">🔗 Links &amp; Resources</h2>
+<ul>
+<li><strong>Full-Text Access:</strong> <a href="https://arxiv.org/pdf/2608.28515">View PDF</a> | <a href="https://arxiv.org/html/2608.28515v1">HTML (Experimental)</a> | <a href="https://arxiv.org/src/2608.28515">TeX Source</a></li>
+<li><strong>Citations &amp; Metrics:</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2608.28515">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2608.28515">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2608.28515">Semantic Scholar</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">神经算子</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">不确定性量化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">保角预测</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数值分析</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">偏微分方程</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
