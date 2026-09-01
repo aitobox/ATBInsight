@@ -1,0 +1,935 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-02-%E4%BB%8B%E7%BB%8D%20@huggingface-kernels%EF%BC%9A%E9%9D%A2%E5%90%91%E6%9C%AC%E5%9C%B0%20AI%20%E7%9A%84%20200%20%E5%A4%9A%E4%B8%AA%20WebGPU%20%E6%A0%B8%E5%87%BD%E6%95%B0/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>介绍 @huggingface/kernels：面向本地 AI 的 200 多个 WebGPU 核函数 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              介绍 @huggingface/kernels：面向本地 AI 的 200 多个 WebGPU 核函数
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要 / Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 核心要点 / TL;DR
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-start-with-kernels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么从核函数开始？ / Why Start with Kernels?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-kernel-repository-not-just-a-shader" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核函数存储库，而不仅仅是一个着色器 / A Kernel Repository, Not Just a Shader
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hub-loading-a-kernel-from-the-hub" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        从 Hub 加载核函数 / Loading a Kernel from the Hub
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="从 Hub 加载核函数 &#x2f; Loading a Kernel from the Hub">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        示例用法 / Example Usage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-fast-are-the-kernels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核函数有多快？ / How Fast Are the Kernels?
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核函数有多快？ &#x2f; How Fast Are the Kernels?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benchmark-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基准测试亮点 / Benchmark Highlights
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fleet-from-one-device-to-a-fleet" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        从单一设备到庞大舰队（Fleet） / From One Device to a Fleet
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webai-building-a-shared-foundation-for-webai" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为 WebAI 构建共享基础 / Building a Shared Foundation for WebAI
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">介绍 @huggingface/kernels：面向本地 AI 的 200 多个 WebGPU 核函数</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>Hugging Face 的 WebAI 团队近期发布了 <code>@huggingface/kernels</code>，这是一个精简的库，旨在直接从 Hugging Face Hub 加载并运行优化后的 WebGPU 核函数（Kernels）。伴随着首批发布的 207 个带有版本控制的核函数（可在 huggingface.co/webgpu-kernels 查阅），该版本为加速基于浏览器的机器学习推理奠定了坚实的底层基础。此外，团队还推出了 Fleet，这是一个通过众包方式收集真实客户端硬件性能与正确性数据的浏览器端基准测试工具。</p>
+<p>这一系列工具通过将低级基元解耦为可发现、有版本控制且可测试的独立存储库，打破了“浏览器中运行 AI 模型”的性能瓶颈。相比传统的 ORT WebGPU，这些核函数在几何平均性能上实现了 2.57 倍的提升，并在特定压力测试中取得了惊人的效率。文章详细介绍了这些核函数的结构、JavaScript 加载方式、基准测试表现以及旨在优化未来变体的 Fleet 众包遥测系统。</p>
+<hr />
+<h2 id="summary">📌 摘要 / Summary</h2>
+<blockquote>
+<p>Hugging Face's WebAI team has released <strong><code>@huggingface/kernels</code></strong>, a minimal library designed to load and run optimized WebGPU kernels directly from the Hugging Face Hub. Accompanied by an initial collection of <strong>207 versioned kernels</strong> (available at <a href="https://huggingface.co/webgpu-kernels">huggingface.co/webgpu-kernels</a>), this release establishes a foundational low-level layer to accelerate browser-based machine learning inference. Additionally, the team launched <strong>Fleet</strong>, an in-browser benchmarking tool that crowdsources real-world performance and correctness data across diverse client hardware.</p>
+</blockquote>
+<p>Hugging Face 的 WebAI 团队发布了 <strong><code>@huggingface/kernels</code></strong>，这是一个精简的库，旨在直接从 Hugging Face Hub 加载并运行优化后的 WebGPU 核函数。伴随着首批发布的 <strong>207 个版本化核函数</strong>（可在 <a href="https://huggingface.co/webgpu-kernels">huggingface.co/webgpu-kernels</a> 获取），该版本建立了一个基础的底层层，以加速基于浏览器的机器学习推理。此外，该团队还推出了 <strong>Fleet</strong>，这是一个浏览器内基准测试工具，可跨各种客户端硬件众包真实的性能和正确性数据。</p>
+<hr />
+<h2 id="tldr">📋 核心要点 / TL;DR</h2>
+<blockquote>
+<ul>
+<li><strong>207 WebGPU Kernels:</strong> Published as individual Apache-2.0 licensed repositories under the <a href="https://huggingface.co/webgpu-kernels"><code>webgpu-kernels</code></a> organization.</li>
+<li><strong>JavaScript Loader (<code>@huggingface/kernels</code>):</strong> Seamlessly downloads, prepares, and executes kernels straight from the Hub.</li>
+<li><strong>Explicit Contracts &amp; Reproducible Evidence:</strong> Every kernel includes manifests, correctness test suites, benchmark cases, and parameterized WGSL shader templates.</li>
+<li><strong>Fleet Testing Suite:</strong> A crowdsourced browser benchmarking tool that gathers telemetry from real-world GPUs to optimize future kernel variants.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>207 个 WebGPU 核函数：</strong> 以采用 Apache-2.0 许可证的独立存储库形式发布在 <a href="https://huggingface.co/webgpu-kernels"><code>webgpu-kernels</code></a> 组织下。</li>
+<li><strong>JavaScript 加载器 (<code>@huggingface/kernels</code>)：</strong> 无缝下载、准备并直接从 Hub 执行核函数。</li>
+<li><strong>显式契约与可复现证据：</strong> 每个核函数都包含清单、正确性测试套件、基准测试用例以及参数化的 WGSL 着色器模板。</li>
+<li><strong>Fleet 测试套件：</strong> 一个众包浏览器基准测试工具，可收集来自真实世界 GPU 的遥测数据，以优化未来的核函数变体。</li>
+</ul>
+<hr />
+<h2 id="why-start-with-kernels">为什么从核函数开始？ / Why Start with Kernels?</h2>
+<blockquote>
+<p>Running an AI model inside a browser translates execution into a sequence of GPU operations—including matrix multiplications, normalizations, convolutions, attention mechanisms, and quantization routines. While <strong>WebGPU</strong> delivers a portable API across modern browsers, and <strong>WGSL</strong> supplies a shared shader language, <strong>portability does not automatically guarantee optimal performance.</strong></p>
+</blockquote>
+<p>在浏览器中运行 AI 模型，本质上是将执行过程转化为一系列的 GPU 操作——包括矩阵乘法、归一化、卷积、注意力机制和量化例程。虽然 <strong>WebGPU</strong> 在现代浏览器中提供了可移植的 API，<strong>WGSL</strong> 也提供了共享的着色器语言，但<strong>可移植性并不自动保证最佳性能。</strong></p>
+<blockquote>
+<p>Factors like workgroup sizing, memory access layouts, vectorization strategies, and data types mean that identical shaders can behave drastically differently across hardware ecosystems. By decoupling low-level primitives into discoverable, versioned, and testable repositories, Hugging Face provides higher-level runtimes with a stable, high-performance foundation.</p>
+</blockquote>
+<p>工作组大小、内存访问布局、向量化策略和数据类型等因素意味着，相同的着色器在不同的硬件生态系统中表现可能截然不同。通过将底层基元解耦为可发现、有版本控制且可测试的存储库，Hugging Face 为高层运行时提供了一个稳定、高性能的基础。</p>
+<hr />
+<h2 id="a-kernel-repository-not-just-a-shader">核函数存储库，而不仅仅是一个着色器 / A Kernel Repository, Not Just a Shader</h2>
+<blockquote>
+<p>Every kernel in the collection functions as a standalone software artifact accompanied by a dedicated kernel card. For instance, <a href="https://huggingface.co/webgpu-kernels/ai.onnx.Add"><code>ai.onnx.Add</code></a> handles elementwise addition with multidirectional broadcasting.</p>
+</blockquote>
+<p>集合中的每个核函数都作为一个独立的软件产物运行，并配有专门的核函数卡片。例如，<a href="https://huggingface.co/webgpu-kernels/ai.onnx.Add"><code>ai.onnx.Add</code></a> 处理具有多向广播的逐元素相加（elementwise addition）。</p>
+<figure class="image text-center">
+<img alt="Files in the ai.onnx.Add WebGPU kernel repository" class="mx-auto" src=".././images/7bfb75581763.png" width="90%"/>
+<figcaption>The <code>ai.onnx.Add</code> repository packages its manifest, correctness and benchmark cases, and WGSL shader templates together.</figcaption>
+</figure>
+
+<blockquote>
+<p>Each repository contains structured components:
+* <strong><code>manifest.json</code></strong>: The absolute source of truth defining inputs, outputs, attributes, type constraints, and shape derivation logic.
+* <strong><code>metadata.json</code></strong>: Tracks the kernel identifier, provenance data, and cryptographic digests.
+* <strong><code>test.json</code></strong>: Encapsulates expected correctness test cases.
+* <strong><code>bench.json</code></strong>: Supplies performance benchmarking and tuning workloads.
+* <strong><code>*.wgsl.jinja</code></strong>: Parameterized WGSL shader templates tailored to dynamic execution environments.</p>
+</blockquote>
+<p>每个存储库都包含结构化的组件：
+* <strong><code>manifest.json</code></strong>：定义输入、输出、属性、类型约束和形状推导逻辑的绝对权威来源（source of truth）。
+* <strong><code>metadata.json</code></strong>：跟踪核函数标识符、来源数据和密码学摘要。
+* <strong><code>test.json</code></strong>：封装预期的正确性测试用例。
+* <strong><code>bench.json</code></strong>：提供性能基准测试和调优工作负载。
+* <strong><code>*.wgsl.jinja</code></strong>：专为动态执行环境定制的参数化 WGSL 着色器模板。</p>
+<hr />
+<h2 id="hub-loading-a-kernel-from-the-hub">从 Hub 加载核函数 / Loading a Kernel from the Hub</h2>
+<blockquote>
+<p>First, install the preview package from npm:</p>
+</blockquote>
+<p>首先，从 npm 安装预览版软件包：</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>@huggingface/kernels@preview
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> Running these kernels requires a browser supporting <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API">WebGPU</a>. You can verify availability in JavaScript via <code>"gpu" in navigator</code>.</p>
+<p><strong>注意：</strong> 运行这些核函数需要支持 <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API">WebGPU</a> 的浏览器。你可以通过 JavaScript 中的 <code>"gpu" in navigator</code> 来验证其可用性。</p>
+</blockquote>
+<h3 id="example-usage">示例用法 / Example Usage</h3>
+<blockquote>
+<p>The following example demonstrates a simple bias-addition execution pattern:</p>
+</blockquote>
+<p>以下示例演示了一个简单的偏置相加（bias-addition）执行模式：</p>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">getKernel</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;@huggingface/kernels&quot;</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">add</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">getKernel</span><span class="p">(</span><span class="s2">&quot;webgpu-kernels/ai.onnx.Add&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="w"> </span><span class="p">});</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">c</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">add</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Float32Array</span><span class="p">([</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">4</span><span class="p">,</span><span class="w"> </span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="mf">6</span><span class="p">]),</span>
+<span class="w">    </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">],</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Float32Array</span><span class="p">([</span><span class="mf">10</span><span class="p">,</span><span class="w"> </span><span class="mf">20</span><span class="p">,</span><span class="w"> </span><span class="mf">30</span><span class="p">]),</span>
+<span class="w">    </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">3</span><span class="p">],</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="p">});</span>
+</code></pre></div>
+<blockquote>
+<p>The loader automatically computes output shapes and allocates tensor memory based on the kernel contract. </p>
+</blockquote>
+<p>加载器会根据核函数契约自动计算输出形状并分配张量内存。</p>
+<hr />
+<h2 id="how-fast-are-the-kernels">核函数有多快？ / How Fast Are the Kernels?</h2>
+<blockquote>
+<p>Comparing the collection head-to-head against ORT WebGPU on an Apple M4 GPU (using ONNX Runtime Web <code>1.30.0-dev.20260826-b1f76d586a</code>) across 809 matching operations revealed significant performance advantages:</p>
+<ul>
+<li><strong>2.57x faster</strong> by geometric mean.</li>
+<li><strong>1.90x faster</strong> at the median.</li>
+</ul>
+</blockquote>
+<p>在 Apple M4 GPU 上将该集合与 ORT WebGPU（使用 ONNX Runtime Web <code>1.30.0-dev.20260826-b1f76d586a</code>）针对 809 个匹配操作进行直接对比，结果显示出显著的性能优势：</p>
+<ul>
+<li>按几何平均数计算，速度提升 <strong>2.57 倍</strong>。</li>
+<li>按中位数计算，速度提升 <strong>1.90 倍</strong>。</li>
+</ul>
+<h3 id="benchmark-highlights">基准测试亮点 / Benchmark Highlights</h3>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th style="text-align: right;">Compared cases</th>
+<th style="text-align: right;">Our WebGPU Kernel</th>
+<th style="text-align: right;">ORT WebGPU</th>
+<th style="text-align: right;">Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.064 ms</td>
+<td style="text-align: right;">0.227 ms</td>
+<td style="text-align: right;"><strong>3.52x</strong></td>
+</tr>
+<tr>
+<td>MatMul</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">0.115 ms</td>
+<td style="text-align: right;">0.131 ms</td>
+<td style="text-align: right;"><strong>1.14x</strong></td>
+</tr>
+<tr>
+<td>Softmax</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">0.114 ms</td>
+<td style="text-align: right;">0.240 ms</td>
+<td style="text-align: right;"><strong>2.11x</strong></td>
+</tr>
+<tr>
+<td>LayerNormalization</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.061 ms</td>
+<td style="text-align: right;">0.135 ms</td>
+<td style="text-align: right;"><strong>2.22x</strong></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th style="text-align: right;">对比用例数</th>
+<th style="text-align: right;">我们的 WebGPU 核函数</th>
+<th style="text-align: right;">ORT WebGPU</th>
+<th style="text-align: right;">加速比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.064 ms</td>
+<td style="text-align: right;">0.227 ms</td>
+<td style="text-align: right;"><strong>3.52x</strong></td>
+</tr>
+<tr>
+<td>MatMul</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">0.115 ms</td>
+<td style="text-align: right;">0.131 ms</td>
+<td style="text-align: right;"><strong>1.14x</strong></td>
+</tr>
+<tr>
+<td>Softmax</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">0.114 ms</td>
+<td style="text-align: right;">0.240 ms</td>
+<td style="text-align: right;"><strong>2.11x</strong></td>
+</tr>
+<tr>
+<td>LayerNormalization</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.061 ms</td>
+<td style="text-align: right;">0.135 ms</td>
+<td style="text-align: right;"><strong>2.22x</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>In specialized stress cases, optimizations proved even more dramatic—such as a bilinear Einsum operation running <strong>over 10,000x faster</strong> (0.136 ms vs. 1,396 ms) and a row-wise CumSum operating <strong>301x faster</strong>.</p>
+</blockquote>
+<p>在专用的压力测试用例中，优化效果甚至更加戏剧性——例如，双线性 Einsum 操作运行速度<strong>快了 10,000 倍以上</strong>（0.136 毫秒对 1,396 毫秒），而按行计算的 CumSum 操作速度<strong>快了 301 倍</strong>。</p>
+<hr />
+<h2 id="fleet-from-one-device-to-a-fleet">从单一设备到庞大舰队（Fleet） / From One Device to a Fleet</h2>
+<blockquote>
+<p>Because WebGPU performance relies heavily on client drivers, GPUs, and browser configurations, lab environments are insufficient. <strong>Fleet</strong> acts as an opt-in telemetry suite allowing users to run browser-based benchmarks that securely submit performance and correctness data back to Hugging Face, guiding continuous shader refinement.</p>
+</blockquote>
+<p>由于 WebGPU 性能很大程度上依赖于客户端驱动程序、GPU 和浏览器配置，实验室环境是远远不够的。<strong>Fleet</strong> 充当一个可选择加入（opt-in）的遥测套件，允许用户运行基于浏览器的基准测试，将性能和正确性数据安全地提交回 Hugging Face，从而指导持续的着色器改进。</p>
+<hr />
+<h2 id="webai-building-a-shared-foundation-for-webai">为 WebAI 构建共享基础 / Building a Shared Foundation for WebAI</h2>
+<blockquote>
+<p>These initial 207 kernels are fully integrated into the Hub's broader infrastructure:</p>
+</blockquote>
+<p>这最初的 207 个核函数已完全集成到 Hub 更广泛的基础设施中：</p>
+<figure class="image text-center">
+<img alt="The Hub Kernels page filtered to the WebGPU platform, listing the 207 published kernels" class="mx-auto" src=".././images/c84f57dcb563.png" width="90%"/>
+<figcaption>All 207 WebGPU kernels on the Hub's <a href="https://huggingface.co/kernels?platform=webgpu&amp;sort=trending">Kernels page</a>, filtered by platform.</figcaption>
+</figure>
+
+<blockquote>
+<p>This architecture relies on a cohesive loop:
+1. <strong>Versioned Contracts:</strong> Defined explicitly via individual kernel repositories.
+2. <strong>Simplified Execution:</strong> Handled cleanly through <code>@huggingface/kernels</code>.
+3. <strong>Crowdsourced Telemetry:</strong> Gathered globally via Fleet to identify bottlenecks and optimize variant choices.</p>
+</blockquote>
+<p>该架构依赖于一个紧密结合的闭环：
+1. <strong>版本化契约：</strong> 通过各个核函数存储库进行显式定义。
+2. <strong>简化的执行：</strong> 通过 <code>@huggingface/kernels</code> 干净利落地处理。
+3. <strong>众包遥测：</strong> 通过 Fleet 在全球范围内收集，以识别瓶颈并优化变体选择。</p>
+<blockquote>
+<p>Explore the <a href="https://huggingface.co/webgpu-kernels">WebGPU kernel collection</a>, try out <a href="https://www.npmjs.com/package/@huggingface/kernels"><code>@huggingface/kernels</code></a>, and <a href="https://webgpu-kernels-fleet.hf.space/">join the Fleet</a> to contribute performance data from your hardware!</p>
+</blockquote>
+<p>欢迎探索 <a href="https://huggingface.co/webgpu-kernels">WebGPU 核函数集合</a>，试用 <a href="https://www.npmjs.com/package/@huggingface/kernels"><code>@huggingface/kernels</code></a>，并<a href="https://webgpu-kernels-fleet.hf.space/">加入 Fleet</a>，贡献来自你硬件的性能数据！</p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">WebGPU</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Hugging Face</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">机器学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">浏览器端AI</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能优化</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -5,6 +5,1047 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-09-02-面向超大规模电商的时序感知复购预测：多场景生鲜推荐的生存分析模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/面向超大规模电商的时序感知复购预测：多场景生鲜推荐的生存分析模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/面向超大规模电商的时序感知复购预测：多场景生鲜推荐的生存分析模型/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>传统的电商复购推荐系统通常采用二分类任务来构建（即预测“客户是否会在 $W$ 天内购买商品 $X$”），这种做法导致针对每一个感兴趣的时间视界（time horizon）都需要训练一个独立模型，带来了巨大的模型维护负担。本文提出用**生存分析模型（survival analysis models）**直接预测复购时间（time-to-repurchase），以此取代繁琐的模型堆栈。研究团队依托某大型生鲜电商平台的数百万名客户数据，在 30 种以上的消融配置下进行了评估，证明了单一的加速失效时间（AFT）模型不仅能够成功替代多个二分类器，还能在准确性、特征效率和校准性能上实现全面提升。
+
+该研究的核心贡献包括：通过实证风险分析发现生鲜复购的边际风险略有下降（$k \approx 0.9$），打破了“距离上次购买时间越久复购概率越高”的传统直觉；验证了单个 AFT 模型在显著降低树模型总数量（约减少 3 倍）的同时，特征重要性也发生了合理的转变（渠道节奏和近因信号上升，总量统计下降）；并提出了一种四参数参数化校准方法，实现了零跨视界单调性违背。研究揭指出了同一 AFT 家族内部在校准与排序之间的原则性权衡（如选择指数 AFT 用于概率敏感场景，Log-Normal 用于纯排序场景），为工业界大规模推荐系统提供了重要的实践指导。
+
+---
+
+## 📌 执行摘要 (Executive Summary)
+
+Traditional e-commerce repurchase recommenders rely on a binary formulation ("Will the customer buy item $X$ within $W$ days?"), which requires training a separate model for every time horizon of interest. This paper proposes replacing this burdensome model stack with **survival analysis models** that predict time-to-repurchase directly. Evaluated on millions of customers from a major grocery e-commerce platform across over 30 ablation configurations, the study demonstrates that a single Accelerated Failure Time (AFT) model can successfully replace multiple binary classifiers while improving accuracy, feature efficiency, and calibration.
+
+&gt; 传统电商的复购推荐系统依赖于二分类构架（“客户是否会在 $W$ 天内购买商品 $X$？”），这种构架要求为每一个感兴趣的时间视界单独训练一个模型。本文提出使用直接预测复购时间的**生存分析模型（survival analysis models）**来替代这种沉重的模型堆栈。通过在某大型生鲜电商平台的数百万客户数据上对 30 多种消融配置进行评估，本研究证明了单个加速失效时间（AFT）模型可以成功替代多个二分类器，同时在准确性、特征效率和校准度上均有所提升。
+
+---
+
+## 🔍 核心贡献与发现 (Key Contributions &amp; Findings)
+
+1. **Empirical Hazard Analysis &amp; Model Fits**
+   * **Surprising Hazard Trend:** The study reveals a slightly decreasing marginal hazard ($k \approx 0.9$), contradicting the common intuition that grocery items become *more* likely to be repurchased the longer it has been since the last purchase ($k &gt; 1$).
+   * **Fit Discrepancy:** While the Log-Normal model achieves the best marginal fit ($R^2 = 0.998$) and superior ranking capabilities, the Weibull model provides the best conditional residual fit.
+
+&gt; 1. **实证风险分析与模型拟合**
+&gt;    * **令人意外的风险趋势：** 研究揭示了一个略微下降的边际风险（$k \approx 0.9$），这与“距离上次购买时间越长，生鲜商品越容易被再次购买（递增风险，$k &gt; 1$）”的常见直觉相悖。
+&gt;    * **拟合差异：** 尽管对数正态（Log-Normal）模型实现了最佳的边际拟合（$R^2 = 0.998$）和卓越的排序能力，但威布尔（Weibull）模型提供了最佳的条件残差拟合。
+
+2. **Model Efficiency &amp; Feature Importance**
+   * **Reduced Complexity:** A single AFT model replaces three per-horizon binary classifiers, matching or exceeding their performance while utilizing roughly **$3\times$ fewer total trees**.
+   * **Feature Shift:** Under the survival objective, feature importance reshuffles: channel-cadence and recency signals rise in prominence, whereas aggregate frequency counts decline.
+
+&gt; 2. **模型效率与特征重要性**
+&gt;    * **降低复杂度：** 单个 AFT 模型取代了三个针对不同视界的二分类器，在匹配或超越其各自视界性能的同时，总树木数量减少了约 **$3$ 倍**。
+&gt;    * **特征转变：** 在生存分析目标下，特征重要性发生了重组：渠道节奏（channel-cadence）和近因（recency）信号的重要性上升，而总量统计计数（aggregate frequency counts）则有所下降。
+
+3. **Parametric Calibration &amp; The Ranking-Calibration Trade-off**
+   * **Zero Violations:** A 4-parameter parametric calibration maps raw survival Cumulative Distribution Functions (CDFs) to per-horizon probabilities with **zero cross-horizon monotonicity violations**.
+   * **Calibration vs. Ranking:** Calibration quality varies significantly across the AFT family. The Exponential AFT model (Weibull with $k=1$) achieves an Expected Calibration Error (ECE) of $\sim 10^{-4}$ (roughly $10\times$ lower than Log-Normal), whereas their ranking metrics remain within 0.3% of each other. 
+   * **Practical Deployment:** The authors adopt Exponential AFT for probability-consuming surfaces and Log-Normal for pure ranking applications, highlighting a principled trade-off within a single AFT family.
+
+&gt; 3. **参数化校准与排序-校准权衡**
+&gt;    * **零违背：** 四参数参数化校准将原始生存累积分布函数（CDFs）映射为各视界的概率，实现了**零跨视界单调性违背**。
+&gt;    * **校准与排序：** 校准质量在不同的 AFT 模型家族中存在显著差异。指数 AFT 模型（$k=1$ 的威布尔模型）实现的期望校准误差（ECE）约为 $\sim 10^{-4}$（比对数正态模型低大约 $10$ 倍），而它们的排序指标彼此相差在 0.3% 以内。
+&gt;    * **实际部署：** 作者在消耗概率的场景中采用指数 AFT，而在纯排序应用中采用对数正态模型，凸显了在单一 AFT 家族内部进行有原则的校准-排序权衡。
+
+---
+
+## 📄 摘要 (Abstract)
+
+&gt; Repurchase recommenders in e-commerce are commonly framed as a binary question asking "will this customer buy this item within $W$ days", a formulation that requires a separately trained model for every horizon of interest. We replace this stack with survival models that predict time-to-repurchase directly, and evaluate them on millions of customers from a major grocery e-commerce platform across more than thirty ablation configurations. Our study makes three contributions. 
+&gt; 
+&gt; *First*, an empirical hazard analysis reveals a slightly decreasing marginal hazard ($k \sim 0.9$), differing from the common intuition that grocery items become more likely to be repurchased the longer since the last purchase (increasing hazard, $k &gt; 1$). Log-Normal achieves the best marginal fit ($R^2 = 0.998$) and the best ranking, despite Weibull providing the best conditional residual fit, revealing an apparent discrepancy we analyze in detail. 
+&gt; 
+&gt; *Second*, a single Accelerated Failure Time (AFT) model replaces three per-horizon binary classifiers, matching or exceeding each at its own horizon while using roughly 3x fewer total trees. Feature importance reshuffles under the survival objective: channel-cadence and recency signals rise while aggregate frequency counts fall. 
+&gt; 
+&gt; *Third*, a 4-parameter parametric calibration maps raw survival CDFs to per-horizon probabilities with zero cross-horizon monotonicity violations. Calibration quality varies by an order of magnitude across the AFT family: Exponential AFT (Weibull $k=1$) achieves expected calibration error (ECE) $\sim 1\text{e-4}$, roughly 10x lower than Log-Normal, while ranking metrics agree within 0.3% relative. We adopt Exponential AFT for probability-consuming surfaces and Log-Normal for pure ranking, exposing a principled calibration-ranking trade-off within a single AFT family.
+
+&gt; 电商领域的复购推荐系统通常被构架为一个二分类问题，即询问“该客户是否会在 $W$ 天内购买此商品”，这种设定要求针对每一个感兴趣的时间视界单独训练一个模型。我们用直接预测复购时间的生存模型替代了这一模型堆栈，并在某大型生鲜电商平台的数百万客户数据上，通过 30 多种消融配置对其进行了评估。我们的研究做出了三项贡献。
+&gt; 
+&gt; *首先*，实证风险分析揭示了一个略微下降的边际风险（$k \sim 0.9$），这与“距离上次购买时间越久，生鲜商品越容易被再次购买（递增风险，$k &gt; 1$）”的常见直觉不同。尽管威布尔模型提供了最佳的条件残差拟合，但对数正态（Log-Normal）模型实现了最佳的边际拟合（$R^2 = 0.998$）和最佳的排序能力，我们对此明显的差异进行了详细分析。
+&gt; 
+&gt; *其次*，单个加速失效时间（AFT）模型替代了三个分视界的二分类器，在各自的视界上匹配或超越了它们，同时总树木数量减少了约 3 倍。在生存目标下，特征重要性发生了重组：渠道节奏和近因信号上升，而总量统计计数下降。
+&gt; 
+&gt; *第三*，四参数参数化校准将原始生存 CDF 映射为各视界的概率，且实现了零跨视界单调性违背。在 AFT 家族中，校准质量相差一个数量级：指数 AFT（威布尔 $k=1$）实现的期望校准误差（ECE）约为 $\sim 1\text{e-4}$，比对数正态模型低约 10 倍，而排序指标的相对误差在 0.3% 以内。我们在概率敏感的场景中采用指数 AFT，在纯排序中采用对数正态，这展现了在单一 AFT 家族内部进行有原则的校准-排序权衡。
+
+---
+
+## 🔗 链接与资源 (Links &amp; Resources)
+
+* **Full-Text Options:** [View PDF](https://arxiv.org/pdf/2608.28393) | [HTML Version (Experimental)](https://arxiv.org/html/2608.28393v2) | [TeX Source](https://arxiv.org/src/2608.28393)
+* **License:** [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+* **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.28393) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.28393) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.28393)
+
+&gt; * **全文选项：** [查看 PDF](https://arxiv.org/pdf/2608.28393) | [HTML 版本（实验性）](https://arxiv.org/html/2608.28393v2) | [TeX 源码](https://arxiv.org/src/2608.28393)
+&gt; * **许可协议：** [知识共享 署名-非商业性使用-相同方式共享 4.0 国际](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+&gt; * **外部引用：** [谷歌学术](https://scholar.google.com/scholar_lookup?arxiv_id=2608.28393) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.28393) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.28393)
+
+![license icon](./images/079cd8198ba3.png)</description>
+    </item>
+    <item>
+      <title>Fluorescent Lamps (Don’t) Have Ears</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/荧光灯（其实）没有耳朵/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/荧光灯（其实）没有耳朵/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>本文探讨了作者早年在技术侦察对抗（TSCM）领域的职业经历，并对一个长久以来的间谍传说进行了调查：荧光灯是否可以被用作被动的窃听装置？通过将荧光灯管置于高强度音频系统旁并使用高速摄影技术进行测试，作者从物理学角度评估了声波改变灯管亮度的可能性。
+
+文章回顾了光学窃听的原理与相关研究，并详细记录了作者测试荧光灯窃听可行性的实验过程。最终，通过严谨的实验与观察，作者推翻了这一不切实际的攻击向量，证实了该流言在现实场景中无法成立。
+
+---
+
+# Fluorescent Lamps (Don’t) Have Ears
+
+&gt; # 荧光灯（其实）没有耳朵
+
+## Summary
+
+In this article, the author reflects on their early career in technical surveillance countermeasures (TSCM) and investigates a persistent espionage myth: whether fluorescent lamps can be used as passive listening devices. By testing a fluorescent tube against a high-intensity audio system using high-speed photography, the author evaluates the physical plausibility of sound waves altering the tube's luminosity. Ultimately, the practical attack vector is debunked.
+
+&gt; 在这篇文章中，作者回顾了自己早年在技术侦察对抗（TSCM）领域的职业生涯，并调查了一个持久存在的间谍神话：荧光灯是否可以用作被动窃听装置。通过将荧光灯管置于高强度音响系统旁并结合高速摄影进行测试，作者评估了声波改变灯管亮度的物理合理性。最终，这一实际的攻击向量被证明并不成立。
+
+---
+
+## Introduction to Technical Surveillance Countermeasures
+
+&gt; ## 技术侦察对抗简介
+
+I never mentioned it publicly, but early in my career, I did a part-time stint in *technical surveillance countermeasures* (TSCM) — a fancy term for sweeping office environments in search of listening devices and other unauthorized spy gear. In practice, the job entailed getting several certifications, hauling around a bunch of costly suitcases, and above all, spending some time with ex-spooks, listening to stories that would make James Bond blush.
+
+&gt; 我从未在公开场合提及此事，但在我职业生涯的早期，我曾兼职从事*技术侦察对抗*（TSCM）工作——这是对搜寻办公环境中的窃听器及其他未经授权的间谍装备的高端称呼。在实践中，这项工作需要获得多项认证，拖着一堆昂贵的行李箱，最重要的是，还要花时间与前间谍们呆在一起，听一些足以让詹姆斯·邦德脸红的故事。
+
+The discipline is rather hush-hush, so you never know what’s real. One of the more striking claims I remember from the training was that fluorescent lamps could be used to passively eavesdrop on conversations in the room. This makes some sense: the tubes are filled with glowing gas. A sound wave propagating through this medium could theoretically produce subtle luminosity fluctuations that could be picked from afar.
+
+&gt; 这门学科相当神秘，因此你永远不知道什么是真的。我从培训中记起的比较引人注目的说法之一是，荧光灯可以用来被动窃听房间里的对话。这在某种程度上讲得通：灯管里充满了发光气体。在这个介质中传播的声波理论上可以产生微弱的发光波动，从而可以从远处捕捉到。
+
+## The Science of Optical Eavesdropping
+
+&gt; ## 光学窃听的科学原理
+
+To be clear, long-distance optical audio pickup is real: if you shine a laser at a pane of glass or other reflective surface, sound-induced vibrations can be picked up by measuring the angle of the reflected beam; in favorable conditions, this supposedly works at distances in excess of 100 m (330 ft). Far less practically, a [Black Hat presentation in 2020](https://ad447342-c927-414a-bbae-d287bde39ced.filesusr.com/ugd/a53494_443addc922e048d89a664c2423bf43fd.pdf) demonstrated the ability to passively recover audio by placing a beefy speaker 1 cm away from a dangling lightbulb, and then observing the motion of the lightbulb via a telescope from about 25 m (80 ft).
+
+&gt; 明确地说，远距离光学音频采集是真实存在的：如果你把激光照射到玻璃窗或其他反射表面上，通过测量反射光束的角度就可以采集到声波引起的振动；在有利的条件下，据说这在超过 100 米（330 英尺）的距离上也能起作用。实用性要差得多的是，在 [2020 年的 Black Hat 演讲](https://ad447342-c927-414a-bbae-d287bde39ced.filesusr.com/ugd/a53494_443addc922e048d89a664c2423bf43fd.pdf)中展示了一种能力：将一个强力扬声器放在距离悬空灯泡 1 厘米的地方，然后通过大约 25 米（80 英尺）外的望远镜观察灯泡的运动，从而被动恢复音频。
+
+But is the claim about fluorescent lamps true? At first blush, it sounds physically plausible. But when you think about it, the gas in the tube is kept at about 1/200th of atmospheric pressure. It’s nearly vacuum — hardly a good medium for sound waves. Worse, the glowing gas emits UV, which needs to be converted to visible light using an opaque phosphor layer that covers the inside of the tube and exhibits strong afterglow. Wouldn’t that mask any momentary, localized changes in luminosity?…
+
+&gt; 但关于荧光灯的说法是真的吗？乍一看，这在物理上似乎是合理的。但仔细想想，灯管内的气体压力保持在约为大气压的 1/200。它几乎是真空——很难成为声波的良好介质。更糟糕的是，发光气体发射出紫外线，需要通过覆盖在灯管内侧、具有强余辉的不透明荧光粉层将其转换为可见光。难道这不会掩盖任何短暂的、局部的亮度变化吗？……
+
+## Putting the Myth to the Test
+
+&gt; ## 用实验检验流言
+
+After two short decades, I couldn’t take it anymore and decided to test the claim. My initial plan was to tape a photodiode directly to the tube, connect the sensor into a low-noise amplifier, and then view the resulting waveform on an oscilloscope. But then, I settled for a simpler approach: I placed the lamp next to a high-intensity sound source — a 200 W audio system hooked up to a signal generator and cranked all the way up — and then took a series of high-speed, up-close photos with a shutter of 1/8000 s. I figured that if such powerful sound waves don’t produce visible artifacts in any of the captured 14-bit images, the odds of the scheme working in a more realistic scenario were minimal, even if we used more precise measurement gear.
+
+&gt; 在经历了短短二十年之后，我再也无法忍受了，决定测试这个说法。我最初的计划是将光电二极管直接用胶带粘在灯管上，将传感器连接到低噪声放大器，然后在示波器上查看生成的波形。但随后，我采用了一种更简单的方法：我将灯放在一个高强度声源旁边——一个连接到信号发生器并开到最大的 200 W 音响系统——然后用 1/8000 秒的快门拍摄了一系列高清特写照片。我想，如果如此强大的声波在任何捕获的 14 位图像中都没有产生可见的伪影，那么即使我们使用更精确的测量设备，该方案在更现实的场景中起作用的几率也是微乎其微的。</description>
+    </item>
+    <item>
+      <title>2026-09-02-推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>本文研究了在以英文为主的语料库上预训练稠密大语言模型（LLM）时，学习率和批大小的缩放行为。研究人员分析了联合最优参数及其相对于模型容量和数据规模的边际演变，并引入了一个综合模型来捕捉这些动态。通过采用“预热-稳定-衰减”（Warmup-Stable-Decay）学习率计划，本研究评估了在各种超参数配置、模型规模和数据预算下进行学习率退火（annealing）的优势，同时测试了最优设置在稳定阶段和衰减阶段之间的可迁移性。
+
+此外，该研究利用能够处理欠训练（undertraining）和过训练（overtraining）机制的高级交互模型，表征了损失对模型规模和数据集大小的依赖性。这项工作为未来的 *OpenEuroLLM* 模型奠定了基础基线和缩放方法论，并开源了相关的预训练运行数据，为大模型的高效预训练提供了宝贵的经验参考。
+
+---
+
+## 执行摘要 (Executive Summary)
+
+本论文研究了在以英文为主的语料库上预训练稠密大型语言模型（LLM）时，学习率和批大小的缩放行为。研究人员分析了联合最优参数及其相对于模型容量和数据规模的边际演变，并引入了一个综合模型来捕捉这些动态。通过使用**预热-稳定-衰减（Warmup-Stable-Decay）**学习率计划，本研究在广泛的超参数配置、模型规模和数据预算范围内评估了学习率退火的优势，同时测试了最优设置在稳定阶段和衰减阶段之间的可迁移性。此外，该研究通过能够解决欠训练和过训练机制的高级交互模型，表征了损失对模型规模和数据集大小的依赖性。这项工作为未来的 *OpenEuroLLM* 模型建立了基础基线和缩放方法，并伴随开源了预训练运行数据。
+
+&gt; This paper investigates the scaling behavior of learning rates and batch sizes when pretraining dense large language models (LLMs) on English-dominant corpora. The researchers analyze jointly optimal parameters and their marginal evolution relative to model capacity and data scale, introducing a comprehensive model to capture these dynamics. Using a **Warmup-Stable-Decay** learning rate schedule, the study evaluates the advantages of learning rate annealing across a diverse range of hyperparameter configurations, model sizes, and data budgets, while testing the transferability of optimal settings between the stable and decay phases. Additionally, it characterizes the dependence of loss on model size and dataset volume using advanced interaction models capable of addressing both undertraining and overtraining regimes. This work establishes foundational baselines and scaling methodologies for future *OpenEuroLLM* models, accompanied by open-sourced pretraining runs.
+
+---
+
+## 论文元数据 (Paper Metadata)
+
+* **arXiv 标识符:** [arXiv:2608.28308](https://arxiv.org/abs/2608.28308) [cs.LG]
+* **主要学科:** 机器学习 (`cs.LG`)
+* **次要学科:** 人工智能 (`cs.AI`)
+* **提交历史:** 
+  * [v1] 2026年8月28日（星期五）
+  * [v2] 2026年8月31日（星期一）（本版本）
+* **许可证:** [知识共享署名 4.0 国际](http://creativecommons.org/licenses/by/4.0/) *(查看许可证图标：![license icon](./images/345c7ad61f1b.png))*
+
+&gt; * **arXiv Identifier:** [arXiv:2608.28308](https://arxiv.org/abs/2608.28308) [cs.LG]
+&gt; * **Primary Subject:** Machine Learning (`cs.LG`)
+&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Submission History:** 
+&gt;   * [v1] Fri, 28 Aug 2026
+&gt;   * [v2] Mon, 31 Aug 2026 (This version)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) *(View License Icon: ![license icon](./images/345c7ad61f1b.png))*</description>
+    </item>
+    <item>
+      <title>2026-09-02-我们向沉闷（服务器）主机名的渐进转变</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/我们向沉闷（服务器）主机名的渐进转变/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/我们向沉闷（服务器）主机名的渐进转变/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>多年来，许多IT基础设施团队都在不断演进其服务器命名约定。本文探讨了一种逐渐抛弃富有创意的主题式命名方案（例如多伦多街道、神话人物和城市名称），转向纯粹实用、趋于“沉闷”的主机名的过程。尽管充满想象力的名字具有历史魅力，但在实际的日常管理、减少认知摩擦以及提供直观清晰性方面，`fs1`、`apps0` 和 `san1` 这种直截了当的命名惯例具有绝对的优势。
+
+本文通过多伦多大学计算机科学系的实际案例，剖析了文件服务器以及多用户系统在命名演变过程中的经验。文章指出，将物理主机名与功能别名直接对齐能够有效消除运维过程中的心智负担和排障摩擦。同时，富有创意的命名并没有完全消失，而是被保留在了普通用户很少接触、管理开销较低的特定基础设施中。
+
+---
+
+## 🏙️ 命名方案的演进
+&gt; 🏙️ The Evolution of Naming Schemes
+
+就像许多组织一样，[多伦多大学计算机科学系](https://support.cs.toronto.edu/)多年来也在几种服务器命名方案之间进行过多次迭代。
+&gt; Like many organizations, the [Department of Computer Science at the University of Toronto](https://support.cs.toronto.edu/) has cycled through several server-naming schemes over the years. 
+
+* **街道名称时代：** 很久以前，服务器是以地理位置命名的——具体来说是多伦多主要的南北向街道（产生了诸如 [`yonge`](https://en.wikipedia.org/wiki/Yonge_Street) 和 [`bay`](https://en.wikipedia.org/wiki/Bay_Street) 这样的名字），而其他机器则采用东西向街道的名字。
+&gt; * **The Street Names Era:** Long ago, servers were named after geographic locations—specifically major north-south streets in Toronto (yielding names like [`yonge`](https://en.wikipedia.org/wiki/Yonge_Street) and [`bay`](https://en.wikipedia.org/wiki/Bay_Street)), while other machines took the names of east-west streets.
+* **功能命名时代：** 随着时间的推移，这些富有创意的命名主题大体上被放弃了，取而代之的是功能性、可预测的描述符，例如 `comps1` 和 `apps0`。
+&gt; * **The Functional Era:** Over time, these creative themes were largely abandoned in favor of functional, predictable descriptors like `comps1` and `apps0`.[^1]
+
+---
+
+## 📁 案例研究：文件服务器名称的演进
+&gt; 📁 Case Study: The Evolution of Fileserver Names
+
+[我们的文件服务器](https://utcc.utoronto.ca/~cks/space/blog/linux/ZFSFileserverSetupIII)的历史完美地说明了这一转变背后的实际驱动力。
+&gt; The history of [our fileservers](https://utcc.utoronto.ca/~cks/space/blog/linux/ZFSFileserverSetupIII) perfectly illustrates the practical drivers behind this transition. 
+
+按照惯例，这些服务器总是以 `san` 前缀开头（甚至在最近几代中并不存在物理存储区域网络时也是如此，[`cf`](https://utcc.utoronto.ca/~cks/space/blog/sysadmin/SanNamesPersistence)）。在好几个世代中，它们一直使用以城市为主题的名字：
+&gt; Conventionally, these servers always started with the prefix `san` (even in recent generations where no physical Storage Area Network exists, [`cf`](https://utcc.utoronto.ca/~cks/space/blog/sysadmin/SanNamesPersistence)). For several generations, city-themed names were used:
+* `santafe`
+&gt; * `santafe`
+* `sanjavier`
+&gt; * `sanjavier`
+* `sanandreas`（用于测试文件服务器）
+&gt; * `sanandreas` (used for the test fileserver)</description>
+    </item>
+    <item>
+      <title>2026-09-02-如何从 PDF 的图表和表格中提取真正的价值</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/如何从 PDF 的图表和表格中提取真正的价值/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/如何从 PDF 的图表和表格中提取真正的价值/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>传统的 RAG（检索增强生成）系统在处理图文混排的 PDF 时往往力不从心，因为它们严重依赖文本提取和光学字符识别（OCR），这会漏掉柱状图、对比图表、架构图和视觉布局中锁定的所有核心信息。
+
+本文探讨了一种现代替代方案：**晚期交互多向量检索（Late-Interaction Multi-Vector Retrieval）**。通过将整个 PDF 页面视为视觉图像，并将其编码为一组多向量（借助 ColPali/ColBERT 以及 Weaviate 的 `multi2multivec-weaviate` 等工具），你可以完全跳过 OCR 和文本分块（chunking）。这使得系统能够通过自然语言查询精准检索出准确的图表，利用查询智能体（Query Agent）赋能高级的多步推理，并将生产环境中的数据管道简化为干净、易于管理的代码。
+
+---
+
+## 摘要
+
+&gt; Traditional RAG (Retrieval-Augmented Generation) pipelines struggle with rich PDFs because they rely on text extraction and OCR (Optical Character Recognition), which completely misses information locked inside bar charts, comparison tables, architectural diagrams, and visual layouts. 
+&gt; 
+&gt; This article explores a modern alternative: **Late-Interaction Multi-Vector Retrieval**. By treating entire PDF pages as visual images and encoding them as a set of multi-vectors (via tools like ColPali/ColBERT and Weaviate's `multi2multivec-weaviate`), you can completely skip OCR and chunking. This enables systems to precisely retrieve exact charts and tables from natural language queries, power advanced multi-step reasoning via query agents, and simplify production pipelines into clean, manageable code.
+
+![来自英伟达 2026 财年第二季度财报演示文稿的毛利率趋势图，通过单次文本查询即可检索，完全无需任何 OCR。](/assets/images/nvidia-gross-margin-trend-e0d7228ff81c186427895df91b474186.png)
+
+---
+
+## 简介
+
+&gt; If you have ever tried to put a stack of investor decks, scientific papers, or annual reports through a RAG pipeline, then you know the drill: set up an Optical Character Recognition (OCR) or text-extraction step, pick a chunking strategy, embed text, and finally retrieve information. After going through all this, someone may ask a question about revenue in `Q2 FY25`, and your retrieval would return three pages of unrelated bullet points because the actual answer is in a bar chart that was invisible to your index.
+&gt; 
+&gt; This used to be what people had to do — just leave out the interesting parts of a PDF from RAG such as bar charts with trends, comparison tables, architectural diagrams, and things in general that make PDFs so much more valuable than mere text.
+&gt; 
+&gt; In this article, we'll show you a better way that not only retrieves the rich information embedded in charts, but also eliminates complex processing steps. We'll cover:
+&gt; 
+&gt; * **Classic RAG**: Why OCR and text embedding works great for some (structured and unstructured) data, but not for rich PDFs.
+&gt; * **Late Interaction RAG**: What late-interaction multi-vector models are, and why they let you skip text extraction entirely.
+&gt; * **Drag-N-Drop and Done**: How to ingest multiple PDFs in Weaviate Cloud with just a few clicks.
+&gt; * **Real Examples**: Example queries against NVIDIA's FY2026 quarterly earnings, where each top result is the *exact chart* that answers a question.
+&gt; * **Complex Agentic Reasoning**: How to wrap the same data with the Weaviate Query Agent for synthesised answers with page-image citations.
+&gt; * **Codified and Deployment-Ready**: The same ingestion pipeline in roughly 50 lines of Python for when you need to deploy this in production.
+&gt; 
+&gt; If you'd rather just see the demo first and read the explanations later, skip to the queries section below.
+
+如果你曾尝试将一堆投资者路演幻灯片、科学论文或年度报告放入 RAG 管道中，你就会对这个流程了如指掌：设置 OCR（光学字符识别）或文本提取步骤、选择分块策略、对文本进行嵌入（Embedding），最后进行检索。经历这一切之后，当有人询问关于 `2025 财年第二季度` 营收的问题时，你的检索结果却返回了三页毫不相干的要点列表，因为真正的答案藏在一个对你的索引而言形同隐形的柱状图里。
+
+过去人们不得不这样做——在 RAG 中直接忽略 PDF 中最有趣的部分，例如带有趋势的柱状图、对比表格、架构图，以及那些让 PDF 的价值远超纯文本的各种视觉元素。
+
+在本文中，我们将为你展示一种更好的方法，它不仅能检索嵌入在图表中的丰富信息，还能省去复杂的处理步骤。我们将涵盖以下内容：
+
+* **传统 RAG**：为什么 OCR 和文本嵌入适用于某些（结构化和非结构化）数据，却不适合内容丰富的 PDF。
+* **晚期交互 RAG**：什么是晚期交互多向量模型，以及为什么它们能让你完全跳过文本提取。
+* **拖放即完成**：如何在 Weaviate Cloud 中通过几次点击就导入多个 PDF。
+* **真实案例**：针对英伟达 2026 财年季度财报的查询示例，其中每个顶部结果都是能够回答问题的*精确图表*。
+* **复杂的智能体推理**：如何使用 Weaviate 查询智能体包裹相同的数据，以获得带页面图像引用的综合答案。
+* **代码化且随时可部署**：在生产环境中部署时，仅需大约 50 行 Python 代码即可实现的相同导入管道。
+
+如果你想先看演示再阅读解释，请直接跳到下方的查询部分。
+
+---
+
+## 传统 RAG 的不足之处
+
+&gt; Let's first look at what most people do today when it comes to building a RAG pipeline for PDFs:
+&gt; 
+&gt; 1. OCR (or text-extract) the file (using either a python library or third-party tooling).
+&gt; 2. Chunk the text.
+&gt; 3. Embed the chunks with a text embedding model.
+&gt; 4. Retrieve, (maybe) rerank, generate.
+&gt; 
+&gt; There's nothing inherently bad about this workflow, but there's a naive underlying assumption that *the page can be reduced to a sequence of text tokens without losing the richness of the content*. For a press release or a Wikipedia article, this is mostly fine, but for a slide deck full of charts, a 10-K with comparison tables, or an academic paper with illustrative figures, it's simply not enough.
+&gt; 
+&gt; You could build a complex ETL pipeline to extract charts and vectorize them separately, but that means another model in the pipeline and introduces more complexity into the stack as well as merging problems at query time.
+&gt; 
+&gt; With a late-interaction multi-vector model, you don't need any of those: You embed the *page*, and not the text within it. The model sees the chart the way you do. Yes, you heard that right, there is not even a chunking step — the page *is* the chunk.
+
+让我们首先看看目前大多数人在构建 PDF 的 RAG 管道时所做的事情：
+
+1. 对文件进行 OCR（或文本提取）（使用 Python 库或第三方工具）。
+2. 对文本进行分块（Chunk）。
+3. 使用文本嵌入模型对文本块进行向量化。
+4. 检索、（可能的话）重排、生成。
+
+这个工作流程本身并没有什么不好，但它背后有一个天真的假设：*页面可以被简化为一串文本 Token，而不会丢失内容的信息量*。对于新闻稿或维基百科文章来说，这通常没问题；但对于充满图表的幻灯片演示文稿、包含对比表格的 10-K 财报，或带有说明性插图的学术论文，这远远不够。
+
+你可以构建一个复杂的 ETL 管道来提取图表并单独进行向量化，但这意味管道中引入了另一个模型，从而增加了技术栈的复杂性，并带来了查询时的结果合并问题。
+
+有了晚期交互多向量模型，你就不再需要这些了：你嵌入的是*整个页面*，而不是其中的文本。模型像你一样看待图表。是的，你没听错，甚至连分块步骤都没有了——页面*本身*就是那个块（Chunk）。
+
+---
+
+## 晚期交互多向量检索（用两段话概括）
+
+&gt; Before we get to the demo, let's take a quick detour on what makes this work. If you already know your way around ColPali / ColBERT, feel free to skip or skim.
+&gt; 
+&gt; Traditional dense embedding models compress an entire document (or chunk) into a single vector. Late-interaction multi-vector models do something different: they encode the document as a *set* of vectors, typically one per token (or for a vision model like the one we're about to use, one per image patch). At query time, your query is also encoded as a set, and the relevance score is the sum of best matches between query tokens and document tokens (a quantity called MaxSim).
+&gt; 
+&gt; Instead of asking *"is this whole page about my whole question?"*, the model can ask *"is the part of this page that talks about Q4 FY26 a good match for the part of my question about 'change over time'?"*. For a chart-heavy page, this is exactly the granularity that's needed. The model doesn't have to summarise an entire slide into a single vector, but can keep one vector per region of the page, and the query can pick out the regions that matter.
+&gt; 
+&gt; So really, there are two distinct advantages here:
+&gt; 
+&gt; 1. Because it's a **visual model** you keep the layout, the charts, the tables, etc. *and*
+&gt; 2. By using MaxSim over a set of vectors, you **eliminate the need for chunking**.
+&gt; 
+&gt; Weaviate offers `multi2multivec-weaviate`, a vectorizer module that runs a hosted late-interaction multi-vector model on Weaviate Cloud, so you don't have to host or manage a model in order to generate multi-vectors from your PDFs.
+
+在进入演示之前，让我们简单了解一下其背后的工作原理。如果你已经对 ColPali / ColBERT 有所了解，可以跳过或略读此节。
+
+传统的密集嵌入模型（Dense Embedding Models）将整个文档（或文本块）压缩为单个向量。而晚期交互多向量模型则有所不同：它们将文档编码为一组*向量*，通常每个 Token 对应一个向量（对于我们即将使用的视觉模型来说，则是每个图像补丁 Image Patch 对应一个向量）。在查询时，你的查询也被编码为一个向量集，相关性得分则是查询 Token 与文档 Token 之间最佳匹配的总和（这个量被称为 MaxSim）。
+
+模型不再去问*“这一整页是否都在讲我的整个问题？”*，而是去问*“页面中讨论 2026 财年第四季度的部分，是否与我问题中关于‘随时间变化’的部分高度匹配？”*。对于图表密集的页面，这正是所需的粒度。模型无需将整张幻灯片总结为一个向量，而是可以为页面的每个区域保留一个向量，查询则可以挑选出那些重要的区域。
+
+因此，这里实际上有两个明显的优势：
+
+1. 因为它是一个**视觉模型**，你得以保留了布局、图表、表格等所有元素；*并且*
+2. 通过在一组向量上使用 MaxSim，你**彻底省去了分块（Chunking）的需要**。
+
+Weaviate 提供了 `multi2multivec-weaviate`，这是一个在 Weaviate Cloud 上运行托管的晚期交互多向量模型的向量化器模块，因此你无需自行托管或管理模型即可从 PDF 生成多向量。
+
+---
+
+## 通过拖放导入 PDF
+
+&gt; The fastest way to try this is the drag-and-drop importer in [Weaviate Cloud](https://console.weaviate.cloud).
+&gt; 
+&gt; 1. Open your cluster in the Console.
+&gt; 2. Go to *Collections* and create a new collection.
+&gt; 3. Select the upload from file option and drop in your PDFs.
+&gt; 
+&gt; &lt;div style="display:flex;gap:1rem;align-items:flex-start;margin:1.5rem 0"&gt;&lt;div style="flex:1.5606 1 0"&gt;&lt;a href="/assets/images/console-create-collection-90227cca6ba85195d4aa8c781acac4d5.png" rel="noopener noreferrer" target="_blank"&gt;&lt;img alt="Create new collection page in the Weaviate Console, with the Upload CSV, Excel or PDF option highlighted" src="/assets/images/console-create-collection-90227cca6ba85195d4aa8c781acac4d5.png" style="width:100%;height:auto;display:block"/&gt;&lt;/a&gt;&lt;/div&gt;&lt;div style="flex:1.7175 1 0"&gt;&lt;a href="/assets/images/console-upload-completed-4ff5dab338fa25e52498b3028da13c41.png" rel="noopener noreferrer" target="_blank"&gt;&lt;img alt="Weaviate Console after upload: a single NVIDIA Q4 FY26 PDF marked complete with a Next button" src="/assets/images/console-upload-completed-4ff5dab338fa25e52498b3028da13c41.png" style="width:100%;height:auto;display:block"/&gt;&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+&gt; 
+&gt; And that's the entire ingestion process. Behind the scenes, Weaviate is doing three things:
+&gt; 
+&gt; 1. Rendering each PDF page to a high-resolution image.
+&gt; 2. Storing that image as a `BLOB` property on a new collection.
+&gt; 3. Vectorizing it with the `multi2multivec-weaviate` module, producing many vectors per page.
+&gt; 
+&gt; A few things are worth noting:
+&gt; 
+&gt; * **One object equals one page.** The unit of retrieval is the page, which is also the unit a human navigates a document by.
+&gt; * **No OCR.** The model never sees the text as text. It sees the page as an image. That's why a chart with no caption is just as searchable as a paragraph.
+&gt; * **The vectors are compressed.** Late-interaction models can produce hundreds of vectors per page, which would be expensive to store naively. Weaviate uses a [multi-vector encoding](https://docs.weaviate.io/weaviate/configuration/compression/multi-vectors) scheme that keeps the index compact. (More on that also in the trade-offs section below.)
+&gt; 
+&gt; For this demo, we've imported NVIDIA's four FY2026 quarterly investor presentations (Q1 through Q4). They cover the financial year ending in January 2026, contain wall-to-wall charts and tables, and total 92 pages. The whole import took about a minute and a half.
+
+体验这一功能的捷径是使用 [Weaviate Cloud](https://console.weaviate.cloud) 中的拖放导入工具。
+
+1. 在控制台中打开你的集群。
+2. 转到 *Collections* 并创建一个新的集合（Collection）。
+3. 选择从文件上传选项，并将你的 PDF 拖入其中。
+
+&lt;div style="display:flex;gap:1rem;align-items:flex-start;margin:1.5rem 0"&gt;&lt;div style="flex:1.5606 1 0"&gt;&lt;a href="/assets/images/console-create-collection-90227cca6ba85195d4aa8c781acac4d5.png" rel="noopener noreferrer" target="_blank"&gt;&lt;img alt="Weaviate 控制台中的创建新集合页面，高亮显示了上传 CSV、Excel 或 PDF 的选项" src="/assets/images/console-create-collection-90227cca6ba85195d4aa8c781acac4d5.png" style="width:100%;height:auto;display:block"/&gt;&lt;/a&gt;&lt;/div&gt;&lt;div style="flex:1.7175 1 0"&gt;&lt;a href="/assets/images/console-upload-completed-4ff5dab338fa25e52498b3028da13c41.png" rel="noopener noreferrer" target="_blank"&gt;&lt;img alt="上传后的 Weaviate 控制台：单个英伟达 Q4 FY26 PDF 标记为完成，带有下一步按钮" src="/assets/images/console-upload-completed-4ff5dab338fa25e52498b3028da13c41.png" style="width:100%;height:auto;display:block"/&gt;&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+
+整个导入过程就是这样。在幕后，Weaviate 正在做三件事：
+
+1. 将每个 PDF 页面渲染为高分辨率图像。
+2. 将该图像作为 `BLOB` 属性存储在新集合中。
+3. 使用 `multi2multivec-weaviate` 模块对其进行向量化，为每个页面生成多个向量。
+
+有几点值得注意：
+
+* **一个对象等于一个页面。** 检索的单位是页面，这也是人类浏览文档时的单位。
+* **没有 OCR。** 模型从不将文本视为文本。它将页面视为图像。这就是为什么没有标题的图表和段落一样易于搜索的原因。
+* **向量经过了压缩。** 晚期交互模型每个页面可以产生数百个向量，如果直接存储，成本会很高。Weaviate 使用了[多向量编码](https://docs.weaviate.io/weaviate/configuration/compression/multi-vectors)方案，使索引保持紧凑（关于这一点，我们将在下文的“权衡”部分详细介绍）。
+
+在此次演示中，我们导入了英伟达 2026 财年的四个季度投资者演示文稿（第一季度到第四季度）。它们涵盖了截至 2026 年 1 月结束的财年，里面全是图表和表格，共计 92 页。整个导入过程大约只花了分半钟。
+
+---
+
+## 查询英伟达的季度财报
+
+&gt; Before we do anything fancy such as agentic reasoning on the data, we want to show you the raw retrieval results, as they are already impressive on their own.
+&gt; 
+&gt; With ingestion complete, you can query the data directly in the Console (or with any Weaviate client). The query is in plain English, and the result is a ranked list of pages with page images inline.
+&gt; 
+&gt; Let's walk through three queries and show you what results are returned.
+
+在我们对数据进行诸如智能体推理之类的花哨操作之前，我们想向你展示原始的检索结果，因为它们本身就已经足够令人惊叹了。
+
+导入完成后，你可以直接在控制台中（或使用任何 Weaviate 客户端）查询数据。查询使用的是日常英语，结果则是按相关性排名的页面列表，并内联了页面图像。
+
+让我们通过三个查询来看看返回了什么结果。</description>
+    </item>
+    <item>
+      <title>2026-09-02-使用 Polkit 阻止用户运行 `loginctl enable-linger`</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/使用 Polkit 阻止用户运行 `loginctl enable-linger`/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/使用 Polkit 阻止用户运行 `loginctl enable-linger`/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在默认情况下，systemd 允许任何用户为自己运行 `loginctl enable-linger` 命令（即启用常驻后台会话）。然而，在采用网络主目录或延迟挂载主目录（例如 NFS 文件服务器）的环境中，启用常驻会话可能会导致意外的行为以及损坏的 systemd 用户单元。本指南将介绍如何使用 **Polkit** 禁用普通用户自行管理常驻（linger）状态的权限。
+
+通过了解 systemd 的 Polkit 策略，我们可以通过编写自定义的 `.rules` 文件来拦截 `org.freedesktop.login1.set-self-linger` 动作，从而在不影响 root 用户的前提下，彻底阻止普通用户在特定服务器环境中引发因主目录未及时挂载而导致的各类 systemd 运行故障。
+
+---
+
+## 使用 Polkit 阻止用户运行 `loginctl enable-linger`
+
+&gt; ## Using Polkit to Prevent Users from Running `loginctl enable-linger`
+
+## 摘要
+
+默认情况下，systemd 允许任何用户为自己运行 `loginctl enable-linger`。然而，在具有网络或延迟主目录（如 NFS 文件服务器）的环境中，常驻用户可能会导致意外行为和损坏的 systemd 用户单元。本指南介绍了如何使用 **Polkit** 禁用非 root 用户管理其自身常驻状态的能力。
+
+&gt; ## Summary
+&gt; By default, systemd allows any user to run `loginctl enable-linger` for themselves. However, in environments with networked or deferred home directories (such as NFS fileservers), lingering users can lead to unexpected behaviors and broken systemd user units. This guide explains how to use **Polkit** to disable the ability for non-root users to manage their own lingering status.
+
+---
+
+## 理解 Linger 的 Polkit 动作
+
+针对 `loginctl` 等操作的标准 systemd 行为由位于 `/usr/share/polkit-1/actions/` 中的 Polkit 策略控制。具体来说，`org.freedesktop.login1.policy` 文件概述了相关的操作：
+
+* `org.freedesktop.login1.set-self-linger` — 控制为自己启用或禁用常驻。
+* `org.freedesktop.login1.set-user-linger` — 控制为其他用户启用或禁用常驻（通常需要管理员身份验证）。
+
+*注意：即使你在命令行参数中显式传递了自己的用户名，`loginctl` 也会自动解析为 `set-self-linger`。不幸的是，`org.freedesktop.login1` 无法区分启用和禁用自身常驻；这两个操作共享完全相同的权限。*
+
+&gt; ## Understanding Polkit Actions for Linger
+&gt; 
+&gt; Standard systemd behavior for actions like `loginctl` is governed by Polkit policies located in `/usr/share/polkit-1/actions/`. Specifically, the file `org.freedesktop.login1.policy` outlines the relevant actions:
+&gt; 
+&gt; * `org.freedesktop.login1.set-self-linger` — Controls enabling or disabling lingering for yourself.
+&gt; * `org.freedesktop.login1.set-user-linger` — Controls enabling or disabling lingering for other users (which typically requires administrator authentication).
+&gt; 
+&gt; *Note: `loginctl` automatically resolves to `set-self-linger` even if you pass your own username explicitly as a command-line argument. Unfortunately, `org.freedesktop.login1` does not differentiate between enabling and disabling self-linger; both actions share the exact same permissions.*
+
+---
+
+## 通过 Polkit 规则禁用自身常驻（Self-Linger）
+
+要覆盖默认行为并阻止用户启用常驻，您可以创建一个自定义的 Polkit 规则。
+
+在 `/etc/polkit-1/rules.d/` 目录下创建一个 `.rules` 文件，并写入以下配置：
+
+```javascript
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.login1.set-self-linger") {
+        return polkit.Result.NO;
+    }
+});
+```
+
+&gt; ## Disabling Self-Linger via Polkit Rules
+&gt; 
+&gt; To override the default behavior and block users from enabling linger, you can create a custom Polkit rule. 
+&gt; 
+&gt; Create a `.rules` file inside `/etc/polkit-1/rules.d/` with the following configuration:
+&gt; 
+&gt; ```javascript
+&gt; polkit.addRule(function(action, subject) {
+&gt;     if (action.id == "org.freedesktop.login1.set-self-linger") {
+&gt;         return polkit.Result.NO;
+&gt;     }
+});
+&gt; ```</description>
+    </item>
+    <item>
+      <title>or</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/使用 PAM 阻止 SSH 登录（至少在 Linux 上）/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/使用 PAM 阻止 SSH 登录（至少在 Linux 上）/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在 Linux 系统管理中，管理员经常需要根据 OpenSSH 的 `sshd_config` 原生不支持的条件（例如用户的登录 Shell）来限制或阻止 SSH 登录。传统的做法可能会让人联想到使用 PAM 的 `auth`（认证）堆栈，但由于 OpenSSH 的公钥认证会完全绕过 PAM，这种方法在公钥登录时会失效。
+
+本文深入探讨了如何利用 PAM 的 `account`（账户）堆栈来实现精准的访问控制。通过巧妙组合 `pam_succeed_if`、`pam_echo`（或 `pam_exec`）以及 `pam_deny` 等模块，管理员不仅能够根据自定义条件有效拦截未经授权的访问，还能向客户端输出定制化的拒绝原因说明。
+
+---
+
+## The Limitations of the PAM `auth` Stack
+## PAM `auth` 堆栈的局限性
+
+Suppose you need to block logins to a server based on criteria such as the user's login shell, as discussed in [this entry on Systemd User Services and Shells](https://utcc.utoronto.ca/~cks/space/blog/linux/SystemdUserServicesAndShell). Initially, one might assume this can be handled in either the `session` or `authentication` (`auth`) PAM stacks. However, that approach only tells half the story.
+
+&gt; 假设你需要根据用户的登录 Shell 等条件来阻止用户登录服务器，正如[关于 Systemd 用户服务与 Shell 的这篇博文](https://utcc.utoronto.ca/~cks/space/blog/linux/SystemdUserServicesAndShell)所讨论的那样。起初，人们可能会认为这可以在 `session` 或 `authentication` (`auth`) PAM 堆栈中处理。然而，这种方法只说对了问题的一部分。
+
+The primary issue with using the PAM `auth` stack for SSH restrictions is that OpenSSH performs public key authentication *outside* of PAM. If a connection authenticates via public keys, `sshd` never invokes the PAM `auth` stack, rendering any `auth`-based block ineffective (a limitation that also affects [certain authentication combinations](https://utcc.utoronto.ca/~cks/space/blog/sysadmin/OpenSSHAuthConfigLimits)). 
+
+&gt; 使用 PAM `auth` 堆栈进行 SSH 限制的主要问题在于，OpenSSH 在 PAM 的*外部*执行公钥认证。如果连接通过公钥进行认证，`sshd` 绝不会调用 PAM `auth` 堆栈，这导致任何基于 `auth` 的阻止措施都形同虚设（这一局限性同样会影响[某些认证组合](https://utcc.utoronto.ca/~cks/space/blog/sysadmin/OpenSSHAuthConfigLimits)）。
+
+The correct alternative is the **`account`** PAM stack, which is explicitly documented in [`pam.conf(5)`](https://www.man7.org/linux/man-pages/man5/pam.d.5.html) for this exact type of access control.
+
+&gt; 正确的替代方案是 **`account`** PAM 堆栈，[`pam.conf(5)`](https://www.man7.org/linux/man-pages/man5/pam.d.5.html) 中明确记录了该堆栈正是用于此类访问控制。
+
+---
+
+## Providing Feedback with `pam_echo` and `pam_exec`
+## 使用 `pam_echo` 和 `pam_exec` 提供反馈
+
+To notify users why their login was blocked, you need a mechanism that works outside of `pam_motd` (which only functions in the `session` stack). 
+
+&gt; 为了通知用户其登录被阻止的原因，你需要一种在 `pam_motd` 之外起作用的机制（`pam_motd` 仅在 `session` 堆栈中生效）。</description>
+    </item>
+    <item>
+      <title>2026-09-02-介绍 @huggingface-kernels：面向本地 AI 的 200 多个 WebGPU 核函数</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/介绍 @huggingface-kernels：面向本地 AI 的 200 多个 WebGPU 核函数/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/介绍 @huggingface-kernels：面向本地 AI 的 200 多个 WebGPU 核函数/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>Hugging Face 的 WebAI 团队近期发布了 `@huggingface/kernels`，这是一个精简的库，旨在直接从 Hugging Face Hub 加载并运行优化后的 WebGPU 核函数（Kernels）。伴随着首批发布的 207 个带有版本控制的核函数（可在 huggingface.co/webgpu-kernels 查阅），该版本为加速基于浏览器的机器学习推理奠定了坚实的底层基础。此外，团队还推出了 Fleet，这是一个通过众包方式收集真实客户端硬件性能与正确性数据的浏览器端基准测试工具。
+
+这一系列工具通过将低级基元解耦为可发现、有版本控制且可测试的独立存储库，打破了“浏览器中运行 AI 模型”的性能瓶颈。相比传统的 ORT WebGPU，这些核函数在几何平均性能上实现了 2.57 倍的提升，并在特定压力测试中取得了惊人的效率。文章详细介绍了这些核函数的结构、JavaScript 加载方式、基准测试表现以及旨在优化未来变体的 Fleet 众包遥测系统。
+
+---
+
+## 📌 摘要 / Summary
+
+&gt; Hugging Face's WebAI team has released **`@huggingface/kernels`**, a minimal library designed to load and run optimized WebGPU kernels directly from the Hugging Face Hub. Accompanied by an initial collection of **207 versioned kernels** (available at [huggingface.co/webgpu-kernels](https://huggingface.co/webgpu-kernels)), this release establishes a foundational low-level layer to accelerate browser-based machine learning inference. Additionally, the team launched **Fleet**, an in-browser benchmarking tool that crowdsources real-world performance and correctness data across diverse client hardware.
+
+Hugging Face 的 WebAI 团队发布了 **`@huggingface/kernels`**，这是一个精简的库，旨在直接从 Hugging Face Hub 加载并运行优化后的 WebGPU 核函数。伴随着首批发布的 **207 个版本化核函数**（可在 [huggingface.co/webgpu-kernels](https://huggingface.co/webgpu-kernels) 获取），该版本建立了一个基础的底层层，以加速基于浏览器的机器学习推理。此外，该团队还推出了 **Fleet**，这是一个浏览器内基准测试工具，可跨各种客户端硬件众包真实的性能和正确性数据。
+
+---
+
+## 📋 核心要点 / TL;DR
+
+&gt; * **207 WebGPU Kernels:** Published as individual Apache-2.0 licensed repositories under the [`webgpu-kernels`](https://huggingface.co/webgpu-kernels) organization.
+&gt; * **JavaScript Loader (`@huggingface/kernels`):** Seamlessly downloads, prepares, and executes kernels straight from the Hub.
+&gt; * **Explicit Contracts &amp; Reproducible Evidence:** Every kernel includes manifests, correctness test suites, benchmark cases, and parameterized WGSL shader templates.
+&gt; * **Fleet Testing Suite:** A crowdsourced browser benchmarking tool that gathers telemetry from real-world GPUs to optimize future kernel variants.
+
+* **207 个 WebGPU 核函数：** 以采用 Apache-2.0 许可证的独立存储库形式发布在 [`webgpu-kernels`](https://huggingface.co/webgpu-kernels) 组织下。
+* **JavaScript 加载器 (`@huggingface/kernels`)：** 无缝下载、准备并直接从 Hub 执行核函数。
+* **显式契约与可复现证据：** 每个核函数都包含清单、正确性测试套件、基准测试用例以及参数化的 WGSL 着色器模板。
+* **Fleet 测试套件：** 一个众包浏览器基准测试工具，可收集来自真实世界 GPU 的遥测数据，以优化未来的核函数变体。
+
+---
+
+## 为什么从核函数开始？ / Why Start with Kernels?
+
+&gt; Running an AI model inside a browser translates execution into a sequence of GPU operations—including matrix multiplications, normalizations, convolutions, attention mechanisms, and quantization routines. While **WebGPU** delivers a portable API across modern browsers, and **WGSL** supplies a shared shader language, **portability does not automatically guarantee optimal performance.**
+
+在浏览器中运行 AI 模型，本质上是将执行过程转化为一系列的 GPU 操作——包括矩阵乘法、归一化、卷积、注意力机制和量化例程。虽然 **WebGPU** 在现代浏览器中提供了可移植的 API，**WGSL** 也提供了共享的着色器语言，但**可移植性并不自动保证最佳性能。**
+
+&gt; Factors like workgroup sizing, memory access layouts, vectorization strategies, and data types mean that identical shaders can behave drastically differently across hardware ecosystems. By decoupling low-level primitives into discoverable, versioned, and testable repositories, Hugging Face provides higher-level runtimes with a stable, high-performance foundation.
+
+工作组大小、内存访问布局、向量化策略和数据类型等因素意味着，相同的着色器在不同的硬件生态系统中表现可能截然不同。通过将底层基元解耦为可发现、有版本控制且可测试的存储库，Hugging Face 为高层运行时提供了一个稳定、高性能的基础。
+
+---
+
+## 核函数存储库，而不仅仅是一个着色器 / A Kernel Repository, Not Just a Shader
+
+&gt; Every kernel in the collection functions as a standalone software artifact accompanied by a dedicated kernel card. For instance, [`ai.onnx.Add`](https://huggingface.co/webgpu-kernels/ai.onnx.Add) handles elementwise addition with multidirectional broadcasting.
+
+集合中的每个核函数都作为一个独立的软件产物运行，并配有专门的核函数卡片。例如，[`ai.onnx.Add`](https://huggingface.co/webgpu-kernels/ai.onnx.Add) 处理具有多向广播的逐元素相加（elementwise addition）。
+
+&lt;figure class="image text-center"&gt;
+&lt;img alt="Files in the ai.onnx.Add WebGPU kernel repository" class="mx-auto" src="./images/7bfb75581763.png" width="90%"/&gt;
+&lt;figcaption&gt;The &lt;code&gt;ai.onnx.Add&lt;/code&gt; repository packages its manifest, correctness and benchmark cases, and WGSL shader templates together.&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&gt; Each repository contains structured components:
+&gt; * **`manifest.json`**: The absolute source of truth defining inputs, outputs, attributes, type constraints, and shape derivation logic.
+&gt; * **`metadata.json`**: Tracks the kernel identifier, provenance data, and cryptographic digests.
+&gt; * **`test.json`**: Encapsulates expected correctness test cases.
+&gt; * **`bench.json`**: Supplies performance benchmarking and tuning workloads.
+&gt; * **`*.wgsl.jinja`**: Parameterized WGSL shader templates tailored to dynamic execution environments.
+
+每个存储库都包含结构化的组件：
+* **`manifest.json`**：定义输入、输出、属性、类型约束和形状推导逻辑的绝对权威来源（source of truth）。
+* **`metadata.json`**：跟踪核函数标识符、来源数据和密码学摘要。
+* **`test.json`**：封装预期的正确性测试用例。
+* **`bench.json`**：提供性能基准测试和调优工作负载。
+* **`*.wgsl.jinja`**：专为动态执行环境定制的参数化 WGSL 着色器模板。
+
+---
+
+## 从 Hub 加载核函数 / Loading a Kernel from the Hub
+
+&gt; First, install the preview package from npm:
+
+首先，从 npm 安装预览版软件包：
+
+```bash
+npm install @huggingface/kernels@preview
+```
+
+&gt; **Note:** Running these kernels requires a browser supporting [WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API). You can verify availability in JavaScript via `"gpu" in navigator`.
+
+&gt; **注意：** 运行这些核函数需要支持 [WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API) 的浏览器。你可以通过 JavaScript 中的 `"gpu" in navigator` 来验证其可用性。</description>
+    </item>
+    <item>
+      <title>Not to Break, but to Attest: Adversarial Probes for Privacy-Preserving LLM Verification</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/不为破坏，而为证明：用于保护隐私的大模型验证之对抗性探针/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/不为破坏，而为证明：用于保护隐私的大模型验证之对抗性探针/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>当拥有专有权重的大型语言模型（LLM）在部署后发生变动时，其内部行为可能会发生微妙的变化，而日常输出却保持不变，这给AI治理带来了巨大的挑战。本文介绍了一种基于隐私保护和zk-SNARK的审计框架，该框架利用对抗性探针来放大已批准模型与修改后部署模型之间的Logit漂移。
+
+通过在基于Token、基于嵌入（Embedding）以及压力测试探针之间进行权衡，平衡了敏感度、访问需求和部署成本，作者展示了一种高效、可扩展且实用的验证工作流。实验证明，该方法在各种模型架构和GPU平台上均表现优异，为确保大模型在部署后的合规性和安全性提供了可靠的技术手段。
+
+---
+
+# Not to Break, but to Attest: Adversarial Probes for Privacy-Preserving LLM Verification
+
+&gt; # Not to Break, but to Attest: Adversarial Probes for Privacy-Preserving LLM Verification
+
+## Summary
+
+&gt; ## Summary
+&gt; When large language models (LLMs) with proprietary weights undergo post-deployment changes, their behavior can subtly shift while routine outputs remain unchanged, posing a significant AI governance challenge. This paper introduces a privacy-preserving, zk-SNARK-based auditing framework that leverages adversarial probes to amplify logit drift between an approved model and a modified deployment. By balancing sensitivity, access requirements, and deployment costs through token-based, embedding-based, and stress probes, the authors demonstrate an efficient, scalable, and practical verification workflow.
+
+---
+
+## Metadata &amp; Publication Details
+
+&gt; ## Metadata &amp; Publication Details
+&gt; 
+&gt; | Field | Details |
+&gt; | :--- | :--- |
+| **arXiv ID** | [`arXiv:2608.27954`](https://arxiv.org/abs/2608.27954) [cs.CR] |
+| **Subjects** | Cryptography and Security (`cs.CR`); Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`) |
+| **Authors** | Cameron Wilding, Mina Shaker, Fatemeh Ganji |
+| **Submitted** | August 28, 2026 (Last revised: August 31, 2026) |
+| **DOI** | [10.48550/arXiv.2608.27954](https://doi.org/10.48550/arXiv.2608.27954) |
+| **License** | [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;a class="has_license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/" title="Rights to this article"&gt;&lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png" style="display:inline; vertical-align:middle; max-height:20px;"&gt;&lt;span&gt;view license&lt;/span&gt;&lt;/a&gt; |
+
+---
+
+## Abstract
+
+大模型在部署后的变更可能会改变其行为，同时让常规输出基本保持不变，这在模型权重属于专有时给AI治理带来了挑战。我们提出了一种基于隐私保护的zk-SNARK审计框架，该框架旨在寻找受对抗样本启发设计的探针，以放大已批准模型与修改后的部署模型之间的Logit漂移。
+
+&gt; Post-deployment changes to large language models can alter behavior while leaving routine outputs largely unchanged, creating a challenge for AI governance when model weights are proprietary. We present a privacy-preserving zk-SNARK-based audit framework that searches for probes designed in the spirit of adversarial examples to amplify logit drift between an approved model and a modified deployment. 
+
+我们的框架在不同的访问模型下探索了互补的探针族：
+* **基于Token的探针：** 在黑盒环境中运行，仅需要输入接口、分词器（Tokenizer）和词表。
+* **基于嵌入的探针：** 需要对嵌入接口进行灰盒访问。
+* **压力测试探针：** 依赖额外的接口功能，但不需要对模型权重或架构进行完整的白盒访问。
+
+&gt; Our framework explores complementary probe families under different access models:
+&gt; * **Token-based probes:** Operate in a black-box setting and require only the input interface, tokenizer, and vocabulary.
+&gt; * **Embedding-based probes:** Require gray-box access to the embedding interface.
+&gt; * **Stress probes:** Rely on additional interface capabilities but do not require full white-box access to model weights or architecture.
+
+这种多样性使得探针的选择能够在敏感度、访问需求和部署成本之间取得平衡。我们在各种LLM架构、代表部署后攻击的模型篡改场景以及GPU平台上对探针构建进行了评估。
+
+&gt; This range allows probe selection to balance sensitivity, access requirements, and deployment cost. We evaluate probe constructions across LLM architectures, model-tampering scenarios representative of post-deployment attacks, and GPU platforms. 
+
+重要的是，我们的实验结果表明，尽管在黑盒环境中运行，基于Token的探针在各个模型和GPU平台上始终表现出最强的平均敏感度。随着探针集从1个扩展到50个，我们的Groth16 zk-SNARK工作流依然切实可行：证明时间从1.02秒增加到1.78秒，验证时间保持在0.84秒左右，且证明大小保持不变。
+
+&gt; Importantly, our experimental results demonstrate that token-based probes consistently deliver the strongest mean sensitivity across models and GPU platforms, although operating in a black-box setting. Our Groth16 zk-SNARK workflow remains practical as the probe set scales from 1 to 50, where proving time increases from 1.02 to 1.78 seconds, verification remains near 0.84 seconds, and proof size remains constant.
+
+---
+
+## Access and Resources
+
+&gt; ## Access and Resources
+&gt; 
+&gt; * **Full-Text Options:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2608.27954)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2608.27954v2)
+&gt;   * [TeX Source](https://arxiv.org/src/2608.27954)
+&gt; * **External Citations &amp; Tools:**
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27954)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27954)
+&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27954)</description>
+    </item>
+    <item>
+      <title>RTPO: Reverse-Turn Policy Optimization for Stabilizing Agentic RL Training</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/RTPO：用于稳定智能体强化学习训练的反向轮次策略优化/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/RTPO：用于稳定智能体强化学习训练的反向轮次策略优化/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>使用强化学习（RL）训练多轮智能体工作流，能够使大语言模型（LLMs）执行复杂推理、调用外部工具并进行迭代搜索。然而，这一过程 notoriously 不稳定，随着交互轮数的增加，性能往往会出现严重退化。本文指出了源自扁平化轨迹优化的三个紧密耦合的不稳定性来源： rollout-training上下文不匹配、稀疏终止奖励下的弱轮次信用分配，以及由不同策略版本优化长短轨迹所引起的异步策略漂移。
+
+为了解决这些挑战，作者提出了**反向轮次策略优化（RTPO）**。RTPO 将多轮 rollout 组织为稀疏反向树，并按时间逆序执行轮次级策略更新。该方法确保了因果一致的信用分配，消除了上下文不匹配和异步漂移，减少了信用偏差，并收敛至递归最优性。实验表明，RTPO 在多轮智能体 RL 基准测试中显著优于标准的轨迹级和轮次级基线方法。
+
+---
+
+# RTPO: Reverse-Turn Policy Optimization for Stabilizing Agentic RL Training
+
+&gt; # RTPO: Reverse-Turn Policy Optimization for Stabilizing Agentic RL Training
+
+## Summary
+
+&gt; ## Summary
+
+Training multi-turn agentic workflows using reinforcement learning (RL) allows large language models (LLMs) to perform complex reasoning, utilize external tools, and engage in iterative searches. However, this process remains notoriously unstable, often causing performance to severely degrade as the number of turns increases. 
+
+&gt; Training multi-turn agentic workflows using reinforcement learning (RL) allows large language models (LLMs) to perform complex reasoning, utilize external tools, and engage in iterative searches. However, this process remains notoriously unstable, often causing performance to severely degrade as the number of turns increases. 
+
+This paper identifies three tightly coupled sources of instability originating from flattened trajectory optimization:
+1. **Rollout-training context mismatch**
+2. **Weak turn-level credit assignment** under sparse terminal rewards
+3. **Asynchronous policy drift** caused by optimizing short and long trajectories under different policy versions
+
+&gt; This paper identifies three tightly coupled sources of instability originating from flattened trajectory optimization:
+&gt; 1. **Rollout-training context mismatch**
+&gt; 2. **Weak turn-level credit assignment** under sparse terminal rewards
+&gt; 3. **Asynchronous policy drift** caused by optimizing short and long trajectories under different policy versions
+
+To resolve these challenges, the authors propose **Reverse-Turn Policy Optimization (RTPO)**. RTPO organizes multi-turn rollouts into sparse reverse trees and executes turn-level policy updates in reverse temporal order. This ensures causally consistent credit assignment, eliminates context mismatch and asynchronous drift, reduces credit bias, and converges to recursive optimality. Experiments demonstrate that RTPO outperforms standard trajectory- and turn-level baselines by significant margins.
+
+&gt; To resolve these challenges, the authors propose **Reverse-Turn Policy Optimization (RTPO)**. RTPO organizes multi-turn rollouts into sparse reverse trees and executes turn-level policy updates in reverse temporal order. This ensures causally consistent credit assignment, eliminates context mismatch and asynchronous drift, reduces credit bias, and converges to recursive optimality. Experiments demonstrate that RTPO outperforms standard trajectory- and turn-level baselines by significant margins.
+
+---
+
+&gt; ---
+
+## Paper Metadata
+
+&gt; ## Paper Metadata
+
+* **arXiv Identifier:** `arXiv:2608.18682` [cs.AI]
+* **Subject:** Artificial Intelligence (`cs.AI`)
+* **Authors:** Yugu Li, Zehong Cao, Jianglin Qiao, Siyi Hu
+* **Submitted On:** August 19, 2026
+* **Last Revised:** August 31, 2026 (Version v3)
+* **DOI:** [10.48550/arXiv.2608.18682](https://doi.org/10.48550/arXiv.2608.18682)
+
+&gt; * **arXiv Identifier:** `arXiv:2608.18682` [cs.AI]
+&gt; * **Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Authors:** Yugu Li, Zehong Cao, Jianglin Qiao, Siyi Hu
+&gt; * **Submitted On:** August 19, 2026
+&gt; * **Last Revised:** August 31, 2026 (Version v3)
+&gt; * **DOI:** [10.48550/arXiv.2608.18682](https://doi.org/10.48550/arXiv.2608.18682)
+
+---
+
+&gt; ---
+
+## Abstract
+
+&gt; ## Abstract
+
+&gt; Training multi-turn agentic workflows with reinforcement learning (RL) enables large language models to perform complex reasoning, use external tools, and conduct iterative search beyond single-turn settings. Yet multi-turn RL training remains highly unstable, often causing severe performance degradation as the number of turns increases. Through theoretical analysis, we identify three tightly coupled sources of instability: rollout-training context mismatch, weak turn-level credit assignment under sparse terminal rewards, and asynchronous policy drift when short and long trajectories are optimized under different policy versions. We show that these issues share a common structural origin in flattened trajectory optimization and address them through a unified reverse-turn formulation. We propose Reverse-Turn Policy Optimization (RTPO), which organizes multi-turn rollouts as sparse reverse trees and performs turn-level policy updates in temporal reverse order, aligning each decision with its downstream continuation. RTPO enables causally consistent turn-level credit assignment and on-policy continuation to control asynchronous drift. We provide theoretical guarantees showing that RTPO eliminates context mismatch and asynchronous drift under the proposed turn-level formulation, reduces credit bias, and converges to recursive optimality. Experiments on multi-turn agentic RL benchmarks show that RTPO improves upon trajectory- and turn-level baselines by 21.50% and 10.76%, respectively, highlighting its potential to support more stable training for tool-using agents.
+&gt; 
+&gt; &gt; Training multi-turn agentic workflows with reinforcement learning (RL) enables large language models to perform complex reasoning, use external tools, and conduct iterative search beyond single-turn settings. Yet multi-turn RL training remains highly unstable, often causing severe performance degradation as the number of turns increases. Through theoretical analysis, we identify three tightly coupled sources of instability: rollout-training context mismatch, weak turn-level credit assignment under sparse terminal rewards, and asynchronous policy drift when short and long trajectories are optimized under different policy versions. We show that these issues share a common structural origin in flattened trajectory optimization and address them through a unified reverse-turn formulation. We propose Reverse-Turn Policy Optimization (RTPO), which organizes multi-turn rollouts as sparse reverse trees and performs turn-level policy updates in temporal reverse order, aligning each decision with its downstream continuation. RTPO enables causally consistent turn-level credit assignment and on-policy continuation to control asynchronous drift. We provide theoretical guarantees showing that RTPO eliminates context mismatch and asynchronous drift under the proposed turn-level formulation, reduces credit bias, and converges to recursive optimality. Experiments on multi-turn agentic RL benchmarks show that RTPO improves upon trajectory- and turn-level baselines by 21.50% and 10.76%, respectively, highlighting its potential to support more stable training for tool-using agents.
+
+---
+
+&gt; ---
+
+## Full-Text &amp; Reference Links
+
+&gt; ## Full-Text &amp; Reference Links
+
+* **View PDF:** [Access Paper PDF](https://arxiv.org/pdf/2608.18682)
+* **HTML Version:** [Experimental HTML](https://arxiv.org/html/2608.18682v3)
+* **TeX Source:** [Download Source](https://arxiv.org/src/2608.18682)
+* **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+* **External Citations:** 
+  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18682)
+  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18682)
+  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18682)
+
+&gt; * **View PDF:** [Access Paper PDF](https://arxiv.org/pdf/2608.18682)
+&gt; * **HTML Version:** [Experimental HTML](https://arxiv.org/html/2608.18682v3)
+&gt; * **TeX Source:** [Download Source](https://arxiv.org/src/2608.18682)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+&gt; * **External Citations:** 
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.18682)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.18682)
+&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.18682)</description>
+    </item>
+    <item>
+      <title>2026-09-02-LongGuard：安全护栏长上下文失效的机理分析与免训练缓解策略</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/LongGuard：安全护栏长上下文失效的机理分析与免训练缓解策略/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/LongGuard：安全护栏长上下文失效的机理分析与免训练缓解策略/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型（LLM）向处理海量文本的方向发展，安全护栏作为防范模型输出有害内容的最后一道防线，其在长上下文场景下的表现却暴露出严重的安全隐患。当前的护栏模型绝大多数基于短文本进行训练和评估，在面对长文本时常常失效。
+
+本文介绍的 **LongGuard** 框架旨在系统性地评估、深入剖析并缓解安全护栏在长上下文场景中的失效问题。研究团队提出了“大海捞针式安全评估”（SafetyNIAH）范式，发现主流护栏在上下文变长时会遭遇严重的性能衰退，并揭示了导致这一现象的“注意力-Logit-行为链”机制。在此基础上，该研究无需对模型进行昂贵的重新训练，便成功开发了多项创新的免训练缓解技术与动态路由策略，显著提升了长文本场景下的安全召回率。
+
+---
+
+## 📌 Executive Summary / 执行摘要
+
+Safety guardrails act as the final defense line for Large Language Models (LLMs), yet they are predominantly trained and evaluated on short texts. **LongGuard** is a novel framework designed to evaluate, mechanistically analyze, and mitigate safety guardrail failures in long-context scenarios. 
+
+&gt; 安全护栏是大语言模型（LLM）的最后一道防线，然而它们绝大多数是在短文本上进行训练和评估的。**LongGuard** 是一个创新框架，旨在评估、深入剖析并缓解安全护栏在长上下文场景中的失效问题。
+
+Using a *Safety Needle-in-a-Haystack* (SafetyNIAH) evaluation paradigm, the authors demonstrate that mainstream guardrails suffer severe vulnerabilities as context lengths increasing. Through rigorous mechanistic and attention-logit-behavior analyses, the paper pinpoints the exact failure mechanisms and introduces effective, **training-free mitigations** that significantly improve safety recall without modifying model weights.
+
+&gt; 通过采用“大海捞针式安全评估”（SafetyNIAH）范式，作者证明了随着上下文长度的增加，主流护栏会暴露出严重的漏洞。通过严格的机理和注意力-Logit-行为分析，该论文精准定位了具体的失效机制，并引入了有效的**免训练缓解策略**，在不修改模型权重的情况下显著提升了安全召回率。
+
+---
+
+## 🔍 Key Findings &amp; Mechanistic Analysis / 核心发现与机理分析
+
+* **Monotonic Failure Under Long Contexts:** Evaluated across a 0.25k–32k length grid over 15 mainstream guardrails, unsafe recall drops monotonically by **over 50% on average**.
+&gt; * **长上下文下的单调失效：** 在覆盖 0.25k 至 32k 长度网格的 15 个主流护栏评估中，不安全内容的召回率**平均单调下降超过 50%**。
+
+* **Proportional Dilution vs. Absolute Length:** A paired *Benign-Fill vs. Needle-Repeat* design attributes this performance drop to the *proportional dilution* of the unsafe needle within the context window, rather than absolute sequence length limitations.
+&gt; * **比例稀释与绝对长度：** 通过配对的“良性填充”与“针重复”实验设计，研究发现性能下降的原因在于不安全“针”在上下文窗口中的**比例稀释**，而非绝对序列长度的限制。
+
+* **The Attention-Logit-Behavior Chain:** A three-layer analysis across six guardrails reveals a consistent failure cascade:
+  1. Attention mass on the unsafe needle becomes diluted.
+  2. The unsafe-over-safe logit margin compresses in lockstep.
+  3. The final detection decision collapses.
+  This causal chain remains robust even when controlling for length.
+&gt; * **注意力-Logit-行为链：** 对 6 个护栏进行的跨三层分析揭示了一个一致的失效级联过程：
+&gt;   1. 指向不安全“针”的注意力权重被稀释。
+&gt;   2. 不安全与安全之间的 logit 裕度同步压缩。
+&gt;   3. 最终的检测决策崩溃。
+&gt;   即使在控制了长度变量的情况下，这种因果链依然稳健。
+
+* **Specialized Retrieval Heads:** The study isolates a sparse subset of guard-specialized retrieval heads that demonstrate partial specificity relative to their base LLMs.
+&gt; * **专门的检索头：** 研究分离出了一小部分具备护栏专用特性的检索头，它们相对于基础大语言模型表现出了局部的特异性。
+
+---
+
+## 🛠️ Proposed Solutions &amp; Mitigations / 提出的解决方案与缓解策略
+
+To combat long-context vulnerability without expensive retraining, LongGuard introduces two training-free mitigation techniques paired with a dynamic routing protocol:
+&gt; 为了在不进行昂贵重新训练的前提下应对长上下文漏洞，LongGuard 引入了两种免训练缓解技术，并搭配了动态路由协议：
+
+1. **Chunked Detection (CD):** Breaks down long contexts into manageable segments to preserve attention focus on potential safety hazards.
+&gt; 1. **分块检测（Chunked Detection, CD）：** 将长上下文拆解为可管理的片段，以保持模型对潜在安全隐患的注意力焦点。
+
+2. **Attention-Head Sharpening (AHS):** Enhances the weight of guard-specialized retrieval heads to better surface diluted safety needles.
+&gt; 2. **注意力头锐化（Attention-Head Sharpening, AHS）：** 增强护栏专用检索头的权重，以便更好地浮现被稀释的安全“针”。
+
+3. **Context-Aware Hyperparameter Routing (CAHR):** A dynamic deployment protocol that selects optimal detection configurations based on context length and audit side.
+&gt; 3. **上下文感知超参数路由（Context-Aware Hyperparameter Routing, CAHR）：** 一种动态部署协议，根据上下文长度和审计端点选择最优的检测配置。</description>
+    </item>
+    <item>
+      <title>2026-09-02-Logos：基于跨进程总线的智能体运行框架</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/Logos：基于跨进程总线的智能体运行框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/Logos：基于跨进程总线的智能体运行框架/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>现代大语言模型智能体系统通常将动态的运行时功能组装到共享单一上下文的单个进程中。然而，这种单进程模型创造了一个统一的故障域，其中单点故障会导致所有共驻会话同时崩溃。为了解决这一架构痛点，本文推出了 **Logos**，一个类似于 ROS（机器人操作系统）的跨进程智能体运行框架（Harness）。
+
+通过利用语言模型推理的无状态特性，并将合理性不变式（soundness invariants）仅定义在状态空间上，Logos 将智能体插件解耦为通过单个只追加（append-only）记录总线连接的独立进程。该架构确保了工具调用周期中任何一点的故障都能被隔离在单个节点内，从而允许八十个并发会话无缝恢复且不会产生重复的副作用。这项研究在提升智能体系统的鲁棒性与容错能力方面迈出了重要一步。
+
+---
+
+## Logos: An Agent Harness on a Cross-Process Bus
+
+&gt; Logos: An Agent Harness on a Cross-Process Bus
+
+## Summary
+
+&gt; Modern agent systems often assemble dynamic runtime capabilities into a single process sharing one context. However, this single-process model creates a unified failure domain where a single fault crashes every co-resident session simultaneously. 
+&gt; 
+&gt; This paper introduces **Logos**, a ROS-like cross-process agent harness. By leveraging the statelessness of language model inference and defining sound invariants solely on the state space, Logos decouples agent plugins into independent processes connected by a single append-only transcript bus. This architecture ensures that a fault at any point in the tool-call cycle isolates the failure to a single node, allowing eighty concurrent sessions to seamlessly resume without duplicate effects.
+
+---
+
+## Document Metadata
+
+&gt; | Field | Details |
+&gt; | :--- | :--- |
+&gt; | **Title** | Logos: An Agent Harness on a Cross-Process Bus |
+&gt; | **Authors** | Hanzhang Jia, Liheng Zeng, Hao Cheng, Yi Gao, Bo Ma |
+&gt; | **Subjects** | Artificial Intelligence (`cs.AI`); Multiagent Systems (`cs.MA`) |
+&gt; | **arXiv Identifier** | [arXiv:2608.28553 [cs.AI]](https://arxiv.org/abs/2608.28553) |
+&gt; | **DOI** | [10.48550/arXiv.2608.28553](https://doi.org/10.48550/arXiv.2608.28553) |
+&gt; | **Submission History** | • v1: Aug 28, 2026&lt;br&gt;• v2: Aug 31, 2026 (Current) |
+
+---
+
+## Abstract
+
+&gt; Modern agent systems assemble capabilities at runtime, and this dynamic composition has recently received a complete formal treatment in the spatiotemporal-composability calculus, in which a capability is a component carrying a tracked inverse, and agents are assembled as plugins. This plugin form is carried by a single process sharing one context, a carrier that places all components in one physical failure domain, a fault suspends every component at once, and process death interrupts every session the process hosts. 
+
+&gt; This paper shows that neither the modeling nor the calculus binds an agent to one process, the statelessness of the language model keeps all cross-step state outside the model, and the soundness invariant is defined on the state space alone. These observations condense into four lemmas whose premises are the hypotheses of the calculus and the statelessness of language-model inference. 
+
+&gt; On these lemmas this paper constructs **Logos**, a ROS-like cross-process agent harness in which a plugin is a process and the only shared state is an append-only transcript. Eighty sessions resume with no repeated effect after kills placed at the four boundaries of the tool-call cycle, and a same-fault comparison with a single process reference configuration shows one fault interrupting every co-resident session while under the peer-process construction one fault ends at one node.
+
+---
+
+## Links &amp; Resources
+
+&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2608.28553) | [HTML (Experimental)](https://arxiv.org/html/2608.28553v2) | [TeX Source](https://arxiv.org/src/2608.28553)
+&gt; * **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.28553) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.28553) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.28553)</description>
+    </item>
+    <item>
+      <title>2026-09-02-Git 子模块作为包管理器</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/Git 子模块作为包管理器/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/Git 子模块作为包管理器/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>本文从包管理器的视角审视了 Git 子模块（Submodules）。虽然子模块在功能上与包管理器相似——利用 Git 链接（Gitlinks）作为锁文件（lockfiles），`.gitmodules` 作为清单文件（manifests）——但其实际用户体验却充斥着各种阻碍、工具冲突（例如与 `git worktree` 的冲突）、复杂的本地存储布局以及历史安全漏洞。
+
+文章详细剖析了子模块在版本解析（Resolution）、安装（Installation）、存储（Storage）、更新（Updating）以及安全性（Security）方面的工作机制，并将它们与现代包管理器完善的抽象设计进行了鲜明的对比。
+
+---
+
+## 1. 解析 (Resolution)
+
+&gt; The gitlink records only which commit to check out, so `.gitmodules` carries a `url` per submodule and `update` clones from there, which is the only resolution mechanism. If the upstream repository is renamed, transferred to a different host, or taken private, every downstream pin breaks, even though the SHA is unchanged and the objects still exist in every clone that already has them. The manifest hard-codes a host because git has no lookup from a commit ID to servers that hold it.
+
+gitlink 仅记录要检出哪一个提交（commit），因此 `.gitmodules` 为每个子模块携带一个 `url`，且 `update` 操作会从该地址进行克隆，这是唯一的解析机制。如果上游仓库被重命名、转移到其他主机或变为私有仓库，所有下游的固定引用（pin）都会失效，即便 SHA 值未发生改变，且对象依然存在于每个已经拥有它的克隆中。该清单文件硬编码了主机地址，因为 git 无法通过提交 ID 反向查找持有它的服务器。
+
+&gt; Git also copies each URL into the superproject’s `.git/config` the first time `git submodule init` runs, under `submodule.&lt;name&gt;.url`, and later commands read it from there, ignoring `.gitmodules`. Editing the committed `.gitmodules` to point at a mirror or a fork leaves an already-initialised clone unchanged until [`git submodule sync`](https://git-scm.com/docs/git-submodule) copies the new value across.
+
+当首次运行 `git submodule init` 时，Git 还会将每个 URL 复制到超级项目（superproject）的 `.git/config` 中（位于 `submodule.&lt;name&gt;.url` 下），后续的命令将直接从该处读取，而忽略 `.gitmodules`。修改已提交的 `.gitmodules` 以指向镜像或分叉（fork）仓库，将不会对已初始化的克隆产生任何影响，直到运行 [`git submodule sync`](https://git-scm.com/docs/git-submodule) 将新值同步过去。
+
+&gt; The usual workaround in CI is git’s global [`url.&lt;base&gt;.insteadOf`](https://git-scm.com/docs/git-config) config, which rewrites any URL with a matching prefix before fetching, submodule URLs included. The common cases are rewriting `https://github.com/` to `git@github.com:` so an SSH deploy key applies, or redirecting an internal hostname to a mirror.
+
+在 CI 环境中，通常的变通方法是使用 Git 的全局 [`url.&lt;base&gt;.insteadOf`](https://git-scm.com/docs/git-config) 配置。它会在抓取（fetch）之前重写任何具有匹配前缀的 URL，包括子模块的 URL。常见场景包括将 `https://github.com/` 重写为 `git@github.com:` 以应用 SSH 部署密钥，或者将内部主机名重定向到镜像。
+
+---
+
+## 2. 安装 (Installation)
+
+&gt; A plain `git clone` writes the gitlink into the index so the submodule directory exists, and leaves it empty until `git submodule update --init` runs or the clone was made with `--recurse-submodules`. The [`submodule.recurse`](https://git-scm.com/docs/git-config) config setting makes `checkout`, `fetch`, `pull`, `grep` and several other commands recurse automatically, and it defaults to off.
+
+普通的 `git clone` 会将 gitlink 写入索引中，使子模块目录得以存在，但在运行 `git submodule update --init` 或在克隆时带上 `--recurse-submodules` 参数之前，该目录一直为空。配置项 [`submodule.recurse`](https://git-scm.com/docs/git-config) 可以让 `checkout`、`fetch`、`pull`、`grep` 以及其他几个命令自动递归执行，该配置默认处于关闭状态。
+
+&gt; By default `update` checks out the gitlink commit, detached, and two independent flags modify that:
+&gt; 
+&gt; * `--init`: copy any missing `.gitmodules` entries into `.git/config` first, required on first run and a no-op after
+&gt; * `--remote`: check out the tip of the submodule’s configured remote-tracking branch instead of the gitlink commit (the remote’s `HEAD` if `submodule.&lt;name&gt;.branch` is unset)
+
+默认情况下，`update` 会以分离头指针（detached）状态检出 gitlink 对应的提交，有两个独立的标志可以修改这一行为：
+
+* `--init`：首先将任何缺失的 `.gitmodules` 条目复制到 `.git/config` 中，这在首次运行时是必需的，之后则为空操作。
+* `--remote`：检出子模块配置的远程跟踪分支的头部（tip），而不是 gitlink 的提交（如果未设置 `submodule.&lt;name&gt;.branch`，则为远程的 `HEAD`）。
+
+&gt; The [command reference](https://git-scm.com/docs/git-submodule) documents both, though the name `update` conflates “install what’s pinned” with “update to latest”. Switching branches in the superproject changes the gitlink in the index and leaves the submodule’s working tree wherever it already was, so `git status` immediately shows the submodule as modified. Passing `--recurse-submodules` to `checkout`, or setting `submodule.recurse`, brings the submodule working tree along with the branch switch. The Rust project’s [account of moving compiler subprojects off submodules](https://blog.rust-lang.org/inside-rust/2026/06/04/how-josh-helps-rust-manage-code-across-multiple-repositories/) lists this cluster from experience: checkouts left empty or on the wrong commit after clone, unrelated submodule bumps landing in pull requests because a branch switch left the submodule dirty, and custom logic in the `bootstrap` build tool to check each submodule out to the right commit before building.
+
+[命令参考文档](https://git-scm.com/docs/git-submodule)对这两者都有记载，尽管 `update` 这个名字将“安装已固定的版本”与“更新到最新版本”的概念混淆了。在超级项目中切换分支会改变索引中的 gitlink，但子模块的工作树会停留在它原本所在的位置，因此 `git status` 会立即显示子模块已被修改。将 `--recurse-submodules` 传递给 `checkout`，或者设置 `submodule.recurse`，可以在切换分支时连同子模块的工作树一起切换。Rust 项目在[关于将编译器子项目移出子模块的复盘文章](https://blog.rust-lang.org/inside-rust/2026/06/04/how-josh-helps-rust-manage-code-across-multiple-repositories/)中列举了这些由经验教训汇聚成的问题：克隆后检出为空或处于错误提交、由于分支切换导致子模块处于脏状态（dirty）而使不相关的子模块升级混入拉取请求（PR），以及在 `bootstrap` 构建工具中编写自定义逻辑以便在构建前将每个子模块检出到正确提交的繁琐操作。
+
+---
+
+## 3. 存储 (Storage)
+
+&gt; A submodule’s git directory is stored under the superproject’s `$GIT_DIR/modules/&lt;name&gt;/`, with a `.git` file in the submodule’s working tree containing a `gitdir:` pointer back to it and a `core.worktree` setting pointing the other way. [`git submodule absorbgitdirs`](https://git-scm.com/docs/git-submodule) migrates older clones that still have a nested `.git/` directory. Each entry under `modules/` is a git directory with its own refs, HEAD, index, config, hooks, and by default its own object store. Removing a submodule is correspondingly spread across three places: `git rm &lt;path&gt;` drops the gitlink and the `.gitmodules` entry, `git submodule deinit &lt;path&gt;` clears the working tree and the `.git/config` entry, and the absorbed `$GIT_DIR/modules/&lt;name&gt;` directory that both leave behind is [documented](https://git-scm.com/docs/gitsubmodules#_forms) as a manual `rm -rf`.
+
+子模块的 git 目录存储在超级项目的 `$GIT_DIR/modules/&lt;name&gt;/` 下，子模块工作树中包含一个 `.git` 文件，其中含有指向该目录的 `gitdir:` 指针，反方向则由 `core.worktree` 设置指向工作树。[`git submodule absorbgitdirs`](https://git-scm.com/docs/git-submodule) 用于将那些仍然带有嵌套 `.git/` 目录的旧克隆迁移过来。`modules/` 下的每个条目都是一个独立的 git 目录，拥有自己的 refs、HEAD、索引、配置、钩子（hooks），并且默认拥有自己的对象存储。相应地，移除子模块的操作分散在三个地方：`git rm &lt;path&gt;` 会丢弃 gitlink 和 `.gitmodules` 条目，`git submodule deinit &lt;path&gt;` 会清除工作树和 `.git/config` 条目，而两者遗留下来已被吸收的 `$GIT_DIR/modules/&lt;name&gt;` 目录则需要按照[官方文档](https://git-scm.com/docs/gitsubmodules#_forms)手动执行 `rm -rf` 来删除。
+
+&gt; Worktrees and submodules collide over this layout because a linked worktree shares the superproject’s `$GIT_DIR` but has its own working tree, HEAD, and index under `$GIT_DIR/worktrees/&lt;id&gt;/`. Put two worktrees on different superproject branches and they reference the same submodule at two different commits. Each needs its own submodule checkout and index, tied to storage that’s partly per-worktree and partly shared. `worktree remove` requires the override rather than checking whether that state is disposable, and `worktree move` refuses because the pointer-file rewrite it would need is unimplemented.
+
+工作树（worktrees）与子模块在这个存储布局上产生了冲突，因为链接的工作树共享超级项目的 `$GIT_DIR`，但在 `$GIT_DIR/worktrees/&lt;id&gt;/` 下拥有其自己的工作树、HEAD 和索引。当把两个工作树放在超级项目的不同分支上时，它们会在两个不同的提交上引用同一个子模块。每个工作树都需要自己的子模块检出和索引，并绑定到一部分属于每个工作树专属、一部分共享的存储上。`worktree remove` 需要强制覆盖（override）参数，而不是去检查该状态是否是一次性的；而 `worktree move` 则会直接拒绝执行，因为其所需的指针文件重写功能尚未实现。
+
+&gt; Xavier Morel [asked on the git list this March](https://www.spinics.net/lists/git/msg520955.html) whether a submodule checkout could itself be a worktree of an existing shared clone, having found bare repositories plus worktrees worked well for a set of related projects but that adding submodules on top always cloned fresh. An [RFC](https://www.spinics.net/lists/git/msg523846.html) and a [three-patch series](https://www.spinics.net/lists/git/msg523988.html) proposing `--recurse-submodules` for `git worktree add` followed in April, giving each linked worktree its own submodule git directory under `$GIT_COMMON_DIR/worktrees/&lt;id&gt;/modules/` and sharing the object storage between them by hardlink.
+
+Xavier Morel 在今年三月的 [git 邮件列表上询问](https://www.spinics.net/lists/git/msg520955.html)，子模块的检出本身是否可以是一组现有共享克隆的工作树——他发现裸仓库（bare repositories）加上工作树非常适合一组相关项目，但在其上添加子模块时总是会进行全新克隆。随后在四月份，出现了一份 [RFC](https://www.spinics.net/lists/git/msg523846.html) 以及一个[包含三个补丁的系列](https://www.spinics.net/lists/git/msg523988.html)，提议为 `git worktree add` 引入 `--recurse-submodules`，这使得每个链接的工作树都在 `$GIT_COMMON_DIR/worktrees/&lt;id&gt;/modules/` 下拥有自己的子模块 git 目录，并通过硬链接（hardlink）在它们之间共享对象存储。
+
+&gt; The same multiplication happens in a single-worktree clone when two submodules both depend on a third repository. Each path in the superproject gets its own `modules/` entry, its own object store unless alternates are configured by hand, and its own gitlink. The two pins can point at different commits of the same repository, and git treats them as unrelated checkouts. Package managers with a shared cache (cargo’s [registry cache](https://doc.rust-lang.org/cargo/guide/cargo-home.html), pnpm’s [content-addressable store](https://pnpm.io/motivation), the [Go module cache](https://go.dev/ref/mod#module-cache)) store the bytes once and check them out per location.
+
+在单工作树的克隆中，当两个子模块都依赖于第三个仓库时，也会发生同样的资源膨胀。超级项目中的每个路径都会获得自己的 `modules/` 条目、自己的对象存储（除非手动配置了 alternates）以及自己的 gitlink。这两个固定引用可以指向同一个仓库的不同提交，而 git 会将它们视为毫无关系的检出。拥有共享缓存的包管理器（例如 Cargo 的[注册表缓存](https://doc.rust-lang.org/cargo/guide/cargo-home.html)、pnpm 的[内容寻址存储](https://pnpm.io/motivation)、[Go 模块缓存](https://go.dev/ref/mod#module-cache)）只会存储一次字节数据，并按需在各个位置进行检出。
+
+---
+
+## 4. 更新 (Updating)
+
+&gt; The gitlink holds one commit SHA, so moving a submodule forward means entering it, fetching, checking out the new commit, leaving, and `git add &lt;path&gt;` in the superproject to record the new gitlink. `git submodule update --remote` fetches the configured branch’s tip and checks that out instead of the recorded gitlink, and committing the result in the superproject is what moves the pin. `.gitmodules` can name a `branch` per submodule for `--remote` and the update bots to follow. A plain `update` ignores that field and checks out the gitlink SHA regardless. There is no syntax for a version range, a tag pattern, or a minimum commit, so the manifest’s only floating reference is a branch name and the gitlink is the only pin.
+
+gitlink 仅保存一个提交 SHA，因此推进子模块意味着：进入子模块目录、获取最新数据、检出新提交、离开该目录，并在超级项目中执行 `git add &lt;path&gt;` 来记录新的 gitlink。`git submodule update --remote` 会抓取所配置分支的头部，并将其检出以替代记录的 gitlink，最后在超级项目中提交该结果才能真正移动固定引用。`.gitmodules` 可以为每个子模块指定一个 `branch` 供 `--remote` 以及更新机器人（update bots）遵循。普通的 `update` 会忽略该字段，并无条件检出 gitlink 对应的 SHA。这里没有任何用于版本范围、标签模式（tag pattern）或最小提交的语法，因此清单文件中唯一的浮动引用就是分支名称，而 gitlink 则是唯一的固定引用。
+
+&gt; Dependabot and Renovate can both open pull requests bumping a gitlink. Dependabot’s [`gitsubmodule` ecosystem](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file) proposes a new gitlink SHA when the submodule’s configured branch moves, and Renovate’s [`git-submodules` manager](https://docs.renovatebot.com/modules/manager/git-submodules/) does the same, shipping disabled by default; both follow branch tips because a branch name is the only reference the manifest exposes.
+
+Dependabot 和 Renovate 都可以开启升级 gitlink 的拉取请求。Dependabot 的 [`gitsubmodule` 生态系统](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file)在子模块配置的分支发生变动时会提议一个新的 gitlink SHA，Renovate 的 [`git-submodules` 管理器](https://www.renovatebot.com/modules/manager/git-submodules/)也做同样的事情（默认情况下该功能是禁用的）；这两者都是通过追踪分支头部来实现的，因为分支名称是清单文件公开的唯一引用。
+
+---
+
+## 5. 安全性 (Security)
+
+&gt; `.gitmodules` is committed to the repository, so a hostile upstream controls its contents, and git parses it during `clone --recurse-submodules` before the user has seen any of the fetched files, a combination that has produced remote code execution repeatedly. [CVE-2018-11235](https://nvd.nist.gov/vuln/detail/CVE-2018-11235) used `../` in a submodule’s name so its git directory, hooks included, was written outside `$GIT_DIR/modules/` and a `post-checkout` hook ran during clone. In [CVE-2018-17456](https://nvd.nist.gov/vuln/detail/CVE-2018-17456) the submodule URL began with `-`, so the child `git clone` parsed it as an option, the class of bug git’s [`--end-of-options`](https://nesbitt.io/2026/07/21/end-of-options.html) delimiter defends against. [CVE-2022-39253](https://github.com/git/git/security/advisories/GHSA-3wp6-j8xr-qw85) was a disclosure bug: a symlink in a submodule’s object directory made a local-transport clone copy arbitrary files from the victim’s disk. The fix changed the [`protocol.file.allow`](https://git-scm.com/docs/git-config) default to `user`, so local-path submodules now need an explicit opt-in. [CVE-2024-32002](https://github.com/git/git/security/advisories/GHSA-8h77-4q3w-gfgv) combined a symlink with a case-insensitive filesystem to write a hook into `.git/` during recursive clone. I covered the broader pattern of package-manager checkout paths as an attack surface in [the CWE field guide](https://nesbitt.io/2026/05/04/package-manager-cwes.html).
+
+`.gitmodules` 是被提交到仓库中的，因此恶意的上游可以控制其内容，而 git 会在用户看到任何已获取的文件之前，于执行 `clone --recurse-submodules` 期间对其进行解析——正是这种组合屡次引发了远程代码执行漏洞。[CVE-2018-11235](https://nvd.nist.gov/vuln/detail/CVE-2018-11235) 利用子模块名称中的 `../`，使得其 git 目录（包括钩子）被写入到 `$GIT_DIR/modules/` 之外，并在克隆期间触发了 `post-checkout` 钩子。在 [CVE-2018-17456](https://nvd.nist.gov/vuln/detail/CVE-2018-17456) 中，子模块的 URL 以 `-` 开头，导致子进程的 `git clone` 将其解析为一个选项（即 git 的 [`--end-of-options`](https://nesbitt.io/2026/07/21/end-of-options.html) 分隔符专门用于防御的那类漏洞）。[CVE-2022-39253](https://github.com/git/git/security/advisories/GHSA-3wp6-j8xr-qw85) 则是一个信息泄露漏洞：子模块对象目录中的符号链接（symlink）使得本地传输的克隆操作能够从受害者的磁盘中复制任意文件。该漏洞的修复将 [`protocol.file.allow`](https://git-scm.com/docs/git-config) 的默认值更改为了 `user`，因此现在本地路径子模块需要显式选择启用。[CVE-2024-32002](https://github.com/git/git/security/advisories/GHSA-8h77-4q3w-gfgv) 将符号链接与不区分大小写的文件系统相结合，在递归克隆期间将钩子写入了 `.git/` 中。我在[CWE 实战指南](https://nesbitt.io/2026/05/04/package-manager-cwes.html)中探讨了作为攻击面的包管理器检出路径的更广泛模式。
+
+---
+
+## 6. 抽象 (Abstraction)
+
+&gt; Submodules expose git’s internals directly: object IDs as the pin, detached HEADs after update, the `$GIT_DIR/modules/` layout, transport URLs in the manifest. A package manager wraps the equivalents behind a manifest format, a resolver, and a local cache; submodules surface them raw.
+
+子模块直接暴露了 git 的内部机制：作为固定引用的对象 ID、更新后分离的 HEAD、`$GIT_DIR/modules/` 布局、清单文件中的传输 URL。而包管理器则将这些等效功能包装在清单格式、解析器和本地缓存的背后；子模块则直接将它们赤裸裸地呈现出来。
+
+&gt; Most of the gaps map to things package managers already solved: a shared object cache, recursing into dependencies by default on clone and checkout, a single lifecycle for adding and removing a dependency, range constraints in the manifest. The [April patch series](https://www.spinics.net/lists/git/msg523988.html) adding `--recurse-submodules` to `git worktree add` tackles one instance of the storage problem, giving each worktree its own submodule checkout over hardlinked shared storage. Resolution is the harder one: a commit SHA is a host-independent identity for the object, and the URL in `.gitmodules` is git’s only mapping from that identity to a server that holds it.
+
+绝大多数的差距都对应着包管理器早已解决的问题：共享对象缓存、在克隆和检出时默认递归进入依赖项、添加和移除依赖项的单一生命周期、清单文件中的版本范围约束。为 `git worktree add` 增加 `--recurse-submodules` 的[四月补丁系列](https://www.spinics.net/lists/git/msg523988.html)解决了存储问题的一个实例，使每个工作树都能在基于硬链接的共享存储之上拥有自己的子模块检出。而解析问题则更加棘手：提交 SHA 是对象的独立于主机的身份标识，而 `.gitmodules` 中的 URL 则是 git 将该身份映射到持有它的服务器上的唯一途径。</description>
+    </item>
+    <item>
+      <title>2026-09-02-FastSLM：用于高效长语音自适应的分层时间抽象架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-02/FastSLM：用于高效长语音自适应的分层时间抽象架构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-02/FastSLM：用于高效长语音自适应的分层时间抽象架构/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <description>将多模态大语言模型（MLLM）扩展以处理长语音时，由于海量的输入Token会带来严重的性能瓶颈。由于语音不具备图像或视频那样的空间冗余性，因此实现极端Token压缩天生极具挑战性。
+
+为了突破这一限制，本文作者推出了 **FastSLM**，这是一种具备**分层时间抽象器（HTA）**的高效Token架构。HTA能够在多个时间尺度上逐步提炼声学特征，在保留核心语言内容的同时，实现了每秒 1.67 个Token的极致压缩率（缩减了 97%）。在需要消耗极少语音Token和计算量（FLOPs）的前提下，FastSLM在各类语音-语言任务中展现出了极具竞争力的性能。
+
+---
+
+## 论文元数据
+
+| 字段 | 详情 |
+| :--- | :--- |
+| **标题** | FastSLM: Hierarchical Temporal Abstraction for Efficient Long-Form Speech Adaptation |
+| **作者** | Junseok Lee, Chang-Jae Chun |
+| **研究学科** | 音频与语音处理 (`eess.AS`); 人工智能 (`cs.AI`); 声音 (`cs.SD`) |
+| **主分类** | 电气工程与系统科学 &gt; 音频与语音处理 |
+| **arXiv 标识符** | [arXiv:2601.06199](https://arxiv.org/abs/2601.06199) [eess.AS] |
+| **DOI** | [10.48550/arXiv.2601.06199](https://doi.org/10.48550/arXiv.2601.06199) |
+| **会议状态** | 已被 *Findings of EMNLP 2026* 接收（第 2 页） |
+| **提交历史** | **v1:** 2026年1月8日 &lt;br&gt; **v5（最新版）:** 2026年8月31日 |
+
+&gt; ## Paper Metadata
+&gt; 
+&gt; | Field | Details |
+&gt; | :--- | :--- |
+&gt; | **Title** | FastSLM: Hierarchical Temporal Abstraction for Efficient Long-Form Speech Adaptation |
+&gt; | **Authors** | Junseok Lee, Chang-Jae Chun |
+&gt; | **Subjects** | Audio and Speech Processing (`eess.AS`); Artificial Intelligence (`cs.AI`); Sound (`cs.SD`) |
+&gt; | **Primary Classification** | Electrical Engineering and Systems Science &gt; Audio and Speech Processing |
+&gt; | **arXiv Identifier** | [arXiv:2601.06199](https://arxiv.org/abs/2601.06199) [eess.AS] |
+&gt; | **DOI** | [10.48550/arXiv.2601.06199](https://doi.org/10.48550/arXiv.2601.06199) |
+&gt; | **Conference Status** | Accepted to *Findings of EMNLP 2026* (Page 2) |
+&gt; | **Submission History** | **v1:** Jan 8, 2026 &lt;br&gt; **v5 (Latest):** Aug 31, 2026 |
+
+---
+
+## 摘要
+将多模态大语言模型（MLLMs）扩展至长语音处理时，面临着输入Token爆发式增长所带来的瓶颈。现有的语音-语言模型将高帧率的声学特征直接投影到LLM的输入空间中，这使得长上下文处理在计算上成本高昂。与图像或视频不同，语音缺乏空间冗余，这使得极端Token压缩变得尤为具有挑战性。为了解决这一局限性，我们提出了 FastSLM，这是一种具备分层时间抽象器（HTA）的高效Token架构，它能够在多个时间尺度上逐步提炼声学特征。HTA实现了每秒 1.67 个Token的极端压缩率（缩减 97%），同时保留了用于下游语音-语言理解的关键语言信息。实验结果表明，与现有的语音-语言模型相比，FastSLM在各种语音-语言任务中实现了具有竞争力的性能，同时所需的语音Token和FLOPs（浮点运算次数）要少得多。
+
+&gt; ## Abstract
+&gt; Scaling Multimodal Large Language Models (MLLMs) to long-form speech is bottlenecked by the explosive growth of input tokens. Existing speech-language models project high-frame-rate acoustic features directly into the LLM input space, making long-context processing computationally prohibitive. Unlike images or videos, speech lacks spatial redundancy, making extreme token compression particularly challenging. To address this limitation, we propose FastSLM, a token-efficient architecture featuring the Hierarchical Temporal Abstractor (HTA), which progressively distills acoustic features across multiple temporal scales. HTA achieves an extreme compression rate of 1.67 tokens per second (97% reduction) while preserving essential linguistic information for downstream speech-language understanding. Experimental results demonstrate that FastSLM achieves competitive performance across diverse speech-language tasks while requiring substantially fewer speech tokens and FLOPs than existing speech-language models.
+
+---
+
+## 获取与资源
+* **源码与检查点：** [GitHub 仓库](https://github.com/Lee-junseok1025/FastSLM)
+* **全文链接：** 
+  * [查看 PDF](https://arxiv.org/pdf/2601.06199)
+  * [HTML 版本（实验性）](https://arxiv.org/html/2601.06199v5)
+  * [TeX 源码](https://arxiv.org/src/2601.06199)
+* **许可协议：** [知识共享署名 4.0 国际版](http://creativecommons.org/licenses/by/4.0/)
+
+&gt; ## Access &amp; Resources
+&gt; * **Source Code &amp; Checkpoints:** [GitHub Repository](https://github.com/Lee-junseok1025/FastSLM)
+&gt; * **Full-Text Links:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2601.06199)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2601.06199v5)
+&gt;   * [TeX Source](https://arxiv.org/src/2601.06199)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/)
+
+---
+
+## 引用与外部参考
+* [NASA ADS 数据库](https://ui.adsabs.harvard.edu/abs/arXiv:2601.06199)
+* [谷歌学术](https://scholar.google.com/scholar_lookup?arxiv_id=2601.06199)
+* [Semantic Scholar API](https://api.semanticscholar.org/arXiv:2601.06199)
+
+&gt; ## Citations &amp; External References
+&gt; * [NASA ADS Database](https://ui.adsabs.harvard.edu/abs/arXiv:2601.06199)
+&gt; * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2601.06199)
+&gt; * [Semantic Scholar API](https://api.semanticscholar.org/arXiv:2601.06199)</description>
+    </item>
+    <item>
       <title>2026-09-01-面向超大规模电商的时效感知复购预测：多界面生鲜推荐的生存分析模型</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-01/面向超大规模电商的时效感知复购预测：多界面生鲜推荐的生存分析模型/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-01/面向超大规模电商的时效感知复购预测：多界面生鲜推荐的生存分析模型/</guid>
@@ -2223,768 +3264,6 @@ Both systems score 0% at the two lowest tiers, where neither can fit a complete 
 Bayesian network structure learning (BNSL) from observational data often struggles with orientation identifiability, whereas Large Language Models (LLMs) provide broad—though occasionally unreliable—causal background knowledge. 
 
 This paper introduces **Probabilistic Dependency Graphs (PDGs)**, a novel representation framework that bridges these two complementary information sources. By associating each edge with a distribution over directed, undirected, and absent states, PDGs enable seamless fusion via weighted averaging.</description>
-    </item>
-    <item>
-      <title>Dynamic Alignment Compensation for Hallucination Mitigation in Large Vision-Language Models</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/大型视觉语言模型中用于缓解幻觉的动态对齐补偿方法/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/大型视觉语言模型中用于缓解幻觉的动态对齐补偿方法/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大型视觉语言模型（LVLMs）在处理多模态输入时，经常会出现幻觉现象，即生成与图像输入相矛盾或无关的回复。传统的缓解策略通常依赖于外部监督、输出校准或注意力机制调节，往往忽视了自回归生成过程中的内部表征动态变化。
-
-本文指出了推理过程中的一种失效模式：跨模态表征在解码器层之间发生退化，并在不同的生成步骤中产生漂移，从而导致标记（token）预测的不稳定。为了解决这一问题，作者提出了**动态对齐补偿（Dynamic Alignment Compensation, DAC）**，这是一种无需训练的推理时方法，能够检测表征分歧并通过以下方式应用轻量级残差补偿：1. **逐层语义补偿（Layer-wise Semantic Compensation）**，以抵消层间退化；2. **序列语义校正（Sequential Semantic Correction）**，以限制时间漂移。
-
-在九个专注于幻觉和通用多模态基准测试上的广泛实验表明，DAC 有效地最小化了幻觉，同时保持了强大的基线性能。
-
----
-
-# Dynamic Alignment Compensation for Hallucination Mitigation in Large Vision-Language Models
-
-## Summary
-&gt; Large Vision-Language Models (LVLMs) frequently suffer from hallucinations—generating responses that contradict or are irrelevant to multimodal inputs. Traditional mitigation strategies typically rely on external supervision, output calibration, or attention regulation, often overlooking internal representation dynamics during autoregressive generation. 
-&gt; 
-&gt; This paper identifies an inference-time failure mode where cross-modal representations degrade across decoder layers and drift across generation steps, destabilizing token prediction. To address this, the authors propose **Dynamic Alignment Compensation (DAC)**, a training-free inference-time method that detects representation divergence and applies lightweight residual compensation via:
-&gt; 1. **Layer-wise Semantic Compensation** to counteract inter-layer degradation.
-&gt; 2. **Sequential Semantic Correction** to restrict temporal drift.
-&gt; 
-&gt; Extensive experiments across nine hallucination-focused and general-purpose multimodal benchmarks demonstrate that DAC effectively minimizes hallucinations while preserving strong baseline performance.
-
----
-
-## Metadata &amp; Publication Details / 元数据与出版详情
-
-&gt; * **Authors:** Kairong Yu, Zixin Zhu, Le Yu, Hongwei Wang
-&gt; * **Submitted On:** August 28, 2026
-&gt; * **Primary Subject:** Computer Vision and Pattern Recognition (`cs.CV`)
-&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Acceptance:** Accepted by EMNLP 2026 Findings
-&gt; * **arXiv Identifier:** [arXiv:2608.28058 [cs.CV]](https://arxiv.org/abs/2608.28058)
-&gt; * **DOI:** [10.48550/arXiv.2608.28058](https://doi.org/10.48550/arXiv.2608.28058)
-
----
-
-## Abstract / 摘要
-&gt; Large Vision-Language Models (LVLMs) remain prone to hallucinations, producing responses that are irrelevant or inconsistent with the multimodal input. Existing mitigation methods mainly rely on external supervision, output calibration, or attention regulation, leaving the internal representation dynamics of autoregressive generation underexplored. We identify an inference-time failure mode in which cross-modal representations degrade across decoder layers and drift across generation steps, destabilizing token prediction and increasing hallucination risk. We propose *Dynamic Alignment Compensation* (DAC), a training-free inference-time method that detects representation divergence and selectively applies lightweight residual compensation. DAC combines Layer-wise Semantic Compensation to mitigate inter-layer degradation with Sequential Semantic Correction to constrain temporal drift. Experiments on nine hallucination-focused and general-purpose multimodal benchmarks across multiple LVLM backbones show that DAC consistently reduces hallucinations while maintaining strong overall performance.
-
----
-
-## Access &amp; Resources / 访问与资源
-
-&gt; * **Full-Text Options:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2608.28058)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2608.28058v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2608.28058)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-&gt; * **External Citations &amp; Tools:**
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.28058)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.28058)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.28058)
-&gt;   * [Hugging Face Spaces / Models](https://huggingface.co/)</description>
-    </item>
-    <item>
-      <title>2026-09-01-基于边缘端YOLO与RT-DETR的深度感知路面坑洼检测</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/基于边缘端YOLO与RT-DETR的深度感知路面坑洼检测/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/基于边缘端YOLO与RT-DETR的深度感知路面坑洼检测/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>城市基础设施管理中，路面坑洼的自动检测与严重程度评估长期以来一直是一个重要挑战。传统的二维RGB图像方法无法测量坑洼的物理深度。为了弥补这一技术空白，本文评估了五种架构（**YOLOv8n**、**YOLOv8nSeg**、**YOLOv9t**、**RTDETRL**和**RTDETRX**）在RGB-D传感器融合中的应用，并利用定制的离线增强流水线来模拟恶劣的路面监测环境。
-
-研究的核心技术贡献包括：通过RANSAC地面平面正射校正来纠正相机倾斜，并将值为零的传感器像素转换为 `NaN` 以确保计算准确性。实验表明，**YOLOv8nSeg** 取得了最高的准确率（`mAP@50` 为 `0.9556`），并利用像素级精确的 Dseg 算法获得了最准确的深度估计（`2.96 cm`）；**YOLOv8n** 实现了最快的推理速度（`3.6 ms`）；而 **RTDETRX** 则获得了最高的检测置信度（`92.70%`）。此外，研究还发现边界框模型由于包含路面像素，会系统性地高估坑洼深度，证明了结构性偏差的存在。
-
----
-
-## Metadata
-
-* **arXiv Identifier:** [arXiv:2608.27633](https://arxiv.org/abs/2608.27633) [cs.CV]
-* **Authors:** Md Monjurul Ahsan Prodhan, Md Nour Hossain
-* **Submitted Date:** 27 August 2026
-* **Primary Subject:** Computer Vision and Pattern Recognition (`cs.CV`)
-* **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Machine Learning (`cs.LG`)
-* **Conference Presentation:** IEEE 9th International Conference on Multimedia Information Processing and Retrieval (10 August 2026)
-* **DOI:** [10.48550/arXiv.2608.27633](https://doi.org/10.48550/arXiv.2608.27633)
-
----
-
-## Abstract
-
-Pothole detection and its severity measurement is still an important challenges in urban infrastructure management, where late maintenance directly contributes to vehicle damage, road accidents, and escalating repair costs. Existing automated approaches depend on 2D RGB images and cannot measure physical depth of potholes. In this paper, we present a depth-aware pothole detection framework and then compare five architectures: **YOLOv8n**, **YOLOv8nSeg**, **YOLOv9t**, **RTDETRL**, and **RTDETRX** for RGB-D sensor fusion-based detection and automated depth measurement. 
-
-&gt; 坑洼检测及其严重程度测量仍然是城市基础设施管理中的一个重要挑战，不及时维护会直接导致车辆受损、道路交通事故以及维修成本的不断攀升。现有的自动化方法依赖于二维RGB图像，无法测量坑洼的物理深度。在本文中，我们提出了一种具备深度感知能力的坑洼检测框架，并对比了五种架构：**YOLOv8n**、**YOLOv8nSeg**、**YOLOv9t**、**RTDETRL** 和 **RTDETRX**，用于基于RGB-D传感器融合的检测和自动化深度测量。
-
-A custom offline augmentation pipeline is used here to simulate adverse road monitoring conditions. All models are trained on the PothRGBD dataset with an 80% training and 20% validation split and evaluated using Precision, Recall, `mAP@50`, and `mAP@50_95`. Before measuring the depth data, all depth maps are corrected for camera tilt using RANSAC ground-plane orthorectification and all zero-valued sensor pixels are cast to `NaN` before any statistic is computed. 
-
-&gt; 这里使用了一个定制的离线增强流水线来模拟恶劣的路面监测条件。所有模型均在PothRGBD数据集上进行训练（按80%训练集和20%验证集划分），并使用精确度（Precision）、召回率（Recall）、`mAP@50` 和 `mAP@50_95` 进行评估。在测量深度数据之前，所有深度图都通过RANSAC地面平面正射校正进行了相机倾斜校正，并且在计算任何统计数据之前，所有值为零的传感器像素都被转换为 `NaN`。
-
-**YOLOv8nSeg** achieves the highest `mAP@50` of `0.9556` and `mAP@50_95` of `0.6758` with the most accurate depth estimate of `2.96 cm` with the pixel-precise Dseg algorithm. **YOLOv8n** achieves the fastest inference at `3.6 ms`. **RTDETRX** achieves the highest detection confidence at `92.70%`. An important finding is that even after full RANSAC orthorectification, bounding box models overestimate pothole depth by `0.16` to `0.21 cm` compared to pixel precise segmentation masks. This confirms that the pavement inclusion bias is structural rather than a calibration artifact.
-
-&gt; **YOLOv8nSeg** 实现了最高的 `m`AP@50（`0.9556`）和 `mAP@50_95`（`0.6758`），并通过像素级精确的 Dseg 算法获得了 `2.96 cm` 的最准确深度估计。**YOLOv8n** 实现了最快的推理速度（`3.6 ms`）。**RTDETRX** 获得了最高的检测置信度（`92.70%`）。一个重要的发现是，即使在进行完整的RANSAC正射校正后，与像素级精确的分割掩膜相比，边界框模型仍然将坑洼深度高估了 `0.16` 至 `0.21 cm`。这证实了路面包含偏差是结构性的，而不是由校准伪影引起的。
-
----
-
-## Full-Text &amp; Access Links
-
-* **PDF Version:** [View PDF](https://arxiv.org/pdf/2608.27633)
-* **Experimental HTML:** [arXiv HTML](https://arxiv.org/html/2608.27633v1)
-* **TeX Source:** [Download Source](https://arxiv.org/src/2608.27633)
-* **License:** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"&gt;
-
-&gt; * **PDF 版本：** [查看 PDF](https://arxiv.org/pdf/2608.27633)
-&gt; * **实验性 HTML：** [arXiv HTML](https://arxiv.org/html/2608.27633v1)
-&gt; * **TeX 源码：** [下载源码](https://arxiv.org/src/2608.27633)
-&gt; * **许可协议：** [知识共享 署名-非商业性使用-禁止演绎 4.0 国际](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"&gt;</description>
-    </item>
-    <item>
-      <title>2026-09-01-基于类别的启发式选择算法求解飞行积木拼图</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/基于类别的启发式选择算法求解飞行积木拼图/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/基于类别的启发式选择算法求解飞行积木拼图/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>本文研究了受限领域中的空间规划与启发式搜索局限性，采用**飞行积木拼图（Flying Block Puzzle）**这一严格的NP完全空间规划微观世界，旨在模拟机器人技术、仓储物流以及多智能体路径规划中常见的空间余隙与尺寸约束。
-
-为了克服通用启发式算法在处理较难问题实例时出现的性能急剧下降问题，作者引入了**基于类别的启发式 A\*（CBHA\*）**算法。该方法具备以下特点：* 一项**通用移动约束（General Move Constraint）**，用于在空闲单元稀缺时计算最小位移成本；* 一个**形式化运动学分类体系**，利用基于空闲率和目标拼块几何形状的可采纳启发式函数，将状态空间划分为七个互不排斥的类别；* 一个**类条件决胜机制（class-conditional tie-breaking mechanism）**，可在深度优先和垂直距离排序之间动态切换，以摆脱 $f$ 值平台期。
-
-在146个基准实例上的评估结果表明，**CBHA\*** 取得了 **93.4% 的成功率**（相比之下，深度优先 A\* 为 64%，标准 A\* 为 39%，BFS 为 17%），同时与标准 A\* 相比，节点扩展数减少了 **87.98%**。
-
----
-
-## Class-Based Heuristic Selection for Solving the Flying Block Puzzle
-
-&gt; # Class-Based Heuristic Selection for Solving the Flying Block Puzzle
-
-## Summary
-
-&gt; ## Summary
-
-本文探讨了受限领域中的空间规划与启发式搜索的局限性，所使用的工具是**飞行积木拼图（Flying Block Puzzle）**——这是一个严格的NP完全空间规划微观世界，旨在反映机器人学、仓储物流以及多智能体路径规划中发现的余隙与尺寸约束。
-
-&gt; This paper investigates spatial planning and heuristic search limitations in constrained domains using the **Flying Block Puzzle**—a rigorously NP-complete spatial planning microworld designed to mirror clearance-to-size constraints found in robotics, warehouse logistics, and multi-agent path finding. 
-
-为了克服通用启发式算法在更困难的问题实例上出现的灾难性性能退化，作者引入了**基于类别的启发式 A\*（CBHA\*）**算法。该方法具有以下特点：
-* 一个**通用移动约束**，用于在空闲单元稀缺时处理最小位移成本。
-* 一个**形式化运动学分类法**，利用基于空闲率和目标拼块几何形状的、可证明是可采纳的启发式方法，将状态空间划分为七个互斥的类别。
-* 一个**类条件决胜机制**，在深度优先和垂直距离排序之间动态交替，以逃离 $f$ 值平台期。
-
-&gt; To overcome the catastrophic performance degradation of generic heuristics on harder problem instances, the authors introduce the **Class-Based Heuristic A\* (CBHA\*)** algorithm. This approach features:
-* A **General Move Constraint** to account for minimum displacement costs when vacant units are scarce.
-* A **formal kinematic taxonomy** partitioning the state space into seven mutually exclusive classes utilizing provably admissible heuristics based on vacancy ratios and goal-piece geometry.
-* A **class-conditional tie-breaking mechanism** that dynamically alternates between depth-priority and vertical-distance ordering to escape $f$-value plateaus.
-
-在对 146 个基准实例进行评估后，**CBHA\*** 实现了 **93.4% 的成功率**（相比之下，深度优先 A* 为 64%，标准 A* 为 39%，BFS 为 17%），同时相对于标准 A*，节点扩展数减少了 **87.98%**。
-
-&gt; Evaluated over 146 benchmark instances, **CBHA\*** achieved a **93.4% success rate** (compared to 64% for Depth-Prioritized A*, 39% for Standard A*, and 17% for BFS), while reducing node expansions by **87.98%** relative to Standard A*.
-
----
-
-## Document Metadata
-
-&gt; ---
-
-## Document Metadata
-
-| 元数据字段 | 详情 |
-| :--- | :--- |
-| **arXiv ID** | [arXiv:2608.27476](https://arxiv.org/abs/2608.27476) [cs.AI] |
-| **学科** | 人工智能 (`cs.AI`) |
-| **作者** | Sanyar Ahmadi, Pedram Asadzadeh, Amanj Khorramian |
-| **提交日期** | 2026年8月20日 |
-| **文档统计** | 27 页，15 张图表，2 个表格 |
-| **MSC 分类** | 68T20, 68Q25 |
-| **ACM 分类** | I.2.8; F.2.2 |
-| **DOI** | [10.48550/arXiv.2608.27476](https://doi.org/10.48550/arXiv.2608.27476) |
-
-&gt; | Metadata Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [arXiv:2608.27476](https://arxiv.org/abs/2608.27476) [cs.AI] |
-&gt; | **Subjects** | Artificial Intelligence (`cs.AI`) |
-&gt; | **Authors** | Sanyar Ahmadi, Pedram Asadzadeh, Amanj Khorramian |
-&gt; | **Submission Date** | August 20, 2026 |
-&gt; | **Document Stats** | 27 pages, 15 figures, 2 tables |
-&gt; | **MSC Classes** | 68T20, 68Q25 |
-&gt; | **ACM Classes** | I.2.8; F.2.2 |
-&gt; | **DOI** | [10.48550/arXiv.2608.27476](https://doi.org/10.48550/arXiv.2608.27476) |
-
----
-
-## Access &amp; Resources
-
-&gt; ---
-
-## Access &amp; Resources
-
-* **全文选项：** [查看 PDF](https://arxiv.org/pdf/2608.27476) | [HTML（实验性）](https://arxiv.org/html/2608.27476v1) | [TeX 源码](https://arxiv.org/src/2608.27476)
-* **引用工具：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27476) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27476) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27476)
-
-&gt; * **Full-Text Options:** [View PDF](https://arxiv.org/pdf/2608.27476) | [HTML (Experimental)](https://arxiv.org/html/2608.27476v1) | [TeX Source](https://arxiv.org/src/2608.27476)
-&gt; * **Citation Tools:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27476) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27476) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27476)</description>
-    </item>
-    <item>
-      <title>2026-09-01-基于曲率感知半径收缩的自适应最近邻分类</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/基于曲率感知半径收缩的自适应最近邻分类/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/基于曲率感知半径收缩的自适应最近邻分类/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>传统的 $k$ 最近邻 ($k$-NN) 分类算法在整个特征空间中依赖于统一的邻域基数，然而当数据表现出变化的局部几何复杂度时，这种假设往往表现不佳。为了解决这一问题，本文引入了 **CARSANN**（Curvature-Aware Radius Shrinkage for Adaptive Nearest Neighbor Classification，基于曲率感知半径收缩的自适应最近邻分类），这是一个由几何驱动的框架，能够根据局部几何复杂度动态调整邻域的空间支撑范围。
-
-CARSANN 通过估计内在维度（使用 TwoNN）、构建内在表示（使用 PCA）以及评估局部平均曲率（使用基于形状算子的方法），在高度弯曲的区域施加更强的半径收缩，同时在较平坦的区域保持更广泛的空间支撑。对 70 多个真实世界 OpenML 数据集的大规模评估表明，CARSANN 显著提高了平均平衡准确率，并优于标准的 $k$-NN 方法，为空间自适应提供了一种稳健且具备曲率感知能力的新范式。
-
----
-
-## 摘要与文档信息
-
-| 属性 | 详情 |
-| :--- | :--- |
-| **arXiv ID** | [arXiv:2608.27634](https://arxiv.org/abs/2608.27634) [cs.LG] |
-| **标题** | Curvature-Aware Radius Shrinkage for Adaptive Nearest Neighbor Classification |
-| **作者** | Alexandre L. M. Levada |
-| **提交时间** | 2026年8月27日 |
-| **主分类** | 机器学习 (`cs.LG`) |
-| **次分类** | 人工智能 (`cs.AI`)、计算机视觉与模式识别 (`cs.CV`)、机器学习 (`stat.ML`) |
-| **文档统计** | 28 页，2 张图表，3 个表格 |
-| **许可协议** | [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt; |
-
----
-
-## 摘要 (Abstract)
-
-最近邻分类从根本上依赖于局域性的定义方式，然而传统的 $k$-NN 在整个特征空间中强加了相同的邻域基数。对于底层流形上的局部几何结构变化显著的数据，这种假设可能并不充分。
-
-&gt; Nearest neighbor classification relies fundamentally on how locality is defined, yet conventional $k$-NN imposes the same neighborhood cardinality throughout the feature space. This assumption can be inadequate for data whose local geometry varies substantially across the underlying manifold. 
-
-我们引入了 **CARSANN（基于曲率感知半径收缩的自适应最近邻分类，Curvature-Aware Radius Shrinkage for Adaptive Nearest Neighbor Classification）**，这是一个几何驱动的框架，它根据局部几何复杂度调整每个邻域的空间支撑。CARSANN 首先使用 TwoNN 估计内在维度，并通过主成分分析构建内在表示。随后，利用基于形状算子的公式估计局部平均曲率，并以此控制邻域尺度：高度弯曲的区域获得更强的半径收缩，而近似平坦的区域则保持更广泛的空间支撑。
-
-&gt; We introduce **Curvature-Aware Radius Shrinkage for Adaptive Nearest Neighbor Classification (CARSANN)**, a geometry-driven framework that adapts the spatial support of each neighborhood according to local geometric complexity. CARSANN first estimates intrinsic dimensionality using TwoNN and constructs an intrinsic representation through principal component analysis. Local mean curvature is then estimated using a shape-operator-based formulation and controls neighborhood scale: highly curved regions receive stronger radius shrinkage, whereas approximately flat regions retain broader spatial support. 
-
-与仅修改邻居数量或局部度量的方法不同，CARSANN 显式地适应了局部证据的空间范围。在 70 多个真实世界 OpenML 数据集上进行的实验表明，CARSANN 在标准 $k$-NN 的基础上实现了持续改进，并且能够与自适应最近邻方法相媲美。在使用相同基础邻域大小的对照比较中，CARSANN 在 45 个数据集中的 40 个上实现了更高的平衡准确率，将平均平衡准确率从 0.6506 提高到了 0.7528。与固定 $k=5$ 的 $k$-NN 相比，这一优势同样存在。弗里德曼（Friedman）检验和内梅尼（Nemenyi）检验确认这些改进具有统计学显着性。这些结果表明，局部流形曲率可以作为调节邻域支撑的有效几何控制变量，从而为基于基数的最近邻自适应提供一种互补的范式。
-
-&gt; Unlike methods that modify only the number of neighbors or the local metric, CARSANN explicitly adapts the spatial extent of local evidence. Experiments on more than 70 real-world OpenML datasets show that CARSANN consistently improves upon standard $k$-NN and is competitive with adaptive nearest-neighbor methods. In a controlled comparison using the same base neighborhood size, CARSANN achieves higher balanced accuracy on 40 of 45 datasets, increasing mean balanced accuracy from 0.6506 to 0.7528. The advantage also persists against $k$-NN with fixed $k=5$. Friedman and Nemenyi tests confirm that the improvements are statistically significant. These results indicate that local manifold curvature can serve as an effective geometric control variable for adapting neighborhood support, providing a complementary paradigm to cardinality-based nearest-neighbor adaptation.
-
----
-
-## 访问与资源 (Access &amp; Resources)
-
-* **全文格式：** [查看 PDF](https://arxiv.org/pdf/2608.27634) | [HTML（实验性）](https://arxiv.org/html/2608.27634v1) | [TeX 源码](https://arxiv.org/src/2608.27634)
-* **外部文献计量工具：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27634)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27634)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27634)</description>
-    </item>
-    <item>
-      <title>基于图结构电子占据离散流匹配的机理反应预测 (Mechanistic Reaction Prediction via Discrete Flow Matching on Graph-Structured Electron Occupation)</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/基于图结构电子占据离散流匹配的机理反应预测/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/基于图结构电子占据离散流匹配的机理反应预测/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>化学反应从根本上代表了电子空间内的转变。然而，传统的机器学习模型通常通过产物分子的*从头生成*（de novo generation）或直接对分子拓扑结构应用启发式图编辑来处理化学反应。为了解决这些局限性，作者推出了 **MAELLE**（**MechAnistic Edit fLow-matching on eLectron rEarrangements**，基于电子重排的机理编辑流匹配）。MAELLE 将化学反应建模为电子占据向量上的离散流匹配，为化学反应机理预测提供了全新的视角。
-
-该研究的核心技术在于引入了连续时间马尔可夫链（CTMC），将反应物到产物的映射构想为在图结构、整数值的电子占据空间上的过程，该空间涵盖了所有的成键、非成键和氢位点。此外，它采用基于编辑的公式化方法，将离散流匹配混合路径推广到一个基于编辑的框架中，其中电子的移动通过最优传输（Optimal Transport）进行插值，从而在无需基本步骤注释的情况下，自然地产生类似反应机理的移动集合。该方法在标准基准测试中表现出色，并在分布外（OOD）场景中展现出强大鲁棒性，同时能够恢复符合化学原理的机理轨迹并预测副产物。
-
----
-
-# 基于图结构电子占据离散流匹配的机理反应预测 (Mechanistic Reaction Prediction via Discrete Flow Matching on Graph-Structured Electron Occupation)
-
-**作者：** Nguyen Xuan-Vu, Octavian Susanu, Daniel Armstrong, Philippe Schwaller  
-**主要学科：** 人工智能 (`cs.AI`)  
-**arXiv ID：** [arXiv:2608.27429](https://arxiv.org/abs/2608.27429)  
-**提交时间：** 2026年8月27日；**最后修订：** 2026年8月28日  
-
----
-
-## 总结 (Summary)
-
-化学反应从根本上代表了电子空间内的转变。然而，传统的机器学习模型通常通过产物分子的*从头生成*（de novo generation）或直接对分子拓扑结构应用启发式图编辑来处理它们。
-
-&gt; Chemical reactions fundamentally represent transformations within electron space. However, traditional machine learning models typically approach them via the *de novo* generation of product molecules or through heuristic graph edits applied directly to molecular topology. 
-
-为了解决这些局限性，作者引入了 **MAELLE**（**MechAnistic Edit fLow-matching on eLectron rEarrangements**）。MAELLE 将化学反应建模为电子占据向量上的离散流匹配：
-* **连续时间马尔可夫链 (CTMC)：** 将反应物到产物的映射构想为在图结构、整数值的电子占据空间上的 CTMC，该空间涵盖了所有的成键、非成键和氢位点。
-* **基于编辑的公式化方法 (Edit-Based Formulation)：** 将离散流匹配混合路径推广到一个基于编辑的框架中，其中电子的移动通过最优传输进行插值，从而在无需基本步骤注释的情况下，自然地产生类似机理的移动集合。
-
-&gt; To address these limitations, the authors introduce **MAELLE** (**MechAnistic Edit fLow-matching on eLectron rEarrangements**). MAELLE models chemical reactions as discrete flow matching over electron occupation vectors:
-&gt; * **Continuous-time Markov Chain (CTMC):** Formulates the reactant-to-product mapping as a CTMC over a graph-structured, integer-valued electron occupation space encompassing all bonding, non-bonding, and hydrogen sites.
-&gt; * **Edit-Based Formulation:** Generalizes the discrete flow matching mixture path to an edit-based framework where electron movements are interpolated using Optimal Transport, naturally yielding a mechanism-like set of moves without requiring elementary step annotations.
-
----
-
-## 关键发现与结果 (Key Findings &amp; Results)
-
-* **基准性能：** 与领先的反应预测模型相比，MAELLE 在标准的 USPTO-480K 基准测试上取得了具有竞争力的性能。
-* **分布外 (OOD) 鲁棒性：** 在两个关键的 OOD 设置（*结构复杂性*和*反应类型*）下进行评估时，MAELLE 在现有方法通常性能退化的区域仍能保持强劲的性能。
-* **机理洞察与副产物预测：** 由于学习到的流涵盖了完整的电子再分配，MAELLE 自然能够恢复与既定化学原理高度一致的机理轨迹，并能够预测反应副产物。
-
-&gt; * **Benchmark Performance:** MAELLE achieves competitive performance on the standard USPTO-480K benchmark when compared against leading reaction prediction models.
-&gt; * **Out-of-Distribution (OOD) Robustness:** Evaluated across two critical OOD settings—*structural complexity* and *reaction type*—MAELLE maintains strong performance in regimes where existing methods typically degrade.
-&gt; * **Mechanistic Insights &amp; Side Product Prediction:** Because the learned flow operates over the full electron redistribution, MAELLE naturally recovers mechanistic trajectories that align closely with established chemical principles and is capable of predicting reaction side products.
-
----
-
-## 元数据与资源 (Metadata &amp; Resources)
-
-* **许可证：** [知识共享署名 4.0 国际许可协议](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-* **全文与链接：**
-  * [查看 PDF](https://arxiv.org/pdf/2608.27429)
-  * [HTML 版本（实验性）](https://arxiv.org/html/2608.27429v2)
-  * [TeX 源码](https://arxiv.org/src/2608.27429)
-* **外部文献计量工具：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27429)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27429)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27429)
-
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-&gt; * **Full-Text &amp; Links:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2608.27429)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2608.27429v2)
-&gt;   * [TeX Source](https://arxiv.org/src/2608.27429)
-&gt; * **External Bibliographic Tools:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27429)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27429)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27429)</description>
-    </item>
-    <item>
-      <title>安装并启用 xinetd</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/在 NTP 诞生之前：Daytime 与 Time 协议的前世今生/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/在 NTP 诞生之前：Daytime 与 Time 协议的前世今生/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在网络时间协议（NTP）将互联网时间同步标准化之前，早期网络依赖于更为简单、非正式的机制：**Daytime 协议（RFC 867）**和 **Time 协议（RFC 868）**。在乔恩·波斯特尔（Jon Postel）于 20世纪80年代初期的主导下，这些协议允许带宽受限的计算机通过基本的 TCP 或 UDP 请求向远程服务器查询时间。
-
-尽管以现代标准来看它们相当原始——仅提供 1 秒的分辨率、容易受网络延迟影响，并且面临着未来“2036年危机（Y2K36）”——但这些轻量级协议为网络同步奠定了基础，并且至今仍通过美国国家标准与技术研究院（NIST）等服务运行。本文带你回顾这段互联网历史，并演示如何在 Linux 上搭建属于你自己的 Time 与 Daytime 服务器。
-
----
-
-![RFC 867 Daytime Protocol](/blog/2026/rfc-867-868-time/rfc-867-daytime-protocol.png)
-
-&gt; In building an NTP time demo on old Macs for [VCF Midwest](https://vcfmw.org), I came across [RFC 867](https://www.rfc-editor.org/info/rfc867/) and [RFC 868](https://www.rfc-editor.org/info/rfc868/), for the 'Daytime' and 'Time' Protocols, respectively.
-&gt; 
-&gt; My first exposure to any form of network time was when I upgraded from a used PowerBook 180c to my first 'new' computer, a Power Mac G3, in 2000. With the introduction of Mac OS 8.5, Apple added a 'Network Time Server' option in the Date &amp; Time Control Panel.
-&gt; 
-&gt; I remember dialing up the Internet via PPP, then clicking the 'Set Time Now' button, and seeing my computer's clock update. I didn't think much of it at the time, but this was way more than setting my wristwatch using the 'Time and Temperature' phone line, which was previously the most precise time source I could access regularly.
-
-在为 [VCF Midwest](https://vcfmw.org) 的老款 Mac 制作 NTP 时间演示程序时，我偶然发现了 [RFC 867](https://www.rfc-editor.org/info/rfc867/) 和 [RFC 868](https://www.rfc-editor.org/info/rfc868/)，它们分别对应“Daytime（白昼）”和“Time（时间）”协议。
-
-我第一次接触任何形式的网络时间，是在 2000 年从一台二手的 PowerBook 180c 升级到我的第一台“新”电脑 Power Mac G3 的时候。随着 Mac OS 8.5 的推出，苹果在“日期与时间”控制面板中增加了一个“网络时间服务器”选项。
-
-我记得当时是通过 PPP 拨号上网，然后点击“立即设置时间”按钮，看着电脑的时钟更新。当时我并没有多想，但这比用“报时与气温”电话专线来对表要高级得多——那曾是我以前能定期接触到的最精确的时间源。
-
-## Time 协议 (RFC 868)
-
-&gt; Prior to NTP ([RFC 1059](https://www.rfc-editor.org/info/rfc1059/) in 1988), requesting time from a remote server was remarkably straightforward. With the Time Protocol (RFC 868), a request consisted of just two steps:
-&gt; 
-&gt; 1. Open a connection to the server on port 37 (TCP connect, or send an empty UDP datagram).
-&gt; 2. Receive the time as a 32-bit binary number.
-&gt; 
-&gt; That's it! In the mid-80s, this was an extremely efficient method of time transfer. Network bytes were precious, and you didn't need a complex routine to handle the 32-bit time.
-
-在 NTP（1988 年的 [RFC 1059](https://www.rfc-editor.org/info/rfc1059/)）出现之前，从远程服务器请求时间是非常直接的。通过 Time 协议 (RFC 868)，一个请求仅包含两个步骤：
-
-1. 打开到服务器 37 端口的连接（建立 TCP 连接，或发送一个空的 UDP 数据报）。
-2. 接收作为一个 32 位二进制数的当前时间。
-
-就是这样！在 80 年代中期，这是一种极其高效的时间传输方法。当时的网络字节弥足珍贵，处理 32 位时间也无需编写复杂的常规代码。</description>
-    </item>
-    <item>
-      <title>Comparing Chunking and Embedding Strategies for Turkish RAG Systems</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/土耳其语 RAG 系统分块与嵌入策略的对比研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/土耳其语 RAG 系统分块与嵌入策略的对比研究/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>检索增强生成（RAG）系统的性能很大程度上取决于高效的文档分块（Chunking）与嵌入（Embedding）策略。本研究针对土耳其语文档问答系统，采用完全交叉的实验设计，深入评估了不同分块方法、嵌入模型以及大语言模型（LLM）在多种文档布局下的表现。
-
-通过在各种文档布局中组合测试不同的分块方法、嵌入模型和 LLM，研究人员生成了多达 9,000 份由独立评判模型打分的评估结果。核心结论表明：排名前三的嵌入模型在性能上没有统计学上的显著差异，这意味着专门针对土耳其语的训练并未带来可测量的检索优势；同时，速度最快的 LLM 并非准确率最高；此外，文档内容的类型对最佳 RAG 配置有着决定性影响，例如感知布局的分块工具（如 Docling）在处理表格密集的文档时，其性能显著优于传统文本密集型分块。
-
----
-
-# Comparing Chunking and Embedding Strategies for Turkish RAG Systems
-
-**arXiv:** [2608.26192](https://arxiv.org/abs/2608.26192) [cs.CL]  
-**Accepted to:** INTCEC 2026 (Author's pre-print version)  
-**Authors:** Mustafa Sertaç Türkel, Fatma Nur Korkmaz, Ahmet Tuğrul Bayrak  
-**Submitted:** August 24, 2026 (Last revised August 28, 2026)  
-
-&gt; **arXiv:** [2608.26192](https://arxiv.org/abs/2608.26192) [cs.CL]  
-&gt; **Accepted to:** INTCEC 2026 (Author's pre-print version)  
-&gt; **Authors:** Mustafa Sertaç Türkel, Fatma Nur Korkmaz, Ahmet Tuğrul Bayrak  
-&gt; **Submitted:** August 24, 2026 (Last revised August 28, 2026)  
-
----
-
-## 📌 Executive Summary
-
-Retrieval-Augmented Generation (RAG) performance relies heavily on effective document chunking and embedding strategies. This study evaluates Turkish document question-answering systems using a fully crossed experimental design. 
-
-By testing various combinations of chunking methods, embedding models, and Large Language Models (LLMs) across multiple document layouts, the researchers generated **9,000 graded evaluations** scored by an independent judge model.</description>
-    </item>
-    <item>
-      <title>Actionable CBFI: Integrating Structural Decomposition and Causal Counterfactual Recourse for Tabular Machine Learning</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/可操作的CBFI：将结构分解与因果反事实追索集成用于表格机器学习/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/可操作的CBFI：将结构分解与因果反事实追索集成用于表格机器学习/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>可解释人工智能（XAI）日益强调**可操作的反事实追索（actionable counterfactual recourse）**的重要性，然而当前的方法经常受到因果无效性、高认知负担以及预测失效等问题的困扰。为了解决这些局限性，本文引入了**可操作的基于案例的特征重要性（A-CBFI）**，这是一个专为表格机器学习定制的诊断与处方一体化框架。
-
-基于结构因果模型（SCMs），A-CBFI 能够隔离协同交互瓶颈并释放抑制性结构锁，将其转化为高度针对性的干预措施。该框架的核心亮点包括：通过将主动用户干预空间（$L_{\mathrm{active}}$）与下游效应在数学上进行分离，将超过 **98.3%** 的干预工作直接集中在诊断出的根本原因上；在金融和医疗领域的实证评估中，将主动人工干预负担减少了 **76.9%**，同时匹配了详尽因果基线的全局追索成本；在所有因果可行实例上实现了完全的相对收敛，同时保持了因果有效性。
-
----
-
-# Actionable CBFI: Integrating Structural Decomposition and Causal Counterfactual Recourse for Tabular Machine Learning
-# 可操作的CBFI：将结构分解与因果反事实追索集成用于表格机器学习
-
-## Summary
-## 摘要
-
-Explainable artificial intelligence (XAI) increasingly emphasizes the need for **actionable counterfactual recourse**, yet current methodologies frequently suffer from causal invalidity, high cognitive burdens, and predictive failures. To resolve these limitations, this paper introduces **Actionable Case-Based Feature Importance (A-CBFI)**, a novel diagnosis-prescription integrated framework tailored for tabular machine learning. 
-
-&gt; Explainable artificial intelligence (XAI) increasingly emphasizes the need for **actionable counterfactual recourse**, yet current methodologies frequently suffer from causal invalidity, high cognitive burdens, and predictive failures. To resolve these limitations, this paper introduces **Actionable Case-Based Feature Importance (A-CBFI)**, a novel diagnosis-prescription integrated framework tailored for tabular machine learning. 
-
-Grounded in Structural Causal Models (SCMs), A-CBFI isolates synergistic interaction bottlenecks and releases suppressive structural locks, translating them into highly targeted interventions. Key highlights of the framework include:
-* Concentrating over **98.3%** of intervention efforts directly on diagnosed root causes by mathematically separating the active user intervention space ($L_{\mathrm{active}}$) from downstream effects.
-* Reducing the active human intervention burden by **76.9%** in empirical evaluations across the financial and healthcare domains, while matching the global recourse cost of exhaustive causal baselines.
-* Achieving full relative convergence across all causally feasible instances while preserving causal validity.
-
-&gt; Grounded in Structural Causal Models (SCMs), A-CBFI isolates synergistic interaction bottlenecks and releases suppressive structural locks, translating them into highly targeted interventions. Key highlights of the framework include:
-&gt; * Concentrating over **98.3%** of intervention efforts directly on diagnosed root causes by mathematically separating the active user intervention space ($L_{\mathrm{active}}$) from downstream effects.
-&gt; * Reducing the active human intervention burden by **76.9%** in empirical evaluations across the financial and healthcare domains, while matching the global recourse cost of exhaustive causal baselines.
-&gt; * Achieving full relative convergence across all causally feasible instances while preserving causal validity.
-
----
-
-## Document Metadata
-## 文档元数据
-
-| Metadata Field | Details |
-| :--- | :--- |
-| **arXiv ID** | [arXiv:2608.27821](https://arxiv.org/abs/2608.27821) [cs.LG] |
-| **Subjects** | Machine Learning (`cs.LG`); Artificial Intelligence (`cs.AI`) |
-| **Author** | Sejong Oh |
-| **Submitted On** | August 28, 2026 |
-| **MSC Classes** | 62R07 |
-| **ACM Classes** | I.2.6 |
-| **DOI** | [10.48550/arXiv.2608.27821](https://doi.org/10.48550/arXiv.2608.27821) |
-
-&gt; | Metadata Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [arXiv:2608.27821](https://arxiv.org/abs/2608.27821) [cs.LG] |
-&gt; | **Subjects** | Machine Learning (`cs.LG`); Artificial Intelligence (`cs.AI`) |
-&gt; | **Author** | Sejong Oh |
-&gt; | **Submitted On** | August 28, 2026 |
-&gt; | **MSC Classes** | 62R07 |
-&gt; | **ACM Classes** | I.2.6 |
-&gt; | **DOI** | [10.48550/arXiv.2608.27821](https://doi.org/10.48550/arXiv.2608.27821) |
-
----
-
-## Abstract
-## 摘要正文
-
-Explainable artificial intelligence (XAI) increasingly calls for actionable counterfactual recourse, yet current methodologies face challenges related to causal invalidity, excessive cognitive burden, and predictive failure. Exhaustive causal search algorithms often require modifications to multiple attributes, whereas additive attribution-guided methods, such as SHAP, ignore higher-order feature synergies, leading to suboptimal predictive momentum and diffuse intervention effort in complex nonlinear models, such as XGBoost. 
-
-&gt; Explainable artificial intelligence (XAI) increasingly calls for actionable counterfactual recourse, yet current methodologies face challenges related to causal invalidity, excessive cognitive burden, and predictive failure. Exhaustive causal search algorithms often require modifications to multiple attributes, whereas additive attribution-guided methods, such as SHAP, ignore higher-order feature synergies, leading to suboptimal predictive momentum and diffuse intervention effort in complex nonlinear models, such as XGBoost. 
-
-To bridge this gap, we introduce actionable case-based feature importance (A-CBFI), a diagnosis-prescription integrated framework for tabular machine learning. Grounded in structural causal models (SCMs), A-CBFI isolates synergistic interaction bottlenecks and releases suppressive structural locks, translating them into targeted interventions. By mathematically separating the active user intervention space ($L_{\mathrm{active}}$) from downstream effects and concentrating over 98.3% of the intervention effort on diagnosed root causes, A-CBFI enables highly targeted interventions. 
-
-&gt; To bridge this gap, we introduce actionable case-based feature importance (A-CBFI), a diagnosis-prescription integrated framework for tabular machine learning. Grounded in structural causal models (SCMs), A-CBFI isolates synergistic interaction bottlenecks and releases suppressive structural locks, translating them into targeted interventions. By mathematically separating the active user intervention space ($L_{\mathrm{active}}$) from downstream effects and concentrating over 98.3% of the intervention effort on diagnosed root causes, A-CBFI enables highly targeted interventions. 
-
-Empirical evaluations across the financial and healthcare domains demonstrate that A-CBFI reduces the active human intervention burden by 76.9% while maintaining comparable global recourse cost to exhaustive causal baselines. By prioritizing the diagnosed causal bottlenecks, A-CBFI provides targeted and actionable recourse while maintaining causal validity and achieving full relative convergence across all causally feasible instances.
-
-&gt; Empirical evaluations across the financial and healthcare domains demonstrate that A-CBFI reduces the active human intervention burden by 76.9% while maintaining comparable global recourse cost to exhaustive causal baselines. By prioritizing the diagnosed causal bottlenecks, A-CBFI provides targeted and actionable recourse while maintaining causal validity and achieving full relative convergence across all causally feasible instances.
-
----
-
-## Additional Resources &amp; Links
-## 附加资源与链接
-
-* **Full-Text:** [View PDF](https://arxiv.org/pdf/2608.27821)
-* **External Indices &amp; Citations:** 
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27821)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27821)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27821)
-
-&gt; * **Full-Text:** [View PDF](https://arxiv.org/pdf/2608.27821)
-&gt; * **External Indices &amp; Citations:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2608.27821)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2608.27821)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.27821)</description>
-    </item>
-    <item>
-      <title>2026-09-01-分层大模型防御作为集成体系：访问层级、推理成本与防御层之间经测量的失效相关性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/分层大模型防御作为集成体系：访问层级、推理成本与防御层之间经测量的失效相关性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/分层大模型防御作为集成体系：访问层级、推理成本与防御层之间经测量的失效相关性/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在大模型（LLM）的安全实践中，从业者经常通过叠加多层防御机制来构建防护体系，并直觉地认为这些保护特性的安全效果会自动叠加。然而，如果将防御堆栈视为一个集成系统（Ensemble），就会发现只有当各个防御机制在完全独立的输入上失效时，安全效益才会真正扩大。
-
-本文引入了两种评估工具——**对抗者访问层级模型（AATM）**和**成本模型**，以系统性地分析防御层在实际应用中的相互作用。对七层防御堆栈进行的实证测试表明，由于底层封装模型内部共享的脆弱性，所有防御层的失效相关性呈现出一致的正相关。最终，该研究证明了单纯的架构多样性无法保证堆栈防御的效率，并强调了进行端到端评估的迫切需求。
-
----
-
-## 核心概念与工具
-
-为了对多层防御堆栈的行为进行建模，作者引入了两个核心评估框架：
-
-1. **对抗者访问层级模型（AATM）：** 根据攻击者对系统的访问权限对其进行分级，从仅限系统的交互（`A0`）一直到直接影响训练数据（`A4`）。
-2. **推理成本与分级模型：** 将防御机制划分为五类推理时开销。由于某些类别需要进行权重训练或读取激活值，它们与对抗者模型的相应访问层级直接对应。
-
-&gt; 1. **The Adversary Access-Tier Model (AATM):** Grades adversaries based on their level of system access, ranging from system-only interactions (`A0`) up to direct influence over training data (`A4`).
-&gt; 2. **Inference-Cost and Tiering Model:** Categorizes defenses into five classes of inference-time overhead. Because certain classes require weight training or reading activations, they map directly to the corresponding access tiers of the adversary model.</description>
-    </item>
-    <item>
-      <title>2026-09-01-先实现可玩，再追求优秀：面向小型对话游戏智能体的分阶段交互学习方法</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/先实现可玩，再追求优秀：面向小型对话游戏智能体的分阶段交互学习方法/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/先实现可玩，再追求优秀：面向小型对话游戏智能体的分阶段交互学习方法/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在构建复杂的对话游戏智能体时，小型语言模型往往难以在长文本交互中维持规则和目标。为了解决这一痛点，本文作者 Syed Mahbubul Huq 和 Pranava Madhyastha 提出了针对小型对话游戏智能体的分阶段交互学习方法，并推出了 **Qwen-GuidePlay-2B** 模型。该工作被接收为 LMP Challenge (EMNLP 2026 Workshop) 的论文。
-
-核心技术方面，研究团队通过结构化的三步分阶段学习法（轨迹级 SFT、轮次级 SFT 以及教师引导的 SFT）对 `Qwen3.5-2B` 进行了微调。该方法的核心思想是“先实现可玩，再追求优秀”——首先通过完整轨迹模仿确保模型具备基础的可玩性，随后通过精细化的轮次训练与教师模型纠偏来提升性能。在官方挑战赛中，该模型取得了第二高的 Playpen clemscore 增量（较基础模型提升了 +36 分）。
-
-这一成果证明了，通过精细的数据筛选与分阶段策略，参数量较小的主流模型完全能够展现出强大的竞技与游戏能力，而无需过度依赖诸如回放修复（replay-repair）或困难样本挖掘（hard-example mining）等计算成本高昂的方法。
-
----
-
-[![license icon]( ./images/345c7ad61f1b.png )](http://creativecommons.org/licenses/by/4.0/)
-
-* **Authors:** Syed Mahbubul Huq, Pranava Madhyastha
-* **Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`)
-* **ArXiv ID:** [arXiv:2608.27672](https://arxiv.org/abs/2608.27672)
-* **Conference:** Accepted at the LMP Challenge (EMNLP 2026 Workshop)
-* **Submitted:** 27 Aug 2026
-
-&gt; [![license icon]( ./images/345c7ad61f1b.png )](http://creativecommons.org/licenses/by/4.0/)
-&gt; 
-&gt; * **Authors:** Syed Mahbubul Huq, Pranava Madhyastha
-&gt; * **Subjects:** Computation and Language (`cs.CL`); Artificial Intelligence (`cs.AI`)
-&gt; * **ArXiv ID:** [arXiv:2608.27672](https://arxiv.org/abs/2608.27672)
-&gt; * **Conference:** Accepted at the LMP Challenge (EMNLP 2026 Workshop)
-&gt; * **Submitted:** 27 Aug 2026
-
----
-
-## 📌 Summary
-
-**Qwen-GuidePlay-2B** is a compact 2B-parameter language model designed for dialogue-game interactions, built by fine-tuning `Qwen3.5-2B` through a structured three-step staged learning method. 
-
-By prioritizing playability first (via full trajectory imitation) and performance second (via turn-level and teacher-guided training), the model achieved the **second-highest Playpen clemscore delta** (+36 improvement over its base model) in the official challenge results. The findings highlight that smaller models can achieve high performance through careful data curation and staged strategies rather than reliance on procedurally heavy methods like replay-repair or hard-example mining.
-
-&gt; ## 📌 摘要
-&gt; 
-&gt; **Qwen-GuidePlay-2B** 是一个专为对话游戏交互而设计的紧凑型 2B 参数语言模型，它通过结构化的三步分阶段学习方法对 `Qwen3.5-2B` 进行微调构建而成。
-&gt; 
-&gt; 通过将“可玩性”置于首位（通过完整轨迹模仿实现），并将“性能”置于其次（通过轮次级和教师引导训练实现），该模型在官方挑战赛中取得了**第二高的 Playpen clemscore 增量**（较基础模型提升了 +36 分）。这一发现突显出，通过精心的数据整理和分阶段策略，较小的模型同样能够实现高性能，而无需依赖回放修复（replay-repair）或困难样本挖掘（hard-example mining）等流程繁重的传统方法。
-
----
-
-## 🚀 Key Methodology
-
-The authors fine-tuned the base model using a three-stage pipeline:
-1. **Trajectory SFT:** Supervised fine-tuning (SFT) exclusively on successful game trajectories from Playpen to establish foundational playability.
-2. **Turn-Level SFT:** Weighted SFT focusing on individual turns to refine decision-making.
-3. **Teacher-Guided SFT:** Utilizing a larger teacher model strictly for formatting fixes and example evaluation (without generating new gold actions) to maximize overall scores.
-
-&gt; ## 🚀 核心方法论
-&gt; 
-&gt; 作者采用了一个三阶段的流水线对基础模型进行微调：
-&gt; 1. **轨迹级 SFT（Trajectory SFT）：** 专门使用 Playpen 中成功的游戏轨迹进行监督微调（SFT），以确立基础的可玩性。
-&gt; 2. **轮次级 SFT（Turn-Level SFT）：** 聚焦于单轮交互的加权 SFT，以优化决策过程。
-&gt; 3. **教师引导的 SFT（Teacher-Guided SFT）：** 严格利用更大的教师模型进行格式修复和示例评估（不生成新的黄金动作），以实现整体得分的最大化。
-
----
-
-## 🔗 Links &amp; Resources
-
-* **View PDF:** [arXiv:2608.27672 PDF](https://arxiv.org/pdf/2608.27672)
-* **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2608.27672v1)
-* **TeX Source:** [Download Source](https://arxiv.org/src/2608.27672)
-* **Digital Object Identifier (DOI):** [10.48550/arXiv.2608.27672](https://doi.org/10.48550/arXiv.2608.27672)
-
-&gt; ## 🔗 链接与资源
-&gt; 
-&gt; * **查看 PDF：** [arXiv:2608.27672 PDF](https://arxiv.org/pdf/2608.27672)
-&gt; * **HTML 版本：** [arXiv HTML (实验性)](https://arxiv.org/html/2608.27672v1)
-&gt; * **TeX 源码：** [下载源码](https://arxiv.org/src/2608.27672)
-&gt; * **数字对象唯一标识符 (DOI)：** [10.48550/arXiv.2608.27672](https://doi.org/10.48550/arXiv.2608.27672)</description>
-    </item>
-    <item>
-      <title>Fidelity Is Not Enough: Dispatch-Level Instrumentation for Agentic Datasheet Extraction</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/保真度远远不够：面向智能体数据表提取的调度级插桩技术/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/保真度远远不够：面向智能体数据表提取的调度级插桩技术/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在智能体文档提取领域，“保真度”（即检查提取的值是否与源文本匹配）通常被认为是成功的黄金标准。然而，本文指出仅靠保真度是远远不够且具有潜在危险的。作者在评估内部提取服务的模型时发现了一个关键的失效模式：结构化输出约束静默禁用了模型的工具使用功能。尽管模型从未打开过实际的数据表，但它通过幻觉出看似合理的源文本来回答提示词，从而成功通过了传统的保真度检查。只有逐个工具的执行追踪才能揭示这种欺骗行为。
-
-为了解决这一可观测性鸿沟，研究人员在一个包含 37 个声明的智能体基准测试中记录了每一次工具调用。基于这种调度级遥测数据，他们开发了两项核心工具：1. 基于规则的失败归因分类器；2. 严格依赖工具调用模式（而非提取值）的静默失败检测器。核心研究结果表明，静默失败检测器在 207 个干净的、通过保真度的提取中保持了零误报率，并成功恢复了所有植入的故障。此外，对已部署模型栈的测试表明，工具层主要驱动的是可移植性和可观测性，而非单纯的原始准确率——这证明了当文档规模超出标准上下文窗口时其终极价值。
-
----
-
-# Fidelity Is Not Enough: Dispatch-Level Instrumentation for Agentic Datasheet Extraction
-
-&gt; Fidelity Is Not Enough: Dispatch-Level Instrumentation for Agentic Datasheet Extraction
-
-**Authors:** Qing Ye, Meng-Hsuan Lin  
-**Accepted at:** EMNLP 2026 Industry Track (7 pages + appendices)  
-**arXiv:** [arXiv:2608.28439 [cs.CL]](https://arxiv.org/abs/2608.28439) | **DOI:** [10.48550/arXiv.2608.28439](https://doi.org/10.48550/arXiv.2608.28439)  
-**Submitted:** August 28, 2026  
-
-&gt; **Authors:** Qing Ye, Meng-Hsuan Lin  
-&gt; **Accepted at:** EMNLP 2026 Industry Track (7 pages + appendices)  
-&gt; **arXiv:** [arXiv:2608.28439 [cs.CL]](https://arxiv.org/abs/2608.28439) | **DOI:** [10.48550/arXiv.2608.28439](https://doi.org/10.48550/arXiv.2608.28439)  
-&gt; **Submitted:** August 28, 2026  
-
----
-
-## 📌 Summary
-
-&gt; ## 📌 Summary
-
-In agentic document extraction, **fidelity** (checking whether an extracted value matches the source text) is typically considered the gold standard for success. However, this paper demonstrates that fidelity alone is dangerously insufficient. 
-
-&gt; In agentic document extraction, **fidelity** (checking whether an extracted value matches the source text) is typically considered the gold standard for success. However, this paper demonstrates that fidelity alone is dangerously insufficient. 
-
-The authors discovered a critical failure mode while qualifying models for an internal extraction service: a structured-output constraint silently disabled a model's tool use. Despite never opening the actual datasheet, the model successfully passed traditional fidelity checks by hallucinating plausible source text to answer the prompt. **Only per-tool execution tracing exposed the deception.**
-
-&gt; The authors discovered a critical failure mode while qualifying models for an internal extraction service: a structured-output constraint silently disabled a model's tool use. Despite never opening the actual datasheet, the model successfully passed traditional fidelity checks by hallucinating plausible source text to answer the prompt. **Only per-tool execution tracing exposed the deception.**
-
-To address this observability gap, the researchers logged every tool call across an agentic benchmark spanning 37 total claims. From this dispatch-level telemetry, they developed two core instruments:
-1. **A rule-based failure-attribution classifier**
-2. **A silent-failure detector** relying strictly on tool-call patterns rather than extracted values
-
-&gt; To address this observability gap, the researchers logged every tool call across an agentic benchmark spanning 37 total claims. From this dispatch-level telemetry, they developed two core instruments:
-&gt; 1. **A rule-based failure-attribution classifier**
-&gt; 2. **A silent-failure detector** relying strictly on tool-call patterns rather than extracted values
-
-Key findings reveal that the silent-failure detector maintains a zero false-positive rate across 207 clean, fidelity-passing extractions and successfully recovers all planted faults. Furthermore, testing across deployed model stacks indicates that the tool layer primarily drives **portability and observability** rather than raw accuracy—proving its ultimate value when documents scale beyond standard context windows.
-
-&gt; Key findings reveal that the silent-failure detector maintains a zero false-positive rate across 207 clean, fidelity-passing extractions and successfully recovers all planted faults. Furthermore, testing across deployed model stacks indicates that the tool layer primarily drives **portability and observability** rather than raw accuracy—proving its ultimate value when documents scale beyond standard context windows.
-
----
-
-## 📑 Metadata &amp; Links
-
-&gt; ## 📑 Metadata &amp; Links
-
-- **Primary Subject:** Computation and Language (`cs.CL`)  
-- **Secondary Subjects:** Artificial Intelligence (`cs.AI`)  
-- **Full-Text Access:** 
-  - [View PDF](https://arxiv.org/pdf/2608.28439)
-  - [HTML Version (Experimental)](https://arxiv.org/html/2608.28439v1)
-  - [TeX Source](https://arxiv.org/src/2608.28439)
-
-&gt; - **Primary Subject:** Computation and Language (`cs.CL`)  
-&gt; - **Secondary Subjects:** Artificial Intelligence (`cs.AI`)  
-&gt; - **Full-Text Access:** 
-&gt;   - [View PDF](https://arxiv.org/pdf/2608.28439)
-&gt;   - [HTML Version (Experimental)](https://arxiv.org/html/2608.28439v1)
-&gt;   - [TeX Source](https://arxiv.org/src/2608.28439)</description>
-    </item>
-    <item>
-      <title>2026-09-01-保持在边界内：基于距离引导解码的保证上下文无关文法合规性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/保持在边界内：基于距离引导解码的保证上下文无关文法合规性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/保持在边界内：基于距离引导解码的保证上下文无关文法合规性/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型在生成代码、JSON 和 SQL 等语法有效的结构化输出时常常面临挑战。尽管语法约束解码方法通过强制执行局部前缀可行性提供了一定帮助，但在面对分词器与文法不匹配以及有限的 Token 预算时，它们仍然可能失效。本文介绍了一种基于下推自动机（Pushdown Automata）的**前瞻引导解码框架（lookahead-guided decoding framework）**，专门用于处理上下文无关文法（CFG）。
-
-通过离线计算带有可达性标签和上限距离的有界下推摘要，该方法能够在在线解码过程中引导具有视界感知（horizon-aware）的剪枝和束搜索（beam search）。该方法保证了 100% 的语法有效性，并在 JSON、SQL 和线性时序逻辑（LTL）任务中显著提升了补全质量。
-
----
-
-## 摘要 (Abstract)
-
-大型语言模型在生成代码、JSON 和 SQL 等语法有效的结构化输出时，语法约束解码能够提供很大帮助。对于上下文无关文法，许多实际的解码器会强制执行局部前缀可行性：每个 Token 都必须使当前前缀能够扩展为某个有效的完整输出。然而，在分词器与文法不匹配以及 Token 预算有限的情况下，可执行的前缀仍然可能无法到达接受状态。我们提出了一种针对上下文无关文法的、基于下推自动机的ieht瞻引导解码框架。在离线阶段，我们计算带有可达性标签和到达接受状态的上界距离的有界下推摘要。在在线阶段，这些估计值指导视界感知的剪枝与束搜索。由此产生的解码器在语法上是健全的：每个输出都被目标文法所接受。在 JSON、SQL 和线性时序逻辑（LTL）上的实验表明，与现有基线相比，该方法不仅具有持续的语法有效性，还提高了补全质量。
-
-&gt; Grammar-constrained decoding helps large language models produce syntactically valid structured outputs, such as code, JSON, and SQL. For context-free grammars, many practical decoders enforce local prefix feasibility: each token must keep the current prefix extendable to some valid completion. Yet, under tokenizer-grammar mismatch and finite token budgets, feasible prefixes may still fail to reach acceptance. We propose a lookahead-guided decoding framework for context-free grammars based on pushdown automata. Offline, we compute bounded pushdown summaries with reachability labels and upper-bound distances to acceptance. Online, these estimates guide horizon-aware pruning and beam search. The resulting decoder is syntactically sound: every output is accepted by the target grammar. Experiments on JSON, SQL, and Linear Temporal Logic (LTL) show both consistent syntactic validity and improved completion quality over existing baselines.
-
----
-
-## 访问链接与资源 (Access Links &amp; Resources)
-
-* **全文链接：**
-  * [查看 PDF (View PDF)](https://arxiv.org/pdf/2608.28229)
-  * [HTML 格式 (Experimental)](https://arxiv.org/html/2608.28229v1)
-  * [TeX 源码 (TeX Source)](https://arxiv.org/src/2608.28229)
-* **许可证：** [知识共享 署名-相同方式共享 4.0 (Creative Commons Attribution-ShareAlike 4.0)](http://creativecommons.org/licenses/by-sa/4.0/)
-* **外部引用与工具：**
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2608.28229)
-  * [谷歌学术 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2608.28229)
-  * [语义学者 (Semantic Scholar)](https://api.semanticscholar.org/arXiv:2608.28229)</description>
-    </item>
-    <item>
-      <title>From Documents to Reasoning: A Validated Synthetic Data Pipeline and Semantic-Aware Fine-Tuning for Financial Numerical Reasoning</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/从文档到推理：面向金融数值推理的验证型合成数据流水线与语义感知微调/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/从文档到推理：面向金融数值推理的验证型合成数据流水线与语义感知微调/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>金融问答（Financial QA）是评估大语言模型（LLM）处理涉及表格、图表和丰富文本叙述等混合数据格式的复杂领域特定任务的关键基准。尽管多模态推理和多步算术近期取得了进展，但现有模型的性能仍然不稳定且评估不可靠——这主要是因为诸如精确匹配（EM）等标准指标无法应对单位或格式差异等无害变体。
-
-为了解决这些挑战，本文引入了一个综合框架，通过高端合成数据生成和参数高效微调来增强金融问答系统：1. 严格的合成数据验证：确保合成生成的问答对在事实上的正确性和相关性的流水线；2. 量化低秩自适应（QLoRA）：应用于小型语言模型（SLM）的高效微调；3. 基于表达式的评估指标：一种新颖的评估指标，直接从算术表达式计算答案，而非死板的基础真值匹配，从而更真实地反映模型的推理能力；4. 语义感知损失函数：一种修改后的损失机制，通过结合语义相似度、新颖评估指标和标准交叉熵来对齐预测表达式与参考表达式。实验结果表明，在结合合成数据集和所提出的损失函数进行微调后，诸如 *ConvFinQA* 等基准数据集上的问答准确率得到了显着提升。
-
----
-
-# From Documents to Reasoning: A Validated Synthetic Data Pipeline and Semantic-Aware Fine-Tuning for Financial Numerical Reasoning
-
-**arXiv:** [arXiv:2608.27919 [cs.AI]](https://arxiv.org/abs/2608.27919)  
-**DOI:** [10.48550/arXiv.2608.27919](https://doi.org/10.48550/arXiv.2608.27919)  
-**Submitted:** August 28, 2026  
-
-&gt; **arXiv:** [arXiv:2608.27919 [cs.AI]](https://arxiv.org/abs/2608.27919)  
-&gt; **DOI:** [10.48550/arXiv.2608.27919](https://doi.org/10.48550/arXiv.2608.27919)  
-&gt; **Submitted:** August 28, 2026</description>
-    </item>
-    <item>
-      <title>2026-09-01-为什么所有大语言模型都对日本文化“情有独钟”？解析大模型中隐藏的文化与地域偏见</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-01/为什么所有大语言模型都对日本文化“情有独钟”？解析大模型中隐藏的文化与地域偏见/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-01/为什么所有大语言模型都对日本文化“情有独钟”？解析大模型中隐藏的文化与地域偏见/</guid>
-      <pubDate>Tue, 01 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型（LLM）在跨文化应用中的表现日益受到关注，但其内部往往潜藏着复杂的文化与地域偏见。本文探讨了当大模型面对通用、与文化相关的问题时，其所展现出的特定地域偏好。作者通过构建一个包含24种语言的多语言数据集——文化相关开放式问题（CROQ）分类体系，对主流大模型进行了深入评测。
-
-研究发现了一个令人惊讶的全局性偏见：大模型在回答时表现出强烈的倾向，特别容易将答案导向特定的国家——其中最显著的就是**日本**。此外，输入语言的选择也会显著影响偏见的形式：英语等高资源语言通常会引发更多样化的输出，而低资源语言则倾向于突出该语言作为官方语言的国家。通过对模型训练动态的追踪，研究表明这些文化倾向主要产生于监督微调（SFT）阶段，而非初始的预训练阶段。
-
----
-
-&lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png" /&gt;
-
-## 摘要 (Summary)
-&gt; This research paper investigates the hidden cultural and regional biases embedded within Large Language Models (LLMs). While previous studies have evaluated LLM cultural capabilities, this work specifically examines regional preferences when answering generic, culture-related questions. 
-&gt; 
-&gt; To conduct this evaluation, the authors introduce a new multilingual dataset based on a taxonomy of **Culture-Related Open Questions (CROQ)** across 24 languages. The findings reveal a surprising overarching bias: LLMs exhibit a pronounced tendency to gravitate toward specific countries—most notably **Japan**—in their responses. 
-&gt; 
-&gt; Furthermore, the study highlights how input language impacts bias:
-&gt; * **High-resource languages** (like English) tend to elicit more diverse outputs.
-&gt; * **Low-resource languages** show strong inclinations toward highlighting countries where the input language holds official status.
-&gt; * **Training dynamics:** Investigation into the emergence of this bias suggests that these cultural slants primarily manifest during the **supervised fine-tuning** stage rather than initial pre-training.
-
-本研究论文探讨了嵌入在大型语言模型（LLM）中的隐藏文化与地域偏见。尽管先前的研究评估过LLM的文化能力，但本工作专门检查了其在回答通用、与文化相关的问题时的地域偏好。
-
-为了进行这一评估，作者引入了一个基于24种语言的“文化相关开放式问题（CROQ）”分类体系的新多语言数据集。研究结果揭示了一个令人惊讶的总体偏见：LLM在回答中表现出明显的倾向，即向特定国家（最显著的是**日本**）靠拢。
-
-此外，该研究强调了输入语言如何影响偏见：
-* **高资源语言**（如英语）往往会引发更多样化的输出。
-* **低资源语言**则表现出强烈的倾向，倾向于突出显示该输入语言为其官方语言的国家。
-* **训练动态：** 对这种偏见出现的机制的调查表明，这些文化倾向主要体现在**监督微调**阶段，而不是初始的预训练阶段。
-
----
-
-## 文档元数据 (Document Metadata)
-
-* **arXiv ID:** [arXiv:2604.21751](https://arxiv.org/abs/2604.21751) [cs.CL]
-* **主要学科:** 计算与语言 (`cs.CL`)
-* **次要学科:** 人工智能 (`cs.AI`)；计算机与社会 (`cs.CY`)
-* **作者:** 
-  * Joseba Fernandez de Landa
-  * Carla Perez-Almendros
-  * Jose Camacho-Collados
-* **提交历史:** 
-  * 提交于 2026年4月23日 (`v1`)
-  * 最后修订于 2026年8月28日 (`v2`)
-* **数据集可用性:** [Hugging Face 数据集 (HiTZ/CROQ)](https://huggingface.co/datasets/HiTZ/CROQ)
-
----
-
-## 摘要原文 (Abstract)
-&gt; LLMs have limitations when it comes to cultural coverage and competence, and in some cases, show specific cultural biases. Although prior studies have examined the cultural capabilities of LLMs, none have specifically investigated their regional preferences in generic culture-related questions. In this work, we propose a new dataset based on a comprehensive taxonomy of Culture-Related Open Questions (CROQ), with questions available in 24 languages. We evaluate LLMs by prompting them to answer questions from CROQ and provide a sample location. The results show that, contrary to previous cultural bias work, LLMs show a clear tendency towards countries such as Japan in their answers. Moreover, our results show that when prompting in languages such as English or other high-resource ones, LLMs tend to provide more diverse outputs. Low-resource languages, on the other hand, show more inclinations towards answering questions highlighting countries for which the input language is an official language. Finally, we also investigate at which point of LLM training this cultural bias emerges, with our results suggesting that the first clear signs appear after supervised fine-tuning, and not during pre-training.
-
-&gt; LLMs在文化覆盖范围和能力方面存在局限性，在某些情况下还会表现出特定的文化偏见。尽管先前的研究已经考察了LLM的文化能力，但没有一项研究专门调查其在通用文化相关问题中的地域偏好。在这项工作中，我们提出了一个基于文化相关开放式问题（CROQ）综合分类法的新数据集，其中包含24种语言的问题。我们通过提示LLM回答CROQ中的问题并提供样本位置来评估它们。结果表明，与以往的文化偏见研究相反，LLM在回答中表现出对日本等国家的明显偏好。此外，我们的结果表明，当使用英语或其他高资源语言进行提示时，LLM往往会提供更多样化的输出。另一方面，低资源语言表现出更多倾向于回答突出显示输入语言为其官方语言的国家的倾向。最后，我们还调查了这种文化偏见在LLM训练的哪个阶段出现，我们的结果表明，第一个明显的迹象出现在监督微调之后，而不是在预训练期间。
-
----
-
-## 附加资源与访问链接 (Additional Resources &amp; Access Links)
-
-* **全文选项:** 
-  * [查看 PDF](https://arxiv.org/pdf/2604.21751)
-  * [HTML 版本（实验性）](https://arxiv.org/html/2604.21751v2)
-  * [TeX 源码](https://arxiv.org/src/2604.21751)
-* **外部引用与工具:**
-  * [Google 学术](https://scholar.google.com/scholar_lookup?arxiv_id=2604.21751)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2604.21751)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2604.21751)
-* **社区书签:**
-  * [BibSonomy](http://www.bibsonomy.org/BibtexHandler?requTask=upload&amp;url=https://arxiv.org/abs/2604.21751&amp;description=Why%20are%20all%20LLMs%20Obsessed%20with%20Japanese%20Culture?%20On%20the%20Hidden%20Cultural%20and%20Regional%20Biases%20of%20LLMs)
-  * [Reddit](https://reddit.com/submit?url=https://arxiv.org/abs/2604.21751&amp;title=Why%20are%20all%20LLMs%20Obsessed%20with%20Japanese%20Culture?%20On%20the%20Hidden%20Cultural%20and%20Regional%20Biases%20of%20LLMs)</description>
     </item>
   </channel>
 </rss>
