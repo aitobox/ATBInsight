@@ -1,0 +1,781 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-03-%E7%94%A8%E8%AE%B0%E5%BF%86%E6%9B%BF%E4%BB%A3%E8%AE%AD%E7%BB%83%EF%BC%9AText-to-SQL%20%E7%9A%84%E5%88%97%E8%A1%A8%E5%BC%8F%E9%80%89%E6%8B%A9%E6%96%B9%E6%B3%95/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>用记忆替代训练：Text-to-SQL 的列表式选择方法 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              用记忆替代训练：Text-to-SQL 的列表式选择方法
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#replacing-training-with-memory-listwise-selection-for-text-to-sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Replacing Training with Memory: Listwise Selection for Text-to-SQL
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Replacing Training with Memory: Listwise Selection for Text-to-SQL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paper-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Paper Metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Abstract
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#access-links-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Access Links &amp; Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>现代 Text-to-SQL 架构通常采用“生成-执行-选择”（generate-execute-select）的流水线模式，即先生成多个候选 SQL 查询，然后通过筛选选出最优解。尽管“列表式选择”（listwise selection）能够对多个候选进行联合比较，但对这些模型进行微调（fine-tuning）往往需要付出高昂的计算成本。</p>
+<p>为了突破这一局限性，本文提出了 <strong>MaP-SQL</strong>——一种无需微调的列表式选择器。它用高效的推理时策略取代了传统的训练目标：首先，通过结构化记忆检索，将自然语言到架构元素、SQL 操作及预期结果的映射关系以记忆形式从训练数据中提取并复用，而非硬编码进模型参数；其次，通过聚合多种输入排列的排序结果来消除列表式选择器固有的位置偏差，并利用执行结果和逐点评分（pointwise scoring）来优化推理成本。</p>
+<p>在标准的 Text-to-SQL 基准测试中，该方法在无需微调的前提下展现出更高的稳定性，同时大幅减少了不必要的比较次数。值得注意的是，在 <strong>BIRD-dev</strong> 基准测试中，在采用相同候选集的情况下，MaP-SQL 的执行准确率比当前最先进的基于选择器的方法（<span class="arithmatex">\(R^3-SQL\)</span>）高出 <strong>2.02 个百分点</strong>，同时 Token 消耗量降低了 <strong><span class="arithmatex">\(2.92\times\)</span></strong>。</p>
+<hr />
+<h1 id="replacing-training-with-memory-listwise-selection-for-text-to-sql">Replacing Training with Memory: Listwise Selection for Text-to-SQL</h1>
+<h2 id="summary">Summary</h2>
+<p>Modern Text-to-SQL architectures typically utilize a <em>generate-execute-select</em> pipeline, where multiple candidate SQL queries are produced and subsequently filtered to identify the optimal choice. While <strong>listwise selection</strong> enables the joint comparison of multiple candidates, fine-tuning these models is computationally expensive. </p>
+<p>To overcome this limitation, this paper introduces <strong>MaP-SQL</strong>, a fine-tuning-free listwise selector that replaces traditional training objectives with efficient inference-time strategies:
+1. <strong>Structured Memory Retrieval:</strong> Instead of encoding selection behavior into model parameters, the approach retrieves memories distilled from training data that illustrate how natural language translates to schema elements, SQL operations, and expected outcomes.
+2. <strong>Positional Bias Mitigation:</strong> To neutralize ordering biases inherent to listwise selectors, the method aggregates rankings across multiple input permutations while optimizing inference costs using execution results and pointwise scoring.</p>
+<p>Across standard Text-to-SQL benchmarks, the proposed method yields greater stability without requiring fine-tuning and necessitates significantly fewer comparisons. Notably, on the <strong>BIRD-dev</strong> benchmark, it surpasses the previous state-of-the-art selector-based method (<span class="arithmatex">\(R^3-SQL\)</span>) by <strong>2.02 execution accuracy points</strong> using identical candidate sets, while using <strong><span class="arithmatex">\(2.92\times\)</span> fewer tokens</strong>.</p>
+<blockquote>
+<p>现代 Text-to-SQL 架构通常采用“生成-执行-选择”（generate-execute-select）流水线，即生成多个候选 SQL 查询，随后进行筛选以确定最优选择。虽然<strong>列表式选择</strong>（listwise selection）支持对多个候选进行联合比较，但微调这些模型的计算成本很高。</p>
+<p>为了克服这一局限性，本文推出了 <strong>MaP-SQL</strong>，这是一种无需微调的列表式选择器，它用高效的推理时策略取代了传统的训练目标：
+1. <strong>结构化记忆检索：</strong> 该方法没有将选择行为编码到模型参数中，而是检索从训练数据中提取的记忆，这些记忆展示了自然语言如何转化为架构元素、SQL 操作和预期结果。
+2. <strong>位置偏差缓解：</strong> 为了消除列表式选择器固有的顺序偏差，该方法在多个输入排列中聚合排名，同时使用执行结果和逐点评分来优化推理成本。</p>
+<p>在标准的 Text-to-SQL 基准测试中，该方法在无需微调的情况下产生了更高的稳定性，并且需要显著更少的比较。值得注意的是，在 <strong>BIRD-dev</strong> 基准测试中，在使用相同候选集的情况下，它超越了之前最先进的基于选择器的方法（<span class="arithmatex">\(R^3-SQL\)</span>），执行准确率高出 <strong>2.02 个百分点</strong>，同时使用的 Token 减少了 <strong><span class="arithmatex">\(2.92\times\)</span></strong>。</p>
+</blockquote>
+<hr />
+<h2 id="paper-metadata">Paper Metadata</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv Identifier</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2609.00834">arXiv:2609.00834</a> [cs.SE]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Title</strong></td>
+<td style="text-align: left;">Replacing Training with Memory: Listwise Selection for Text-to-SQL</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Authors</strong></td>
+<td style="text-align: left;">Yeonseok Jeong, Soyoung Yoon, Seongjun Lee, Seung-won Hwang</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Submitted On</strong></td>
+<td style="text-align: left;">September 1, 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Accepted Venue</strong></td>
+<td style="text-align: left;">Findings of EMNLP 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Subject</strong></td>
+<td style="text-align: left;">Software Engineering (<code>cs.SE</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Secondary Subjects</strong></td>
+<td style="text-align: left;">Artificial Intelligence (<code>cs.AI</code>), Computation and Language (<code>cs.CL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2609.00834">10.48550/arXiv.2609.00834</a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">属性</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv 标识符</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2609.00834">arXiv:2609.00834</a> [cs.SE]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>标题</strong></td>
+<td style="text-align: left;">用记忆替代训练：Text-to-SQL 的列表式选择方法</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>作者</strong></td>
+<td style="text-align: left;">Yeonseok Jeong, Soyoung Yoon, Seongjun Lee, Seung-won Hwang</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交日期</strong></td>
+<td style="text-align: left;">2026年9月1日</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>录用会议</strong></td>
+<td style="text-align: left;">Findings of EMNLP 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>主要学科</strong></td>
+<td style="text-align: left;">软件工程 (<code>cs.SE</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>次要学科</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)、计算与语言 (<code>cs.CL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2609.00834">10.48550/arXiv.2609.00834</a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>Modern Text-to-SQL systems often follow generate-execute-select pipelines, generating multiple candidate queries then selecting the best one. Listwise selection, by jointly comparing multiple candidates, has been widely adopted, but fine-tuning listwise selectors is costly. We thus propose a fine-tuning-free listwise selector. We replace two major fine-tuning objectives with inference-time strategies: (1) learning selection criteria as ordering and (2) mitigating positional bias. First, we build reusable structured memories instead of learning selection behavior as model parameters. Given a question, MaP-SQL retrieves memories distilled from training data that encode how natural language maps to schema elements, SQL operations, and expected outputs. These memories serve as explicit decision criteria for evaluating candidates in a listwise manner. Second, to mitigate ordering bias of listwise selectors, we aggregate rankings across multiple input permutations, with inference cost optimized by execution results and pointwise scoring. Our approach improves selection accuracy while maintaining efficiency and compatibility with existing large language models. Across Text-to-SQL benchmarks, it produces more stable selection without fine-tuning and fewer unnecessary comparisons than existing methods. On BIRD-dev, it outperforms the previous state-of-the-art selector-based method <span class="arithmatex">\(R^3-SQL\)</span> by 2.02 execution accuracy points on average using the same candidate sets, with 2.92x fewer tokens.</p>
+<blockquote>
+<p>现代 Text-to-SQL 系统通常遵循“生成-执行-选择”流水线，即生成多个候选查询然后选择最佳查询。列表式选择通过联合比较多个候选已被广泛采用，但微调列表式选择器的成本很高。因此，我们提出了一种无需微调的列表式选择器。我们用推理时策略取代了两个主要的微调目标：（1）将选择标准学习为排序，以及（2）缓解位置偏差。首先，我们构建可重用的结构化记忆，而不是将选择行为学习为模型参数。给定一个问题，MaP-SQL 会检索从训练数据中提取的记忆，这些记忆编码了自然语言如何映射到架构元素、SQL 操作和预期输出。这些记忆可作为以列表方式评估候选者的明确决策标准。其次，为了缓解列表式选择器的顺序偏差，我们跨多个输入排列聚合排名，并通过执行结果和逐点评分来优化推理成本。我们的方法在保持效率和与现有大语言模型兼容性的同时，提高了选择准确率。在各个 Text-to-SQL 基准测试中，它在无需微调的情况下产生了更稳定的选择，并且比现有方法进行了更少的不必要比较。在 BIRD-dev 上，使用相同的候选集，它平均比以前最先进的基于选择器的方法 <span class="arithmatex">\(R^3-SQL\)</span> 的执行准确率高出 2.02 个百分点，同时使用的 Token 减少了 2.92 倍。</p>
+</blockquote>
+<hr />
+<h2 id="access-links-resources">Access Links &amp; Resources</h2>
+<ul>
+<li><strong>Full-Text Options:</strong> </li>
+<li><a href="https://arxiv.org/pdf/2609.00834">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2609.00834v1">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2609.00834">TeX Source</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a> <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" style="vertical-align: middle; display: inline-block; max-height: 20px;" /></a></li>
+<li><strong>External Bibliographic Tools:</strong></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.00834">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2609.00834">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.00834">NASA ADS</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>全文选项：</strong></li>
+<li><a href="https://arxiv.org/pdf/2609.00834">查看 PDF</a></li>
+<li><a href="https://arxiv.org/html/2609.00834v1">HTML 版本（实验性）</a></li>
+<li><a href="https://arxiv.org/src/2609.00834">TeX 源码</a></li>
+<li><strong>许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际</a> <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" style="vertical-align: middle; display: inline-block; max-height: 20px;" /></a></li>
+<li><strong>外部文献计量工具：</strong></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.00834">Google 学术</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2609.00834">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.00834">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Text-to-SQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">列表式选择</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">检索增强</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">机器学习</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
