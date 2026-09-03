@@ -1,0 +1,782 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-04-Perplexity%E5%BC%80%E6%BA%90Lily%EF%BC%9A%E4%B8%93%E4%B8%BAApple%20Silicon%E4%B8%8AQwen3.6-35B-A3B%E6%89%93%E9%80%A0%E7%9A%84Rust%20+%20Metal%E6%8E%A8%E7%90%86%E5%BC%95%E6%93%8E/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#perplexity-open-sources-lily-a-rust-metal-inference-engine-for-qwen36-35b-a3b-on-apple-silicon" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Perplexity Open Sources Lily: A Rust + Metal Inference Engine for Qwen3.6-35B-A3B on Apple Silicon
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-specialize-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Why Specialize at All?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-workload-shapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Three Workload Shapes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefill-keep-weights-packed-keep-routing-on-the-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prefill: Keep Weights Packed, Keep Routing on the GPU
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decode-minimize-bytes-moved-per-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Decode: Minimize Bytes Moved Per Token
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-takeaways" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Takeaways
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Resources &amp; Links
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在这篇技术文章中，Perplexity 宣布开源其用于驱动 Perplexity Computer 中混合计算（Hybrid Compute）的自定义本地推理引擎——<strong>Lily</strong>。该引擎专为 Apple Silicon 芯片上的 <strong>Qwen3.6-35B-A3B</strong> 模型设计，彻底抛弃了 PyTorch 和 MLX 等传统框架，转而采用高性能的 Rust 运行时与手写 Metal 内核。通过针对单一模型和硬件架构进行深度定制，Lily 实现了卓越的性能表现——在 M5 Max 芯片上，其预填充（prefill）速度平均比 MLX-LM 快 <strong>1.23倍</strong>，解码（decode）速度快 <strong>1.35倍</strong>。</p>
+<p>文章详细探讨了专门化架构的必要性、模型的特定工作负载形态，以及 Lily 在预填充和解码阶段所采用的技术优化（如按需反量化、GPU 常驻路由、并发 Metal 传递以及内存优化等）。这些创新不仅大幅减少了数据搬运，还在长上下文场景下带来了显著的性能提升。</p>
+<blockquote>
+<h2 id="perplexity-open-sources-lily-a-rust-metal-inference-engine-for-qwen36-35b-a3b-on-apple-silicon">Perplexity Open Sources Lily: A Rust + Metal Inference Engine for Qwen3.6-35B-A3B on Apple Silicon</h2>
+<h2 id="summary">Summary</h2>
+<p>Perplexity has open-sourced <strong>Lily</strong>, the custom local inference engine powering Hybrid Compute in Perplexity Computer. Designed exclusively for the <strong>Qwen3.6-35B-A3B</strong> model on Apple Silicon, Lily bypasses traditional frameworks like PyTorch and MLX, utilizing a high-performance Rust runtime coupled with hand-written Metal kernels. By heavily specializing the engine for a single model and hardware architecture, Lily achieves superior performance—outperforming MLX-LM by an average of <strong>1.23x in prefill</strong> and <strong>1.35x in decode</strong> speeds on an M5 Max chip.</p>
+</blockquote>
+<hr />
+<p>为什么要进行专门化设计？
+虽然像 <strong>MLX</strong> 和 <strong>MLX-LM</strong> 这样的默认 Mac 软件栈提供了极大的灵活性，但其操作必须能够在各种模型架构之间保持通用和可复用。Lily 摒弃了这种通用化方法，将模型结构、执行计划和内核选择紧密耦合到一个单一的优化运行时中。</p>
+<blockquote>
+<hr />
+<h2 id="why-specialize-at-all">Why Specialize at All?</h2>
+<p>While default Mac stacks like <strong>MLX</strong> and <strong>MLX-LM</strong> offer great flexibility, their operations must remain reusable across various model architectures. Lily discards this generalized approach, tightly coupling model structure, execution plans, and kernel selection into a single, optimized runtime.</p>
+</blockquote>
+<hr />
+<p>三种工作负载形态
+Qwen3.6-35B-A3B 模型拥有 350 亿参数，但每个 Token 仅激活约 30 亿参数。其架构呈现出三种不同的计算模式：
+* <strong>混合专家模型（MoE）：</strong> 路由器对 256 个专家进行评分并选择其中 8 个，同时包含 1 个共享专家。
+* <strong>注意力层（Attention Layers）：</strong> 结合了使用分组查询注意力（GQA）的 10 个全注意力层与 30 个 Gated DeltaNet 层。
+* <strong>循环机制（Recurrence）：</strong> 结合了不均匀的专家组、不断增长的 KV 缓存以及固定大小的循环。</p>
+<blockquote>
+<hr />
+<h2 id="three-workload-shapes">Three Workload Shapes</h2>
+<p>The Qwen3.6-35B-A3B model utilizes 35 billion parameters while activating roughly 3 billion per token. Its architecture presents three distinct computational patterns:
+* <strong>Mixture-of-Experts (MoE):</strong> A router scores 256 experts to pick 8, alongside 1 shared expert.
+* <strong>Attention Layers:</strong> Mixes 10 full-attention layers using grouped-query attention (GQA) with 30 Gated DeltaNet layers.
+* <strong>Recurrence:</strong> Combines uneven expert groups, a growing KV cache, and a fixed-size recurrence.</p>
+</blockquote>
+<hr />
+<p>预填充：保持权重压缩，将路由保留在 GPU 上
+该检查点使用分组仿射 4 位量化（groupwise affine 4-bit quantization），将约 70 GB 的 bfloat16 权重压缩至 19.4 GB。Lily 通过以下几个关键机制优化了预填充性能：
+* <strong>动态反量化（On-the-Fly Dequantization）：</strong> 在分组 GEMM 内核内部一次重建一个瓦片（tile）的权重，并将结果保存在线程组内存中，以防止扩展后的数组触及统一内存。
+* <strong>GPU 常驻路由（GPU-Resident Routing）：</strong> 将路由直方图、前缀扫描（prefix scan）、散布（scatter）和块映射保留在单个 GPU 命令缓冲区中，在 512 个 Token 时将预填充速度提升了 <strong>89%</strong>。
+* <strong>算子融合（Fused Operations）：</strong> 将反量化融合进分组 GEMM 中，在 512 个 Token 的提示词下，将端到端预填充性能提升了 <strong>77.4%</strong>。</p>
+<blockquote>
+<hr />
+<h2 id="prefill-keep-weights-packed-keep-routing-on-the-gpu">Prefill: Keep Weights Packed, Keep Routing on the GPU</h2>
+<p>The checkpoint uses groupwise affine 4-bit quantization, compressing ~70 GB of bfloat16 weights down to 19.4 GB. Lily optimizes prefill performance through several key mechanisms:
+* <strong>On-the-Fly Dequantization:</strong> Weights are reconstructed one tile at a time inside grouped GEMM kernels, holding results in threadgroup memory to prevent expanded arrays from reaching unified memory.
+* <strong>GPU-Resident Routing:</strong> Keeping the routing histogram, prefix scan, scatter, and block map inside a single GPU command buffer boosted prefill speeds by <strong>89%</strong> at 512 tokens.
+* <strong>Fused Operations:</strong> Fusing dequantization into grouped GEMM raised end-to-end prefill performance by <strong>77.4%</strong> at a 512-token prompt.</p>
+</blockquote>
+<hr />
+<p>解码：最小化每个 Token 传输的字节数
+由于 Batch-1 解码主要受限于内存带宽而非计算能力，Lily 专注于减少数据移动：
+* <strong>并发 Metal 传递（Concurrent Metal Passes）：</strong> 在并发传递中记录真实的依赖关系，以允许独立的内核重叠执行。
+* <strong>零 CPU 往返（Zero CPU Round-Trips）：</strong> 将选定的 Token 直接写入下一步的 GPU 常驻输入槽中。
+* <strong>内存优化（Memory Optimizations）：</strong> 合并的缓存读取将键（key）带宽从 33.8 提升至 47.9 GB/s，值（value）带宽从 42.0 提升至 61.8 GB/s。此外，GQA 打包和固定块注意力布局在扩展上下文时带来了显著的加速（例如在 128K 上下文中提升 <strong>+40.2%</strong>）。</p>
+<blockquote>
+<hr />
+<h2 id="decode-minimize-bytes-moved-per-token">Decode: Minimize Bytes Moved Per Token</h2>
+<p>Because batch-1 decode is heavily bottlenecked by memory bandwidth rather than compute, Lily focuses on reducing data movement:
+* <strong>Concurrent Metal Passes:</strong> Records real dependencies in a concurrent pass to allow independent kernels to overlap.
+* <strong>Zero CPU Round-Trips:</strong> Writes selected tokens straight into the next step’s GPU-resident input slot.
+* <strong>Memory Optimizations:</strong> Coalesced cache reads increased key bandwidth from 33.8 to 47.9 GB/s and value bandwidth from 42.0 to 61.8 GB/s. Furthermore, GQA packing and fixed-block attention layouts yielded substantial speedups at extended contexts (e.g., <strong>+40.2%</strong> at 128K context).</p>
+</blockquote>
+<hr />
+<p>性能结果
+在 40 核、128 GB 的 M5 Max（Batch 大小为 1）上进行了测试，Lily 与 MLX-LM 在 256 到 128K 的 Token 长度范围内进行了基准对比：
+* <strong>预填充：</strong> 平均达到 <strong>4,156 tokens/s</strong>，而 MLX-LM 为 3,388 tokens/s（<strong>1.23x</strong>）。
+* <strong>解码：</strong> 平均达到 <strong>170.0 tokens/s</strong>，而 MLX-LM 为 126.4 tokens/s（<strong>1.35x</strong>）。
+* <strong>准确率：</strong> 对 192 个位置进行的教师强制检查（teacher-forced check）表明，Lily 的困惑度（perplexity）仅高出 0.04%，并且有 <strong>96.35%</strong> 的时间与排名第一的 Token 相匹配。</p>
+<blockquote>
+<hr />
+<h2 id="performance-results">Performance Results</h2>
+<p>Tested on a 40-core, 128 GB M5 Max (batch size 1), Lily was benchmarked against MLX-LM across token lengths from 256 to 128K:
+* <strong>Prefill:</strong> Averaged <strong>4,156 tokens/s</strong> vs. MLX-LM's 3,388 tokens/s (<strong>1.23x</strong>).
+* <strong>Decode:</strong> Averaged <strong>170.0 tokens/s</strong> vs. MLX-LM's 126.4 tokens/s (<strong>1.35x</strong>).
+* <strong>Accuracy:</strong> A teacher-forced check across 192 positions showed Lily's perplexity was only 0.04% higher, matching the top-ranked token <strong>96.35%</strong> of the time.</p>
+</blockquote>
+<hr />
+<p>核心要点
+* <strong>独立架构：</strong> 专门为 Apple Silicon 上的 Qwen3.6-35B-A3B 构建的 Rust + Metal 推理引擎，完全舍弃了 PyTorch 和 MLX。
+* <strong>卓越速度：</strong> 在 M5 Max 芯片上，相比 MLX-LM，预填充速度快 1.23 倍，解码速度快 1.35 倍。
+* <strong>预填充提升：</strong> GPU 常驻专家路由（<strong>+89%</strong>）以及将反量化融合至分组 GEMM（<strong>+77.4%</strong>）。
+* <strong>解码提升：</strong> GQA 打包（在 32K 时 <strong>+23.8%</strong>）以及固定块注意力（在 128K 时 <strong>+40.2%</strong>）。</p>
+<blockquote>
+<hr />
+<h2 id="key-takeaways">Key Takeaways</h2>
+<ul>
+<li><strong>Standalone Architecture:</strong> A Rust + Metal inference engine built specifically for Qwen3.6-35B-A3B on Apple Silicon, omitting PyTorch and MLX entirely.</li>
+<li><strong>Superior Speed:</strong> Delivers 1.23x faster prefill and 1.35x faster decode compared to MLX-LM on an M5 Max chip.</li>
+<li><strong>Prefill Boosts:</strong> GPU-resident expert routing (<strong>+89%</strong>) and fused dequantization into grouped GEMM (<strong>+77.4%</strong>).</li>
+<li><strong>Decode Boosts:</strong> GQA packing (<strong>+23.8% at 32K</strong>) and fixed-block attention (<strong>+40.2% at 128K</strong>).</li>
+</ul>
+</blockquote>
+<hr />
+<p>资源与链接
+* <a href="https://www.perplexity.ai/hub/blog/optimizing-on-device-inference-for-apple-silicon">Perplexity 技术详情</a>
+* <a href="https://github.com/perplexityai/pplx-garden/tree/main/lily">Lily GitHub 仓库</a></p>
+<blockquote>
+<hr />
+<h2 id="resources-links">Resources &amp; Links</h2>
+<ul>
+<li><a href="https://www.perplexity.ai/hub/blog/optimizing-on-device-inference-for-apple-silicon">Technical Details from Perplexity</a></li>
+<li><a href="https://github.com/perplexityai/pplx-garden/tree/main/lily">Lily GitHub Repository</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Perplexity</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Apple Silicon</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Metal</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型推理</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

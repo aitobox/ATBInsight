@@ -1,0 +1,652 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-04-%E4%BC%AA%E8%A3%85%E6%88%90%E5%AF%B9%E6%95%B0%E7%9A%84%E5%B9%82%E5%BE%8B%EF%BC%9A%E6%8E%A2%E7%A9%B6%E5%9F%BA%E4%BA%8E%E5%9B%BE%E7%9A%84%E5%90%91%E9%87%8F%E6%90%9C%E7%B4%A2%E7%9A%84%E5%8F%AF%E6%89%A9%E5%B1%95%E6%80%A7/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>伪装成对数的幂律：探究基于图的向量搜索的可扩展性 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              伪装成对数的幂律：探究基于图的向量搜索的可扩展性
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📑 元数据与参考资料
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📖 摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">伪装成对数的幂律：探究基于图的向量搜索的可扩展性</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着嵌入模型（Embedding models）的广泛应用和数据规模的急剧膨胀，现代向量数据库普遍依赖基于图的索引（如 <strong>HNSW</strong> 和 <strong>Vamana</strong>）来进行近似最近邻（ANN）搜索。然而，在维持固定准确率的前提下，搜索成本随数据集大小 <span class="arithmatex">\(N\)</span> 呈何种规律增长，此前学术界和工业界普遍基于“多项式对数增长（poly-logarithmic growth）”的传统认知，却缺乏在实际索引和多尺度数据集上的充分验证。</p>
+<p>这篇由 Sajad Faghfoor Maghrebi、Navid Eslami 和 Niv Dayan 共同完成的论文对这一经典假设进行了严格检验，并揭示了令人瞩目的全新标度规律：在数据集规模 <span class="arithmatex">\(N\)</span> 相对于其固有维度（intrinsic dimensionality）较小时，搜索成本实际上遵循亚线性幂律（Sublinear Power Law，<span class="arithmatex">\(N^c\)</span>，其中 <span class="arithmatex">\(0 &lt; c &lt; 1\)</span>）；只有当 <span class="arithmatex">\(N\)</span> 足够大时，增长才会放缓并趋近于多项式对数增长。作者通过深入探究其底层机制，建立了一个统一的束搜索（beam-search）成本理论，数学证明了这一扩展规律，并开发出能够预测幂律指数的模型，为在数据增长过程中平衡搜索成本、插入成本和召回率提供了有力的理论指导。</p>
+<hr />
+<h2 id="_2">📌 摘要</h2>
+<blockquote>
+<p>Most modern vector databases rely on graph-based indexes like <strong>HNSW</strong> and <strong>Vamana</strong> for approximate nearest neighbor (ANN) search. As embedding models drive rapid dataset growth, understanding how search costs scale with dataset size (<span class="arithmatex">\(N\)</span>) at a fixed accuracy is critical. </p>
+<p>While the conventional wisdom assumes poly-logarithmic growth, this paper demonstrates that reality depends heavily on scale:
+1. <strong>The Sublinear Power Law:</strong> When dataset size <span class="arithmatex">\(N\)</span> is small relative to the data's intrinsic dimensionality, search cost grows as <span class="arithmatex">\(N^c\)</span> (where <span class="arithmatex">\(0 &lt; c &lt; 1\)</span>). 
+2. <strong>Transition to Subpolynomial:</strong> Once <span class="arithmatex">\(N\)</span> becomes sufficiently large, growth slows down, aligning with the poly-logarithmic claim.
+3. <strong>Underlying Mechanism:</strong> A dataset's intrinsic dimensionality grows with its size until the data resolves its underlying distribution, forcing the search to examine more vectors within the query neighborhood.</p>
+<p>The authors provide a unifying theory of beam-search cost, mathematically prove these scaling laws for exact and bounded-degree constructions, and develop predictive models for power-law exponents to optimize trade-offs among search cost, insertion cost, and recall.</p>
+</blockquote>
+<p>大多数现代向量数据库依赖于基于图的索引（如 <strong>HNSW</strong> 和 <strong>Vamana</strong>）来进行近似最近邻（ANN）搜索。随着嵌入模型推动数据集的迅速增长，理解在固定准确率下搜索成本如何随数据集大小 (<span class="arithmatex">\(N\)</span>) 扩展至关重要。</p>
+<p>尽管传统观点假设其呈多项式对数增长，但本文证明现实情况在很大程度上取决于规模：
+1. <strong>亚线性幂律（The Sublinear Power Law）：</strong> 当数据集大小 <span class="arithmatex">\(N\)</span> 相对于数据的固有维度较小时，搜索成本呈 <span class="arithmatex">\(N^c\)</span> 增长（其中 <span class="arithmatex">\(0 &lt; c &lt; 1\)</span>）。
+2. <strong>向亚多项式过渡（Transition to Subpolynomial）：</strong> 一旦 <span class="arithmatex">\(N\)</span> 变得足够大，增长就会放缓，从而与多项式对数断言保持一致。
+3. <strong>底层机制（Underlying Mechanism）：</strong> 数据集的固有维度随其规模增长，直到数据解析出其底层分布，这迫使搜索必须检查查询邻域内的更多向量。</p>
+<p>作者提供了一个统一的束搜索成本理论，从数学上证明了精确构造和有界度构造的这些扩展规律，并开发了幂律指数的预测模型，以优化搜索成本、插入成本和召回率之间的权衡。</p>
+<hr />
+<h2 id="_3">📑 元数据与参考资料</h2>
+<ul>
+<li><strong>评论：</strong> 17页，10个图表</li>
+<li><strong>DOI：</strong> <a href="https://doi.org/10.48550/arXiv.2609.02143">10.48550/arXiv.2609.02143</a></li>
+<li><strong>全文链接：</strong> <a href="https://arxiv.org/pdf/2609.02143">查看 PDF</a> | <a href="https://arxiv.org/html/2609.02143v1">HTML（实验性）</a> | <a href="https://arxiv.org/src/2609.02143">TeX 源码</a></li>
+</ul>
+<hr />
+<h2 id="_4">📖 摘要</h2>
+<blockquote>
+<p>Most vector databases rely on graph-based indexes, notably HNSW and Vamana, for approximate nearest neighbor search. With embedding models widely adopted, the datasets these databases store grow rapidly. At a fixed accuracy, how does search cost scale with dataset size? The prevailing answer is poly-logarithmic growth. Yet the claim is proven only under special conditions and asserted without proof for the indexes used in practice. It is also largely untested: standard benchmarks measure cost at one dataset size, not across sizes. </p>
+<p>We put the claim to the test. The answer depends on the scale itself. While the dataset size <span class="arithmatex">\(N\)</span> is small relative to the data's intrinsic dimensionality, search cost grows as <span class="arithmatex">\(N^c\)</span> for a constant <span class="arithmatex">\(0 &lt; c &lt; 1\)</span>. We call this scaling the <strong>Sublinear Power Law</strong>. Once <span class="arithmatex">\(N\)</span> is large enough, growth slows to subpolynomial, consistent with the poly-logarithmic claim. The Sublinear Power Law appears on every dataset, mostly up to its full size, at every recall target, query hardness level, and index configuration we test. The transition to subpolynomial growth appears on the two datasets that grow large enough relative to their intrinsic dimensionality. </p>
+<p>One mechanism underlies both behaviors: a dataset's intrinsic dimensionality grows with its size until the data resolves its underlying distribution. Higher intrinsic dimensionality packs more vectors into the query neighborhood the search must examine. We present a unifying theory of beam-search cost that explains our observations. For exact and bounded-degree constructions, we prove the Sublinear Power Law and the eventual transition to poly-logarithmic scaling, and derive the scale at which it occurs. We also develop models that predict the power-law exponents for any recall target and index configuration. These models give a principled way to navigate trade-offs among search cost, insertion cost, and recall as data grows.</p>
+</blockquote>
+<p>大多数向量数据库依赖于基于图的索引（特别是 HNSW 和 Vamana）来进行近似最近邻搜索。随着嵌入模型的广泛采用，这些数据库存储的数据集正在迅速增长。在固定的准确率下，搜索成本随数据集大小如何扩展？主流的回答是多项式对数增长（poly-logarithmic growth）。然而，该论断仅在特殊条件下得到证明，而对于实践中使用的索引则是在没有证明的情况下断言的。它也未在很大程度上得到测试：标准基准测试是在单个数据集大小下衡量成本，而不是跨越不同规模进行衡量。</p>
+<p>我们对这一论断进行了测试。答案本身取决于规模。当数据集大小 <span class="arithmatex">\(N\)</span> 相对于数据的固有维度较小时，搜索成本随常数 <span class="arithmatex">\(0 &lt; c &lt; 1\)</span> 呈 <span class="arithmatex">\(N^c\)</span> 增长。我们将这种扩展称为<strong>亚线性幂律（Sublinear Power Law）</strong>。一旦 <span class="arithmatex">\(N\)</span> 足够大，增长就会放缓至亚多项式（subpolynomial），这与多项式对数的断言相一致。在我们测试的每个数据集（大体上直至其完整规模）、每个召回率目标、每个查询难度级别以及每个索引配置中，亚线性幂律都存在。向亚多项式增长的过渡出现在相对于其固有维度增长得足够大的两个数据集上。</p>
+<p>这两种行为背后都有一个共同的机制：数据集的固有维度随其规模增长，直到数据解析出其底层分布。更高的固有维度会将更多的向量挤压到查询邻域中，从而迫使搜索进行检查。我们提出了一种统一的束搜索成本理论来解释我们的观察结果。对于精确和有界度构造，我们证明了亚线性幂律以及最终向多项式对数扩展的过渡，并推导出了它发生时的规模。我们还开发了针对任何召回率目标和索引配置预测幂律指数的模型。这些模型提供了一种有原则的方法，在数据增长时驾驭搜索成本、插入成本和召回率之间的权衡。</p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">向量数据库</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">近似最近邻搜索</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">HNSW</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Vamana</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">扩展定律</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

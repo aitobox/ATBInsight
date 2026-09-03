@@ -1,0 +1,707 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-04-%E9%9B%85%E5%8F%AF%E6%AF%94%E8%A7%86%E8%A7%92%E4%B8%8B%E7%9A%84%E5%BE%AA%E7%8E%AFTransformer%EF%BC%9A%E5%85%A8%E5%B1%80%E5%B7%A5%E4%BD%9C%E7%A9%BA%E9%97%B4%E8%83%BD%E5%9C%A8%E5%BE%AA%E7%8E%AF%E4%B8%AD%E5%B9%B8%E5%AD%98%E5%90%97%EF%BC%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>雅可比视角下的循环Transformer：全局工作空间能在循环中幸存吗？ - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              雅可比视角下的循环Transformer：全局工作空间能在循环中幸存吗？
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformerlooped-transformers-under-the-jacobian-lens-does-the-global-workspace-survive-recurrence" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        雅可比视角下的循环Transformer：全局工作空间能在循环中幸存吗？(Looped Transformers under the Jacobian Lens: Does the Global Workspace Survive Recurrence?)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="雅可比视角下的循环Transformer：全局工作空间能在循环中幸存吗？(Looped Transformers under the Jacobian Lens: Does the Global Workspace Survive Recurrence?)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要 (Summary)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📌 摘要 (Summary)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心发现 (Key Findings)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-findings_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Findings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-text-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔗 全文与资源 (Full-Text &amp; Resources)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>标准的前馈Transformer通常在网络中部拥有一个可转换为自然语言、具强因果效力的表征带，该表征带可作为“全局工作空间（Global Workspace）”的功能类比。然而，当网络的深度不是通过静态堆叠不同的层来实现，而是通过<strong>循环（Recurrence）</strong>——即在多个循环中重复使用相同的权重——来实现时，这种工作空间的功能是否依然存在，这仍然是一个未解之谜。</p>
+<p>本文通过扩展带有<strong>虚拟展开适配器（virtual-unrolling adapter）</strong>的雅可比透镜（Jacobian lens），对循环和深度递归的Transformer进行了深入研究。作者在三个模型上评估了工作空间的特征（透镜拟合、读出以及11类因果实验）：Ouro-2.6B、Huginn-0125以及标准基线Qwen3.6-27B。研究发现，全局工作空间确实能够在递归架构的迭代部分成功形成，但循环从根本上改变了访问该工作空间的方式：Ouro在每个循环中重建工作空间内容，而Huginn则在所有16次递归中向前维持内容。该研究为理解循环神经网络内部的表征动力学提供了重要的实证依据。</p>
+<hr />
+<h1 id="transformerlooped-transformers-under-the-jacobian-lens-does-the-global-workspace-survive-recurrence">雅可比视角下的循环Transformer：全局工作空间能在循环中幸存吗？(Looped Transformers under the Jacobian Lens: Does the Global Workspace Survive Recurrence?)</h1>
+<p><strong>作者：</strong> Wenlong Wang, Fergal Reid<br />
+<strong>提交时间：</strong> 2026年9月4日<br />
+<strong>研究领域：</strong> 人工智能 (<code>cs.AI</code>)<br />
+<strong>arXiv：</strong> <a href="https://arxiv.org/abs/2609.01924">2609.01924 [cs.AI]</a> | <strong>DOI：</strong> <a href="https://doi.org/10.48550/arXiv.2609.01924">10.48550/arXiv.2609.01924</a></p>
+<hr />
+<h2 id="summary">📌 摘要 (Summary)</h2>
+<p>标准的前馈Transformer通常在网络中部拥有一个可转换为自然语言、具强因果效力的表征带，该表征带可作为“全局工作空间”的功能类比。然而，当网络的深度是通过<strong>循环</strong>（即在多个循环中重复使用相同的权重）而不是通过静态堆叠不同的层来实现时，这种工作空间的功能是否依然存在，仍然是一个未解之谜.</p>
+<blockquote>
+<p>Standard feedforward transformers typically feature a mid-depth band of verbalisable, causally potent representations that act as a functional analogue to a "global workspace." However, it remains an open question whether this workspace functionality persists when network depth is achieved via <strong>recurrence</strong>—reusing the same weights across multiple loops—rather than a static stack of distinct layers. </p>
+</blockquote>
+<p>本文通过扩展带有<strong>虚拟展开适配器</strong>的雅可比透镜，对循环和深度递归的Transformer进行了研究。作者在三个模型上评估了工作空间的特征（透镜拟合、读出以及11类因果实验）：
+* <strong>Ouro-2.6B：</strong> 48层，循环4次并带有深度监督。
+* <strong>Huginn-0125：</strong> 4层核心，递归16次，专为潜空间推理训练。
+* <strong>Qwen3.6-27B：</strong> 包含64个独立层的标准基线模型。</p>
+<blockquote>
+<p>This paper investigates looped and depth-recurrent transformers by extending the Jacobian lens with a <strong>virtual-unrolling adapter</strong>. The authors evaluate workspace characteristics (lens fitting, readout, and eleven causal experiment families) across three models:
+* <strong>Ouro-2.6B:</strong> 48 layers looped 4 times with deep supervision.
+* <strong>Huginn-0125:</strong> A 4-layer core recurred 16 times, trained for latent reasoning.
+* <strong>Qwen3.6-27B:</strong> A standard baseline featuring 64 untied layers.</p>
+</blockquote>
+<h3 id="key-findings">核心发现 (Key Findings)</h3>
+<ul>
+<li><strong>工作空间的涌现：</strong> 全局工作空间成功地在递归架构的迭代部分中形成。</li>
+<li><strong>访问与传输限制：</strong> 循环从根本上改变了访问工作空间的方式：</li>
+<li><em>Ouro</em> 在每个循环中重建工作空间内容，且线性传输无法跨越循环边界传递内容（需要写入和消融操作跨越所有剩余的循环）。</li>
+<li><em>Huginn</em> 在所有16次递归中向前维持内容，而读取、写入和消融操作则在大约两次递归的滑动窗口内起作用。</li>
+<li><strong>监督与引导：</strong> 将新注入的内容转化为自然语言的能力，与显式的逐次迭代监督直接相关，而引导现有内容的能力则不然。</li>
+</ul>
+<blockquote>
+<h3 id="key-findings_1">Key Findings</h3>
+<ul>
+<li><strong>Workspace Emergence:</strong> A global workspace successfully forms within the iterated parts of recurrent architectures.</li>
+<li><strong>Access and Transport Constraints:</strong> Recurrence fundamentally alters how the workspace can be accessed:</li>
+<li><em>Ouro</em> reconstructs workspace content in every loop, and linear transport cannot carry content across loop boundaries (requiring writes and ablations to span every remaining loop).</li>
+<li><em>Huginn</em> maintains content forward across all 16 recurrences, while reads, writes, and ablations function within a sliding window of roughly two recurrences.</li>
+<li><strong>Supervision vs. Steering:</strong> The ability to verbalise newly injected content correlates directly with explicit per-iteration supervision, whereas the ability to steer existing content does not.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="full-text-resources">🔗 全文与资源 (Full-Text &amp; Resources)</h2>
+<ul>
+<li><strong>PDF：</strong> <a href="https://arxiv.org/pdf/2609.01924">查看 PDF</a></li>
+<li><strong>HTML（实验性）：</strong> <a href="https://arxiv.org/html/2609.01924v1">arXiv HTML 视图</a></li>
+<li><strong>TeX 源码：</strong> <a href="https://arxiv.org/src/2609.01924">arXiv 源码下载</a></li>
+<li><strong>相关工具：</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.01924">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.01924">谷歌学术</a> | <a href="https://api.semanticscholar.org/arXiv:2609.01924">Semantic Scholar</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>PDF:</strong> <a href="https://arxiv.org/pdf/2609.01924">View PDF</a></li>
+<li><strong>HTML (Experimental):</strong> <a href="https://arxiv.org/html/2609.01924v1">arXiv HTML View</a></li>
+<li><strong>TeX Source:</strong> <a href="https://arxiv.org/src/2609.01924">arXiv Source Download</a></li>
+<li><strong>Associated Tools:</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.01924">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.01924">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2609.01924">Semantic Scholar</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">循环架构</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">全局工作空间</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">雅可比透镜</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度循环</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

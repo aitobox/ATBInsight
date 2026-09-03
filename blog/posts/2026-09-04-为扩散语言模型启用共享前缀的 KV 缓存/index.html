@@ -1,0 +1,705 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-04-%E4%B8%BA%E6%89%A9%E6%95%A3%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AF%E7%94%A8%E5%85%B1%E4%BA%AB%E5%89%8D%E7%BC%80%E7%9A%84%20KV%20%E7%BC%93%E5%AD%98/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>为扩散语言模型启用共享前缀的 KV 缓存 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              为扩散语言模型启用共享前缀的 KV 缓存
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kv-enabling-kv-caching-of-shared-prefix-for-diffusion-language-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为扩散语言模型启用共享前缀的 KV 缓存 (Enabling KV Caching of Shared Prefix for Diffusion Language Models)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="为扩散语言模型启用共享前缀的 KV 缓存 (Enabling KV Caching of Shared Prefix for Diffusion Language Models)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 摘要 (Summary)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paper-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📋 论文元数据 (Paper Metadata)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🔍 摘要原文 (Abstract)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-resources-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🌐 外部资源与工具 (External Resources &amp; Tools)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在现代大型语言模型（LLM）的高吞吐量服务中，共享前缀的键值（KV）缓存是一项标准的优化技术。然而，当将其应用于新兴的扩散语言模型（DLMs）时，该技术却宣告失效。由于 DLM 采用双向注意力机制，修改任何单个标记（token）都会动态改变整个上下文，从而破坏传统的静态前缀 KV，导致模型准确率暴跌至接近零。</p>
+<p>为了解决这一难题，本文作者推出了 <strong>BiCache</strong>（双向前缀缓存）——这是首个专为 DLM 中的共享前缀设计的 KV 缓存技术。BiCache 的核心洞察在于：在浅层网络中，共享前缀的 KV 保持稳定且可复用，其层深可以根据每个请求中共享前缀标记的比例进行动态缩放。通过动态确定用于复用的安全层深，BiCache 消除了冗余计算，在对准确率影响微乎其微（差异仅为 0–1.8%）的前提下，将服务吞吐量提升了 <strong>36.3% 至 98.3%</strong>。</p>
+<hr />
+<h1 id="kv-enabling-kv-caching-of-shared-prefix-for-diffusion-language-models">为扩散语言模型启用共享前缀的 KV 缓存 (Enabling KV Caching of Shared Prefix for Diffusion Language Models)</h1>
+<p><strong>arXiv:</strong> <a href="https://arxiv.org/abs/2606.07571">2606.07571</a> [cs.LG]<br />
+<strong>录用会议:</strong> EMNLP 2026 主会 (Main Conference)<br />
+<strong>作者:</strong> Younghun Go, Jaehoon Han, Changyong Shin, Chuck Yoo, Gyeongsik Yang<br />
+<strong>官方代码:</strong> <a href="https://github.com/OSSS-KU/BiCache">GitHub 仓库</a>  </p>
+<hr />
+<h2 id="summary">📌 摘要 (Summary)</h2>
+<blockquote>
+<p>Key-value (KV) caching for shared prefixes is a standard optimization technique for high-throughput Large Language Model (LLM) serving. However, it fails when applied to emerging <strong>Diffusion Language Models (DLMs)</strong>. Because DLMs employ bidirectional attention, modifying any single token dynamically alters the entire context, corrupting traditional static prefix KVs and causing model accuracy to collapse to near zero. </p>
+<p>To overcome this, the authors introduce <strong>BiCache</strong> (Bidirectional Prefix Caching)—the first KV caching technique specifically designed for shared prefixes in DLMs. BiCache leverages the insight that shared prefix KVs remain stable and reusable in shallow layers, with layer depth scaling based on the fraction of shared prefix tokens per request. By dynamically determining a safe layer depth for reuse, BiCache eliminates redundant computations and boosts serving throughput by <strong>36.3% to 98.3%</strong> with negligible impact on accuracy (0–1.8% difference).</p>
+</blockquote>
+<p>针对高吞吐量大语言模型（LLM）服务，共享前缀的键值（KV）缓存是一项标准的优化技术。然而，当将其应用于新兴的<strong>扩散语言模型（DLMs）</strong>时，该技术却遇到了严重失效。由于 DLM 采用双向注意力机制，更新任何单个标记都会动态改变整个上下文及其对应的 KV。因此，假定 KV 一旦计算完成便保持不变的现有 LLM 缓存技术会破坏共享前缀的 KV。我们的实验表明，将这些技术应用于 DLM 会导致模型的准确率暴跌至接近零。</p>
+<p>为了释放高吞吐量 DLM 服务的潜力，我们提出了双向前缀缓存技术——BiCache，这是首个针对 DLM 中共享前缀的 KV 缓存技术。BiCache 的设计基于我们全面分析得出的核心观察：在浅层中，共享前缀的 KV 保持稳定且可复用，而浅层的深度取决于每个请求中共享前缀标记的比例。因此，BiCache 可以动态识别出用于复用共享前缀 KV 的安全层深，从而消除冗余计算。评估表明，与现有技术相比，BiCache 在没有引起准确率崩溃的前提下（差异仅为 0-1.8%），将服务吞吐量显著提升了 36.3%-98.3%。</p>
+<hr />
+<h2 id="paper-metadata">📋 论文元数据 (Paper Metadata)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">属性 (Attribute)</th>
+<th style="text-align: left;">详情 (Details)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>主分类 (Primary Subject)</strong></td>
+<td style="text-align: left;">机器学习 (<code>cs.LG</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>次分类 (Secondary Subjects)</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交历史 (Submission History)</strong></td>
+<td style="text-align: left;">• v1: 2026年5月26日<br>• v4 (最新): 2026年9月2日</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>许可证 (License)</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by-nc-nd/4.0/">知识共享 署名-非商业性使用-禁止演绎 4.0 国际版</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>全文链接 (Full-Text Links)</strong></td>
+<td style="text-align: left;">• <a href="https://arxiv.org/pdf/2606.07571">查看 PDF</a><br>• <a href="https://arxiv.org/html/2606.07571v4">HTML 版本</a><br>• <a href="https://arxiv.org/src/2606.07571">TeX 源码</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="abstract">🔍 摘要原文 (Abstract)</h2>
+<blockquote>
+<p>Key-value (KV) caching for shared prefixes is essential for high-throughput large language model (LLM) serving, but it faces critical challenges in emerging diffusion language models (DLMs). In DLMs, bidirectional attention means that updating any token dynamically alters the entire context and its corresponding KVs. Thus, existing caching techniques developed for LLMs, which assume that KVs remain invariant once computed, corrupt the shared prefix KVs. Our experiments show that applying these techniques to DLMs causes model accuracy to collapse to near zero.</p>
+<p>To unlock high-throughput DLM serving, we propose bidirectional prefix caching, BiCache, the first KV caching technique for shared prefixes in DLMs. BiCache is designed based on key observations from our comprehensive analysis: shared prefix KVs remain stable and reusable in shallow layers, while the depth of shallow layers depends on the fraction of shared prefix tokens in each request. Thus, BiCache dynamically identifies a safe layer depth for reusing shared prefix KVs and eliminates redundant computation. Evaluations demonstrate that BiCache significantly improves serving throughput by 36.3%-98.3% compared to existing techniques without accuracy collapse (only 0-1.8% difference).</p>
+<p>针对高吞吐量大语言模型（LLM）服务，共享前缀的键值（KV）缓存至关重要，但它在兴起的扩散语言模型（DLM）中面临着严峻的挑战。在 DLM 中，双向注意力意味着更新任何标记都会动态改变整个上下文及其相应的 KV。因此，现有的为 LLM 开发的缓存技术（假定 KV 一旦计算便保持不变）会破坏共享前缀的 KV。我们的实验表明，将这些技术应用于 DLM 会导致模型准确率暴跌至接近零。</p>
+<p>为了释放高吞吐量的 DLM 服务，我们提出了双向前缀缓存 BiCache，这是首个针对 DLM 中共享前缀的 KV 缓存技术。BiCache 的设计基于我们全面分析得出的关键观察：共享前缀的 KV 在浅层中保持稳定且可复用，而浅层的深度取决于每个请求中共享前缀标记的比例。因此，BiCache 动态识别出复用共享前缀 KV 的安全层深，并消除了冗余计算。评估表明，与现有技术相比，BiCache 显著将服务吞吐量提升了 36.3%-98.3%，且没有发生准确率崩溃（仅有 0-1.8% 的差异）。</p>
+</blockquote>
+<hr />
+<h2 id="external-resources-tools">🌐 外部资源与工具 (External Resources &amp; Tools)</h2>
+<ul>
+<li><strong>引用与文献:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2606.07571">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2606.07571">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2606.07571">NASA ADS</a></li>
+<li><strong>交互与社区工具:</strong> <a href="https://alphaxiv.org/">alphaXiv</a> | <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a> | <a href="https://huggingface.co/">Hugging Face</a></li>
+</ul>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">KV Caching</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Diffusion Language Models</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">BiCache</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">LLM Serving</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">EMNLP 2026</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
