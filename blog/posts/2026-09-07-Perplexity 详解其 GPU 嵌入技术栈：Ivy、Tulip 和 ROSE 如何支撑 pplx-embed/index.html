@@ -1,0 +1,875 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-07-Perplexity%20%E8%AF%A6%E8%A7%A3%E5%85%B6%20GPU%20%E5%B5%8C%E5%85%A5%E6%8A%80%E6%9C%AF%E6%A0%88%EF%BC%9AIvy%E3%80%81Tulip%20%E5%92%8C%20ROSE%20%E5%A6%82%E4%BD%95%E6%94%AF%E6%92%91%20pplx-embed/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#perplexity-gpu-ivytulip-rose-pplx-embed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        两种流量模式，一套统一引擎
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-traffic-patterns-one-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Two Traffic Patterns, One Engine
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ivytulip-rose" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Ivy、Tulip 与 ROSE：请求生命周期
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ivy-tulip-and-rose-the-request-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Ivy, Tulip, and ROSE: The Request Lifecycle
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么调度器刻意保持简单
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-scheduler-is-deliberately-simple" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Why the Scheduler is Deliberately Simple
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cuda-lazytensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CUDA 图与 LazyTensors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cuda-graphs-and-lazytensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CUDA Graphs and LazyTensors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        内核依然至关重要
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kernels-still-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Kernels Still Matter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基准测试
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Benchmarks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心要点
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-takeaways" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Takeaways
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文详细介绍了 Perplexity 旗下支撑 <strong>pplx-embed</strong>（为其搜索、Computer 及 API 平台提供支持的顶尖嵌入与排序模型）的底层基础设施。与构建独立系统不同，Perplexity 直接复用了其大语言模型 (LLM) 技术栈中的预填充 (prefill) 和解码 (decode) 内核。该服务架构主要由三大核心组件构成：<strong>Ivy</strong>（用于 CPU 端处理的 Rust HTTP 网关）、<strong>Tulip</strong>（Rust gRPC 服务接口）以及用于模型执行的 <strong>ROSE</strong>（运行时优化服务引擎，Runtime-Optimized Serving Engine）。</p>
+<p>通过充分利用全模型 CUDA 图（whole-model CUDA graphs）、惰性张量评估（lazy tensor evaluation）以及简单的先来先服务（FCFS）调度器，Perplexity 在避免传统 GPU 推理带来的沉重开销的同时，实现了极高的吞吐量和极低的向量搜索延迟。对于关注高性能 AI 推理基础设施、向量数据库检索优化以及大模型工程落地的技术人员而言，这一架构设计具有极高的参考价值。</p>
+<hr />
+<h1 id="perplexity-gpu-ivytulip-rose-pplx-embed">Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed</h1>
+<blockquote>
+<h2 id="summary">Summary</h2>
+<p>Perplexity recently detailed the infrastructure behind <strong>pplx-embed</strong>—the state-of-the-art embedding and ranking models powering Perplexity Search, Computer, and its API Platform. Rather than building a separate system, Perplexity reuses the prefill and decode kernels from its Large Language Model (LLM) stack. The serving architecture relies on three core components: <strong>Ivy</strong> (a Rust HTTP gateway for CPU-side processing), <strong>Tulip</strong> (a Rust gRPC serving interface), and <strong>ROSE</strong> (Runtime-Optimized Serving Engine) for model execution. By leveraging whole-model CUDA graphs, lazy tensor evaluation, and a simple first-come-first-served scheduler, Perplexity achieves high throughput and low-latency vector search without the heavy overhead typically associated with GPU inference.</p>
+</blockquote>
+<hr />
+<h2 id="_2">两种流量模式，一套统一引擎</h2>
+<p>AI 搜索产品的检索质量取决于两个关键因素：嵌入模型的质量，以及在整个索引上运行该模型的成本效益。Perplexity 将嵌入服务（embedding serving）划分为两大主要工作负载：
+* <strong>批量嵌入（Batch Embedding）：</strong> 用于构建或重新索引向量数据库，此时最大化吞吐量是降低成本的关键。
+* <strong>在线嵌入（Online Embedding）：</strong> 用于查询时（query time），要求对短文本查询进行即时嵌入。</p>
+<p>评分（Scoring）则介于两者之间，在初始向量搜索完成后，平衡吞吐量和延迟。</p>
+<p>与其维护一个独立的引擎，Perplexity 选择直接复用其 LLM 技术栈。由于嵌入模型本质上是小型 Transformer，批量嵌入类似于计算密集型的预填充（prefill），而在线嵌入（通常仅包含几个 Token）则类似于内存密集型的解码（decode）。</p>
+<blockquote>
+<h2 id="two-traffic-patterns-one-engine">Two Traffic Patterns, One Engine</h2>
+<p>Retrieval quality in an AI search product depends on two factors: the quality of the embedding model and the cost-efficiency of running it across an index. Perplexity divides embedding serving into two main workloads:
+* <strong>Batch Embedding:</strong> Used when building or re-indexing vector databases, where maximizing throughput minimizes cost.
+* <strong>Online Embedding:</strong> Used at query time, requiring short queries to be embedded instantly.</p>
+<p>Scoring sits in between these two, balancing both throughput and latency after the initial vector search. </p>
+<p>Rather than maintaining a separate engine, Perplexity leverages its LLM stack. Because embedding models are small Transformers, batch embedding resembles compute-bound prefill, while online embedding (often just a few tokens) resembles memory-bound decode.</p>
+</blockquote>
+<hr />
+<h2 id="ivytulip-rose">Ivy、Tulip 与 ROSE：请求生命周期</h2>
+<p>三个专用服务共同处理传入的请求：</p>
+<ol>
+<li><strong>Ivy（Rust HTTP 网关）：</strong> 负责 CPU 端的各项操作，包括 JSON 解析、分词（使用自研的 unigram 分词器）、输入模板化以及批次拆分。它将请求转换为自定义的 gRPC 协议，并跨副本对数据块进行负载均衡，以应对生产环境中多变的数据包大小。</li>
+<li><strong>Tulip（推理服务器接口）：</strong> 一个基于 Rust、<code>tokio</code> 和 <code>tonic</code> 构建的 gRPC 服务器。它在将工作负载分发给引擎之前，负责处理请求的调度和批处理（batching）。</li>
+<li><strong>ROSE（运行时优化服务引擎）：</strong> 负责管理模型推理。ROSE 主要用 Python 编写，提供自定义内核、层和模型定义，监督 CUDA 图，并向 Tulip 暴露出一个 <code>step()</code> 函数。值得注意的是，ROSE 在提供嵌入服务时并不分配 KV 缓存。</li>
+</ol>
+<blockquote>
+<h2 id="ivy-tulip-and-rose-the-request-lifecycle">Ivy, Tulip, and ROSE: The Request Lifecycle</h2>
+<p>Three dedicated services handle incoming requests:</p>
+<ol>
+<li><strong>Ivy (Rust HTTP Gateway):</strong> Handles CPU-side operations including JSON parsing, tokenization (using an in-house unigram tokenizer), input templating, and batch splitting. It translates requests into a custom gRPC protocol and load-balances chunks across replicas to compensate for varying production payload sizes.</li>
+<li><strong>Tulip (Inference Server Interface):</strong> A gRPC server built with Rust, <code>tokio</code>, and <code>tonic</code>. It handles request scheduling and batching before dispatching workloads to the engine.</li>
+<li><strong>ROSE (Runtime-Optimized Serving Engine):</strong> Manages model inference. Written primarily in Python, ROSE provides custom kernels, layers, and model definitions, oversees CUDA graphs, and exposes a <code>step()</code> function to Tulip. Notably, ROSE does not allocate a KV cache when serving embeddings.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="_3">为什么调度器刻意保持简单</h2>
+<p>随着请求不断涌现，Tulip 采用了一种直截了当的<strong>先来先服务（FCFS）</strong>调度策略。</p>
+<p>这种简单性得到了实证数据的支持：对于具有典型序列长度的小型嵌入模型而言，稠密层（dense layers）的线性成本占据了主导地位，而注意力机制（attention）的二次方成本则退居其次。因此，延迟与<strong>Token 数量</strong>成正比，而不是与序列数量成正比。一旦批次填满 GPU（对于参数量在十亿以下的模型，大约为 <strong>512 个 Token</strong>），塞入更多的序列将无法带来进一步的效率提升。</p>
+<blockquote>
+<h2 id="why-the-scheduler-is-deliberately-simple">Why the Scheduler is Deliberately Simple</h2>
+<p>Tulip uses a straightforward <strong>first-come, first-served (FCFS)</strong> scheduling strategy as requests accumulate. </p>
+<p>This simplicity is backed by empirical data: for small embedding models at typical sequence lengths, the linear cost of dense layers dominates the quadratic cost of attention. Consequently, latency scales proportionally with <strong>token count rather than sequence count</strong>. Once a batch saturates the GPU—roughly <strong>512 tokens on a sub-billion-parameter model</strong>—packing in additional sequences yields no further efficiency gains.</p>
+</blockquote>
+<hr />
+<h2 id="cuda-lazytensors">CUDA 图与 LazyTensors</h2>
+<p>为了最大化硬件利用率，Perplexity 实现了先进的 GPU 优化技术：</p>
+<ul>
+<li><strong>全模型 CUDA 图（Whole-Model CUDA Graphs）：</strong> 在处理小批次时，CPU 端的内核启动开销往往会超过实际的 GPU 执行时间。Perplexity 为所有嵌入模型捕获了全模型 CUDA 图，将数千次驱动程序调用精简为单次调用。为了绕过注意力层中动态输入的限制，Perplexity 向 <strong>FlashInfer</strong> 贡献了上游代码修改。</li>
+<li><strong>惰性捕获（Lazy Capture）：</strong> 由于必须按配置捕获计算图，Token 数量被分桶（bucketed）为 64 或 256 的倍数。为了避免预先捕获数千个图而导致长达数分钟的启动延迟，Perplexity 采用了<em>惰性捕获</em>机制——先运行一次急切预热（eager warmup），然后在第二次命中时进行捕获和重放。</li>
+<li><strong>LazyTensors：</strong> 为了消除同步瓶颈，<code>LazyTensor</code> 抽象跟踪一个页面锁定的主机缓冲区（page-locked host buffer），以及异步的 <code>cudaMemcpyAsync</code> 和一个 CUDA 事件。它不会在 <code>step()</code> 期间阻塞设备，而是返回一个 <code>LazyTensor</code>，从而允许 Rust 异步任务在 GPU 计算第 <span class="arithmatex">\(N\)</span> 个批次的同时，去处理第 <span class="arithmatex">\(N+1\)</span> 个批次。</li>
+</ul>
+<blockquote>
+<h2 id="cuda-graphs-and-lazytensors">CUDA Graphs and LazyTensors</h2>
+<p>To maximize hardware utilization, Perplexity implements advanced GPU optimizations:</p>
+<ul>
+<li><strong>Whole-Model CUDA Graphs:</strong> On small batches, CPU-side kernel launching overhead can outweigh actual GPU execution time. Perplexity captures whole-model CUDA graphs for all embedding models, reducing thousands of driver calls into a single call. To bypass dynamic input limitations in attention layers, Perplexity contributed upstream changes to <strong>FlashInfer</strong>.</li>
+<li><strong>Lazy Capture:</strong> Because graphs must be captured per configuration, token counts are bucketed into multiples of 64 or 256. To avoid minutes of startup latency from pre-capturing thousands of graphs, Perplexity utilizes <em>lazy capture</em>—running an eager warmup followed by capture and replay upon the second hit.</li>
+<li><strong>LazyTensors:</strong> To eliminate synchronization bottlenecks, the <code>LazyTensor</code> abstraction tracks a page-locked host buffer along with an asynchronous <code>cudaMemcpyAsync</code> and a CUDA event. Instead of blocking the device during <code>step()</code>, it returns a <code>LazyTensor</code>, allowing Rust async tasks to process batch <span class="arithmatex">\(N+1\)</span> while the GPU computes batch <span class="arithmatex">\(N\)</span>.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">内核依然至关重要</h2>
+<p>ROSE 针对不规则输入（ragged inputs）支持多种注意力后端，包括 FlashInfer 2、FlashInfer 3 以及 FlashAttention 4。</p>
+<p>尽管 FlashAttention 4 通常速度更快，但在超长序列长度下，FlashInfer 3 在基于 Qwen 的模型上表现更佳。后端的选择采取具体情况具体分析的策略。通过利用不规则注意力（ragged attention）变体，ROSE 在提供嵌入服务时避免了不必要的填充（padding）。</p>
+<blockquote>
+<h2 id="kernels-still-matter">Kernels Still Matter</h2>
+<p>ROSE supports multiple attention backends for ragged inputs, including FlashInfer 2, FlashInfer 3, and FlashAttention 4. </p>
+<p>While FlashAttention 4 is generally faster, FlashInfer 3 outperforms it on Qwen-based models at very long sequence lengths. Backend selection is handled on a case-by-case basis. By utilizing ragged attention variants, ROSE avoids unnecessary padding when serving embeddings.</p>
+</blockquote>
+<hr />
+<h2 id="_5">基准测试</h2>
+<p>Perplexity 使用真实的模型权重和评估派生的输入，在 BF16 精度下将自身的技术栈与 <code>vLLM</code> (v0.22.0) 进行了基准对比，确保余弦相似度散度（cosine similarity divergence）保持在 0.1% 以内。测试涵盖了四个套件：
+1. <strong>低延迟嵌入（Low-Latency Embeddings）：</strong> 批大小为 1，Token 数分别为 128、512 和 4096。
+2. <strong>低延迟评分（Low-Latency Scoring）：</strong> Token 数为 512，批大小分别为 5、25 和 50。
+3. <strong>高吞吐量嵌入（High-Throughput Embeddings）：</strong> 跨 4 个并发进程的批大小为 100。
+4. <strong>高并发嵌入（High-Concurrency Embeddings）：</strong> 1 到 16 个并发请求（包含 Ivy 分词和网络开销）。</p>
+<blockquote>
+<h2 id="benchmarks">Benchmarks</h2>
+<p>Perplexity benchmarked its stack against <code>vLLM</code> (v0.22.0) in BF16 using real model weights and evaluation-derived inputs, ensuring cosine similarity divergence remained within 0.1%. Tests covered four suites:
+1. <strong>Low-Latency Embeddings:</strong> Batch size 1 at 128, 512, and 4096 tokens.
+2. <strong>Low-Latency Scoring:</strong> Batch sizes 5, 25, and 50 at 512 tokens.
+3. <strong>High-Throughput Embeddings:</strong> Batch size 100 across four concurrent processes.
+4. <strong>High-Concurrency Embeddings:</strong> 1 to 16 concurrent requests (including Ivy tokenization and network overhead).</p>
+</blockquote>
+<hr />
+<h2 id="_6">核心要点</h2>
+<ul>
+<li><strong>统一内核：</strong> Perplexity 的嵌入技术栈直接复用了其现有的 LLM 预填充和解码内核。</li>
+<li><strong>Token 决定延迟：</strong> 延迟由 Token 数量而非序列数量驱动，大约 512 个 Token 即可使十亿参数以下的模型达到完全饱和。</li>
+<li><strong>降低开销：</strong> 全模型 CUDA 图与惰性捕获相结合，消除了启动瓶颈，同时没有引入巨大的启动延迟。</li>
+<li><strong>异步流水线：</strong> <code>LazyTensor</code> 实现了 CPU 批次准备与飞行中 GPU 计算之间的无缝重叠。</li>
+<li><strong>便捷易用：</strong> 尽管 Ivy、Tulip 和 ROSE 属于内部系统，但开发者可以通过 Perplexity 公共的嵌入 API 轻松访问 <code>pplx-embed</code>。</li>
+</ul>
+<blockquote>
+<h2 id="key-takeaways">Key Takeaways</h2>
+<ul>
+<li><strong>Unified Kernels:</strong> Perplexity’s embedding stack reuses its existing LLM prefill and decode kernels.</li>
+<li><strong>Token-Bound Latency:</strong> Latency is driven by token count rather than sequence count, with ~512 tokens fully saturating sub-1B parameter models.</li>
+<li><strong>Overhead Reduction:</strong> Whole-model CUDA graphs combined with lazy capture eliminate launch bottlenecks without introducing massive startup delays.</li>
+<li><strong>Asynchronous Pipelines:</strong> <code>LazyTensor</code> enables seamless overlap between CPU batch preparation and in-flight GPU computations.</li>
+<li><strong>Accessibility:</strong> While Ivy, Tulip, and ROSE are internal systems, <code>pplx-embed</code> is readily accessible via Perplexity’s public Embeddings API.</li>
+</ul>
+</blockquote>
+<hr />
+<p><em>Source: Perplexity Engineering, <a href="https://www.perplexity.ai/hub/blog/fast-embeddings-on-gpus">"Fast Embeddings on GPUs"</a> (Sep 4, 2026)</em></p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Perplexity</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GPU推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">嵌入模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">CUDA优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统架构</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

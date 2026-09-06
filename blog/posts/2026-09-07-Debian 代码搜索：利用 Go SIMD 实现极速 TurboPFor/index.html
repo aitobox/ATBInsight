@@ -1,0 +1,1089 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-07-Debian%20%E4%BB%A3%E7%A0%81%E6%90%9C%E7%B4%A2%EF%BC%9A%E5%88%A9%E7%94%A8%20Go%20SIMD%20%E5%AE%9E%E7%8E%B0%E6%9E%81%E9%80%9F%20TurboPFor/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        目录
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dcs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        背景：为什么 DCS 需要快速整数编解码器？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Table of Contents
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background-why-does-dcs-need-a-fast-integer-codec" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Background: Why Does DCS Need a Fast Integer Codec?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-simd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Go 语言中的 SIMD
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        环境搭建与基准测试
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="环境搭建与基准测试">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-goamd64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 设置 <code>GOAMD64</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-benchstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 使用 <code>benchstat</code> 进行基准测试
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup &amp; Benchmarking
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup &amp; Benchmarking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-setting-goamd64" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Setting <code>GOAMD64</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-benchmarking-with-benchstat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Benchmarking with <code>benchstat</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        标量优化
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scalar-optimizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scalar Optimizations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simd-strides" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SIMD 优化与更大的步长（Strides）
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SIMD 优化与更大的步长（Strides）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-simd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. SIMD 构建标签
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-256-uint32" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 256 <code>uint32</code> 垂直布局
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simd-optimizations-larger-strides" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SIMD Optimizations &amp; Larger Strides
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SIMD Optimizations &amp; Larger Strides">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-simd-build-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. SIMD Build Tags
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-the-256-uint32-vertical-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. The 256 <code>uint32</code> Vertical Layout
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        位置总体计数（实现 2 倍提速）
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="位置总体计数（实现 2 倍提速）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#smear-masks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        诀窍：涂抹掩码（Smear Masks）
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="诀窍：涂抹掩码（Smear Masks）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        位置总体计数可视化：
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#positional-popcount-the-2x-speed-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Positional Popcount (The 2x Speed-Up)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Positional Popcount (The 2x Speed-Up)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-trick-smear-masks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Trick: Smear Masks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Trick: Smear Masks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#visualizing-positional-popcount" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Visualizing Positional Popcount:
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在经历了多年通过 cgo 依赖 C 语言库的阶段后，Debian 代码搜索（DCS）目前已彻底摆脱了对 cgo 的依赖。这一里程碑的达成，得益于 Go 语言新引入的实验性 SIMD 支持（Go 1.26 中引入的 <code>simd/archsimd</code> 软件包），它使得完全用原生 Go 实现 TurboPFor 整数压缩格式成为可能。</p>
+<p>通过结合 AVX2 和 AVX512 向量指令集、编译期位宽特化（bit-width specialization）以及一种名为“位置总体计数（positional popcount）”的技术，全新的 Go 编解码器不仅追平了原版 C 语言参考实现的性能，甚至在许多情况下实现了超越。本文将深入探讨 Michael Stapelberg 如何在没有汇编或 cgo 的情况下，在纯 Go 中榨干硬件极限。</p>
+<hr />
+<h2 id="_2">目录</h2>
+<ol>
+<li><a href="#背景为什么-dcs-需要快速整数编解码器">背景：为什么 DCS 需要快速整数编解码器？</a></li>
+<li><a href="#go-语言中的-simd">Go 语言中的 SIMD</a></li>
+<li><a href="#环境搭建与-基准测试">环境搭建与基准测试</a></li>
+<li><a href="#标量优化">标量优化</a></li>
+<li><a href="#simd-优化与更大的步长strides">SIMD 优化与更大的步长（Strides）</a></li>
+<li><a href="#位置总体计数实现-2-倍提速">位置总体计数（实现 2 倍提速）</a></li>
+<li><a href="#结论">结论</a></li>
+</ol>
+<hr />
+<h2 id="dcs">背景：为什么 DCS 需要快速整数编解码器？</h2>
+<p>Debian 代码搜索（DCS）是一个搜索引擎，允许用户通过字面表达式或正则表达式搜索 Debian 中的所有开源代码。与其他搜索引擎类似，DCS 依赖于<strong>倒排索引（inverted index）</strong>——即从词条（term）到包含该词条的文档（由文档 ID 表示）的映射。</p>
+<ul>
+<li><strong>2012–2019 年：</strong> 索引完全保存在内存（RAM）中。</li>
+<li><strong>2019 年至今：</strong> 使用 <strong>TurboPFor</strong> 整数压缩实现了一种磁盘上的位置索引格式。字面量查询（占 DCS 查询的 78.2%）现在直接查询磁盘上的位置索引时速度更快。</li>
+</ul>
+<p>为了在查询时实现快速解码，同时又不会导致 RAM 或磁盘用量爆炸，DCS 此前通过 <code>cgo</code> 依赖于 C 语言的 <code>powturbo/TurboPFor</code> 库。</p>
+<blockquote>
+<p>After years of relying on a C library via cgo, Debian Code Search (DCS) is now completely free of cgo dependencies. This milestone was achieved by leveraging Go’s newly introduced experimental SIMD support (<code>simd/archsimd</code> package introduced in Go 1.26), enabling the implementation of the TurboPFor integer compression format entirely in native Go. By combining AVX2 and AVX512 vector instruction sets, compile-time bit-width specialization, and a technique called "positional popcount," the new Go encoder and decoder not only match the performance of the original C reference implementation but frequently exceed it.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#background-why-does-dcs-need-a-fast-integer-codec">Background: Why Does DCS Need a Fast Integer Codec?</a></li>
+<li><a href="#simd-in-go">SIMD in Go</a></li>
+<li><a href="#setup--benchmarking">Setup &amp; Benchmarking</a></li>
+<li><a href="#scalar-optimizations">Scalar Optimizations</a></li>
+<li><a href="#simd-optimizations--larger-strides">SIMD Optimizations &amp; Larger Strides</a></li>
+<li><a href="#positional-popcount-the-2x-speed-up">Positional Popcount (The 2x Speed-Up)</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ol>
+<h2 id="background-why-does-dcs-need-a-fast-integer-codec">Background: Why Does DCS Need a Fast Integer Codec?</h2>
+<p>Debian Code Search (DCS) is a search engine allowing users to search all open-source code within Debian via literal expressions or regular expressions. Like most search engines, DCS relies on an <strong>inverted index</strong>—a map from terms to documents containing those terms (represented by document IDs).</p>
+<ul>
+<li><strong>2012–2019:</strong> The index was kept entirely in RAM.</li>
+<li><strong>2019 Onwards:</strong> An on-disk positional index format was implemented using <strong>TurboPFor</strong> integer compression. Literal queries (78.2% of DCS queries) are now faster when querying the positional index directly on disk.</li>
+</ul>
+<p>To make decoding fast at query time without exploding RAM or disk usage, DCS previously relied on the C <code>powturbo/TurboPFor</code> library via <code>cgo</code>.</p>
+</blockquote>
+<hr />
+<h2 id="go-simd">Go 语言中的 SIMD</h2>
+<p>在历史上，在 Go 中使用 SIMD 指令意味着：
+1. <strong>手写 Go 汇编代码</strong>（复杂，仅对小型函数实用）。
+2. 使用诸如 Michael McLoughlin 的 <code>Avo</code> 等工具<strong>生成 Go 汇编代码</strong>（依然过于贴近底层汇编）。
+3. <strong>通过 cgo 使用 C 库</strong>（DCS 使用了 7 年的方法，将 C 代码引入了一个纯 Go 项目中）。</p>
+<p>Go 1.26 引入了实验性的 <code>simd/archsimd</code> 软件包（通过 <code>GOEXPERIMENT=simd</code> 启用），在 <code>amd64</code> 架构上提供了特定于架构的 SIMD 操作，支持 128 位、256 位和 512 位向量类型。</p>
+<p>通过优化原生 Go 解码器，并最终编写带有 SIMD 内联函数的原生 Go 编码器，Michael Stapelberg 成功去掉了最后的 <code>cgo</code> 依赖。</p>
+<blockquote>
+<p>Historically, using SIMD instructions in Go meant:
+1. <strong>Hand-writing Go assembler code</strong> (complex, only practical for small functions).
+2. <strong>Generating Go assembler code</strong> using tools like Michael McLoughlin's <code>Avo</code> (still too close to raw assembly).
+3. <strong>Using a C library via cgo</strong> (the approach DCS used for 7 years, introducing C code into a pure Go project).</p>
+<p>Go 1.26 introduced the experimental <code>simd/archsimd</code> package (enabled via <code>GOEXPERIMENT=simd</code>), providing architecture-specific SIMD operations on <code>amd64</code> with 128-bit, 256-bit, and 512-bit vector types.</p>
+<p>By optimizing a native Go decoder and eventually writing a native Go encoder with SIMD intrinsics, Michael Stapelberg successfully eliminated the final <code>cgo</code> dependency.</p>
+</blockquote>
+<hr />
+<h2 id="_3">环境搭建与基准测试</h2>
+<h3 id="1-goamd64">1. 设置 <code>GOAMD64</code></h3>
+<p>要使用现代指令集（如 AVX2 和 AVX512），请使用适当的微架构级别进行编译：
+* <code>GOAMD64=v3</code> 启用 AVX2、BMI1/2、FMA 和 LZCNT（需要 Intel Haswell / AMD Zen 1 或更新的处理器）。
+* <code>GOAMD64=v4</code> 启用 AVX512F、AVX512BW 等（需要 AMD Zen 4 / Zen 5 或更新的处理器）。</p>
+<h3 id="2-benchstat">2. 使用 <code>benchstat</code> 进行基准测试</h3>
+<p>基准测试的设计旨在对比 C (<code>cgo</code>)、纯 Go 以及带有流式 API 的 Go，并利用 <code>golang.org/x/perf/cmd/benchstat</code> 进行严谨的统计分析。</p>
+<blockquote>
+<h2 id="setup-benchmarking">Setup &amp; Benchmarking</h2>
+<h3 id="1-setting-goamd64">1. Setting <code>GOAMD64</code></h3>
+<p>To use modern instruction sets (like AVX2 and AVX512), compile with the appropriate microarchitecture level:
+* <code>GOAMD64=v3</code> enables AVX2, BMI1/2, FMA, and LZCNT (requires Intel Haswell / AMD Zen 1 or newer).
+* <code>GOAMD64=v4</code> enables AVX512F, AVX512BW, etc. (requires AMD Zen 4 / Zen 5 or newer).</p>
+<h3 id="2-benchmarking-with-benchstat">2. Benchmarking with <code>benchstat</code></h3>
+<p>Benchmarks were structured to compare C (<code>cgo</code>), pure Go, and Go with a streaming API, utilizing <code>golang.org/x/perf/cmd/benchstat</code> for rigorous statistical analysis.</p>
+</blockquote>
+<hr />
+<h2 id="_4">标量优化</h2>
+<p>在引入 SIMD 之前，实现了几项标量优化：
+* <strong>配置文件引导优化（PGO）：</strong> 实现了激进的函数内联。
+* <strong>消除内存分配：</strong> 重用内部暂存缓冲区和数组（例如 <code>[256]uint32</code>），以防止运行时的切片分配和垃圾回收开销。
+* <strong>用于位宽特化的泛型：</strong> 不再将位宽作为运行时参数传递，而是利用 Go 泛型和固定数组类型（例如从 <code>[1]byte</code> 到 <code>[32]byte</code>），在编译期为每个可能的位宽特化循环展开，从而消除了分支，并允许编译器优化移位和掩码操作。</p>
+<blockquote>
+<h2 id="scalar-optimizations">Scalar Optimizations</h2>
+<p>Before reaching for SIMD, several scalar optimizations were implemented:
+* <strong>Profile-Guided Optimization (PGO):</strong> Enabled aggressive function inlining.
+* <strong>Allocations Removal:</strong> Reused internal scratch buffers and arrays (e.g., <code>[256]uint32</code>) to prevent runtime slice allocations and garbage collection overhead.
+* <strong>Generics for Bit-Width Specialization:</strong> Instead of passing bit width as a runtime parameter, Go generics and fixed array types (e.g., <code>[1]byte</code> through <code>[32]byte</code>) were used to specialize unrolled loops for every possible bit width at compile time, eliminating branches and letting the compiler optimize shifts and masks.</p>
+</blockquote>
+<hr />
+<h2 id="simd-strides">SIMD 优化与更大的步长（Strides）</h2>
+<h3 id="1-simd">1. SIMD 构建标签</h3>
+<p>使用条件编译（<code>//go:build goexperiment.simd &amp;&amp; amd64</code>），引擎根据 CPU 功能执行运行时调度，并在较旧的硬件上回退到标量实现。</p>
+<h3 id="2-256-uint32">2. 256 <code>uint32</code> 垂直布局</h3>
+<p>TurboPFor 为 256 个值的完整块使用了一个向量变体（<code>bitunpack256v32</code>）。解码器使用 <code>archsimd.Uint32x8</code> 通过 AVX2 寄存器并发处理 8 个值，达到了标量版本大约 <strong>3 倍的速度</strong>。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Go SIMD 中的 AVX2 加载并移位模式示例</span>
+<span class="nx">next</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">archsimd</span><span class="p">.</span><span class="nx">LoadUint8x32</span><span class="p">(</span><span class="nx">input</span><span class="p">[</span><span class="nx">pos</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="nx">pos</span><span class="o">+</span><span class="mi">32</span><span class="p">]).</span><span class="nx">ReshapeToUint32s</span><span class="p">()</span>
+<span class="nx">cur8</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rest8</span><span class="p">.</span><span class="nx">Or</span><span class="p">(</span><span class="nx">next</span><span class="p">.</span><span class="nx">ShiftAllLeft</span><span class="p">(</span><span class="nb">uint64</span><span class="p">(</span><span class="nx">bits</span><span class="p">)))</span>
+<span class="nx">rest8</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">next</span><span class="p">.</span><span class="nx">ShiftAllRight</span><span class="p">(</span><span class="nb">uint64</span><span class="p">(</span><span class="nb">uint</span><span class="p">(</span><span class="nx">bitWidth</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">bits</span><span class="p">))</span>
+</code></pre></div>
+<blockquote>
+<h2 id="simd-optimizations-larger-strides">SIMD Optimizations &amp; Larger Strides</h2>
+<h3 id="1-simd-build-tags">1. SIMD Build Tags</h3>
+<p>Using conditional compilation (<code>//go:build goexperiment.simd &amp;&amp; amd64</code>), the engine performs runtime dispatch based on CPU capabilities, falling back to scalar implementations for older hardware.</p>
+<h3 id="2-the-256-uint32-vertical-layout">2. The 256 <code>uint32</code> Vertical Layout</h3>
+<p>TurboPFor uses a vector variant (<code>bitunpack256v32</code>) for full blocks of 256 values. Using <code>archsimd.Uint32x8</code>, the decoder processes 8 values concurrently using AVX2 registers, achieving roughly <strong>3x the speed</strong> of the scalar version.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Example AVX2 load-and-shift pattern in Go SIMD</span>
+<span class="nx">next</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">archsimd</span><span class="p">.</span><span class="nx">LoadUint8x32</span><span class="p">(</span><span class="nx">input</span><span class="p">[</span><span class="nx">pos</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="nx">pos</span><span class="o">+</span><span class="mi">32</span><span class="p">]).</span><span class="nx">ReshapeToUint32s</span><span class="p">()</span>
+<span class="nx">cur8</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rest8</span><span class="p">.</span><span class="nx">Or</span><span class="p">(</span><span class="nx">next</span><span class="p">.</span><span class="nx">ShiftAllLeft</span><span class="p">(</span><span class="nb">uint64</span><span class="p">(</span><span class="nx">bits</span><span class="p">)))</span>
+<span class="nx">rest8</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">next</span><span class="p">.</span><span class="nx">ShiftAllRight</span><span class="p">(</span><span class="nb">uint64</span><span class="p">(</span><span class="nb">uint</span><span class="p">(</span><span class="nx">bitWidth</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">bits</span><span class="p">))</span>
+</code></pre></div>
+</blockquote>
+<hr />
+<h2 id="2">位置总体计数（实现 2 倍提速）</h2>
+<p>一旦编码块被优化，性能瓶颈便转移到了<strong>扫描</strong>输入值以决定最佳块类型上。</p>
+<h3 id="smear-masks">诀窍：涂抹掩码（Smear Masks）</h3>
+<p>通过前导零计数（<code>LZCNT</code>）将输入值转换为“涂抹掩码”，我们可以按列而非按行计算位。这就是所谓的<strong>位置总体计数（Positional Population Count）</strong>。</p>
+<div class="highlight"><pre><span></span><code>输入值：23 (二进制: 0000010111)
+涂抹掩码：0000011111
+</code></pre></div>
+<p>利用诸如 <code>VPOPCNTB</code>（一次性跨 64 字节进行 popcount）、<code>VPERMB</code>（字节排列/转置）和 <code>GF2P8AFFINEQB</code>（用于位转置的伽罗瓦域仿射变换）等 AVX512 指令，编码器以 <strong>低 8 倍的指令开销</strong> 评估异常直方图。</p>
+<h4 id="_5">位置总体计数可视化：</h4>
+<p><a href=".././images/09a3cdfffe8e.svg"><img loading="lazy" src=".././images/09a3cdfffe8e.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>字节转置（<code>VPERMB</code>）：
+<a href="https://michael.stapelberg.ch/posts/2026-09-06-dcs-fast-turbopfor-go-simd/2026-pospop-vpermb.svgo.svg"><img loading="lazy" src="https://michael.stapelberg.ch/posts/2026-09-06-dcs-fast-turbopfor-go-simd/2026-pospop-vpermb.svgo.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>通过 <code>GF2P8AFFINEQB</code> 进行位转置：
+<a href=".././images/b69db0099654.svg"><img loading="lazy" src=".././images/b69db0099654.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>顺时针旋转 90 度的视图：
+<a href=".././images/8e3955c4cbd8.svg"><img loading="lazy" src=".././images/8e3955c4cbd8.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>跨 64 字节的并行总体计数（<code>VPOPCNTB</code>）：
+<a href=".././images/0a590e0966d7.svg"><img loading="lazy" src=".././images/0a590e0966d7.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>累加最终的 32 个异常计数：
+<a href=".././images/579e8ef6789c.svg"><img loading="lazy" src=".././images/579e8ef6789c.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<blockquote>
+<h2 id="positional-popcount-the-2x-speed-up">Positional Popcount (The 2x Speed-Up)</h2>
+<p>Once encoding blocks were optimized, the bottleneck shifted to <strong>scanning</strong> the input values to decide the optimal block type. </p>
+<h3 id="the-trick-smear-masks">The Trick: Smear Masks</h3>
+<p>By converting input values into "smear masks" via leading-zero counts (<code>LZCNT</code>), we can count bits column-wise rather than row-wise. This is known as <strong>Positional Population Count</strong>.</p>
+<div class="highlight"><pre><span></span><code>Input value: 23 (binary: 0000010111)
+Smear mask:  0000011111
+</code></pre></div>
+<p>Using AVX512 instructions such as <code>VPOPCNTB</code> (popcount across 64 bytes at once), <code>VPERMB</code> (byte permutation/transpose), and <code>GF2P8AFFINEQB</code> (Galois Field affine transform for bit transposition), the encoder evaluates exception histograms at <strong>8x lower instruction overhead</strong>.</p>
+<h4 id="visualizing-positional-popcount">Visualizing Positional Popcount:</h4>
+<p><a href=".././images/09a3cdfffe8e.svg"><img loading="lazy" src=".././images/09a3cdfffe8e.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>Byte transposition (<code>VPERMB</code>):
+<a href="https://michael.stapelberg.ch/posts/2026-09-06-dcs-fast-turbopfor-go-simd/2026-pospop-vpermb.svgo.svg"><img loading="lazy" src="https://michael.stapelberg.ch/posts/2026-09-06-dcs-fast-turbopfor-go-simd/2026-pospop-vpermb.svgo.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>Bit transposition via <code>GF2P8AFFINEQB</code>:
+<a href=".././images/b69db0099654.svg"><img loading="lazy" src=".././images/b69db0099654.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>90-degree clock-wise rotation view:
+<a href=".././images/8e3955c4cbd8.svg"><img loading="lazy" src=".././images/8e3955c4cbd8.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>Parallel popcounting across 64 bytes (<code>VPOPCNTB</code>):
+<a href=".././images/0a590e0966d7.svg"><img loading="lazy" src=".././images/0a590e0966d7.svg" style="border: 0; margin-right: 1rem"/></a></p>
+<p>Accumulating final 32 exception counts:
+<a href=".././images/579e8ef6789c.svg"><img loading="lazy" src=".././images/579e8ef6789c.svg" style="border: 0; margin-right: 1rem"/></a></p>
+</blockquote>
+<hr />
+<h2 id="_6">结论</h2>
+<p>Go 的 SIMD 支持（<code>simd/archsimd</code>）弥合了高级安全性与原始硬件性能之间的鸿沟。在不诉诸 cgo 或内联汇编的情况下，现在完全可以直接用纯 Go 实现诸如 TurboPFor 这样高吞吐量的整数压缩算法，并实现与高度调优的 C 语言实现相媲美的性能特征。</p>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+<p>Go’s SIMD support (<code>simd/archsimd</code>) bridges the gap between high-level safety and raw hardware performance. Without resorting to cgo or inline assembly, it is now possible to implement high-throughput integer compression algorithms like TurboPFor directly in pure Go, achieving performance characteristics competitive with highly tuned C implementations.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">debian</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">golang</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">simd</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">performance</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">optimization</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
