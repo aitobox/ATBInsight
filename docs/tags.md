@@ -862,6 +862,10 @@ title: 标签浏览
 - [CUDA-L2：通过强化学习超越 cuBLAS 的矩阵乘法性能](blog/posts/2026-08-07-CUDA-L2：通过强化学习超越 cuBLAS 的矩阵乘法性能.md)
 - [在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上](blog/posts/2026-08-07-在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上.md)
 
+## CUDA优化
+
+- [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+
 ## CVSS
 
 - [基于上下文学习预测漏洞严重性：一项工业级案例研究](blog/posts/2026-08-26-基于上下文学习预测漏洞严重性：一项工业级案例研究.md)
@@ -1373,6 +1377,7 @@ title: 标签浏览
 
 - [面向存算分离 GPU 推理的拓扑感知数据传输技术](blog/posts/2026-08-11-面向存算分离 GPU 推理的拓扑感知数据传输技术.md)
 - [面向大规模 GPU 推理的 KV Cache 预测性多层内存管理](blog/posts/2026-08-11-面向大规模 GPU 推理的 KV Cache 预测性多层内存管理.md)
+- [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 
 ## GPU调度
 
@@ -2741,6 +2746,7 @@ title: 标签浏览
 ## Perplexity
 
 - [Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎](blog/posts/2026-09-04-Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎.md)
+- [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 
 ## PhysElite
 
@@ -3983,6 +3989,10 @@ title: 标签浏览
 
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
 
+## debian
+
+- [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
+
 ## deepDoctection
 
 - [使用 deepDoctection 构建端到端文档智能流水线](blog/posts/2026-08-24-使用 deepDoctection 构建端到端文档智能流水线.md)
@@ -3998,6 +4008,10 @@ title: 标签浏览
 ## funes
 
 - [为你的编码智能体赋予属于你自己的记忆](blog/posts/2026-09-04-为你的编码智能体赋予属于你自己的记忆.md)
+
+## golang
+
+- [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
 
 ## iOS开发
 
@@ -4039,6 +4053,14 @@ title: 标签浏览
 
 - [openPangu模型在昇腾NPU上的量化实证研究](blog/posts/2026-08-11-openPangu模型在昇腾NPU上的量化实证研究.md)
 
+## optimization
+
+- [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
+
+## performance
+
+- [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
+
 ## pgRouting
 
 - [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
@@ -4054,6 +4076,10 @@ title: 标签浏览
 ## pyAgrum
 
 - [分层结构因果模型的的可扩展与通用识别：重新审视 STAR 项目](blog/posts/2026-08-27-分层结构因果模型的的可扩展与通用识别：重新审视 STAR 项目.md)
+
+## simd
+
+- [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
 
 ## systemd
 
@@ -10364,6 +10390,7 @@ title: 标签浏览
 - [土耳其语RAG系统中分块与嵌入策略的对比研究](blog/posts/2026-08-29-土耳其语RAG系统中分块与嵌入策略的对比研究.md)
 - [土耳其语 RAG 系统分块与嵌入策略的对比研究](blog/posts/2026-09-01-土耳其语 RAG 系统分块与嵌入策略的对比研究.md)
 - [ExecRetrieval：衡量代码嵌入检索中的功能正确性差距](blog/posts/2026-09-05-ExecRetrieval：衡量代码嵌入检索中的功能正确性差距.md)
+- [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 
 ## 嵌入表示
 
@@ -18350,6 +18377,7 @@ title: 标签浏览
 - [Simthesizer：面向大模型推理服务系统的智能体驱动仿真框架](blog/posts/2026-08-27-Simthesizer：面向大模型推理服务系统的智能体驱动仿真框架.md)
 - [SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统](blog/posts/2026-08-27-SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统.md)
 - [静态分配与恒定工作量：构建高可靠系统的架构模式](blog/posts/2026-09-04-静态分配与恒定工作量：构建高可靠系统的架构模式.md)
+- [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 
 ## 系统演示
 

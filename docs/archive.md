@@ -4,6 +4,8 @@
 
 ## 2026-09
 
+- **2026-09-07**: [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+- **2026-09-07**: [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
 - **2026-09-06**: [潜在的力量：AI时代黑客技术的趋同与独立思考的反思](blog/posts/2026-09-06-潜在的力量：AI时代黑客技术的趋同与独立思考的反思.md)
 - **2026-09-06**: [形式化验证费马大定理：Claude历时11天实现数学史里程碑](blog/posts/2026-09-06-形式化验证费马大定理：Claude历时11天实现数学史里程碑.md)
 - **2026-09-05**: [每次都能完美掌控十七：企业数据分析的受控方法](blog/posts/2026-09-05-每次都能完美掌控十七：企业数据分析的受控方法.md)

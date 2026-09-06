@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-07**: [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
 - **2026-09-06**: [形式化验证费马大定理：Claude历时11天实现数学史里程碑](blog/posts/2026-09-06-形式化验证费马大定理：Claude历时11天实现数学史里程碑.md)
 - **2026-09-05**: [重构 1995 年的 GPS 时间服务器：免遭澳洲电信（Telstra）式的故障波及](blog/posts/2026-09-05-重构 1995 年的 GPS 时间服务器：免遭澳洲电信（Telstra）式的故障波及.md)
 - **2026-09-04**: [使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型](blog/posts/2026-09-04-使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型.md)
