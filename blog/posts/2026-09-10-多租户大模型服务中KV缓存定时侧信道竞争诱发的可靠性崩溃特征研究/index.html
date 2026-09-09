@@ -1,0 +1,791 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-10-%E5%A4%9A%E7%A7%9F%E6%88%B7%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%9C%8D%E5%8A%A1%E4%B8%ADKV%E7%BC%93%E5%AD%98%E5%AE%9A%E6%97%B6%E4%BE%A7%E4%BF%A1%E9%81%93%E7%AB%9E%E4%BA%89%E8%AF%B1%E5%8F%91%E7%9A%84%E5%8F%AF%E9%9D%A0%E6%80%A7%E5%B4%A9%E6%BA%83%E7%89%B9%E5%BE%81%E7%A0%94%E7%A9%B6/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#characterizing-contention-induced-reliability-collapse-in-kv-cache-timing-side-channels-for-multi-tenant-llm-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Characterizing Contention-Induced Reliability Collapse in KV-Cache Timing Side Channels for Multi-Tenant LLM Serving
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#characterizing-contention-induced-reliability-collapse-in-kv-cache-timing-side-channels-for-multi-tenant-llm-serving_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Characterizing Contention-Induced Reliability Collapse in KV-Cache Timing Side Channels for Multi-Tenant LLM Serving
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Characterizing Contention-Induced Reliability Collapse in KV-Cache Timing Side Channels for Multi-Tenant LLM Serving">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-findings-experimental-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Findings &amp; Experimental Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-findings-experimental-results_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Findings &amp; Experimental Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conclusion_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>共享键值（KV）缓存的复用显著提升了大语言模型（LLM）服务系统的效率，但它也无意中引入了定时侧信道（timing side channels），从而暴露特定前缀是否已被缓存的信息。尽管先前的研究已经证明了这些定时攻击在理论上的可行性，但在真实的、多租户竞争环境下，它们的实际运行可靠性仍缺乏深入了解。</p>
+<p>本文通过在共享的 LLM 服务基础设施上进行严格的实地实验，对这一问题进行了深入探讨。研究结果表明，<strong>系统资源竞争会导致定时侧信道的可靠性发生严重崩溃</strong>，这说明在安静或隔离系统上进行的评估会严重高估这些攻击的实际有效性。</p>
+<hr />
+<h1 id="characterizing-contention-induced-reliability-collapse-in-kv-cache-timing-side-channels-for-multi-tenant-llm-serving">Characterizing Contention-Induced Reliability Collapse in KV-Cache Timing Side Channels for Multi-Tenant LLM Serving</h1>
+<blockquote>
+<h1 id="characterizing-contention-induced-reliability-collapse-in-kv-cache-timing-side-channels-for-multi-tenant-llm-serving_1">Characterizing Contention-Induced Reliability Collapse in KV-Cache Timing Side Channels for Multi-Tenant LLM Serving</h1>
+</blockquote>
+<p><strong>Authors:</strong> Rana Abu Bakar<br />
+<strong>Published:</strong> September 6, 2026<br />
+<strong>Primary Subject:</strong> Cryptography and Security (<code>cs.CR</code>)<br />
+<strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>)<br />
+<strong>ArXiv ID:</strong> <a href="https://arxiv.org/abs/2609.06853">arXiv:2609.06853</a><br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2609.06853">10.48550/arXiv.2609.06853</a></p>
+<blockquote>
+<p><strong>Authors:</strong> Rana Abu Bakar<br />
+<strong>Published:</strong> September 6, 2026<br />
+<strong>Primary Subject:</strong> Cryptography and Security (<code>cs.CR</code>)<br />
+<strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>)<br />
+<strong>ArXiv ID:</strong> <a href="https://arxiv.org/abs/2609.06853">arXiv:2609.06853</a><br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2609.06853">10.48550/arXiv.2609.06853</a></p>
+</blockquote>
+<hr />
+<h2 id="summary">Summary</h2>
+<blockquote>
+<h2 id="summary_1">Summary</h2>
+</blockquote>
+<p>共享键值（KV）缓存复用显著提升了大语言模型（LLM）服务系统的效率，但它也可能无意中引入定时侧信道，暴露特定前缀是否已被缓存。虽然先前的研究证明了这些定时攻击的理论可行性，但在真实的、多租户竞争环境下，其操作可靠性仍未得到充分理解。</p>
+<blockquote>
+<p>Shared key-value (KV) cache reuse significantly improves the efficiency of large language model (LLM) serving systems, but it can inadvertently introduce timing side channels that reveal whether a specific prefix has already been cached. While previous studies have demonstrated the theoretical feasibility of these timing attacks, their operational reliability under realistic, multi-tenant contention remains poorly understood. </p>
+</blockquote>
+<p>本文通过在共享的LLM服务基础设施上进行严格的实时实验来研究此问题。研究结果表明，<strong>系统竞争会导致定时侧信道可靠性发生严重崩溃</strong>，这表明在安静或隔离系统上进行的评估会大大高估这些攻击的实际效力。</p>
+<blockquote>
+<p>This paper investigates this problem through rigorous live experimentation on shared LLM-serving infrastructures. The findings reveal that <strong>system contention causes a severe collapse in timing side-channel reliability</strong>, indicating that evaluations performed on quiet or isolated systems can drastically overestimate the practical effectiveness of these attacks.</p>
+</blockquote>
+<hr />
+<h2 id="key-findings-experimental-results">Key Findings &amp; Experimental Results</h2>
+<blockquote>
+<h2 id="key-findings-experimental-results_1">Key Findings &amp; Experimental Results</h2>
+</blockquote>
+<ul>
+<li><strong>工作线程竞争的影响：</strong><br />
+  在运行于NVIDIA GB10上的<code>DeepSeek-R1-Distill-Llama-8B</code>的vLLM服务器上：</li>
+<li>平均效应量（Cohen’s <span class="arithmatex">\(d\)</span>）从<strong>0.7789</strong>（无合成背景工作线程）急剧下降至<strong>0.2109</strong>（具有两个背景工作线程，<span class="arithmatex">\(t = 8.412\)</span>）。</li>
+<li>进一步增加工作线程数量不会带来统计学上可检测到的进一步退化。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Impact of Worker Contention:</strong><br />
+  On a vLLM server running <code>DeepSeek-R1-Distill-Llama-8B</code> on an NVIDIA GB10:</li>
+<li>The mean effect size (Cohen’s <span class="arithmatex">\(d\)</span>) drops dramatically from <strong>0.7789</strong> (with zero synthetic background workers) to <strong>0.2109</strong> (with two background workers, <span class="arithmatex">\(t = 8.412\)</span>).</li>
+<li>Pushing worker counts even higher yields no statistically detectable further degradation.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>机制转变与断点：</strong><br />
+  一项包含120次运行的稀疏重叠实验在测得范围的极端边界（<span class="arithmatex">\(\tau = 0\)</span>，<span class="arithmatex">\(95\%\)</span> 置信区间 <span class="arithmatex">\([0.000, 0.113]\)</span>）确定了最佳断点。这指向了“环境状态与高负载状态”的操作机制转变，而非内部物理阈值。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Regime Shifts &amp; Breakpoints:</strong><br />
+  A 120-run sparse-overlap experiment identified the best breakpoint at the extreme boundary of the measured range (<span class="arithmatex">\(\tau = 0\)</span>, <span class="arithmatex">\(95\%\)</span> CI <span class="arithmatex">\([0.000, 0.113]\)</span>). This points toward an "ambient-versus-loaded" operational regime change rather than an internal physical threshold.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>分类准确率（AUROC）：</strong><br />
+  受试者工作特征曲线下面积（AUROC）：</li>
+<li>在环境条件下从<strong>0.650</strong>下降。</li>
+<li>在资源重叠度接近61%时降至<strong>0.531</strong>。</li>
+<li>在系统饱和状态下部分恢复至<strong>0.574</strong>。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Classification Accuracy (AUROC):</strong><br />
+  The Area Under the Receiver Operating Characteristic curve:</li>
+<li>Falls from <strong>0.650</strong> under ambient conditions.</li>
+<li>Drops to <strong>0.531</strong> near 61% resource overlap.</li>
+<li>Partially recovers to <strong>0.574</strong> under system saturation.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>攻击成功的相关因素：</strong>  </li>
+<li><strong>并发深度方差</strong>成为效应量（<span class="arithmatex">\(r = -0.416\)</span>）和命中一致性（<span class="arithmatex">\(r = -0.637\)</span>）的最强测得相关因素。</li>
+<li>交错对照组成功保持了相同的非单调排序模式。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Correlates of Attack Success:</strong>  </li>
+<li><strong>Concurrency-depth variance</strong> emerges as the strongest measured correlate of both effect size (<span class="arithmatex">\(r = -0.416\)</span>) and hit consistency (<span class="arithmatex">\(r = -0.637\)</span>).</li>
+<li>An interleaved control group successfully preserves the identical non-monotonic ordering pattern.</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>跨设置可复现性：</strong><br />
+  核心可靠性崩溃已在一个物理双节点、双GPU张量并行vLLM设置中成功复现，其中平均效应量（<span class="arithmatex">\(d\)</span>）从<strong>3.418</strong>降至<strong>0.511</strong>（<span class="arithmatex">\(p &lt; 0.01\)</span>）。使用SGLang服务栈的试点评估在统计学上尚无定论。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Cross-Setup Reproducibility:</strong><br />
+  The core reliability collapse was successfully reproduced on a physical two-node, two-GPU tensor-parallel vLLM setup, where the mean effect size (<span class="arithmatex">\(d\)</span>) dropped from <strong>3.418</strong> down to <strong>0.511</strong> (<span class="arithmatex">\(p &lt; 0.01\)</span>). Pilot evaluations using the SGLang serving stack proved statistically inconclusive.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<blockquote>
+<h2 id="conclusion_1">Conclusion</h2>
+</blockquote>
+<p>KV缓存定时侧信道的可靠性在很大程度上取决于所使用的具体负载机制和Serving架构。因此，在安静的单租户系统上进行的安全性测量无法反映真实的多租户动态，往往会导致高估实操攻击的可靠性。</p>
+<blockquote>
+<p>The reliability of KV-cache timing side channels is heavily contingent upon the specific load regime and serving architecture in use. Consequently, security measurements conducted on quiet, single-tenant systems fail to reflect real-world multi-tenant dynamics, often leading to an overestimation of operational attack reliability.</p>
+</blockquote>
+<hr />
+<p><em><a href="http://creativecommons.org/licenses/by/4.0/">查看许可证</a> | <img alt="license icon" src=".././images/345c7ad61f1b.png" /></em></p>
+<blockquote>
+<p><em><a href="http://creativecommons.org/licenses/by/4.0/">View License</a> | <img alt="license icon" src=".././images/345c7ad61f1b.png" /></em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大模型服务</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">KV缓存</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">侧信道攻击</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统安全</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">多租户</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

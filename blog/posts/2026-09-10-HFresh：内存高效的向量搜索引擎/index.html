@@ -1,0 +1,1241 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-10-HFresh%EF%BC%9A%E5%86%85%E5%AD%98%E9%AB%98%E6%95%88%E7%9A%84%E5%90%91%E9%87%8F%E6%90%9C%E7%B4%A2%E5%BC%95%E6%93%8E/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>HFresh：内存高效的向量搜索引擎 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HFresh：内存高效的向量搜索引擎
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hnsw" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        理解相似性搜索中 HNSW 的内存瓶颈
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-hnsws-memory-bottleneck-in-similarity-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Understanding HNSW's Memory Bottleneck in Similarity Search
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hfresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        HFresh 简介
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introducing-hfresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Introducing HFresh
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introducing HFresh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        无需重建的实时更新性
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#freshness-without-rebuilds" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Freshness Without Rebuilds
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hfresh-spfresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        HFresh 如何在 SPFresh 基础上进行演进
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-hfresh-builds-on-spfresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How HFresh Builds on SPFresh
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hnsw_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        用作质心索引的 HNSW
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hnsw-as-the-centroid-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        HNSW as the Centroid Index
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        量化
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quantization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quantization
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        后台操作
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Background Operations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        过滤搜索
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtered-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filtered Search
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hfresh_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        如何使用 HFresh
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-use-hfresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How to Use HFresh
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        实验
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Experiments
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        堆内存使用情况
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heap-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Heap Usage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        查询吞吐量
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-throughput" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Query Throughput
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        扩展到十亿向量
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-to-one-billion-vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scaling to One Billion Vectors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">HFresh：内存高效的向量搜索引擎</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着向量数据从百万级增长到数十亿级，传统的内存型 HNSW 索引面临着巨大的内存瓶颈。为了在牺牲部分峰值查询吞吐量的同时显著降低内存消耗，Weaviate 推出了基于磁盘的向量索引——<strong>HFresh</strong>。它通过结合内存中的量化质心索引与由后台持续任务（分裂、合并和重新分配）管理的磁盘驻留 Posting，能够高效扩展至数十亿个向量，而无需进行破坏性的全局重建。</p>
+<p>HFresh 的技术核心在于借鉴了 SPFresh 研究论文的设计理念，并结合 Weaviate 经过实战检验的组件。它采用两阶段搜索策略：首先通过紧凑的内存质心索引（使用 RQ8 量化）识别相关的向量空间区域，然后仅从磁盘获取对应的 Posting 并进行搜索（使用 RQ1 量化）。配合诸如分裂、合并和 LIRE 重新平衡等异步后台任务，HFresh 能够在不进行全局重建的情况下保持索引的新鲜度。它是 Weaviate Cloud 成本优化配置（免费层）的底层支撑，为大规模和受资源限制的工作负载提供了低堆内存、可预测的低延迟替代方案。</p>
+<hr />
+<h2 id="hnsw">理解相似性搜索中 HNSW 的内存瓶颈</h2>
+<blockquote>
+<h2 id="understanding-hnsws-memory-bottleneck-in-similarity-search">Understanding HNSW's Memory Bottleneck in Similarity Search</h2>
+</blockquote>
+<p>当需要快速查找相似向量时，HNSW（Hierarchical Navigable Small World，分层可导航小世界）已成为黄金标准。它速度快且准确，但随着数据集从数百万增长到数十亿个向量，HNSW 暴露出一个根本局限：它的图结构和向量缓存都必须保留在内存中。</p>
+<blockquote>
+<p>When it comes to finding similar vectors quickly, HNSW (Hierarchical Navigable Small World) has become the gold standard. It's fast and accurate, but as datasets grow from millions to billions of vectors, HNSW reveals a fundamental constraint: its graph and vector cache are kept in memory.</p>
+</blockquote>
+<p>HNSW 是一种基于图的索引，将向量组织成层次结构。在最顶层，有一个稀疏图，其中包含长距离连接，可帮助你快速导航到正确的邻近区域。随着层数的下降，图变得更加密集，具有更多的局部连接，最终引导你在最底层找到最相似的向量。</p>
+<blockquote>
+<p>HNSW is a graph-based index that organizes vectors into a hierarchical structure. At the top layer, you have a sparse graph with long-distance connections that help you quickly navigate to the right neighborhood. As you descend through the layers, the graphs become denser with more local connections, eventually guiding you to the most similar vectors at the bottom layer.</p>
+</blockquote>
+<p><img alt="HNSW organizes vectors into progressively denser graph layers that guide a query toward nearby vectors." src="/assets/images/hnsw-explained-09135d3f50d1e3724786918b5a29b8c0.png" width="1200"/></p>
+<p>问题不在于 HNSW 是否优秀。它绝对非常优秀。如果你需要最低的延迟和最高的吞吐量，HNSW 很难被超越。但许多应用程序更倾向于较低的内存消耗和更大的规模，而不是峰值查询性能。</p>
+<blockquote>
+<p>The question isn't whether HNSW is good. It absolutely is. If you need the lowest possible latency and highest throughput, HNSW is hard to beat. But many applications prioritize lower memory use and larger scale over peak query performance.</p>
+</blockquote>
+<p>这就是基于磁盘的索引变得有趣的地方。如果你能用一些延迟换取极低的内存消耗以及扩展到更大数据集的能力，会怎么样呢？</p>
+<blockquote>
+<p>This is where disk-based indexes become interesting. What if you could trade some latency for much lower memory use and the ability to scale to larger datasets?</p>
+</blockquote>
+<hr />
+<h2 id="hfresh">HFresh 简介</h2>
+<blockquote>
+<h2 id="introducing-hfresh">Introducing HFresh</h2>
+</blockquote>
+<p>HFresh 是一种现代的基于磁盘的向量索引，专为大规模高召回率、强更新性能和受控查询 I/O 而设计。它建立在 <a href="https://arxiv.org/pdf/2410.14452">SPFresh 研究论文</a>引入的思想基础之上，并调整了设计以使用 Weaviate 中已经存在的、经过实战检验的组件。</p>
+<blockquote>
+<p>HFresh is a modern disk-based vector index designed for high recall, strong update performance, and controlled query I/O at large scale. It builds on ideas introduced by the <a href="https://arxiv.org/pdf/2410.14452">SPFresh research paper</a>, adapting the design to use battle-tested components already present in Weaviate.</p>
+</blockquote>
+<p>从整体架构来看，HFresh 属于基于分区的向量索引系列。HFresh 没有像 HNSW 那样将每个向量连接到全局图中的邻居，而是将向量划分为许多称为 Posting 的小区域。每个 Posting 包含向量空间中彼此靠近的向量，并存储在磁盘上的 LSM 存储中。</p>
+<blockquote>
+<p>At a high level, HFresh belongs to the family of partition-based vector indices. Instead of connecting every vector to neighbors in a global graph like HNSW, HFresh divides vectors into many small regions called postings. Each posting contains vectors that are close to each other in vector space and is stored on disk in an LSM store.</p>
+</blockquote>
+<p><img alt="HFresh architecture with an RQ8 centroid HNSW in memory pointing to RQ1 postings on disk." src="/assets/images/hfresh-structure-820476e5da431e832aae43961003be67.png" width="1200"/></p>
+<p>为了使这种布局高效，HFresh 采用了两阶段搜索策略。</p>
+<blockquote>
+<p>To make this layout efficient, HFresh uses a two-stage search strategy.</p>
+</blockquote>
+<ol>
+<li><strong>质心识别（Centroid Identification）：</strong> 一个紧凑的内存质心索引用于识别向量空间的哪些区域与查询相关。</li>
+<li><strong>Posting 检索（Posting Retrieval）：</strong> 仅从磁盘获取相应的 Posting 并进行详细搜索。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Centroid Identification:</strong> A compact in-memory centroid index identifies which regions of the vector space are relevant to a query.</li>
+<li><strong>Posting Retrieval:</strong> Only corresponding postings are fetched from disk and searched in detail. </li>
+</ol>
+</blockquote>
+<p>通过将磁盘读取限制在数据集的一小部分，HFresh 保持了有界的 I/O 和可预测的延迟，即使数据集增长到数十亿级别也是如此。</p>
+<blockquote>
+<p>By limiting disk reads to a small subset of the dataset, HFresh keeps I/O bounded and latency predictable, even as the dataset grows into the billions.</p>
+</blockquote>
+<h3 id="_2">无需重建的实时更新性</h3>
+<blockquote>
+<h3 id="freshness-without-rebuilds">Freshness Without Rebuilds</h3>
+</blockquote>
+<p>SPFresh 背后的核心思想（也被 HFresh 继承）是，大多数更新只影响向量空间的一小块区域。</p>
+<blockquote>
+<p>The key idea behind SPFresh, and inherited by HFresh, is that most updates only affect a small region of the vector space.</p>
+</blockquote>
+<p>在传统的基于分区的索引中，更新会不断累积，分区可能会漂移，最终需要进行完全重建以恢复召回率和延迟——在大规模下，这个过程可能需要数小时甚至数天。SPFresh 表明这通常是不必要的。在一个结构良好的分区索引中，插入或删除向量通常只会影响一个小邻域。你不需要重建一切，而是可以通过使用一组少量的本地操作进行增量重新平衡来维护索引质量：</p>
+<blockquote>
+<p>In traditional partition-based indexes, updates can accumulate and partitions can drift, eventually requiring a full rebuild to restore recall and latency—a process that can take hours or days at scale. SPFresh shows that this is often unnecessary. In a well-structured partitioned index, inserting or deleting a vector typically only affects a small neighborhood. Instead of rebuilding everything, you can maintain index quality through incremental rebalancing using a small set of local operations:</p>
+</blockquote>
+<ul>
+<li><strong>分裂（Splitting）</strong>过大的 Posting</li>
+<li><strong>合并（Merging）</strong>过小的 Posting</li>
+<li><strong>重新分配（Reassigning）</strong>当边界发生位移时的向量</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Splitting</strong> oversized postings</li>
+<li><strong>Merging</strong> undersized ones</li>
+<li><strong>Reassigning</strong> vectors when boundaries shift</li>
+</ul>
+</blockquote>
+<p>这些操作大多在后台异步运行，在微小的局部不平衡累积成全局问题之前持续对其进行修复。其结果是一个能够随着时间推移保持新鲜且平衡良好的索引，而无需经历破坏性的重建周期。</p>
+<blockquote>
+<p>These operations run mostly asynchronously in the background, continuously repairing small local imbalances before they accumulate into global problems. The result is an index that stays fresh and well-balanced over time without disruptive rebuild cycles.</p>
+</blockquote>
+<h3 id="hfresh-spfresh">HFresh 如何在 SPFresh 基础上进行演进</h3>
+<blockquote>
+<h3 id="how-hfresh-builds-on-spfresh">How HFresh Builds on SPFresh</h3>
+</blockquote>
+<p>HFresh 提取了 SPFresh 背后的核心思想，并将其调整以适应 Weaviate 的架构，同时保留了：
+* 本地维护而非重建
+* 受控的查询 I/O
+* 内存路由层与磁盘 Posting 之间的清晰隔离</p>
+<blockquote>
+<p>HFresh takes the core idea behind SPFresh and adapts it to fit Weaviate's architecture, retaining:
+* Local maintenance instead of rebuilds
+* Controlled query I/O
+* A clear separation between the in-memory routing layer and disk-based postings</p>
+</blockquote>
+<p>Weaviate 没有引入全新的 ANN 机制，而是重用了系统中已经存在的、经过实战检验的部件，重新塑造它们以服务于这种新布局。</p>
+<blockquote>
+<p>Rather than introducing entirely new ANN machinery, Weaviate reused battle-tested pieces already present in the system, reshaping them to serve this new layout.</p>
+</blockquote>
+<hr />
+<h2 id="hnsw_1">用作质心索引的 HNSW</h2>
+<blockquote>
+<h2 id="hnsw-as-the-centroid-index">HNSW as the Centroid Index</h2>
+</blockquote>
+<p>HFresh 中的一个关键设计选择是使用 HNSW 作为质心索引，而不是 SPTAG（微软原始 SPANN 设计中使用的 ANN 索引）。</p>
+<blockquote>
+<p>A key design choice in HFresh is the use of HNSW as the centroid index, rather than SPTAG (the ANN index used in Microsoft's original SPANN design). </p>
+</blockquote>
+<p>对于 Weaviate 来说，HNSW 是一个更自然的选择：
+* <strong>生产环境验证：</strong> 它是 Weaviate 中使用最广泛的向量索引，这意味着其在各种工作负载和数据集规模下的行为都得到了充分理解。
+* <strong>处理动态工作负载：</strong> 质心不是静态的——分裂、合并和重新分配会不断重塑向量空间的分区。HNSW 可以吸收插入和删除操作，而无需昂贵的重建。
+* <strong>量化兼容性：</strong> 质心层本身可以进行量化。HFresh 将 HNSW 与 RQ8 结合使用，将质心的内存使用量减少了 <strong>4 倍</strong>。
+* <strong>生态系统协同：</strong> 对 HNSW 的改进（例如用于过滤向量搜索的 <a href="https://github.com/weaviate/weaviate">ACORN</a>）会自动使 HFresh 的查询路径受益。</p>
+<blockquote>
+<p>For Weaviate, HNSW was a more natural fit:
+* <strong>Production-proven:</strong> It is the most widely used vector index in Weaviate, meaning its behavior is well understood across varied workloads and dataset sizes.
+* <strong>Handles Dynamic Workloads:</strong> Centroids are not static—splits, merges, and reassignments continuously reshape the partitioning of the vector space. HNSW can absorb insertions and deletions without expensive rebuilds.
+* <strong>Quantization Compatibility:</strong> The centroid layer can itself be quantized. HFresh uses HNSW with RQ8, reducing the memory usage of centroids by <strong>4x</strong>.
+* <strong>Ecosystem Synergy:</strong> Improvements to HNSW (such as <a href="https://github.com/weaviate/weaviate">ACORN</a> for filtered vector search) automatically benefit HFresh's query path.</p>
+</blockquote>
+<hr />
+<h2 id="_3">量化</h2>
+<blockquote>
+<h2 id="quantization">Quantization</h2>
+</blockquote>
+<p>HFresh 在两个地方使用了具有两种不同压缩级别的旋转量化（Rotational Quantization），这反映了两个搜索阶段的不同任务：</p>
+<blockquote>
+<p>HFresh uses Rotational Quantization in two places with two different compression levels, reflecting the different jobs of the two search stages:</p>
+</blockquote>
+<ul>
+<li><strong>用于质心的 RQ8：</strong> 将质心向量内存减少 <strong>4 倍</strong>。路由错误代价高昂（错过正确的区域意味着错过真正的最近邻），因此质心需要足够的精度来准确路由。</li>
+<li><strong>用于 Posting 的 RQ1：</strong> 与 32 位浮点数相比，将存储的向量数据最多减少 <strong>32 倍</strong>。Posting 驻留在磁盘上，因此积极的压缩可保持较低的存储成本和磁盘 I/O。最终的候选列表随后使用原始未压缩向量进行重新打分（rescore）。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>RQ8 for Centroids:</strong> Reduces centroid vector memory by <strong>4x</strong>. Routing mistakes are expensive (missing the right region means missing the true nearest neighbors), so centroids require enough precision to route accurately.</li>
+<li><strong>RQ1 for Postings:</strong> Reduces stored vector data by up-to <strong>32x</strong> compared to 32-bit floats. Postings live on disk, so aggressive compression keeps storage costs and disk I/O low. Final candidate lists are later rescored using the original uncompressed vectors.</li>
+</ul>
+</blockquote>
+<p><img alt="HFresh query path from the in-memory centroid HNSW through selected RQ1 postings and full-precision rescoring." src="/assets/images/hfresh-query-path-3bac75e7e11cb92ac3ea8cb7de1a67cb.png" width="1200"/></p>
+<hr />
+<h2 id="_4">后台操作</h2>
+<blockquote>
+<h2 id="background-operations">Background Operations</h2>
+</blockquote>
+<p>维护工作通过三种持续的后台任务类型直接构建到 HFresh 中：</p>
+<blockquote>
+<p>Maintenance is built directly into HFresh via three continuous background task types:</p>
+</blockquote>
+<ul>
+<li><strong>分裂（Split）：</strong> 当 Posting 变得过大时，陈旧的条目将被垃圾回收，使用<em>平衡 K-Means（Balanced K-Means）</em>算法将向量划分为两个平衡的组，并且两个新的质心将替代旧的质心。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Split:</strong> When a posting grows too large, stale entries are garbage-collected, vectors are divided into two balanced groups using the <em>Balanced K-Means</em> algorithm, and two new centroids replace the old one.</li>
+</ul>
+</blockquote>
+<p><img alt="An oversized posting split into two balanced postings with new centroids." src="/assets/images/hfresh-split-0212479c5b6ff6fbb1d637aa3eb8c079.png" width="1200"/></p>
+<ul>
+<li><strong>合并（Merge）：</strong> 当 Posting 变得太小（由于删除或数据漂移）时，HFresh 会将它们合并到能够吸收它们的邻近 Posting 中，从而移除多余的质心以防止碎片化。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Merge:</strong> When postings become too small (due to deletes or data drift), HFresh merges them into a nearby posting that can absorb them, removing the extra centroid to prevent fragmentation.</li>
+</ul>
+</blockquote>
+<p><img alt="An undersized posting merged into a nearby posting under one centroid." src="/assets/images/hfresh-merge-5ab946dabe55fd855f23513a8fa235fd.png" width="1200"/></p>
+<ul>
+<li><strong>重新分配（Reassign）：</strong> 使用 LIRE（<strong>L</strong>ightweight <strong>I</strong>ncremental <strong>Re</strong>balancing，轻量级增量重新平衡）协议，在发生分裂或合并后，不再属于某个 Posting 的向量会被动态重新路由到更好的相邻 Posting 中。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Reassign:</strong> Using the LIRE (<strong>L</strong>ightweight <strong>I</strong>ncremental <strong>Re</strong>balancing) protocol, vectors that no longer belong in a posting following a split or merge are dynamically re-routed to better neighboring postings.</li>
+</ul>
+</blockquote>
+<p><img alt="A vector reassigned from one posting to a better neighboring posting." src="/assets/images/hfresh-reassign-a4be01751bb29f958fbb1d5e2b0f8311.png" width="1200"/></p>
+<hr />
+<h2 id="_5">过滤搜索</h2>
+<blockquote>
+<h2 id="filtered-search">Filtered Search</h2>
+</blockquote>
+<p>过滤向量搜索将向量相似性与元数据约束结合起来。HFresh 使用白名单（表示为位图），并根据匹配规模切换策略：</p>
+<blockquote>
+<p>Filtered vector search combines vector similarity with metadata constraints. HFresh uses an allow list (represented as a bitmap) and switches strategies based on match size:</p>
+</blockquote>
+<ol>
+<li><strong>针对小子集的直接搜索：</strong> 当白名单包含少于 5,000 个 ID 时，HFresh 会绕过质心路由和 Posting 扫描，直接获取原始向量以进行精确的距离计算。</li>
+<li><strong>感知 Posting 的过滤：</strong> 对于更广泛的过滤，HFresh 通过元数据将对象级别的白名单转换为 Posting 的有效性，使用 <a href="https://github.com/weaviate/weaviate">ACORN</a> 导航质心 HNSW，仅读取匹配的 Posting，并在扫描和重新打分期间应用向量级别的检查。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Direct Search for Small Subsets:</strong> When the allow list contains fewer than 5,000 IDs, HFresh bypasses centroid routing and posting scans, fetching original vectors directly for exact distance calculations.</li>
+<li><strong>Posting-Aware Filtering:</strong> For broader filters, HFresh translates the object-level allow list into posting eligibility via metadata, navigates the centroid HNSW using <a href="https://github.com/weaviate/weaviate">ACORN</a>, reads only matching postings, and applies vector-level checks during scanning and rescoring.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="hfresh_1">如何使用 HFresh</h2>
+<blockquote>
+<h2 id="how-to-use-hfresh">How to Use HFresh</h2>
+</blockquote>
+<p>在通过 Python 客户端创建集合时，将 HFresh 配置为向量索引：</p>
+<blockquote>
+<p>Configure HFresh as the vector index when creating a collection via the Python client:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">weaviate.classes.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Configure</span><span class="p">,</span> <span class="n">VectorDistances</span>
+
+<span class="n">collection</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">collections</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Article&quot;</span><span class="p">,</span>
+    <span class="n">vector_config</span><span class="o">=</span><span class="n">Configure</span><span class="o">.</span><span class="n">Vectors</span><span class="o">.</span><span class="n">self_provided</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Title&quot;</span><span class="p">,</span>
+        <span class="n">vector_index_config</span><span class="o">=</span><span class="n">Configure</span><span class="o">.</span><span class="n">VectorIndex</span><span class="o">.</span><span class="n">hfresh</span><span class="p">(</span>
+            <span class="n">distance_metric</span><span class="o">=</span><span class="n">VectorDistances</span><span class="o">.</span><span class="n">COSINE</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div>
+<blockquote>
+<p><strong>💡 调优 HFresh</strong>
+从默认值开始。如果召回率太低，请增加：
+* <code>search_probe</code> 以便每次查询搜索更多 Posting。
+* <code>quantizer.rescore_limit</code> 以使用全精度向量对更多候选向量进行重新打分。</p>
+<p>这两个设置都可以在不重建索引的情况下进行更改。</p>
+<blockquote>
+<p><strong>💡 Tuning HFresh</strong>
+Start with the defaults. If recall is too low, increase:
+* <code>search_probe</code> to search more postings per query.
+* <code>quantizer.rescore_limit</code> to rescore more candidates using full-precision vectors.</p>
+<p>Both settings can be changed without rebuilding the index.</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2 id="_6">实验</h2>
+<blockquote>
+<h2 id="experiments">Experiments</h2>
+</blockquote>
+<p>基准测试在 <strong>DBpedia OpenAI 1M 数据集</strong>上进行，对比了未压缩的 HNSW、带 RQ1 的 HNSW、带 RQ8 的 HNSW 以及 HFresh。</p>
+<blockquote>
+<p>Benchmarks were performed on the <strong>DBpedia OpenAI 1M dataset</strong> comparing uncompressed HNSW, HNSW with RQ1, HNSW with RQ8, and HFresh.</p>
+</blockquote>
+<h3 id="_7">堆内存使用情况</h3>
+<blockquote>
+<h3 id="heap-usage">Heap Usage</h3>
+</blockquote>
+<p><img alt="Heap memory usage at rest for HFresh, uncompressed HNSW, HNSW with RQ1, and HNSW with RQ8." src="/assets/images/vector-memory-chart-841fc0db359c706ae89f458429ec915b.png" width="2400"/></p>
+<ul>
+<li><strong>HFresh：</strong> 239 MB（Go 堆内存）</li>
+<li><strong>未压缩的 HNSW：</strong> 6.67 GB</li>
+<li><strong>带 RQ1 的 HNSW：</strong> 715 MB（约为 HFresh 的 3 倍）</li>
+<li><strong>带 RQ8 的 HNSW：</strong> 2.38 GB（约为 HFresh 的 10 倍）</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>HFresh:</strong> 239 MB (Go heap)</li>
+<li><strong>Uncompressed HNSW:</strong> 6.67 GB</li>
+<li><strong>HNSW with RQ1:</strong> 715 MB (~3x HFresh)</li>
+<li><strong>HNSW with RQ8:</strong> 2.38 GB (~10x HFresh)</li>
+</ul>
+</blockquote>
+<h3 id="_8">查询吞吐量</h3>
+<blockquote>
+<h3 id="query-throughput">Query Throughput</h3>
+</blockquote>
+<p><img alt="Query throughput versus recall for HFresh, uncompressed HNSW, HNSW with RQ1, and HNSW with RQ8." src="/assets/images/qps-recall-4316f2c564751c8920e03bb6481f225a.png" width="2400"/></p>
+<p>虽然 HNSW 变体由于内存中的图遍历而提供了更高的查询吞吐量，但 HFresh 显著减少了堆内存占用，这使其非常适合资源受限或海量规模的环境，在这些环境中，完全的内存缓存成本过高。</p>
+<blockquote>
+<p>While HNSW variants deliver higher query throughput due to in-memory graph traversals, HFresh provides a dramatic reduction in heap footprint, making it ideal for resource-constrained or massive-scale environments where full in-memory caching is cost-prohibitive.</p>
+</blockquote>
+<h3 id="_9">扩展到十亿向量</h3>
+<blockquote>
+<h3 id="scaling-to-one-billion-vectors">Scaling to One Billion Vectors</h3>
+</blockquote>
+<p>HFresh 使用 32 个 vCPU、256 GB RAM（<code>n2-highmem-32</code>）以及 4 TB SSD 持久磁盘（<code>pd-ssd</code>），对扩展到 <strong>10 亿个随机生成的 256 维向量</strong>进行了测试：</p>
+<blockquote>
+<p>HFresh was tested scaling to <strong>1 billion randomly generated 256-dimensional vectors</strong> using 32 vCPUs, 256 GB RAM (<code>n2-highmem-32</code>), and a 4 TB SSD Persistent Disk (<code>pd-ssd</code>):</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">指标 (Metric)</th>
+<th style="text-align: left;">结果 (Result)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>数据集 (Dataset)</strong></td>
+<td style="text-align: left;"><strong>10 亿个 256 维向量 (1 billion 256-dimensional vectors)</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>计算资源 (Compute)</strong></td>
+<td style="text-align: left;"><strong>32 vCPUs, 256 GB RAM</strong> (<code>n2-highmem-32</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>存储 (Storage)</strong></td>
+<td style="text-align: left;"><strong>4 TB SSD 持久磁盘 (4 TB SSD Persistent Disk)</strong> (<code>pd-ssd</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>峰值虚拟机内存使用量 (Peak VM memory usage)</strong></td>
+<td style="text-align: left;"><strong>204 GB</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>重启后虚拟机内存使用量 (VM memory usage after restart)</strong></td>
+<td style="text-align: left;"><strong>54 GB</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>重启后 Go 堆内存 (Go heap after restart)</strong></td>
+<td style="text-align: left;"><strong>47 GB</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>峰值磁盘使用量 (Peak disk usage)</strong></td>
+<td style="text-align: left;"><strong>3.09 TB</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>导入后磁盘使用量 (Disk usage after import)</strong></td>
+<td style="text-align: left;"><strong>2.28 TB</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_10">结论</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>HFresh 为 Weaviate 带来了强大的基于磁盘的向量索引，通过增量的后台平衡，在保持高召回率和新鲜度的同时，最大限度地减少了内存开销。从 <strong>Weaviate 1.36（技术预览版）</strong> 和 <strong>1.38（正式发布版）</strong> 开始提供，它为大规模或受内存限制的工作负载提供了一个高效的选择。</p>
+<blockquote>
+<p>HFresh brings a powerful disk-based vector index to Weaviate, minimizing memory overhead while maintaining high recall and freshness through incremental background balancing. Available starting in <strong>Weaviate 1.36 (Technical Preview)</strong> and <strong>1.38 (General Availability)</strong>, it provides an efficient choice for large-scale or memory-constrained workloads.</p>
+</blockquote>
+<ul>
+<li>查看<a href="https://docs.weaviate.io/weaviate/quickstart">快速入门教程</a>或<a href="https://console.weaviate.cloud/?utm_source=blog&amp;utm_medium=website&amp;utm_campaign=blog_signup&amp;utm_content=hfresh&amp;utm_term=ready-to-start-building">注册免费的 Weaviate Cloud 账户</a>。</li>
+</ul>
+<blockquote>
+<ul>
+<li>Check out the <a href="https://docs.weaviate.io/weaviate/quickstart">Quickstart tutorial</a> or <a href="https://console.weaviate.cloud/?utm_source=blog&amp;utm_medium=website&amp;utm_campaign=blog_signup&amp;utm_content=hfresh&amp;utm_term=ready-to-start-building">sign up for a free Weaviate Cloud account</a>.</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Weaviate</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">HFresh</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">向量数据库</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">内存优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">HNSW</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
