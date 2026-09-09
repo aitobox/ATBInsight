@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-10**: [HFresh：内存高效的向量搜索引擎](blog/posts/2026-09-10-HFresh：内存高效的向量搜索引擎.md)
 - **2026-09-09**: [陷入疯狂的递归：当AI不断吞噬自己的输出](blog/posts/2026-09-09-陷入疯狂的递归：当AI不断吞噬自己的输出.md)
 - **2026-09-08**: [耗时一年：WebAssembly 终于登陆 Anubis](blog/posts/2026-09-08-耗时一年：WebAssembly 终于登陆 Anubis.md)
 - **2026-09-07**: [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
