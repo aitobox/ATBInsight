@@ -28,6 +28,15 @@ def test_tech_article_translator_skill_exists():
     assert "AI 智能体" in content
     assert "AGI" in content
     assert "通用人工智能" in content
+    assert "hide:" in content
+    assert "navigation" in content
+    assert "Prompt" in content
+    assert "RAG" in content
+    assert "Benchmark" in content
+    assert "思维链" in content
+    assert "arXiv:" in content
+    assert "清洗" in content
+
 
 
 
