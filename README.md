@@ -56,10 +56,10 @@
 ### 2. `article-screener` (主编筛选智能体)
 - **路径**：[`skills/article-screener/SKILL.md`](file:///opt/aitobox/ATBInsight/skills/article-screener/SKILL.md)
 - **职责**：
-  - 模拟世界级资深技术主编（Chief Editor Persona）对抓取到的候选文章进行独立审阅与打分（0~100 分）。
-  - **严格淘汰（Score = 0）**：周报汇总（Weekly/Daily Roundup）、空洞噱头标题、政策/监管/法律纠纷、<2000 字符短浅碎文。
-  - **优先收录（Score 70~100）**：底层系统架构深度复盘、高价值学术论文、高质量硬核教程。
-  - **收录门槛**：得分 $\ge 60$ 方可进入本地归档 `bak/origin/YYYY-MM-DD/`。
+  - 模拟世界级资深技术主编与底层架构师（Chief Editor Persona）对抓取到的候选文章进行独立审阅与 4 维量化打分（0~100 分）。
+  - **4 维量化体系**：技术深度与硬核度 (30%)、核心领域契合度 (30%)、工程实践与落地借鉴价值 (25%)、原创性与独立思考质量 (15%)。
+  - **严格一票否决（Score = 0）**：周报汇总（Weekly/Daily Roundup）、非核心计算领域的交叉学科应用论文（农业/医疗/生物/材料/金融等）、小修小补灌水论文（仅微调/套用榜单）、商业公关营销软文、浅薄入门科普、政策/监管/政治纠纷、<2000 字符短浅碎文。
+  - **收录门槛**：得分 $\ge 70$ 方可进入本地归档 `bak/origin/YYYY-MM-DD/`，严格奉行“宁缺毋滥”。
 
 ### 3. `tech-article-translator` (双语技术翻译官)
 - **路径**：[`skills/tech-article-translator/SKILL.md`](file:///opt/aitobox/ATBInsight/skills/tech-article-translator/SKILL.md)
@@ -114,8 +114,8 @@ ATBInsight 支持 **智能体内部定时器** 与 **系统级 Crontab** 双重�
 flowchart TD
     A[Miniflux RSS 源 / 抓取器] -->|Phase 1: Ingestion| B(article_ingestor.py)
     B -->|全量抓取网页正文| C{article-screener 智能打分}
-    C -->|< 60分: 淘汰| D[丢弃 / 记录日志]
-    C -->|>= 60分: 入选| E[保存原始归档 bak/origin/YYYY-MM-DD/]
+    C -->|< 70分: 淘汰| D[丢弃 / 记录日志]
+    C -->|>= 70分: 入选| E[保存原始归档 bak/origin/YYYY-MM-DD/]
     E -->|Phase 2: Translation| F[batch_translator.py 并发翻译]
     F -->|5 线程并行翻译| G[生成双语对照 Markdown docs/blog/posts/]
     G -->|Phase 3: Deploy| H[索引更新与分类 auto_classify / generate_indexes]

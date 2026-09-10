@@ -62,6 +62,57 @@ def _chat_completion_with_fallback(
     raise RuntimeError("No valid LLM models configured or available.")
 
 
+_CACHED_SCREENER_PROMPT = None
+
+def load_screener_prompt(skill_path: str | None = None) -> str:
+    """
+    Dynamically loads the screener system prompt from skills/article-screener/SKILL.md
+    as the Single Source of Truth (SSOT).
+    """
+    global _CACHED_SCREENER_PROMPT
+    if _CACHED_SCREENER_PROMPT and not skill_path:
+        return _CACHED_SCREENER_PROMPT
+
+    candidate_paths = []
+    if skill_path:
+        candidate_paths.append(skill_path)
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    candidate_paths.extend([
+        os.path.join(base_dir, "skills/article-screener/SKILL.md"),
+        os.path.join(base_dir, ".agents/skills/article-screener/SKILL.md"),
+        "skills/article-screener/SKILL.md",
+        ".agents/skills/article-screener/SKILL.md",
+    ])
+
+    for p in candidate_paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    text = f.read()
+                if text.startswith("---"):
+                    parts = text.split("---", 2)
+                    if len(parts) >= 3:
+                        text = parts[2].strip()
+                if text:
+                    if not skill_path:
+                        _CACHED_SCREENER_PROMPT = text
+                    return text
+            except Exception as e:
+                logger.warning(f"Failed to read skill prompt from {p}: {e}")
+
+    # Robust fallback prompt if skill file is not found
+    fallback = (
+        "You are the ATBInsight Chief Editor, a world-class AI technical curator with extremely high standards. "
+        "Strict Rejection Criteria (MUST Score 0): Digests/roundups, out-of-scope applied ML (agriculture, medical, materials), "
+        "incremental paper fluff, commercial PR, superficial tutorials, and politics. "
+        "Evaluate across Technical Depth (30%), Core Domain Relevance (30%), Engineering Value (25%), Originality (15%). "
+        "Ingestion threshold is >= 70. Output ONLY valid JSON: "
+        '{"score": 85, "verdict": "ACCEPT", "reason": "...", "breakdown": {"technical_depth": 26, "domain_relevance": 28, "engineering_value": 21, "originality": 10}}'
+    )
+    return fallback
+
+
 def score_article(entry: dict) -> float:
     content_text = entry.get("content") or ""
     char_count = len(content_text)
@@ -69,26 +120,31 @@ def score_article(entry: dict) -> float:
     if char_count < 2000:
         return 0.0
 
-    system_prompt = (
-        "You are the ATBInsight Chief Editor, a world-class AI technical curator with extremely high standards. Your job is to read incoming articles and ruthlessly filter out low-quality, superficial, or irrelevant content based on strict editorial guidelines.\n\n"
-        "Strict Rejection Criteria (MUST Score 0):\n"
-        "1. Digests / Roundups / Newsletters / Weekly Lists: REJECT any article that is a weekly/daily summary, reading list, newsletter roundup, or link dump (e.g., '周报', '阅读清单', 'Weekly Roundup', 'Reading List', 'Link Dump'). Score = 0.\n"
-        "2. Superficial / Clickbait / Substance-less Fluff: REJECT articles with catchy or clickbait titles that turn out to be rambling, nonsensical, superficial, or devoid of real technical substance/engineering insights. Score = 0.\n"
-        "3. Political / Policy Content: REJECT any article involving politics, geopolitics, regulatory chatter, or government affairs. Score = 0.\n"
-        "4. Short & Thin Content: REJECT short (<2000 chars) or superficial posts. Score = 0.\n\n"
-        "Highly Valued Content (Score 70 - 100):\n"
-        "- Deep technical explorations, engineering postmortems, architecture breakdowns, physics/hardware engineering deep dives, clever geeky culture pieces.\n\n"
-        "OUTPUT CONSTRAINTS (CRITICAL):\n"
-        "You MUST output ONLY a valid JSON object without markdown code block backticks. Output exactly like this:\n"
-        '{"score": 85, "reason": "This is a great long-form deep dive into compiler architecture..."}'
-    )
+    system_prompt = load_screener_prompt()
+
+    # Smart sampling up to 8000 characters for deep engineering articles
+    if char_count <= 8000:
+        content_preview = content_text
+    else:
+        content_preview = (
+            content_text[:5000]
+            + "\n\n... [Middle content truncated for editorial evaluation] ...\n\n"
+            + content_text[-3000:]
+        )
+
+    title = entry.get("title", "Untitled")
+    author = entry.get("author", "Unknown")
+    url = entry.get("url", "")
+    is_arxiv = "arxiv.org" in url.lower() or "arxiv" in title.lower()
+    type_hint = " [Academic / arXiv Entry]" if is_arxiv else " [Technical Blog / Article]"
 
     user_prompt = (
-        f"Evaluate this article:\n"
-        f"- Title: {entry.get('title')}\n"
-        f"- Author: {entry.get('author')}\n"
-        f"- URL: {entry.get('url')}\n\n"
-        f"Content Preview:\n{content_text[:3000]}\n"
+        f"Evaluate this article{type_hint}:\n"
+        f"- Title: {title}\n"
+        f"- Author: {author}\n"
+        f"- URL: {url}\n"
+        f"- Total Character Length: {char_count}\n\n"
+        f"Content Preview:\n{content_preview}\n"
     )
 
     try:
@@ -98,17 +154,20 @@ def score_article(entry: dict) -> float:
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.1,
-            timeout=20,
+            timeout=25,
         )
         
-        match = re.search(r'\{.*?\}', response_text, re.DOTALL)
+        match = re.search(r'\{[\s\S]*\}', response_text)
         if not match:
+            logger.warning(f"No JSON object found in screener response for '{title}'")
             return 0.0
             
         data = json.loads(match.group(0))
         score = float(data.get("score", 0.0))
+        verdict = data.get("verdict", "ACCEPT" if score >= 70 else "REJECT")
         reason = data.get("reason", "No reason provided")
-        logger.info(f"Chief Editor Monologue & Score [{score}]: {reason}")
+        breakdown = data.get("breakdown")
+        logger.info(f"Chief Editor Verdict: [{verdict}] Score: [{score:.1f}/100.0] Breakdown: {breakdown} | Reason: {reason}")
         return score
     except Exception as e:
         logger.error(f"Exception evaluating article score: {e}")

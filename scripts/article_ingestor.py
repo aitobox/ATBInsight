@@ -57,7 +57,7 @@ def fetch_full_article_content(url: str) -> str:
         return ""
 
 
-def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: float = 60.0) -> tuple[str, float, str]:
+def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: float = 70.0) -> tuple[str, float, str]:
     """
     Evaluates an article entry using parallel Chief Editor Agent subprocess (agy run).
     Returns (status, score, filepath/reason).
@@ -134,6 +134,7 @@ def run_pipeline(
     target_date: str | None = None,
     override_days: int | None = None,
     max_workers: int = 5,
+    threshold: float = 70.0,
 ):
     cfg = {}
     if os.path.exists(config_path):
@@ -147,7 +148,7 @@ def run_pipeline(
     password = os.getenv("MINIFLUX_PASSWORD") or miniflux_cfg.get("password") or ""
     days = override_days if override_days is not None else miniflux_cfg.get("days", 7)
 
-    logger.info(f"Starting AI Insight Pipeline execution (days={days}, target_date={target_date}, max_workers={max_workers}).")
+    logger.info(f"Starting AI Insight Pipeline execution (days={days}, target_date={target_date}, max_workers={max_workers}, threshold={threshold}).")
     entries = fetch_miniflux_entries(
         url=url,
         username=username,
@@ -180,10 +181,10 @@ def run_pipeline(
     skipped_count = 0
 
     if uncached_entries:
-        logger.info(f"Launching {max_workers} parallel Chief Editor Agents for parallel article evaluation...")
+        logger.info(f"Launching {max_workers} parallel Chief Editor Agents for parallel article evaluation (threshold: {threshold})...")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(process_single_entry, entry, target_dir, db_path, 60.0)
+                executor.submit(process_single_entry, entry, target_dir, db_path, threshold)
                 for entry in uncached_entries
             ]
             for future in as_completed(futures):
@@ -209,6 +210,8 @@ if __name__ == "__main__":
     parser.add_argument("--date", type=str, help="Specific target date to fetch and process (format: YYYY-MM-DD)")
     parser.add_argument("--days", type=int, help="Number of past days to fetch entries for (e.g. 7)")
     parser.add_argument("--workers", type=int, default=5, help="Number of parallel Chief Editor agent workers")
+    parser.add_argument("--threshold", type=float, default=70.0, help="Minimum score threshold to accept article (default: 70.0)")
     args = parser.parse_args()
 
-    run_pipeline(target_date=args.date, override_days=args.days, max_workers=args.workers)
+    run_pipeline(target_date=args.date, override_days=args.days, max_workers=args.workers, threshold=args.threshold)
+

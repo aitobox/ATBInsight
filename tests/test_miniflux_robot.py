@@ -26,7 +26,7 @@ def test_fetch_miniflux_entries_success(mock_get):
     mock_get.assert_called_once_with(
         "http://mock-miniflux/v1/entries?order=created_at&direction=desc&limit=500",
         auth=("user", "pass"),
-        timeout=15,
+        timeout=60,
     )
 
 
@@ -42,7 +42,7 @@ def test_fetch_miniflux_entries_trailing_slash_url(mock_get):
     mock_get.assert_called_once_with(
         "http://mock-miniflux/v1/entries?order=created_at&direction=desc&limit=500",
         auth=("user", "pass"),
-        timeout=15,
+        timeout=60,
     )
 
 
