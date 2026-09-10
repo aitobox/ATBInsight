@@ -14,7 +14,6 @@
   - [1. daily-publisher (自动发布总编排器)](#1-daily-publisher-自动发布总编排器)
   - [2. article-screener (主编筛选智能体)](#2-article-screener-主编筛选智能体)
   - [3. tech-article-translator (双语技术翻译官)](#3-tech-article-translator-双语技术翻译官)
-  - [4. popular-science-translator (科普技术翻译官)](#4-popular-science-translator-科普技术翻译官)
 - [⏰ 定时任务与自动化调度](#-定时任务与自动化调度)
   - [1. Agent 内部定时任务 (Antigravity Cron)](#1-agent-内部定时任务-antigravity-cron)
   - [2. 系统级 Crontab 守护脚本](#2-系统级-crontab-守护脚本)
@@ -65,18 +64,13 @@
 ### 3. `tech-article-translator` (双语技术翻译官)
 - **路径**：[`skills/tech-article-translator/SKILL.md`](file:///opt/aitobox/ATBInsight/skills/tech-article-translator/SKILL.md)
 - **职责**：
-  - 指导模型对原始 Markdown 文章进行深度结构化翻译。
-  - 规范 YAML Front Matter 格式（自动提取 tags、精准归类至 6 大分类之一）。
-  - 生成 `### 文章背景与核心概要`。
-  - 保持段落级中英对照，输出规范命名的文章至 `docs/blog/posts/YYYY-MM-DD-<标题>.md`。
-
-### 4. `popular-science-translator` (科普技术翻译官)
-- **路径**：[`skills/popular-science-translator/SKILL.md`](file:///opt/aitobox/ATBInsight/skills/popular-science-translator/SKILL.md)
-- **职责**：
-  - 采用“三步法（直译 -> 问题诊断 -> 意译）”将专业学术论文、深度技术文档翻译为通俗易懂的中文科普读物风格。
-  - 保留人名英文原名、公司缩写与文献引用（如 `[20]`）。
-  - 图表标注规范化（如 `Figure 1: ` -> `图 1: `），半角括号与空格规范（` (英文原词) `）。
-  - 严格保持 Markdown 原始格式并遵循 AI 核心术语映射表。
+  - 指导模型对原始 Markdown 文章进行深度结构化翻译，全面融入**通俗易懂的中文科普读物风格**。
+  - 采用**三步迭代翻译策略**（直译 $\rightarrow$ 问题诊断 $\rightarrow$ 科普意译润色），彻底消除翻译腔与生硬欧化句式。
+  - 规范 YAML Front Matter 格式（自动提取 tags、精准归类至 6 大标准分类之一）。
+  - 生成生动明快的 `### 文章背景与核心概要`。
+  - 保持段落级中英对照（中文科普意译段落紧跟 `>` 英文原文引用块），代码/图片/公式原生保留。
+  - 严格遵守人名不译（保留英文原名）、公司与技术缩写保留、半角括号空格规范（` (英文原词) `）以及 AI 核心术语映射表。
+  - 输出规范命名的文章至 `docs/blog/posts/YYYY-MM-DD-<标题>.md`。
 
 ---
 
@@ -163,8 +157,7 @@ ATBInsight/
 ├── skills/                     # Antigravity Skills 技能定义
 │   ├── daily-publisher/        # 每日全流程自动发布技能
 │   ├── article-screener/       # 主编严格筛选技能
-│   ├── tech-article-translator/# 双语对照翻译技能
-│   └── popular-science-translator/# 科普风格三步法翻译技能
+│   └── tech-article-translator/# 双语对照科普翻译技能 (融入三步迭代法)
 ├── scripts/                    # 流水线执行与维护脚本
 │   ├── article_ingestor.py     # 文章抓取与初筛入口
 │   ├── batch_translator.py     # 多线程并发翻译调度脚本
