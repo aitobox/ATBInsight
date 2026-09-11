@@ -5,6 +5,341 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</guid>
+      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
+      <description>本文详细介绍了如何在 Sebastian Raschka 的畅销书《Build a Large Language Model (from Scratch)》中的 GPT-2 框架基础之上，实现并扩展**专家混合（Mixture-of-Experts, MoE）**架构。通过将标准的前馈神经网络（FFN）替换为一个路由器和多个专家网络，作者成功在单张 RTX 3090 显卡上从头训练了一个总参数量达 446M（激活参数量为 220M）的 MoE 模型。
+
+项目重点探讨了确保专家负载均衡所需的**辅助损失（auxiliary loss）**机制，并深入剖析了实现高效稀疏路由所需的底层张量操作。这项实验证明，在消费级硬件上独立研究和训练 MoE 架构是完全可行的，为个人开发者和研究人员探索前沿大模型技术提供了宝贵的实战参考。
+
+---
+
+## 混合专家模型（MoE）的工作原理
+混合专家模型允许模型在保持极低推理速度（类似小型模型）的同时，拥有大型模型的庞大知识容量。在标准的 Transformer 块中，前馈网络（FFN）是“思考”的核心区域。而 MoE 用多个“专家”和一个动态选择激活特定专家的**路由器（router）**替代了单一的 FFN。
+
+&gt; Mixture-of-Experts models allow for the inference speed of a small model while retaining the knowledge capacity of a large one. In a standard Transformer block, the feed-forward network (FFN) is the primary site for "thinking." An MoE replaces this single FFN with multiple "experts" and a **router** that dynamically selects which experts to activate for each incoming context vector.
+
+&lt;small&gt;&lt;strong&gt;Diagram 1&lt;/strong&gt;: a GPT-2-style LLM at the top level&lt;/small&gt;
+
+&lt;img src="./images/47ce8ea60fff.svg" alt="A GPT-2-style LLM at the top level" title="A GPT-2-style LLM at the top level" loading="lazy"/&gt;
+
+&lt;small&gt;&lt;strong&gt;Diagram 2&lt;/strong&gt;: a GPT-2-style Transformers block&lt;/small&gt;
+
+&lt;img src="./images/90ddd2c650ce.svg" alt="A GPT-2-style Transformers block" title="A GPT-2-style Transformers block" loading="lazy"/&gt;
+
+&lt;small&gt;&lt;strong&gt;Diagram 3&lt;/strong&gt;: an outline of an MoE block&lt;/small&gt;
+
+&lt;img src="./images/932cfea535e0.svg" alt="An MoE block" title="An MoE block" loading="lazy"/&gt;
+
+---
+
+## 我是如何将这一切整合在一起的
+该实现的灵感和指导主要来源于四篇奠基性论文：
+1. 《局部专家的自适应混合》（*Adaptive Mixtures of Local Experts*, 1991）
+2. 《出奇庞大的神经网络》（*Outrageously Large Neural Networks*, 2017）
+3. 《GShard》（2020）
+4. 《Switch Transformers》（2021）
+
+最终的架构使用路由器将上下文向量映射到不同的专家。为了确保路由器可训练，其输出被视为权重，从而通过反向传播将路由器与损失函数有效地连接起来。
+
+&gt; The implementation was guided by four foundational papers:
+&gt; 1. *Adaptive Mixtures of Local Experts* (1991)
+&gt; 2. *Outrageously Large Neural Networks* (2017)
+&gt; 3. *GShard* (2020)
+&gt; 4. *Switch Transformers* (2021)
+&gt; 
+&gt; The final architecture uses a router to map context vectors to experts. To ensure the router is trainable, the output is treated as weights, effectively connecting the router to the loss function via back-propagation.
+
+---
+
+## 路由器初探
+路由器使用一个线性层来为每个专家生成 logits（对数几率）。我们为每个 Token 选择前 $k$ 个专家（top-$k$）。面临的一个严峻挑战是，标准的路由可能会导致计算图出现“死胡同”，从而使路由器无法接收到梯度。通过采用“先 softmax 后掩码”的方法（或者将非 top-$k$ 的值替换为 $-\infty$），我们确保了路由器依然处于可微的路径中。
+
+&gt; The router uses a linear layer to produce logits for each expert. We select the top-$k$ experts for each token. A critical challenge is that standard routing can lead to "dead-end" computation graphs where the router doesn't receive gradients. By using a softmax-then-mask approach (or replacing non-top-$k$ values with $-\infty$), we ensure the router remains part of the differentiable path.
+
+&lt;small&gt;&lt;strong&gt;Diagram 4&lt;/strong&gt;: An MoE with all experts active&lt;/small&gt;
+
+&lt;img src="./images/40746bdaefa1.svg" alt="An MoE with all experts active" title="An MoE with all experts active" loading="lazy"/&gt;
+
+---
+
+## 实际代码
+该实现扩展了 `TransformersBlock`，用 `MixtureOfExperts` 类替换了标准的 `FeedForward` 模块。
+
+&gt; The implementation extends the `TransformersBlock` by replacing the standard `FeedForward` module with a `MixtureOfExperts` class.</description>
+    </item>
+    <item>
+      <title>PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-11/PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制/</guid>
+      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
+      <description>现代对话与检索增强生成（RAG）系统常常面临高延迟的困扰，这会显著降低用户的体验质量（QoE）。为了解决这一问题，作者推出了 **PACE** 这一专为检索增强对话服务设计的新颖框架。PACE 将**感知首响时间（PTFR）**确立为核心的 QoE 优化目标，在严格满足质量和成本约束的同时将其降至最低。
+
+与仅依赖级联路由、语义缓存或自适应检索的传统方法不同，PACE 引入了一种整体性方法，能够联合控制**响应由哪个答案源组成**以及**等待窗口中填充什么内容**。
+
+---
+
+# PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制
+
+**arXiv：** [2609.10372 [cs.CV]](https://arxiv.org/abs/2609.10372)  
+**DOI：** [10.48550/arXiv.2609.10372](https://doi.org/10.48550/arXiv.2609.10372)  
+**作者：** Lin Huang, Yujuan Tan, Weisheng Li, Lixiang Zeng, Kun Yang, Yongzong Wang, Suihan Xiao  
+**提交时间：** 2026年9月9日；*最后修订：2026年9月10日*  
+
+---
+
+## 📌 执行摘要
+
+&gt; Modern conversational and retrieval-augmented generation (RAG) systems often struggle with high latency, which degrades user Quality of Experience (QoE). To address this, the authors introduce **PACE**, a novel framework designed for retrieval-augmented dialogue serving. PACE formalizes **Perceived Time-to-First-Response (PTFR)** as a primary QoE objective and minimizes it while strictly adhering to quality and cost constraints. 
+
+现代对话与检索增强生成（RAG）系统常常面临高延迟的困扰，这会显著降低用户的体验质量（QoE）。为了解决这一问题，作者推出了 **PACE** 这一专为检索增强对话服务设计的新颖框架。PACE 将**感知首响时间（PTFR）**确立为核心的 QoE 优化目标，在严格满足质量和成本约束的同时将其降至最低。
+
+&gt; Unlike traditional methods that rely solely on cascaded routing, semantic caching, or adaptive retrieval, PACE introduces a holistic approach that jointly controls **which answer source** composes the response and **what fills the waiting window**.
+
+与仅依赖级联路由、语义缓存或自适应检索的传统方法不同，PACE 引入了一种整体性方法，能够联合控制**响应由哪个答案源组成**以及**等待窗口中填充什么内容**。
+
+---
+
+## 🚀 核心机制与创新
+
+&gt; Deployed on a humanoid-robot sales service, PACE integrates three core mechanisms:
+1. **Load-Adaptive Cascading Router:** Intelligently routes queries to balance computational cost and response speed.
+2. **Joint Path-Filler Controller:** Manages the generation pipeline alongside waiting-window fillers to optimize the user's perception of latency.
+3. **Volatility-Aware Cache Admission:** Filters out stale or volatile information before caching responses.
+
+PACE 部署于人形机器人销售服务中，整合了三大核心机制：
+1. **负载自适应级联路由器：** 智能路由查询请求，以平衡计算成本和响应速度。
+2. **联合路径-填充控制器：** 协同管理生成流水线与等待窗口的填充内容，优化用户对延迟的感知。
+3. **波动感知缓存准入机制：** 在缓存响应之前过滤掉陈旧或易变的信息。
+
+---
+
+## 📊 性能与结果
+
+&gt; Evaluated on 75,000 requests from the *CarQA* dataset, PACE demonstrated significant performance improvements:
+* **Latency Reduction:** The cascade architecture successfully halved pure-LLM PTFR at the 95th percentile ($P_{95}$) from $0.53\text{s}$ down to $0.29\text{s}$ (at $c16$).
+* **High Load Scaling:** The adaptive controller achieved a $P_{95}$ of $0.41\text{s}$, outperforming standard RAG systems by **2.4 times** under high load while maintaining equal quality.
+* **API Call Efficiency:** The filler controller reduced redundant calls by **94%** with zero content conflicts.
+* **Data Freshness:** Volatility-aware cache admission drastically reduced stale answers from **86% to 0%**.
+* **Guaranteed Safety:** A built-in gating rule ensures the controller never underperforms compared to the baseline, bounding exposure to a single hold period. To the best of the authors' knowledge, this represents the first formal quantification of filler-answer conflict risk in deployed conversational services.
+
+在来自 *CarQA* 数据集的 75,000 个请求上进行的评估表明，PACE 带来了显著的性能提升：
+* **延迟降低：** 级联架构成功将纯大模型 PTFR 在 95 分位数（$P_{95}$）上的延迟从 $0.53\text{s}$ 减半至 $0.29\text{s}$（在 $c16$ 条件下）。
+* **高负载扩展：** 自适应控制器实现了 $0.41\text{s}$ 的 $P_{95}$ 延迟，在高负载下性能超越标准 RAG 系统 **2.4 倍**，同时保持了同等质量。
+* **API 调用效率：** 填充控制器将冗余调用减少了 **94%**，并且零内容冲突。
+* **数据新鲜度：** 波动感知缓存准入机制将陈旧答案的比例从 **86% 大幅降低至 0%**。
+* **安全性保障：** 内置的门控规则确保控制器表现绝不逊色于基线，将暴露风险限制在单个保持期内。据作者所知，这是已部署对话服务中首次对填充答案冲突风险进行形式化量化。
+
+---
+
+## 🗂 附加信息
+
+&gt; * **Primary Subject:** Computer Vision and Pattern Recognition (`cs.CV`)
+* **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Robotics (`cs.RO`)
+* **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2609.10372) | [Experimental HTML](https://arxiv.org/html/2609.10372v2) | [TeX Source](https://arxiv.org/src/2609.10372)
+
+* **主要主题：** 计算机视觉与模式识别（`cs.CV`）
+* **次要主题：** 人工智能（`cs.AI`）、机器人学（`cs.RO`）
+* **全文链接：** [查看 PDF](https://arxiv.org/pdf/2609.10372) | [实验性 HTML](https://arxiv.org/html/2609.10372v2) | [TeX 源码](https://arxiv.org/src/2609.10372)</description>
+    </item>
+    <item>
+      <title>2026-09-11-MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-11/MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口/</guid>
+      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在当前的AI研究中，不同决策范式（如强化学习策略、大语言模型、视觉语言模型及人类操作员）通常运行在各自孤立的框架中，缺乏统一的交互基础设施。这导致研究人员很难在完全相同的环境和条件下对异构智能体进行公平的对比和协同。
+
+为了弥合这一差距，本文推出了 **MOSAIC** 开源平台。该平台通过基于进程间通信（IPC）的工作进程协议、统一的算子抽象以及确定性的跨范式评估框架，首次实现了异构智能体在共享强化学习环境中的无缝混合与即兴团队协作。MOSAIC 的推出不仅极大地推动了多智能体系统（MAS）的兼容性研究，也为具身智能与人机混合决策提供了强有力的工具支持。
+
+---
+
+## 摘要 (Summary)
+
+&gt; The paper introduces **MOSAIC**, an open-source platform designed to bridge the gap between different decision-making paradigms by enabling heterogeneous agents—including Reinforcement Learning (RL) policies, Large Language Models (LLMs), Vision-Language Models (VLMs), and human operators—to interact within shared reinforcement learning environments. 
+&gt; 
+&gt; Key contributions of MOSAIC include:
+&gt; 1. **IPC-Based Worker Protocol:** Wraps native and third-party frameworks as isolated subprocess workers, executing logic unmodified via a versioned inter-process protocol.
+&gt; 2. **Operator Abstraction:** Forms a universal agent-level interface mapping diverse backends to uniform agent slots.
+&gt; 3. **Deterministic Evaluation Framework:** Features a *manual mode* for lock-step visual inspection and a *script mode* for automated, long-running reproducible experiments.
+
+本文介绍了 **MOSAIC**，这是一个开源平台，旨在弥合不同决策范式之间的鸿沟，使异构智能体（包括强化学习策略、大语言模型、视觉语言模型和人类操作员）能够在共享的强化学习环境中以即兴团队（ad-hoc team）的形式进行交互。
+
+MOSAIC 的核心贡献包括：
+1. **基于 IPC 的工作进程协议：** 将原生和第三方框架包装为隔离的子进程工作进程，通过带版本的进程间协议执行未经修改的逻辑。
+2. **算子抽象：** 形成一个通用的智能体级接口，将不同的后端映射到统一的智能体槽位。
+3. **确定性评估框架：** 具备用于步进式视觉检查的*手动模式*，以及用于自动化、长周期可复现实验的*脚本模式*。
+
+---
+
+## 元数据与文档详情 (Metadata &amp; Document Details)
+
+* **arXiv 标识符：** [arXiv:2603.01260](https://arxiv.org/abs/2603.01260) [cs.LG]
+* **研究领域：** 机器学习 (`cs.LG`)；人工智能 (`cs.AI`)
+* **提交日期：** 2026年3月1日（2026年9月10日修订，版本 v3）
+* **作者：** Abdulhamid M. Mousa, Jinhui Pang, Rakhmonberdi Khajiev, Jalaledin M. Azzabi, Abdulkarim M. Mousa, Peng Yong, Yunusa Haruna, Ming Liu
+* **文档与资源：** [MOSAIC 文档](https://mosaic-platform.readthedocs.io)
+
+---
+
+## 摘要原文 (Abstract)
+
+&gt; Existing infrastructure cannot deploy agents from different decision-making paradigms within the same environment, making fair cross-paradigm comparison under identical conditions impossible. We present MOSAIC, an open-source platform that enables heterogeneous agents (RL policies, LLMs, VLMs, and human operators) to act within shared reinforcement learning environments in ad-hoc team settings with reproducible results. MOSAIC introduces three contributions. (i) IPC-based worker protocol that wraps native and third-party frameworks as isolated subprocess workers, each executing its own training and inference logic unmodified and communicating through a versioned inter-process protocol. (ii) An operator abstraction that forms an agent-level interface by mapping workers to agent slots: each operator, regardless of whether it is backed by an RL policy, an LLM, or a human, conforms to a minimal universal interface. (iii) A deterministic cross-paradigm evaluation framework with two complementary modes: a manual mode that advances up to $N$ operators in lock-step under shared seeds for fine-grained visual inspection of behavioural differences; and a script mode that drives automated, long-running evaluation via declarative Python scripts for reproducible experiments.
+
+&gt; 现有基础设施无法在同一环境中部署来自不同决策范式的智能体，这使得在相同条件下进行公平的跨范式比较成为不可能。我们提出了 MOSAIC，这是一个开源平台，它使异构智能体（强化学习策略、大语言模型、视觉语言模型和人类操作员）能够在共享的强化学习环境中以即兴团队设置进行操作，并产生可复现的结果。MOSAIC 引入了三项贡献。(i) 基于 IPC 的工作进程协议，将原生和第三方框架包装为隔离的子进程工作进程，每个工作进程都在不修改自身训练和推理逻辑的情况下执行，并通过带版本的进程间协议进行通信。(ii) 算子抽象，通过将工作进程映射到智能体槽位来形成智能体级接口：每个算子（无论其背后是强化学习策略、大语言模型还是人类）都符合最低限度的通用接口。(iii) 具有两种互补模式的确定性跨范式评估框架：手动模式，在共享随机种子下同步推进多达 $N$ 个算子，以便对行为差异进行细粒度视觉检查；脚本模式，通过声明式 Python 脚本驱动自动化、长周期的评估，以实现可复现的实验。
+
+---
+
+## 访问与全文链接 (Access &amp; Full-Text Links)
+
+* [查看 PDF](https://arxiv.org/pdf/2603.01260)
+* [HTML 版本（实验性）](https://arxiv.org/html/2603.01260v3)
+* [TeX 源码](https://arxiv.org/src/2603.01260)</description>
+    </item>
+    <item>
+      <title>2026-09-11-Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-11/Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集/</guid>
+      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型（LLM）智能体生态系统快速扩张的背景下，跨日益增多的基准测试对智能体进行评估变得异常困难，这主要是由于复杂的运行环境和零散的智能体集成方式所导致的。本文推出了 **Harbor Adapters**（Harbor 适配器），这是一种统一的评估基础设施，成功将 80 多个基准测试移植以支持任意智能体。基于该基础设施，作者对 54 个基准测试中的 8 个模型进行了大规模评估。
+
+在此基础上，本文提出了 **Harbor-Index**，这是一个高质量、经过精心筛选的元数据集，包含跨越 29 个基准测试的 82 个具有挑战性的任务。Harbor-Index 旨在保持极高的严谨性和难度（即使是最强大的评估模型与框架组合——搭载 Codex 的 GPT-5.5，其通过率也仅为 28.0%），同时为大规模智能体评估提供了一个经济高效的框架。
+
+---
+
+## 📌 执行摘要 (Executive Summary)
+
+&gt; Evaluating large language model (LLM) agents across a rapidly expanding ecosystem of benchmarks is exceptionally difficult due to complex environments and fragmented agent integrations. This paper introduces **Harbor Adapters**, a unified evaluation infrastructure that successfully ports over 80 benchmarks to support arbitrary agents. Using this infrastructure, the authors perform a massive evaluation of 8 models across 54 benchmarks. 
+&gt; 
+&gt; Building upon these findings, the paper presents **Harbor-Index**, a high-quality, curated meta-dataset of 82 challenging tasks spanning 29 benchmarks. Harbor-Index is specifically designed to remain rigorous and difficult—even the strongest evaluated model-harness configuration (GPT-5.5 with Codex) tops out at a 28.0% pass rate—while offering an affordable framework for large-scale agentic evaluation.
+
+在快速扩展的基准测试生态系统中评估大语言模型（LLM）智能体异常困难，因为这通常需要复杂的环境和零散的智能体集成。本文推出了 **Harbor Adapters**，这是一个用于智能体基准测试的统一评估基础设施。我们的工作做出了三项贡献。首先，我们开发了基准适配器，将 80 多个基准移植以评估任意智能体，并通过严格的代码审查和对等实验对其进行了验证。其次，我们对 54 个基准测试中的 8 个不同能力层级的模型进行了大规模评估；每个模型都通过 Terminus-2 以及 3 个原生框架之一运行。这使得对智能体能力和失败模式的分析比以往任何时候都更加深入。第三，我们推出了 **Harbor-Index**，这是一个精选的包含 82 个困难、多样且高质量任务的集合，横跨 29 个基准测试，这些任务是从适配后的测试集中经过难度过滤、AI与人工审计以及审计-修复循环精炼而成的。Harbor-Index 保留了大尺度智能体评估的挑战性和广度，同时运行成本经济实惠；没有任何评估的模型-框架配置超过 30% 的通过率，最强者（搭载 Codex 的 GPT-5.5）达到了 28.0%。我们将适配器、评估结果、深入分析和 Harbor-Index 作为开源成果发布，以支持对语言模型智能体进行更可靠、更全面的评估。
+
+---
+
+## 👥 作者 (Authors)
+
+&gt; **Lead Authors:** Lin Shi, Haowei Lin, Zixuan Zhu, Xiaoyue Zhou, Xiang Li, Xiangning Lin, Yaxuan Deng, Han Xu, Yuangang Li, Shanda Li, Zizhao Chen, Hanwen Xing, Harsh Raj, Bo Chen, Quan Shi, Steven Dillmann, Yipeng Gao, Puneesh Khanna, Ruofan Lu, Chao Beyond Zhou, Michael Yang, Robert Zhang, Siyuan Chai, Jiayu Chang, Yizhao Chen, Xiaokun Chen, Yiwei Dai, Wenting Yang, Hange Liu, Minghao Liu, Zihan Wang, Adnan El Assadi, Benedikt Stroebl, E. Kelly Buchanan, Han Meng, Junwei He, Longxuan Yu, Radin Shayanfar, Yukyung Lee, Zhikang Dong, Allen G Hart, Anjiang Wei, Anurag Kashyap, Arpandeep Khatua, Audrey Jixin Zheng, Chengrui Ma, David Heineman, Dubing Chen, Hai-Anh Trinh, Haishuo Fang, Hefan Zhang, Hui Shen, Issa Sugiura, Jiankai Sun, Jiechao Gao, Junhong Lin, Junnan Li, Kai Yang, Lei Hsiung, Maoyu Wang, Mengze Tang, Nabil Omi, Negin Raoof, Nicholas Edwards, Octavia Guo, Orfeas Menis Mastromichalakis, Pengliang Ji, Przemysław Hejman, Qi Qi, Qunshu Lin, Richard Zhuang, Rui Yang, Ruichen Zheng, Ryan Marten, Shaghayegh Fazliani, Shizheng Hou, Sicong Jiang, Sijie Li, Boqin Yuan, Michael Glass, Song Bian, Terry Yue Zhuo, Tianqing Wu, Tom Tang, Wanjia Zhao, Weihao Xuan, Wenhua Liang, Xian Liu, Xin Lan, Xuan Zhang, Xuandong Zhao, Yanchuan Tang, Yifan Jiang, Yijiang Li, Yitong Guan, Yizhi Li, Yonghui Liu, Yuheng Tang, Yujun (Audrey) Mao, and Yunfei Zhao *(along with 25 additional co-authors, including Andy Konwinski, Alex Dimakis, Nicholas Carlini, Ludwig Schmidt, and others)*.
+
+**主要作者：** Lin Shi, Haowei Lin, Zixuan Zhu 等（共计百余位作者，包含 Andy Konwinski、Alex Dimakis、Nicholas Carlini、Ludwig Schmidt 等 25 位联合作者）。
+
+---
+
+## 🔍 核心贡献 (Key Contributions)
+
+&gt; 1. **Harbor Adapters Infrastructure:** Development of unified benchmark adapters capable of porting more than 80 distinct benchmarks to evaluate arbitrary agents. These adapters are validated via rigorous code review and parity experiments.
+&gt; 2. **Large-Scale Multi-Model Evaluation:** Comprehensive evaluation of 8 models spanning multiple capability tiers across 54 benchmarks. Each model was executed using Terminus-2 alongside one of 3 native harnesses, enabling deep insight into agent capabilities and failure modes.
+&gt; 3. **Harbor-Index Meta-Dataset:** Introduction of a curated suite of 82 difficult, diverse, and high-quality tasks across 29 benchmarks. Filtered through rigorous difficulty criteria, AI/human audits, and an iterative audit-and-fix loop, Harbor-Index preserves evaluation rigor while maintaining practical cost-efficiency.
+
+1. **Harbor Adapters 基础设施：** 开发了统一的基准适配器，能够移植 80 多个不同的基准来评估任意智能体。这些适配器通过严格的代码审查和对等实验得到了验证。
+2. **大规模多模型评估：** 对跨多个能力层级的 8 个模型在 54 个基准测试中进行了全面评估。每个模型都使用 Terminus-2 结合 3 个原生框架之一运行，从而对智能体能力和失败模式提供了深入的见解。
+3. **Harbor-Index 元数据集：** 推出了精选的 82 个困难、多样且高质量的任务套件，横跨 29 个基准。通过严格的难度标准、AI/人工审计以及迭代的审计-修复循环进行过滤，Harbor-Index 在保持评估严谨性的同时，兼具了实用的成本效益。
+
+---
+
+## 📊 摘要 (Abstract)
+
+&gt; Evaluating agents on the growing number of agentic benchmarks is challenging because they often require complex environments and agent integrations. We introduce Harbor Adapters, a unified evaluation infrastructure for agentic benchmarks. Our work makes three contributions. First, we develop benchmark adapters that port more than 80 benchmarks to evaluate arbitrary agents, and validate them through rigorous code review and parity experiments. Second, we conduct a large-scale evaluation of 8 models spanning capability tiers across 54 benchmarks; every model is run with Terminus-2 and with one of 3 native harnesses. This enables a broader analysis of agent capabilities and failure modes than was previously possible. Third, we introduce Harbor-Index, a curated set of 82 difficult, diverse, and high-quality tasks spanning 29 benchmarks, refined from the adapted suite through difficulty filtering, AI and human audit, and an audit-and-fix loop. Harbor-Index preserves the challenge and breadth of large-scale agentic evaluations while being affordable to run; no evaluated model-harness configuration exceeds 30% pass rate, and the strongest (GPT-5.5 with Codex) reaches 28.0%. We release the adapters, evaluation results, in-depth analysis, and Harbor-Index as open-source artifacts to support more reliable and comprehensive evaluation of language-model agents.
+
+（详见上文“执行摘要”段落）
+
+---
+
+## 🔗 链接与资源 (Links &amp; Resources)
+
+* [在 arXiv 上查看 PDF](https://arxiv.org/pdf/2609.04298)
+* [实验性 HTML 版本](https://arxiv.org/html/2609.04298v3)
+* [TeX 源代码](https://arxiv.org/src/2609.04298)
+* [DOI 引用](https://doi.org/10.48550/arXiv.2609.04298)</description>
+    </item>
+    <item>
+      <title>2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-11/DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用/</guid>
+      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着长程 AI 智能体（Long-horizon AI agents）和百万级长上下文（million-token contexts）的普及，LLM 推理面临着极其沉重的输入密集型内存瓶颈，高带宽内存（HBM）和固态硬盘（SSD）容量常常不堪重负。为此，DeepSeek AI 推出了全新的多模态混合专家（MoE）模型 **DeepSeek-V4.1-Flash**，旨在从根本上解决这一内存挑战。
+
+该模型引入了因果编码器-解码器（Causal Encoder-Decoder）架构、压缩稀疏注意力 2 代（CSA2）、FP4 KV 缓存量化以及解码器 SWA 有界重放（Decoder SWA Bounded Replay）等一系列创新技术。通过这些架构优化，其全局 KV 缓存占用被大幅压缩至每个 token 仅 **890 字节**，相比早期版本实现了数百倍的缩减。同时，它在各项智能体基准测试中展现出顶尖的性能，并且所有权重均在 **MIT 许可证** 下开源，为构建高效、长上下文的 AI 应用提供了强有力的支持。
+
+---
+
+## DeepSeek AI Released DeepSeek-V4.1-Flash with 1M Context, FP4 KV Cache, and Cross-Layer Attention Reuse
+
+&gt; DeepSeek AI has launched **DeepSeek-V4.1-Flash**, a multimodal Mixture-of-Experts (MoE) model engineered specifically to tackle the input-heavy memory bottlenecks of long-horizon AI agents and million-token contexts. Featuring a global KV cache footprint of just **890 bytes per token** (a ~437x reduction from DeepSeek-V1) and innovative architectural designs like a Causal Encoder-Decoder and Compressed Sparse Attention 2 (CSA2), the model achieves cutting-edge performance on agentic benchmarks while offering open weights under an **MIT license**.
+
+---
+
+## 概述
+
+长程智能体已将大语言模型（LLM）的推理变成了一种输入密集的繁重工作负载。重复的 Prefill（预填充）阶段和百万级的上下文会导致 KV 缓存急剧膨胀，从而对高带宽内存（HBM）、固态硬盘（SSD）容量以及整体带宽造成巨大压力。
+
+&gt; Long-horizon agents have turned LLM serving into an input-heavy workload. Repeated prefills and million-token contexts leave KV caches that strain High Bandwidth Memory (HBM), Solid-State Drive (SSD) capacity, and overall bandwidth. 
+
+[DeepSeek AI](https://huggingface.co/deepseek-ai) 围绕这一核心瓶颈构建了其最新发布的 [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash)。它是一个多模态混合专家（MoE）模型，拥有 **552B 的主干参数**、**196B 的额外 Engram 参数**以及 **1M token 的上下文窗口**。在预填充阶段，它每个 token 激活 **8B 参数**；在解码阶段则激活 **16B 参数**。
+
+&gt; [DeepSeek AI](https://huggingface.co/deepseek-ai) built its newest release—[DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash)—around that exact bottleneck. It is a multimodal Mixture-of-Experts model with **552B backbone parameters**, **196B additional Engram parameters**, and a **1M-token context window**. It activates **8B parameters per token during prefill** and **16B during decode**. 
+
+**它能部署吗？完全可以。** 该模型以 [MIT 许可证](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/main/LICENSE)开源了权重，并在 Hugging Face 上提供了 vLLM、SGLang 和 Transformers 的支持路径。此外，研究团队还介绍了一个包含低、中、高三个推理等级的公共 API。
+
+&gt; **Is it deployable? Yes.** Open weights ship under an [MIT license](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/main/LICENSE) with vLLM, SGLang, and Transformers paths on Hugging Face, and the research team describes a public API with low, high, and max reasoning tiers.
+
+---
+
+## 因果编码器-解码器：预填充计算量减半
+
+这个 40 层的骨干网络被拆分为一个 **20 层的因果编码器（causal encoder）** 和一个 **20 层的解码器（decoder）**。受 [YOCO](https://arxiv.org/abs/2405.05254) 的启发，解码器不再计算自身的全局 KV 缓存，而是通过每层的投影权重，直接从最终的编码器隐藏状态中推导出来。
+
+&gt; The 40-layer backbone is split into a **20-layer causal encoder** and a **20-layer decoder**. Inspired by [YOCO](https://arxiv.org/abs/2405.05254), the decoder does not compute its own global KV. Instead, per-layer projection weights derive it from the final encoder hidden state. 
+
+因此，提示词 token 仅在编码器处处理，这**使预填充计算量几乎减半**。每个层中仍然运行着具有 128 token 窗口大小的滑动窗口注意力（SWA），因此解码器的 SWA 状态仅通过重放最后 128 个提示词 token 来重建——研究团队将这一技术称为**解码器 SWA 有界重放（Decoder SWA Bounded Replay）**。
+
+&gt; Prompt tokens therefore stop at the encoder, which **nearly halves prefill compute**. Sliding-window attention (SWA) with a 128-token window still runs in every layer, so decoder SWA states are rebuilt by replaying only the last 128 prompt tokens—a technique the research team calls **Decoder SWA Bounded Replay**.
+
+---
+
+## 压缩稀疏注意力 2 代（CSA2）
+
+虽然 DeepSeek-V4 将 CSA 与重度压缩注意力（Heavily Compressed Attention）结合使用，但 V4.1-Flash 采用了纯粹的 CSA2，并沿着层轴（layer axis）直接攻击缓存大小。每个 CSA2 层被静态分配为以下 3 种模式之一：
+
+&gt; While DeepSeek-V4 mixed CSA with Heavily Compressed Attention, V4.1-Flash uses pure CSA2 and attacks cache size along the layer axis. Each CSA2 layer is statically assigned one of 3 modes:
+
+* **Full（全量）**：计算其自身的的主 KV，从中投影出索引器 K，并选择最新的前 512 个（Top-512）索引。
+* **Reindex（重新索引）**：复用上一个 Full 层的的主 KV 和索引器 K，但使用自身的索引器 Q 对其进行重新评分。
+* **Reuse（复用）**：同时复用主 KV 和最新的 Top-K 索引，完全跳过索引器。
+
+&gt; * **Full**: Computes its own main KV, projects indexer K from it, and selects fresh Top-512 indices.
+&gt; * **Reindex**: Reuses main KV and indexer K from the last Full layer but rescores them with its own indexer Q.
+&gt; * **Reuse**: Reuses both the main KV and the latest Top-K indices, skipping the indexer entirely.
+
+每一层都保留自己的主 Q 和 SWA KV。18 个 CSA2 编码器层在 6 个一组（1 个 Full，5 个 Reuse）中共使用 2 的压缩比。20 个解码器层在 4 个一组中采用 1 的压缩比：第一组是 1 个 Full 加上 3 个 Reuse，其余则是 Reindex 加上 3 个 Reuse。解码器中的**分层稀疏索引器（Hierarchical Sparse Indexer）**允许 Full 层构建一个多达 16,384 个位置的候选池（2,048 个大小为 8 的块），从而让后续的 Reindex 层对一个有界集合而非整个上下文进行评分。
+
+&gt; Every layer keeps its own main Q and SWA KV. The 18 CSA2 encoder layers use a compression ratio of 2 in 3 groups of 6 (1 Full, 5 Reuse). The 20 decoder layers use ratio 1 in 5 groups of 4: the first is Full plus 3 Reuse, the rest Reindex plus 3 Reuse. A **Hierarchical Sparse Indexer** in the decoder lets the Full layer build a candidate pool of up to 16,384 positions (2,048 blocks of 8), so later Reindex layers score a bounded set instead of the entire context.
+
+---
+
+## FP4 KV、有界重放与其他扩展
+
+* **FP4 KV 量化**：主 KV 缓存被量化为 E2M1 格式，每 16 个通道配备一个 E4M3 比例因子，这遵循了 [NVFP4](https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/) 的设计但去掉了其全局缩放。通过量化感知训练引入该技术，使存储空间较 V4 的 FP8 缓存几乎减少了一半。
+* **优化的 SWA 持久化**：SWA KV 不再持久化保存到 SSD 中。它存储在一个由宿主机 DRAM 的 10% 划分出的分布式池中，TTL（生存时间）为几分钟，而全局 KV 则保持有保障的 72 小时寿命。当发生未命中时，编码器 SWA 有界重放（Encoder SWA Bounded Replay）仅重新计算 128 个 token。
+* **其他架构增强**：包括单通 [mHC](https://arxiv.org/abs/2512.24880)（将激活内存流量减半）、位于第 1 层和第 14 层的 [Engram](https://arxiv.org/abs/2601.07372) 条件内存模块、DSpark 推测解码，以及逐头（head-wise）Muon。当上下文从 4K 增长到 1M 时，单 token 解码的 FLOPs 仅增加 1/4。
+
+&gt; * **FP4 KV Quantization**: The main KV cache is quantized to E2M1 with one E4M3 scale per 16 channels, following [NVFP4](https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/) without its global scale. Introduced through quantization-aware training, this nearly halves storage against V4’s FP8 cache.
+&gt; * **Optimized SWA Persistence**: SWA KV is no longer persisted to SSD. It lives in a distributed pool carved from 10% of host DRAM with a TTL of minutes, while global KV keeps a guaranteed 72-hour lifetime. On a miss, Encoder SWA Bounded Replay recomputes only 128 tokens.
+&gt; * **Additional Architectural Enhancements**: Includes Single-Pass [mHC](https://arxiv.org/abs/2512.24880) (halving activation memory traffic), the [Engram](https://arxiv.org/abs/2601.07372) conditional memory module at layers 1 and 14, DSpark speculative decoding, and head-wise Muon. Single-token decode FLOPs rise by only 1/4 when context grows from 4K to 1M.
+
+---
+
+## 训练与结果
+
+预训练涵盖了 **45T 的多模态 token**，文本与多模态的比例为 7:1。稀疏注意力从头开始在 64K 序列长度下进行训练，无需稠密预热（dense warmup），并在 34T token 时将上下文扩展到 1M。基础模型在世界知识和代码能力上与 DeepSeek-V4-Pro-Base 相匹配，同时只使用了总参数的 1/3 和激活参数的 1/4。
+
+&gt; Pre-training covers **45T multimodal tokens** at a 7:1 text-to-multimodal ratio. Sparse attention is trained from scratch at 64K sequence length with no dense warmup, and context is extended to 1M at 34T tokens. The base model matches DeepSeek-V4-Pro-Base on world knowledge and coding while using 1/3 of the total and 1/4 of the activated parameters.
+
+后训练没有引入新的算法，其收益主要来自于大规模的可验证智能体任务合成、跨异构脚手架的强化学习（RL），以及来自 40 多个教师模型的在线策略蒸馏（on-policy distillation）。
+
+&gt; Post-training introduces no new algorithms, deriving gains instead from large-scale synthesis of verifiable agent tasks, RL across heterogeneous scaffolds, and on-policy distillation from over 40 teachers.</description>
+    </item>
+    <item>
       <title>2026-09-10-高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-10/高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-10/高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转/</guid>
@@ -2708,294 +3043,6 @@ KV缓存定时侧信道的可靠性在很大程度上取决于所使用的具体
 &gt; * [View PDF](https://arxiv.org/pdf/2609.06484)
 &gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.06484v1)
 &gt; * [TeX Source](https://arxiv.org/src/2609.06484)</description>
-    </item>
-    <item>
-      <title>2026-09-10-基于值函数的强化学习中批归一化前向模式的研究</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/基于值函数的强化学习中批归一化前向模式的研究/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/基于值函数的强化学习中批归一化前向模式的研究/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>批归一化（Batch Normalization, BN）在诸如 CrossQ 等连续控制 Actor-Critic 算法中极大地提升了样本效率，但长期以来，它在离散动作值函数学习任务（如 Atari 游戏）中往往会导致性能下降。这种现象出人意料，因为离散 Q 网络并不存在类似 CrossQ 那样严重的动作输入分布不匹配问题。
-
-本文深入探讨了在特定前向传播过程中，选择**运行统计量（running statistics）**还是**批统计量（batch statistics）**能够彻底扭转这种性能退化。实验表明，对于 C51（基于目标网络）算法，将 BN 的引导（bootstrap）前向传播切换为批统计量模式，其性能显著优于未归一化和 LayerNorm 基线，并且在高达 12 的更新数据比（update-to-data ratio）下仍能保持稳定缩放；对于 PQN（无目标网络）算法，在动作选择和引导阶段均采用批统计量，成功恢复了原本使用运行统计量时失效的性能。在涵盖 400M 帧的 26 款 Atari 游戏评估中，该配置实现了比搭配 LayerNorm 的 PQN 更高的最终综合得分。
-
-综上所述，作者证明了正确配置批归一化前向协议是离散动作基于值函数的强化学习算法中的关键组成部分。
-
----
-
-## 概述与元数据
-
-&gt; * **arXiv ID:** [2609.06421](https://arxiv.org/abs/2609.06421)
-&gt; * **Subject:** Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** Daniel Palenicek, Mikael Henaff, Scott Fujimoto, Koustuv Sinha
-&gt; * **Submitted:** September 6, 2026
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-
----
-
-## 总结
-
-&gt; Batch normalization (BN) greatly enhances sample efficiency in continuous-control actor-critic algorithms like CrossQ, but has historically caused performance drops in discrete-action value learning tasks (such as on Atari). This is unexpected because discrete Q-networks do not suffer from the action-input distribution mismatch typical of CrossQ. 
-
-批归一化（BN）在诸如 CrossQ 等连续控制 Actor-Critic 算法中极大地提升了样本效率，但长期以来，它在离散动作值函数学习任务（如 Atari）中往往会导致性能下降。这种现象出人意料，因为离散 Q 网络并不存在类似 CrossQ 那样严重的动作输入分布不匹配问题。
-
-&gt; This paper demonstrates that the choice between **running statistics** and **batch statistics** during specific forward passes can completely reverse this degradation:
-&gt; * **C51 (Target-Based):** Switching the BN bootstrap forward pass to *batch-statistic mode* significantly outperforms unnormalized and LayerNorm baselines, scaling stably with update-to-data ratios up to 12.
-&gt; * **PQN (Target-Free):** Utilizing *batch statistics* for both action selection and bootstrapping successfully recovers performance from failing running-statistic configurations. Across 26 Atari games evaluated over 400M frames, this setup achieves a higher final aggregate score than PQN paired with LayerNorm.
-
-本文证明，在特定前向传播过程中，选择**运行统计量**与**批统计量**可以完全逆转这种性能退化：
-* **C51（基于目标网络）：** 将 BN 引导前向传播切换为*批统计量模式*，其性能显著优于未归一化和 LayerNorm 基线，并且在高达 12 的更新数据比下保持稳定缩放。
-* **PQN（无目标网络）：** 在动作选择和引导阶段均采用*批统计量*，成功使原本由于运行统计量配置而失效的性能得以恢复。在 26 款 Atari 游戏经 400M 帧评估后，该设置实现了比搭配 LayerNorm 的 PQN 更高的最终综合得分。
-
-&gt; Ultimately, the authors show that properly configured batch normalization forward protocols are critical components of discrete-action value-based reinforcement learning algorithms.
-
-最终，作者表明正确配置的批归一化前向协议是离散动作基于值函数的强化学习算法的关键组成部分。
-
----
-
-## 链接与资源
-
-&gt; * **Full-Text Options:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.06421)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.06421v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.06421)
-&gt; * **Citations &amp; References:**
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.06421)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.06421)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.06421)</description>
-    </item>
-    <item>
-      <title>2026-09-10-反词元化泄漏：从缓存痕迹重建本地大模型输出</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/反词元化泄漏：从缓存痕迹重建本地大模型输出/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/反词元化泄漏：从缓存痕迹重建本地大模型输出/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着本地部署大语言模型（LLM）的日益普及，其安全性与隐私保护问题备受关注。本文介绍了一种针对本地托管大语言模型的全新侧信道攻击方法，该方法通过监控反词元化（detokenization）过程中的 CPU 缓存活动，能够精准重建模型生成的文本内容。与以往依赖特定部署假设（如共享数据内存、CPU 卸载或混合专家模型架构）的漏洞不同，该研究将攻击目标锁定在默认 LLM 推理流水线中必不可少且普遍存在的反词元组件上。
-
-在技术实现上，研究团队结合使用了 **Flush+Reload**（用于检测解码发生的时间）和 **Prime+Probe**（用于隔离与词元相关的缓存行为），成功从嘈杂的缓存痕迹中提取出清晰的信号。随后，他们利用“聚类+语言模型”的流水线，从这些嘈杂的观测数据中成功恢复出语义准确的输出文本。该研究在多种硬件平台、推理框架以及诸如 OpenClaw 等智能体（Agentic）系统中验证了其实际可行性，揭示了当前本地 LLM 部署中广泛存在的攻击面与安全隐患。
-
----
-
-## 📌 摘要 (Summary)
-
-&gt; 本文介绍了一种新颖的侧信道攻击方法，它通过观察反词元化过程中的 CPU 缓存活动，能够重建本地托管的大语言模型（LLM）所生成的文本。与以往依赖特定部署假设（如共享数据内存、CPU 卸载或混合专家架构）的攻击不同，我们的方法针对的是反词元器（detokenizer）——这是一个在默认 LLM 推理流水线中被广泛使用的组件。为了获得干净的信号，我们对共享的词元化器代码应用了 Flush+Reload 技术来检测解码发生的时间，这使我们能够在正确的时刻执行 Prime+Probe，从而隔离出与词元相关的缓存活动。接着，我们应用聚类与语言模型相结合的流水线，从嘈杂的缓存观测中恢复文本。我们在多个数据集、硬件平台、推理框架和模型系列上评估了该攻击，结果表明它能够从包括智能体系统在内的真实本地 LLM 部署中恢复出语义准确的输出。
-&gt; 
-&gt; 这一漏洞尤为重要，因为最广泛使用的词元化器实现都极易受到该攻击的影响，且它们被嵌入到了许多流行的本地 LLM 产品和智能体框架中（例如我们所演示的 OpenClaw 系统），从而大大拓宽了实际的攻击面。
-
-&gt; This paper introduces a novel side-channel attack capable of reconstructing text generated by locally hosted Large Language Models (LLMs) by monitoring CPU cache activity during the detokenization process. Unlike previous vulnerabilities that depend on restrictive deployment assumptions (such as shared data memory, CPU offloading, or Mixture-of-Experts architectures), this method targets the standard detokenizer—a built-in component of default LLM inference pipelines. 
-&gt; 
-&gt; By employing a combination of **Flush+Reload** (to detect when decoding happens) and **Prime+Probe** (to isolate token-dependent cache behavior), the authors extract distinct signals from noisy cache traces. A subsequent clustering-and-language-model pipeline successfully reconstructs semantically accurate outputs. Demonstrating real-world viability across multiple hardware platforms, inference frameworks, and agentic systems (such as OpenClaw), the findings highlight a broad and pervasive attack surface in current local LLM deployments.
-
----
-
-## 👥 作者与机构 (Authors &amp; Affiliations)
-
-* Roy Weiss
-* Benyamin Konstantinov
-* Eitam Sheetrit
-* Tomer Simon
-* Yisroel Mirsky
-
-&gt; * Roy Weiss
-&gt; * Benyamin Konstantinov
-&gt; * Eitam Sheetrit
-&gt; * Tomer Simon
-&gt; * Yisroel Mirsky
-
----
-
-## 📄 论文摘要 (Abstract)
-
-&gt; 我们提出了一种新的攻击方法，通过观察反词元化过程中的 CPU 缓存活动，重建本地托管 LLM 生成的文本。与依赖特定部署假设（如共享数据内存、CPU 卸载或混合专家架构）的先前攻击不同，我们的方法针对的是反词元器，这是默认 LLM 推理流水线中使用的组件。为了获得纯净的信号，我们在共享的词元化器代码上使用 Flush+Reload 来检测解码何时发生，这使我们能够在正确的时机执行 Prime+Probe 并隔离出依赖于词元的缓存活动。然后，我们应用聚类和语言模型流水线，从嘈杂的缓存观测中恢复文本。我们在多个数据集、硬件平台、推理框架和模型系列中评估了该攻击，表明它能够从包括智能体系统在内的现实世界本地 LLM 部署中恢复语义准确的输出。
-&gt; 
-&gt; 这一漏洞尤为重要，因为最广泛使用的词元化器实现都容易受到攻击，并且嵌入在许多流行的本地 LLM 产品和智能体框架中，包括诸如 OpenClaw（我们进行了演示）等系统，从而实质性地拓宽了实际攻击面。
-
-&gt; We present a new attack that reconstructs the text generated by locally hosted LLMs by observing CPU cache activity during detokenization. Unlike prior attacks that rely on deployment-specific assumptions, such as shared data memory, CPU offloading, or Mixture-of-Experts architectures, our approach targets the detokenizer, a component used in default LLM inference pipelines. To obtain clean signals, we use Flush+Reload on shared tokenizer code to detect when decoding occurs, which lets us perform Prime+Probe at the right moment and isolate token-dependent cache activity. We then apply a clustering-and-language-model pipeline to recover text from noisy cache observations. We evaluate the attack across multiple datasets, hardware platforms, inference frameworks, and model families, and show that it can recover semantically accurate outputs from real-world local LLM deployments, including agentic systems.
-&gt; 
-&gt; This vulnerability is particularly significant because the most widely used tokenizer implementations are susceptible to the attack and are embedded in many popular local LLM products and agent frameworks, including systems such as OpenClaw (which we demonstrate), substantially broadening the practical attack surface.
-
----
-
-## 🔗 链接与资源 (Links &amp; Resources)
-
-* [查看 PDF](https://arxiv.org/pdf/2609.06674)
-* [HTML 版本（实验性）](https://arxiv.org/html/2609.06674v1)
-* [TeX 源码](https://arxiv.org/src/2609.06674)
-* [DOI 引用](https://doi.org/10.48550/arXiv.2609.06674)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2609.06674)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.06674v1)
-&gt; * [TeX Source](https://arxiv.org/src/2609.06674)
-&gt; * [DOI Reference](https://doi.org/10.48550/arXiv.2609.06674)
-
----
-
-## 🖼️ 文章资产 (Article Assets)
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>Do Dynamic Routers Need Memory? HeRo: History-Aware Routing for Efficient LLM Inference</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/动态路由器需要记忆吗？HeRo：面向高效大模型推理的历史感知路由机制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/动态路由器需要记忆吗？HeRo：面向高效大模型推理的历史感知路由机制/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型（LLM）的动态层路由（Dynamic layer routing）是一种通过为单个Token选择性跳过某些层来降低推理成本的流行技术。然而，传统的路由方法将每个决策视为完全基于当前隐藏状态的孤立局部操作。这种方法忽视了跨网络深度的路由在序列上的路径依赖性，即早期的路由选择会直接影响下游的表征以及整体的层使用目标。
-
-为了克服这一局限性，作者提出了**历史感知路由（HeRo）**，这是一个动态路由框架，其核心在于引入了一个显式的路由器记忆机制，通过线性注意力机制追踪跨深度的路由状态。通过将路由决策同时建立在累积历史和当前隐藏状态的基础之上，**HeRo**在性能保持和计算效率方面均超越了现有的基线方法。
-
----
-
-# Do Dynamic Routers Need Memory? HeRo: History-Aware Routing for Efficient LLM Inference
-
-* **Authors:** Hongjin Lin, Wentao Wan, Keze Wang
-* **Subjects:** Artificial Intelligence (`cs.AI`); Computation and Language (`cs.CL`)
-* **ArXiv ID:** [arXiv:2609.08189](https://arxiv.org/abs/2609.08189)
-* **Submitted:** September 8, 2026
-
----
-
-## 📌 Executive Summary
-
-&gt; Dynamic layer routing is a popular technique for reducing the inference cost of Large Language Models (LLMs) by selectively skipping layers for individual tokens. However, conventional routing methods treat each decision as an isolated local operation based entirely on the current hidden state. This approach ignores the sequential and path-dependent nature of routing across network depth, where earlier routing choices directly influence downstream representations and overall layer-usage objectives. 
-&gt; 
-&gt; To overcome this limitation, the authors introduce **History-Aware Routing (HeRo)**, a dynamic routing framework featuring an explicit router memory mechanism that tracks routing states across depth via linear attention. By jointly conditioning routing decisions on both accumulated history and current hidden states, **HeRo** achieves superior performance retention and compute efficiency compared to existing baseline methods.
-
----
-
-## 📋 Abstract
-
-动态层路由通过学习为单个 Token 跳过层，从而降低大语言模型（LLM）的推理成本。然而，现有方法将每个路由决策视为仅以当前隐藏状态为条件的局部操作——这种设定忽略了跨深度路由的序列性和路径依赖性：先前的决策塑造了下游路由器看到的表征，并且层使用目标将所有决策紧密耦合在一起。
-
-&gt; Dynamic layer routing reduces the inference cost of Large Language Models (LLMs) by learning to skip layers for individual tokens. Existing methods, however, treat each routing decision as a local operation conditioned solely on the current hidden state—a formulation that overlooks the sequential, path-dependent nature of routing across depth: earlier decisions shape the representations seen by downstream routers, and the layer-usage objective couples all decisions jointly. 
-
-我们提出了**历史感知路由（HeRo）**，这是一个动态路由框架，通过引入路由器记忆机制来维护跨模型深度的显式路由状态，从而解决了这种不匹配问题。该记忆是通过线性注意力构建的，能够将先前的路由分数及其引发的残差更新增量聚合为紧凑的历史表征。在每个路由层，路由器将这个累积状态与当前的隐藏表征结合起来，共同决定所执行的分支。
-
-&gt; We propose **History-Aware Routing (HeRo)**, a dynamic routing framework that resolves this mismatch by introducing a router memory mechanism to maintain an explicit routing state across model depth. The memory is constructed via linear attention, incrementally aggregating preceding routing scores and their induced residual updates into a compact history representation. At each routed layer, the router conditions jointly on this accumulated state and the current hidden representation to select the executed branch. 
-
-通过针对 Token 级别的 FFN 路由进行实例化，**HeRo** 仅在冻结的主干网络上训练轻量级路由器和适配器，无需修改预训练参数。在 *Llama 3.1-8B*、*Llama 2-7B* 和 *Llama 2-13B* 上，**HeRo** 在十个基线中始终保持了最高的总体性能保留率：
-* 在 **Llama 3.1-8B** 上，它绕过了 **26.87%** 的模型参数，同时在七个基准测试中达到了密集模型性能的 **100.24%**。
-* 在更严格的计算预算下，它保留了 **97.01%** 的性能，同时绕过了 **38.82%** 的参数。
-
-&gt; Instantiated for token-wise FFN routing, **HeRo** trains only lightweight routers and adapters on a frozen backbone, requiring no modification to pretrained parameters. Across *Llama 3.1-8B*, *Llama 2-7B*, and *Llama 2-13B*, **HeRo** consistently achieves the highest aggregate performance retention among ten baselines:
-&gt; * On **Llama 3.1-8B**, it bypasses **26.87%** of model parameters while achieving **100.24%** of dense model performance across seven benchmarks.
-&gt; * Under a tighter computation budget, it retains **97.01%** of performance while bypassing **38.82%** of parameters.
-
-消融实验证实，移除路由历史会持续导致性能下降——在多步推理和代码生成任务上尤为明显，这验证了显式路由记忆比仅依赖隐藏状态进行条件化能够实现更准确、更具自适应性的动态路由。
-
-&gt; Ablation studies confirm that removing routing history consistently degrades performance—most notably on multistep reasoning and code generation tasks—validating that explicit routing memory enables more accurate and adaptive dynamic routing than solely conditioning on hidden states.
-
----
-
-## 📊 Key Highlights &amp; Results
-
-* **方法论：** 引入了一种使用线性注意力的显式路由器记忆，以在模型深度上增量聚合路由分数和残差更新。
-* **效率：** 仅训练轻量级的路由器和适配器，同时保持主干模型完全冻结。
-* **卓越性能：** 在多个基准架构（*Llama 3.1-8B*、*Llama 2-7B* 和 *Llama 2-13B*）上表现优于十个基线模型。
-* **显著影响：** 消融实验表明，路由历史对于**多步推理**和**代码生成**等复杂任务至关重要。
-
-&gt; * **Methodology:** Introduces an explicit router memory using linear attention to incrementally aggregate routing scores and residual updates across model depth.
-&gt; * **Efficiency:** Trains only lightweight routers and adapters while keeping the backbone model entirely frozen.
-&gt; * **Superior Performance:** Outperformed ten baseline models across multiple benchmark architectures (*Llama 3.1-8B*, *Llama 2-7B*, and *Llama 2-13B*).
-&gt; * **Notable Impact:** Ablations reveal that routing history is critical for complex tasks such as **multistep reasoning** and **code generation**.
-
----
-
-## 🔗 Links &amp; Resources
-
-* [View PDF on arXiv](https://arxiv.org/pdf/2609.08189)
-* [View HTML Version (Experimental)](https://arxiv.org/html/2609.08189v1)
-* [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.08189)
-* [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.08189)
-* [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.08189)</description>
-    </item>
-    <item>
-      <title>2026-09-10-利用强化学习激发多模态推理代理的自我验证能力</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/利用强化学习激发多模态推理代理的自我验证能力/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/利用强化学习激发多模态推理代理的自我验证能力/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在处理复杂的多模态查询时，推理代理经常因为需要解释混合的图文输入以及在稀疏的结果级监督下面对充满噪声的检索证据，而难以实现可靠的工具集成（如网络搜索）。为了解决这一痛点，本文作者引入了**通过强化学习实现的自我验证（Self-Verification via Reinforcement Learning, SVRL）**——这是一个纯强化学习微调框架，旨在训练代理直接在其自身的推理轨迹中验证和过滤检索到的证据。
-
-SVRL 引入了“搜索感知惩罚”（用于抑制不必要的工具调用）以及“查询多样性奖励”（用于鼓励生成结构良好的搜索查询）。通过在仅 5,000 个视觉问答样本上使用 SVRL 对 Qwen-2.5-VL-7B 模型进行微调，该方法以极低的成本成功缩小了紧凑型代理与更大规模闭源商业模型之间的性能差距。
-
----
-
-## 概览与总结 (Overview &amp; Summary)
-
-* **作者：** Vishwas Sathish, Viresh Ranjan, Xinliang Zhu, Arnab Dhua, Douglas Gray
-* **主要学科：** 人工智能 (`cs.AI`) 
-* **次要学科：** 计算与语言 (`cs.CL`)、计算机视觉与模式识别 (`cs.CV`)
-* **会议：** 将发表于 *ECCV 2026*（共11页正文，7幅图表）
-* **arXiv ID:** [2609.08025](https://arxiv.org/abs/2609.08025) [cs.AI]</description>
-    </item>
-    <item>
-      <title>2026-09-10-准确率并非全部：基于散度的方法评估量化大语言模型的保真度损失</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/准确率并非全部：基于散度的方法评估量化大语言模型的保真度损失/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/准确率并非全部：基于散度的方法评估量化大语言模型的保真度损失/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>评估量化大语言模型（LLM）目前在很大程度上依赖于零样本任务准确率（zero-shot task accuracy），该指标仅考虑 argmax 预测结果，而忽略了底层预测分布的变化。这种方法往往会导致不稳定且非单调的行为，从而掩盖了相对于未压缩基础模型（如 BFloat16）的关键保真度损失。
-
-为了解决这一局限性，作者引入了一个**对分布敏感的评估框架**，该框架通过测量 Token 决策边界处全词表预测分布之间的统计散度来量化信息损失。该研究利用 *詹森-香农散度（Jensen-Shannon Divergence）* 和 *全变差距离（Total Variation Distance）* 等指标，结合跨越五种基础架构和四个推理基准的强大实验矩阵，证明了分布感知评估能够为受内存限制的部署提供更可靠的保真度信号。
-
----
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-## Summary
-Evaluating quantized Large Language Models (LLMs) heavily relies on zero-shot task accuracy, which only considers argmax predictions and ignores shifts in the underlying predictive distribution. This approach often leads to unstable and non-monotonic behavior, masking critical fidelity losses relative to uncompressed base models (like BFloat16). 
-
-To address this limitation, the authors introduce a **distribution-sensitive evaluation framework** that measures information loss as the statistical divergence between full-vocabulary predictive distributions at the token decision boundary. Utilizing metrics like *Jensen-Shannon Divergence* and *Total Variation Distance*, alongside a robust experimental matrix across five foundation architectures and four reasoning benchmarks, the study demonstrates that distribution-aware evaluation provides a much more reliable fidelity signal for memory-constrained deployments.
-
----
-
-## Metadata
-
-* **arXiv ID:** `arXiv:2609.07664` [cs.LG]
-* **Subjects:** Machine Learning (`cs.LG`); Artificial Intelligence (`cs.AI`)
-* **Submission Date:** September 7, 2026
-* **DOI:** [10.48550/arXiv.2609.07664](https://doi.org/10.48550/arXiv.2609.07664)
-
----
-
-## Authors
-
-* Shahzeb Qamar
-* Lorenz Sparrenberg
-* Christian Bauckhage
-* Baha Rababah
-* Carson Leung
-* Murat Kantarcioglu
-* Cuneyt Gurcan Akcora
-* Rafet Sifa
-
----
-
-## Abstract
-
-在内存受限的边缘设备上部署大语言模型（LLM）在很大程度上依赖于激进的训练后量化。然而，这些模型的评估在很大程度上基于零样本任务准确率，该准确率仅取决于 argmax 预测，对底层预测分布的变化不敏感。因此，在渐进式量化下，准确率可能会表现出不稳定、非单调的行为，掩盖了相对于 BFloat16（BF16）未压缩基础模型的实质性保真度损失，并提供具有误导性的部署信号。
-
-我们引入了一个对分布敏感的评估框架，将量化 LLM 中的信息损失量化为 Token 决策边界处全词表预测分布之间的散度。我们计算了全精度模型和量化模型输出之间的统计距离（包括詹森-香农散度和全变差距离），从而能够对分布偏移进行细粒度分析。利用该框架，我们量化了相对于 BF16 参考基准的概率质量位移和分布漂移，捕捉了未在 Top-1 准确率中反映出来的预测分布变化。
-
-我们在渐进式量化方案（从未压缩的 BF16 到 Q2_K）下，跨越五种基础架构和四个推理基准进行了包含 120 次运行的实验矩阵测试，从而提供了系统的保真度分析。我们的结果表明，在更强的量化下，散度指标通常会增加，这为主任务准确率补充了一个保真度信号。在测试的 [llama.cpp](http://llama.cpp) 方案中，在相似的内存占用下，混合精度 Q4_K 通常比统一的 Q4_0 产生更低的散度。这些发现促使分布感知评估成为任务准确率的实用诊断补充；它们并未直接确立正确性、校准性、安全性或用户感知的质量。
-
-&gt; Deployment of Large Language Models (LLMs) on memory-constrained edge devices relies heavily on aggressive post-training quantization. However, evaluating these models is largely based on zero-shot task accuracy, which depends solely on argmax predictions and is insensitive to changes in the underlying predictive distribution. Consequently, accuracy can exhibit unstable, non-monotonic behavior under progressive quantization, masking substantial fidelity loss relative to the BFloat16 (BF16) uncompressed base model and providing misleading deployment signals. 
-&gt; 
-&gt; We introduce a distribution-sensitive evaluation framework quantifying information loss in quantized LLMs as the divergence between full-vocabulary predictive distributions at the token decision boundary. We compute statistical distances, including Jensen-Shannon Divergence and Total Variation Distance, between outputs of full-precision and quantized models, enabling a fine-grained analysis of distributional shift. Using this framework, we quantify probability mass displacement and distributional drift relative to the BF16 reference, capturing predictive distribution changes not reflected in top-1 accuracy. 
-&gt; 
-&gt; We conduct a 120-run experimental matrix across five foundation architectures and four reasoning benchmarks under progressive quantization regimes, from uncompressed BF16 to Q2_K, providing a systematic fidelity analysis. Our results show divergence metrics generally increase under stronger quantization, complementing task accuracy with a fidelity signal. Across tested [llama.cpp](http://llama.cpp) schemes, mixed-precision Q4_K generally yields lower divergence than uniform Q4_0 at similar memory footprints. These findings motivate distribution-aware evaluation as a practical diagnostic complement to task accuracy; they do not directly establish correctness, calibration, safety, or user-perceived quality.
-
----
-
-## Links and Resources
-
-* **PDF 版本:** [查看 PDF](https://arxiv.org/pdf/2609.07664)
-* **HTML 版本:** [arXiv HTML（实验性）](https://arxiv.org/html/2609.07664v1)
-* **TeX 源码:** [下载源码](https://arxiv.org/src/2609.07664)
-* **许可证:** [知识共享署名 4.0](http://creativecommons.org/licenses/by/4.0/)
-
-&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2609.07664)
-&gt; * **HTML Version:** [arXiv HTML (experimental)](https://arxiv.org/html/2609.07664v1)
-&gt; * **TeX Source:** [Download Source](https://arxiv.org/src/2609.07664)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)</description>
     </item>
   </channel>
 </rss>

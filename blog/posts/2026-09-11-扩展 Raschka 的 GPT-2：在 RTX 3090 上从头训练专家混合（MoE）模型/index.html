@@ -1,0 +1,891 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-11-%E6%89%A9%E5%B1%95%20Raschka%20%E7%9A%84%20GPT-2%EF%BC%9A%E5%9C%A8%20RTX%203090%20%E4%B8%8A%E4%BB%8E%E5%A4%B4%E8%AE%AD%E7%BB%83%E4%B8%93%E5%AE%B6%E6%B7%B7%E5%90%88%EF%BC%88MoE%EF%BC%89%E6%A8%A1%E5%9E%8B/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        混合专家模型（MoE）的工作原理
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        我是如何将这一切整合在一起的
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        路由器初探
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        实际代码
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实际代码">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        张量可视化
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensor-visualizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tensor Visualizations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        采用 Switch 风格的负载均衡
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="采用 Switch 风格的负载均衡">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        辅助损失计算
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auxiliary-loss-calculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Auxiliary Loss Calculation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        训练过程
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="训练过程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结果
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        结论
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <h1 id="__skip">扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型</h1>
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>本文详细介绍了如何在 Sebastian Raschka 的畅销书《Build a Large Language Model (from Scratch)》中的 GPT-2 框架基础之上，实现并扩展<strong>专家混合（Mixture-of-Experts, MoE）</strong>架构。通过将标准的前馈神经网络（FFN）替换为一个路由器和多个专家网络，作者成功在单张 RTX 3090 显卡上从头训练了一个总参数量达 446M（激活参数量为 220M）的 MoE 模型。</p>
+<p>项目重点探讨了确保专家负载均衡所需的<strong>辅助损失（auxiliary loss）</strong>机制，并深入剖析了实现高效稀疏路由所需的底层张量操作。这项实验证明，在消费级硬件上独立研究和训练 MoE 架构是完全可行的，为个人开发者和研究人员探索前沿大模型技术提供了宝贵的实战参考。</p>
+<hr />
+<h2 id="moe">混合专家模型（MoE）的工作原理</h2>
+<p>混合专家模型允许模型在保持极低推理速度（类似小型模型）的同时，拥有大型模型的庞大知识容量。在标准的 Transformer 块中，前馈网络（FFN）是“思考”的核心区域。而 MoE 用多个“专家”和一个动态选择激活特定专家的<strong>路由器（router）</strong>替代了单一的 FFN。</p>
+<blockquote>
+<p>Mixture-of-Experts models allow for the inference speed of a small model while retaining the knowledge capacity of a large one. In a standard Transformer block, the feed-forward network (FFN) is the primary site for "thinking." An MoE replaces this single FFN with multiple "experts" and a <strong>router</strong> that dynamically selects which experts to activate for each incoming context vector.</p>
+</blockquote>
+<p><small><strong>Diagram 1</strong>: a GPT-2-style LLM at the top level</small></p>
+<p><img src=".././images/47ce8ea60fff.svg" alt="A GPT-2-style LLM at the top level" title="A GPT-2-style LLM at the top level" loading="lazy"/></p>
+<p><small><strong>Diagram 2</strong>: a GPT-2-style Transformers block</small></p>
+<p><img src=".././images/90ddd2c650ce.svg" alt="A GPT-2-style Transformers block" title="A GPT-2-style Transformers block" loading="lazy"/></p>
+<p><small><strong>Diagram 3</strong>: an outline of an MoE block</small></p>
+<p><img src=".././images/932cfea535e0.svg" alt="An MoE block" title="An MoE block" loading="lazy"/></p>
+<hr />
+<h2 id="_2">我是如何将这一切整合在一起的</h2>
+<p>该实现的灵感和指导主要来源于四篇奠基性论文：
+1. 《局部专家的自适应混合》（<em>Adaptive Mixtures of Local Experts</em>, 1991）
+2. 《出奇庞大的神经网络》（<em>Outrageously Large Neural Networks</em>, 2017）
+3. 《GShard》（2020）
+4. 《Switch Transformers》（2021）</p>
+<p>最终的架构使用路由器将上下文向量映射到不同的专家。为了确保路由器可训练，其输出被视为权重，从而通过反向传播将路由器与损失函数有效地连接起来。</p>
+<blockquote>
+<p>The implementation was guided by four foundational papers:
+1. <em>Adaptive Mixtures of Local Experts</em> (1991)
+2. <em>Outrageously Large Neural Networks</em> (2017)
+3. <em>GShard</em> (2020)
+4. <em>Switch Transformers</em> (2021)</p>
+<p>The final architecture uses a router to map context vectors to experts. To ensure the router is trainable, the output is treated as weights, effectively connecting the router to the loss function via back-propagation.</p>
+</blockquote>
+<hr />
+<h2 id="_3">路由器初探</h2>
+<p>路由器使用一个线性层来为每个专家生成 logits（对数几率）。我们为每个 Token 选择前 <span class="arithmatex">\(k\)</span> 个专家（top-<span class="arithmatex">\(k\)</span>）。面临的一个严峻挑战是，标准的路由可能会导致计算图出现“死胡同”，从而使路由器无法接收到梯度。通过采用“先 softmax 后掩码”的方法（或者将非 top-<span class="arithmatex">\(k\)</span> 的值替换为 <span class="arithmatex">\(-\infty\)</span>），我们确保了路由器依然处于可微的路径中。</p>
+<blockquote>
+<p>The router uses a linear layer to produce logits for each expert. We select the top-<span class="arithmatex">\(k\)</span> experts for each token. A critical challenge is that standard routing can lead to "dead-end" computation graphs where the router doesn't receive gradients. By using a softmax-then-mask approach (or replacing non-top-<span class="arithmatex">\(k\)</span> values with <span class="arithmatex">\(-\infty\)</span>), we ensure the router remains part of the differentiable path.</p>
+</blockquote>
+<p><small><strong>Diagram 4</strong>: An MoE with all experts active</small></p>
+<p><img src=".././images/40746bdaefa1.svg" alt="An MoE with all experts active" title="An MoE with all experts active" loading="lazy"/></p>
+<hr />
+<h2 id="_4">实际代码</h2>
+<p>该实现扩展了 <code>TransformersBlock</code>，用 <code>MixtureOfExperts</code> 类替换了标准的 <code>FeedForward</code> 模块。</p>
+<blockquote>
+<p>The implementation extends the <code>TransformersBlock</code> by replacing the standard <code>FeedForward</code> module with a <code>MixtureOfExperts</code> class.</p>
+</blockquote>
+<h3 id="_5">张量可视化</h3>
+<p>为了管理路由的复杂性，该实现依赖于张量展平（flattening）以及利用 <code>scatter_</code> 操作来屏蔽未激活的专家。</p>
+<blockquote>
+<h3 id="tensor-visualizations">Tensor Visualizations</h3>
+<p>To manage the complexity of routing, the implementation relies on flattening tensors and using <code>scatter_</code> operations to mask inactive experts.</p>
+</blockquote>
+<p><small><strong>Diagram 5</strong>: The <code>xs</code> tensor as a 3-D cuboid</small></p>
+<p><img src="http://localhost/proxy/KIKbD7TkmWQkOcBHC-NAhMgcGF-lzuzdiXQGUdPyTPc=/aHR0cHM6Ly93d3cuZ2lsZXN0aG9tYXMuY29tL3Bvc3QtYXNzZXRzL2dwdC0yLXRvLW1vZS94cy1jdWJvaWQtM2Quc3Zn" alt="The <code>md5-320a91b4480a005a4873ddbfa5204f91</code> tensor as a 3-D cuboid" title="The <code>md5-320a91b4480a005a4873ddbfa5204f91</code> tensor as a 3-D cuboid" loading="lazy"/></p>
+<p><small><strong>Diagram 6</strong>: <code>xs</code> as two 2-D views</small></p>
+<p><img src=".././images/268af1d796ed.svg" alt="<code>xs</code> as two 2-D views" title="<code>xs</code> as two 2-D views" loading="lazy"/></p>
+<hr />
+<h2 id="switch">采用 Switch 风格的负载均衡</h2>
+<p>如果没有人为干预，MoE 模型往往会发生坍塌，即过度依赖少数几个专家而忽略其他专家。为了防止这种情况，我们根据《Switch Transformers》论文实现了一种<strong>辅助损失（auxiliary loss）</strong>。该损失会对专家利用率的不均衡进行惩罚，从而迫使路由器更加均匀地分发流量。</p>
+<blockquote>
+<p>Without intervention, MoEs tend to collapse, relying heavily on a few experts while ignoring others. To prevent this, we implement an <strong>auxiliary loss</strong> based on the <em>Switch Transformers</em> paper. This loss penalizes imbalances in expert utilization, forcing the router to distribute traffic more evenly.</p>
+</blockquote>
+<h3 id="_6">辅助损失计算</h3>
+<p>损失定义如下：
+$<span class="arithmatex">\(\text{loss} = \alpha \cdot N \cdot \sum_{i=1}^{N} f_i \cdot P_i\)</span>$
+其中：
+* <span class="arithmatex">\(f_i\)</span> 是分发给专家 <span class="arithmatex">\(i\)</span> 的 Token 比例。
+* <span class="arithmatex">\(P_i\)</span> 是分配给专家 <span class="arithmatex">\(i\)</span> 的平均概率。
+* <span class="arithmatex">\(\alpha\)</span> 是缩放超参数（本次运行中设为 <span class="arithmatex">\(0.005\)</span>）。</p>
+<blockquote>
+<h3 id="auxiliary-loss-calculation">Auxiliary Loss Calculation</h3>
+<p>The loss is defined as:
+$<span class="arithmatex">\(\text{loss} = \alpha \cdot N \cdot \sum_{i=1}^{N} f_i \cdot P_i\)</span>$
+Where:
+* <span class="arithmatex">\(f_i\)</span> is the fraction of tokens dispatched to expert <span class="arithmatex">\(i\)</span>.
+* <span class="arithmatex">\(P_i\)</span> is the average probability allocated to expert <span class="arithmatex">\(i\)</span>.
+* <span class="arithmatex">\(\alpha\)</span> is a scaling hyper-parameter (set to <span class="arithmatex">\(0.005\)</span> for this run).</p>
+</blockquote>
+<hr />
+<h2 id="_7">训练过程</h2>
+<p>模型在 89 亿个 Token 上训练了约 8 天。损失平稳下降，辅助损失也稳定在 24.0 的理想值附近。</p>
+<blockquote>
+<p>The model was trained for ~8 days on 8.9 billion tokens. The loss decreased smoothly, and the auxiliary loss stabilized near the ideal value of 24.0.</p>
+</blockquote>
+<p><img src=".././images/66168fbf5612.png" alt="Loss chart for the load-balanced MoE training run" title="Loss chart for the load-balanced MoE training run" loading="lazy"/></p>
+<h3 id="_8">结果</h3>
+<p>该模型的表现超越了以往所有的 163M 参数模型以及 OpenAI 的 GPT-2 small (124M)，在测试集损失上仅次于 OpenAI 的 GPT-2 medium (345M)。</p>
+<blockquote>
+<h3 id="results">Results</h3>
+<p>The model outperformed all previous 163M-parameter models and the OpenAI GPT-2 small (124M), landing just behind the OpenAI GPT-2 medium (345M) in test loss.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">测试集损失 (Test Loss)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">OpenAI 权重: medium</td>
+<td style="text-align: left;">345M</td>
+<td style="text-align: left;">3.231442</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>PyTorch MoE, 6 专家, 2 激活</strong></td>
+<td style="text-align: left;"><strong>446M/220M</strong></td>
+<td style="text-align: left;"><strong>3.253928</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">OpenAI 权重: small</td>
+<td style="text-align: left;">124M</td>
+<td style="text-align: left;">3.499677</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Params</th>
+<th style="text-align: left;">Test Loss</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">OpenAI weights: medium</td>
+<td style="text-align: left;">345M</td>
+<td style="text-align: left;">3.231442</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>PyTorch MoE, 6 experts, 2 active</strong></td>
+<td style="text-align: left;"><strong>446M/220M</strong></td>
+<td style="text-align: left;"><strong>3.253928</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">OpenAI weights: small</td>
+<td style="text-align: left;">124M</td>
+<td style="text-align: left;">3.499677</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">结论</h2>
+<p>这项实验表明，MoE 架构对于拥有消费级硬件的独立研究人员来说是完全可及的。成功的关键在于精心实现辅助损失以确保专家利用率的均衡。未来的工作将集中于对比该 MoE 模型与同等训练成本的稠密模型（dense models）之间的计算效率。</p>
+<blockquote>
+<p>This experiment demonstrates that MoE architectures are accessible to individual researchers with consumer hardware. The key to success lies in the careful implementation of the auxiliary loss to ensure expert utilization. Future work will focus on comparing the compute-efficiency of this MoE against dense models of equivalent training cost.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">GPT-2</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">MoE</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PyTorch</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
