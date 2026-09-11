@@ -1935,3 +1935,7 @@ title: arXiv论文
 - [Ambient @ EgoProactive 2026：基于视觉基础监督的主动式第一视角辅助系统](../posts/2026-09-10-Ambient @ EgoProactive 2026：基于视觉基础监督的主动式第一视角辅助系统.md)
 - [AI 模型如何管理认知权威：针对用户异议回应的分类法与比较分析](../posts/2026-09-10-AI 模型如何管理认知权威：针对用户异议回应的分类法与比较分析.md)
 - [你无法偏好未曾采样的情感：DPO微调大语言模型中的强度不足现象](../posts/2026-09-10-你无法偏好未曾采样的情感：DPO微调大语言模型中的强度不足现象.md)
+- [PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制](../posts/2026-09-11-PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制.md)
+- [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](../posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
+- [MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口](../posts/2026-09-11-MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口.md)
+- [Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集](../posts/2026-09-11-Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集.md)
