@@ -5,6 +5,108 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>爬坡 SWE 智能体：1700 个编程任务教会了 Kimi K2.7 什么</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-12/爬坡-SWE-智能体-1700-个编程任务教会了-Kimi-K2.7-什么/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-12/爬坡-SWE-智能体-1700-个编程任务教会了-Kimi-K2.7-什么/</guid>
+      <pubDate>Sat, 12 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在软件工程智能体 (SWE Agent) 的开发中，让大语言模型编写出可运行的代码已非难事，但真正产出能够直接合并交付、满足全部严苛规约的“可上线代码”依然是巨大挑战。Surge AI 团队利用精心策展的 1,700 个由人类专家构建的真实编程任务，仅通过强化学习 (Reinforcement Learning, RL) 对 Kimi K2.7 (Max reasoning) 进行后训练 (Post-Training)，且全程未引入任何监督微调 (Supervised Fine-Tuning, SFT)。
+
+评测结果令人瞩目：后训练后的 Kimi K2.7 在五个外部权威代码基准测试中平均提升了 12.5 个百分点，并在部分榜单上超越了参数规模大得多的 K3，甚至比肩 GPT-5.6 Sol。更关键的是，模型解决复杂任务的中位数思考与执行步数从 150 步锐减至 98 步，展现出“做得更少、写得更准”的成熟工程师直觉。本案例研究深入剖析了强化学习如何教会智能体严格落实全部规约、针对需求而非自身实现设计测试、筑牢防回归防线以及在缺失基准时自主构建验证真值，为代码智能体的进化提供了极具价值的实践范式。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+本案例研究探讨了仅使用强化学习 (RL)，在由专家构建的 1,700 个精选编程任务集上，对 **Kimi K2.7 (Max reasoning)** 进行后训练的效果。在五个外部编程基准测试的评估中，经过后训练的模型在多种智能体脚手架 (Harness) 上均展现出显著的性能提升，尽管在训练期间从未专门针对这些基准测试的格式进行过任何优化。
+
+&gt; This case study examines the effects of post-training **Kimi K2.7 (Max reasoning)** using reinforcement learning (RL) exclusively on a curated set of 1,700 expert-built coding tasks. Evaluated across five external coding benchmarks, the post-trained model demonstrated significant performance gains across multiple agent harnesses, despite never explicitly targeting those benchmark formats during training.
+
+核心要点包括：
+* **强大的迁移泛化能力：** 性能提升成功泛化到了不同的脚手架、提示词、工具和评估格式中 (包括类似 *SWE-Marathon* 这种跨越数小时的长轨迹任务，以及像 *Terminal-Bench 3* 这样涵盖广泛硬件与系统的综合评估)。
+* **超越更大规模模型：** 经过后训练的 K2.7 在 Terminal-Bench 2.1 和 Terminal-Bench 3 上超越了 K3，并在 SWE-Bench Pro 上取得了可媲美 GPT-5.6 Sol 的优异成绩。
+* **执行效率显著提升：** 解决复杂任务所需的中位数轨迹步数大幅下降 (例如在 DeepSWE 上从 150 步降至 98 步)，表明模型学会了更加聪明地工作，而非单纯延长求解时间。
+
+&gt; Key takeaways include:
+&gt; * **Strong Transferability:** Performance gains generalized across different harnesses, prompts, tools, and evaluation formats (including multi-hour trajectories like *SWE-Marathon* and broad hardware/systems evaluations like *Terminal-Bench 3*).
+&gt; * **Outperforming Larger Models:** Post-trained K2.7 surpassed K3 on Terminal-Bench 2.1 and 3, and scored competitively with GPT-5.6 Sol on SWE-Bench Pro.
+&gt; * **Increased Efficiency:** Median trajectory steps required to solve complex tasks dropped significantly (e.g., from 150 to 98 on DeepSWE), showing the model learned to work smarter rather than just longer.
+
+---
+
+## 1. 引言与总览
+
+&gt; ## 1. Introduction &amp; Overview
+
+我们仅使用强化学习对 Kimi K2.7 (Max reasoning) 进行了后训练，随后在五个外部编程基准测试上对最终检查点进行了评测。模型在全部五个基准测试中均取得了全面提升：
+
+&gt; We post-trained Kimi K2.7 (Max reasoning) using reinforcement learning only, then evaluated the final checkpoint on five external coding benchmarks. It improved on all five:
+
+&lt;p align="center"&gt;
+  &lt;img alt="" loading="lazy" src="./images/d02b171a6423.png"/&gt;
+&lt;/p&gt;
+
+其中有三大亮点尤为突出：
+
+&gt; Three things stood out:
+
+1. **显著的泛化迁移性：** 这一提升在三种不同的智能体脚手架中均得以保持，涵盖了不同的工具集、提示词体系以及执行循环结构。其中一些最大的增益出现在训练中从未针对过的评测格式上：例如 *SWE-Marathon* 要求智能体在长达数小时的执行轨迹中构建完整系统；而 *Terminal-Bench 3* 则横跨硬件、科学计算、底层系统、网络安全与常规软件开发。更值得一提的是，我们的训练任务早在这些基准测试诞生之前就已采集完成。
+2. **更小体量的模型在多个评测中击败了大得多的模型：** 根据 Kimi 官方汇报的基线数据，我们后训练的 K2.7 在 Terminal-Bench 2.1 和 Terminal-Bench 3 上均领先于 K3。在 SWE-Bench Pro 上，它的得分略高于 GPT-5.6 Sol (Max reasoning)。由于不同评测使用的脚手架与任务版本可能存在差异，我们将这些成绩视为宏观背景对比，而非严格受控的直接对抗。
+3. **达成目标的执行步数大幅减少：** 在 DeepSWE 上，中位数轨迹长度从 **150 步锐减至 98 步**，在 Terminal-Bench 3 上则从 **102 步降至 78 步**。模型显然变得更加敏捷高效。
+
+&gt; 1. **The gains transferred.** They held across three different agent harnesses, with different tools, prompting, and loop structures. Some of the largest gains appeared on evaluation formats we never targeted in training: *SWE-Marathon* asks agents to build complete systems over multi-hour trajectories; *Terminal-Bench 3* spans hardware, scientific computing, systems, security, and software work. Our tasks were collected before either benchmark existed.
+&gt; 2. **A much smaller model surpassed much larger models on several evals.** On Kimi’s own reported scores, our post-trained K2.7 is ahead of K3 on Terminal-Bench 2.1 and Terminal-Bench 3. On SWE-Bench Pro, it scores slightly ahead of GPT-5.6 Sol (Max reasoning). Since harnesses and task versions can differ, we treat these as contextual rather than controlled head-to-head comparisons.
+&gt; 3. **And it used fewer steps to get there.** Median trajectory length fell from **150 to 98** steps on DeepSWE and from **102 to 78** on Terminal-Bench 3. The model became more efficient.
+
+为了搞清楚模型究竟习得了哪些新行为习惯以实现上述突破，我们深入分析了它的执行轨迹。
+
+&gt; To understand what new behaviors the model learned to achieve these gains, we studied its trajectories.
+
+&lt;p align="center"&gt;
+  &lt;img alt="" loading="lazy" src="./images/34ed5f2bc8ff.png"/&gt;
+&lt;/p&gt;
+&lt;p align="center"&gt;&lt;em&gt;图 1: 在 1,700 个 Surge 编程任务上进行强化学习前后，模型在五个外部编程基准测试上的 Pass@1 表现。&lt;/em&gt;&lt;/p&gt;
+
+&gt; &lt;p align="center"&gt;&lt;em&gt;Pass@1 on five external coding benchmarks before and after RL on 1,700 Surge coding tasks.&lt;/em&gt;&lt;/p&gt;
+
+---
+
+## 2. 为什么 Kimi K2.7 此前难以写出“可直接交付”的代码
+
+&gt; ## 2. Why Kimi K2.7 Failed to Write Shippable Code
+
+为了弄清后训练模型所习得的具体行为，我们将基座模型与后训练模型在相同任务上的运行轨迹进行了一对一配对对比，系统分析了模型的推理逻辑、终端命令、测试用例以及输出结果。
+
+&gt; In order to understand our post-trained model’s learned behaviors, we paired base and post-trained trajectories on the same tasks and analyzed the models’ reasoning, commands, tests, and outputs.
+
+Kimi K2.7 本身就已经是一款非常出色的编程智能体模型。基座模型在很多时候都能通过绝大部分目标测试用例。在 DeepSWE 的失败用例中，未通过运行的中位数依然通过了 **86% 的目标测试**；其中有 49 次运行通过了至少 80% 的测试，且有 70 次完美保留了所有已有的回归测试 (Pass-to-pass tests)。
+
+&gt; Kimi K2.7 is already a strong agentic coding model. The base model often passed most of the target tests. Across DeepSWE failures, the median failed run still passed **86% of the target tests**; 49 passed at least 80%, and 70 preserved every existing pass-to-pass test.
+
+**简而言之，模型大体上知道该做什么，它只是不知道如何稳定可靠地把工作彻底做完。**
+
+&gt; **The model knew generally what to do. It just didn’t know how to reliably finish the job.**
+
+它的失败模式集中在四个反复出现的典型特征上，而后训练模型恰好学会了如何针对性化解它们。这四种特征映射了软件工程的基本循环：**理解需求、设计测试、维护兼容与验证真值**。
+
+&gt; Its failures clustered into four recurring patterns, which the post-trained model learned to mitigate. They map to a basic engineering loop: **understand, test, maintain, and verify**.
+
+&lt;p align="center"&gt;
+  &lt;img alt="" loading="lazy" src="./images/c7088c3d4973.png"/&gt;
+&lt;/p&gt;
+
+有一个案例格外鲜明地体现了这种思维转变。在 SWE-Marathon 基准测试中，模型需要在一个没有现成 `zstd` 参考二进制工具的环境中，实现一个 Zstandard 解压器。后训练模型的应对策略令人拍案叫绝——它**先自己写了一个压缩器**，从而让自己拥有了生成标准压缩文件的能力，进而能够严谨验证解压器是否能将数据无损还原。
+
+&gt; One example captures the shift unusually well. On SWE-Marathon, the model had to build a Zstandard decompressor in an environment with no reference zstd binary. The trained model responded by **writing a compressor first**, giving itself a way to manufacture valid compressed files and test whether its decompressor recovered them correctly.
+
+换句话说，**当环境中不存在现成的验证真值 (Ground Truth) 时，它学会了自己亲手构建真值。**
+
+&gt; In other words, **when no ground truth existed, it built it itself.**
+
+---</description>
+    </item>
+    <item>
       <title>2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</guid>
@@ -2966,83 +3068,6 @@ KV缓存定时侧信道的可靠性在很大程度上取决于所使用的具体
 &gt; 
 &gt; *(License: [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/))*  
 &gt; &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>Second-Order Smooth Planning with Optimal-Transport Bellman Smoothing</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/基于最优输运贝尔曼平滑的二阶平滑规划/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/基于最优输运贝尔曼平滑的二阶平滑规划/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>本文介绍了在 ICML 2026 上发表的由 Tuan Dam 所著的全新规划算法 **SecondOrderSmoothCruiser**。该研究表明，平滑生成式规划的样本复杂度指数由局部泰勒余项的阶数 $\beta$ 决定。通过采用基于最优输运平滑的贝尔曼备份，算法成功将 *SmoothCruiser* 一阶 $\widetilde O(\varepsilon^{-4})$ 的复杂度改进到了二阶 $\widetilde O(\varepsilon^{-3})$ 的预言机复杂度。
-
-这一突破通过在动作分布上引入具有闭式解、策略梯度以及 Lipschitz 海森矩阵的最优输运平滑贝尔曼备份实现，其二次修正项允许使用无偏的交叉积估计器。本文通过显式的正则化偏差界，将最优输运、熵正则化以及未正则化的目标函数联系起来，为高效规划提供了重要的理论和算法支持。
-
----
-
-# Second-Order Smooth Planning with Optimal-Transport Bellman Smoothing
-
-## Summary
-本文介绍了 **SecondOrderSmoothCruiser**，这是一种由 Tuan Dam 在 **ICML 2026** 上发表的新型规划算法。该研究表明，平滑生成式规划的样本复杂度指数由局部泰勒余项的阶数 $\beta$ 决定，通过使用最优输运平滑的贝尔曼备份，将 *SmoothCruiser* 的一阶 $\widetilde O(\varepsilon^{-4})$ 复杂度提升至二阶 $\widetilde O(\varepsilon^{-3})$ 的预言机（oracle）复杂度。
-
-&gt; ## Summary
-&gt; This paper introduces **SecondOrderSmoothCruiser**, a novel planning algorithm published at **ICML 2026** by Tuan Dam. The research demonstrates that the sample-complexity exponent of smooth generative planning is governed by the order $\beta$ of the local Taylor remainder, improving from the first-order $\widetilde O(\varepsilon^{-4})$ complexity of *SmoothCruiser* down to a second-order $\widetilde O(\varepsilon^{-3})$ oracle complexity using an optimal-transport-smoothed Bellman backup.
-
----
-
-## Paper Metadata
-
-| Field | Details |
-| :--- | :--- |
-| **Title** | Second-Order Smooth Planning with Optimal-Transport Bellman Smoothing |
-| **Author** | Tuan Dam |
-| **Submitted** | September 6, 2026 |
-| **Conference** | International Conference on Machine Learning (ICML 2026) |
-| **Primary Subject** | Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`) |
-| **Identifiers** | arXiv:2609.06484 [cs.LG] / DOI: [10.48550/arXiv.2609.06484](https://doi.org/10.48550/arXiv.2609.06484) |
-| **License** | [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png) |
-
-&gt; ## Paper Metadata
-&gt; 
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **Title** | Second-Order Smooth Planning with Optimal-Transport Bellman Smoothing |
-&gt; | **Author** | Tuan Dam |
-&gt; | **Submitted** | September 6, 2026 |
-&gt; | **Conference** | International Conference on Machine Learning (ICML 2026) |
-&gt; | **Primary Subject** | Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`) |
-&gt; | **Identifiers** | arXiv:2609.06484 [cs.LG] / DOI: [10.48550/arXiv.2609.06484](https://doi.org/10.48550/arXiv.2609.06484) |
-&gt; | **License** | [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png) |
-
----
-
-## Abstract
-使用生成模型的规划旨在通过尽可能少的模拟器调用来估计状态的价值。*SmoothCruiser* 通过利用熵正则化贝尔曼备份的平滑性，实现了与问题无关的复杂度 $\widetilde O(\varepsilon^{-4})$，但其估计器仅为一阶。 
-
-我们证明了 SmoothCruiser 类规划器的样本复杂度指数由局部泰勒余项的阶数 $\beta$ 决定，从而得出预言机复杂度 $\widetilde O(\varepsilon^{-(2+2/(\beta-1))})$：
-* 一阶情况（$\beta = 2$）可恢复 *SmoothCruiser* 的结果。
-* 二阶/三次余项（$\beta = 3$）可产生 $\widetilde O(\varepsilon^{-3})$ 的复杂度。
-
-我们通过在动作分布上采用最优输运平滑的贝尔曼备份达到了这一收敛区间，该备份具有闭式解、策略梯度以及 Lipschitz 海森矩阵，其二次修正项支持无偏交叉积估计器。由此产生的 **SecondOrderSmoothCruiser** 在固定最优输运参数的情况下实现了 $\widetilde O(\varepsilon^{-3})$ 的预言机复杂度，并且我们通过显式的正则化偏差界将最优输运、熵正则化以及未正则化的目标函数联系在了一起。
-
-&gt; ## Abstract
-&gt; Planning with a generative model aims to estimate the value of a state using as few simulator calls as possible. *SmoothCruiser* achieves problem-independent complexity $\widetilde O(\varepsilon^{-4})$ by exploiting the smoothness of the entropy-regularized Bellman backup, but its estimator is only first-order. 
-&gt; 
-&gt; We show that the sample-complexity exponent of SmoothCruiser-type planners is governed by the order $\beta$ of the local Taylor remainder, giving oracle complexity $\widetilde O(\varepsilon^{-(2+2/(\beta-1))})$: 
-&gt; * The first-order case ($\beta = 2$) recovers *SmoothCruiser*.
-&gt; * A second-order/cubic remainder ($\beta = 3$) yields $\widetilde O(\varepsilon^{-3})$.
-&gt; 
-&gt; We reach this regime with an optimal-transport-smoothed Bellman backup over action distributions, which has a closed form, a policy gradient, and a Lipschitz Hessian, and whose quadratic correction admits an unbiased cross-product estimator. The resulting **SecondOrderSmoothCruiser** achieves $\widetilde O(\varepsilon^{-3})$ oracle complexity for fixed OT parameters, and we relate the OT, entropy-regularized, and unregularized objectives through explicit regularization-bias bounds.
-
----
-
-## Links &amp; Full-Text Access
-* [View PDF](https://arxiv.org/pdf/2609.06484)
-* [HTML Version (Experimental)](https://arxiv.org/html/2609.06484v1)
-* [TeX Source](https://arxiv.org/src/2609.06484)
-
-&gt; ## Links &amp; Full-Text Access
-&gt; * [View PDF](https://arxiv.org/pdf/2609.06484)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.06484v1)
-&gt; * [TeX Source](https://arxiv.org/src/2609.06484)</description>
     </item>
   </channel>
 </rss>
