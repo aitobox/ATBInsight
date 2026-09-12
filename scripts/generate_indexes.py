@@ -45,10 +45,14 @@ def main():
         tag_url = f"blog/posts/{filename}" # Relative to tags.md (which is in docs/)
         
         for cat in fm.get('categories') or []:
-            categories[cat].append((title, url))
+            cat_str = str(cat).strip()
+            if cat_str:
+                categories[cat_str].append((title, url))
             
         for tag in fm.get('tags') or []:
-            tags[tag].append((title, tag_url))
+            tag_str = str(tag).strip()
+            if tag_str:
+                tags[tag_str].append((title, tag_url))
             
         # Inject hide: [navigation] if not present
         if 'hide' not in fm or 'navigation' not in (fm.get('hide') or []):
