@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-13**: [OpenResearcher：用于长程深度研究智能体轨迹合成的完全开源框架](blog/posts/2026-09-13-OpenResearcher-用于长程深度研究智能体轨迹合成的完全开源框架.md)
 - **2026-09-12**: [爬坡 SWE 智能体：1700 个编程任务教会了 Kimi K2.7 什么](blog/posts/2026-09-12-爬坡-SWE-智能体-1700-个编程任务教会了-Kimi-K2.7-什么.md)
 - **2026-09-11**: [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - **2026-09-10**: [HFresh：内存高效的向量搜索引擎](blog/posts/2026-09-10-HFresh：内存高效的向量搜索引擎.md)
