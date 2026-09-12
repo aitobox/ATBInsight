@@ -1,0 +1,720 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-13-FastE-%E5%9F%BA%E4%BA%8E%E8%AF%BB%E5%87%BA%E8%A7%A6%E5%8F%91%E7%9A%84-LLM-%E5%B5%8C%E5%85%A5%E6%8E%A8%E7%90%86-Token-%E5%8E%8B%E7%BC%A9%E7%AE%97%E6%B3%95/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>FastE：基于读出触发的 LLM 嵌入推理 Token 压缩算法 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#faste-llm-token" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FastE：基于读出触发的 LLM 嵌入推理 Token 压缩算法
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="faste-llm-token">FastE：基于读出触发的 LLM 嵌入推理 Token 压缩算法</h1>
+<blockquote>
+<h1 id="faste-readout-triggered-token-compression-for-llm-embedding-inference">FastE: Readout-Triggered Token Compression for LLM Embedding Inference</h1>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">属性 (Attribute)</th>
+<th style="text-align: left;">详情 (Detail)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv 标识符 (arXiv Identifier)</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2609.08407">arXiv:2609.08407</a> [cs.AI]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>主分类 (Primary Subject)</strong></td>
+<td style="text-align: left;">计算机科学 &gt; 人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>论文作者 (Authors)</strong></td>
+<td style="text-align: left;">Jinsong Shu, Jinyong Wen, Baokun Wang, Zhongle Xie, Lidan Shou, Weiqiang Wang, Gang Chen</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交历史 (Submission History)</strong></td>
+<td style="text-align: left;">[v1] 2026年9月8日 周二<br>[v2] 2026年9月10日 周四 (当前版本)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>授权许可 (License)</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>利用现代大语言模型 (Large Language Model, LLM) 生成高质量的向量嵌入已成为文本检索与多模态表征的核心基石，然而在长文本推理阶段，庞大的计算开销和显存占用极大限制了其部署扩展性。本文研究团队揭示了嵌入推理中普遍存在的“前缀深度依赖冗余”现象——即在网络较浅层剔除前缀状态对表现伤害极大，但在较深层这些前缀状态高度冗余、极具可压缩性。为此，研究团队提出了一种无需重新训练的即插即用算法 FastE，通过轻量级在线启发式准则在读出与前缀对齐时动态触发压缩，并依据注意力评分进行筛选。实验表明，FastE 能在保持 99.5% 以上检索精度的前提下减少高达 40% 的计算浮点运算量 (FLOPs) ，为大规模向量检索与索引系统提供了高实用价值的加速方案。</p>
+<hr />
+<h2 id="_2">📌 内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p><strong>FastE</strong> 是一种无需重新训练、即插即用的推理优化方法，旨在显著提升基于最终读出 (Final-Readout) 的大语言模型 (LLM) 嵌入推理计算效率。通过揭示前缀状态随网络深度递增的可压缩性——即前缀在深层网络中表现出明显的深度依赖冗余，FastE 设计了一种轻量级的在线启发式规则：采用基于批次均值读出-前缀对齐度的统一固定阈值来触发压缩，并利用读出位置对前缀状态的注意力得分对各状态进行重要性排序。</p>
+<blockquote>
+<p><strong>FastE</strong> is a training-free, plug-and-play method designed to improve the computational efficiency of final-readout Large Language Model (LLM) embedding inference. By identifying depth-dependent prefix redundancy—where prefix states become increasingly compressible in deeper layers—FastE introduces a lightweight online heuristic. It uses a shared fixed threshold on batch-mean readout-prefix alignment to trigger compression, and ranks prefix states using attention scores received from the readout position. </p>
+</blockquote>
+<p>实验评估表明，FastE 在多个基准测试、模型规模以及跨模态检索任务中均能大幅降低计算成本 (例如在 NarrativeQA 数据集上使用 Qwen3-Embedding-0.6B 时，将解码器骨干计算浮点量 FLOPs 削减了 <strong>40.11%</strong>，同时保留了完整前向推理 <strong>99.53%</strong> 的 nDCG@10 检索质量) ，且全程无需任何微调或重新训练。</p>
+<blockquote>
+<p>Evaluations demonstrate that FastE substantially cuts computational costs (e.g., reducing decoder-backbone FLOPs by <strong>40.11%</strong> while retaining <strong>99.53%</strong> of Full Forward nDCG@10 on NarrativeQA using Qwen3-Embedding-0.6B) across multiple benchmarks, scales, and cross-modal retrieval tasks without requiring retraining.</p>
+</blockquote>
+<hr />
+<h2 id="_3">📄 论文元数据</h2>
+<blockquote>
+<h2 id="paper-metadata">Paper Metadata</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">属性</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv 标识符</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2609.08407">arXiv:2609.08407</a> [cs.AI]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>主分类</strong></td>
+<td style="text-align: left;">计算机科学 &gt; 人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>论文作者</strong></td>
+<td style="text-align: left;">Jinsong Shu, Jinyong Wen, Baokun Wang, Zhongle Xie, Lidan Shou, Weiqiang Wang, Gang Chen</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交历史</strong></td>
+<td style="text-align: left;">[v1] 2026年9月8日 周二<br>[v2] 2026年9月10日 周四 (当前版本)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>授权许可</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv Identifier</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2609.08407">arXiv:2609.08407</a> [cs.AI]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Subject</strong></td>
+<td style="text-align: left;">Computer Science &gt; Artificial Intelligence (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Authors</strong></td>
+<td style="text-align: left;">Jinsong Shu, Jinyong Wen, Baokun Wang, Zhongle Xie, Lidan Shou, Weiqiang Wang, Gang Chen</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Submission History</strong></td>
+<td style="text-align: left;">[v1] Tue, 8 Sep 2026<br>[v2] Thu, 10 Sep 2026 (This version)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>License</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_4">📄 论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>在本研究中，我们在基于最终读出机制的 LLM 嵌入模型中发现了深度依赖的前缀冗余性，该现象在包括 Qwen3-Embedding 和 Qwen3-VL-Embedding 等代表性骨干网络中普遍存在。我们发现，在浅层移除前缀状态对模型性能的破坏远大于在深层移除，这表明随着前缀与读出状态在网络中的前向传递，前缀状态变得越来越容易被压缩。为此，我们提出了 FastE，这是一种免训练、即插即用的加速方法。FastE 使用基于批次均值读出-前缀对齐度的共享固定阈值作为轻量级在线启发式标准，自适应决定何时触发压缩，并根据读出位置对前缀状态分配的注意力分数进行排序，决定在后续层中保留哪些状态。实证评估展示了 FastE 大幅削减计算开销的能力：在 NarrativeQA 基准上搭配 Qwen3-Embedding-0.6B 时，该方法降低了 40.11% 的解码器骨干网络 FLOPs，同时保留了完整前向推理 99.53% 的 nDCG@10 分数。在涵盖五个文本嵌入基准测试、两种骨干模型参数规模以及三项跨模态检索任务的评测中，无需任何重训即可通过调节最大剔除比例直接定制“质量-效率”权衡。我们相信，FastE 为检索、索引构建、聚类和多模态表征系统中的可扩展向量嵌入生成提供了切实的工程落地价值。</p>
+<blockquote>
+<p>In this study, we identify depth-dependent prefix redundancy in final-readout LLM embedding models, notably across representative backbones including Qwen3-Embedding and Qwen3-VL-Embedding. We find that removing prefix states is substantially more damaging in shallow layers than at greater depth, showing that prefix states become increasingly compressible as the prefix and readout states propagate through the network. To this end, we introduce FastE, a training-free, plug-and-play method. FastE uses a shared fixed threshold on batch-mean readout-prefix alignment as a lightweight online heuristic for selecting when compression occurs, and ranks prefix states by the attention scores they receive from the readout position to determine which states are retained in subsequent layers. Our evaluations demonstrate FastE's ability to substantially reduce computational costs: on NarrativeQA with Qwen3-Embedding-0.6B, it reduces decoder-backbone FLOPs by 40.11% while retaining 99.53% of Full Forward nDCG@10. Across five text embedding benchmarks, two backbone scales, and three cross-modal retrieval tasks, the quality-efficiency trade-off is directly customizable through the maximum removal ratio without retraining. We believe FastE offers practical value for scalable embedding generation in retrieval, indexing, clustering, and multimodal representation systems.</p>
+</blockquote>
+<hr />
+<h2 id="_5">🔗 全文阅读与访问链接</h2>
+<blockquote>
+<h2 id="full-text-access-links">Full-Text &amp; Access Links</h2>
+</blockquote>
+<ul>
+<li><a href="https://arxiv.org/pdf/2609.08407">查看 PDF</a></li>
+<li><a href="https://arxiv.org/html/2609.08407v2">HTML 网页版 (实验性)</a></li>
+<li><a href="https://arxiv.org/src/2609.08407">TeX 源码</a></li>
+<li><a href="https://doi.org/10.48550/arXiv.2609.08407">DOI 链接</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://arxiv.org/pdf/2609.08407">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2609.08407v2">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2609.08407">TeX Source</a></li>
+<li><a href="https://doi.org/10.48550/arXiv.2609.08407">DOI Link</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_6">🛠️ 外部资源与工具</h2>
+<blockquote>
+<h2 id="external-resources-tools">External Resources &amp; Tools</h2>
+</blockquote>
+<ul>
+<li><strong>文献书目工具：</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.08407">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.08407">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2609.08407">Semantic Scholar</a></li>
+<li><strong>代码与相关数据：</strong> 可通过 <a href="https://huggingface.co/huggingface">Hugging Face</a>、<a href="https://www.catalyzex.com">CatalyzeX</a> 以及 <a href="https://alphaxiv.org/">alphaXiv</a> 获取。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Bibliographic Tools:</strong> <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.08407">NASA ADS</a> | <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.08407">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2609.08407">Semantic Scholar</a></li>
+<li><strong>Code &amp; Associated Data:</strong> Available via <a href="https://huggingface.co/huggingface">Hugging Face</a>, <a href="https://www.catalyzex.com">CatalyzeX</a>, and <a href="https://alphaxiv.org/">alphaXiv</a>.</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">嵌入推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Token压缩</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">FastE</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">检索增强</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

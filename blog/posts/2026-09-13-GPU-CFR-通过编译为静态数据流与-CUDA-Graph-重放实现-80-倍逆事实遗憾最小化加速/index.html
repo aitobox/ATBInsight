@@ -1,0 +1,651 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-13-GPU-CFR-%E9%80%9A%E8%BF%87%E7%BC%96%E8%AF%91%E4%B8%BA%E9%9D%99%E6%80%81%E6%95%B0%E6%8D%AE%E6%B5%81%E4%B8%8E-CUDA-Graph-%E9%87%8D%E6%94%BE%E5%AE%9E%E7%8E%B0-80-%E5%80%8D%E9%80%86%E4%BA%8B%E5%AE%9E%E9%81%97%E6%86%BE%E6%9C%80%E5%B0%8F%E5%8C%96%E5%8A%A0%E9%80%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gpu-cfr-cuda-graph-80" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="gpu-cfr-cuda-graph-80">GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速</h1>
+<blockquote>
+<h1 id="gpu-cfr-80x-faster-counterfactual-regret-minimization-by-compiling-the-game-to-static-dataflow-and-cuda-graph-replay">GPU-CFR: 80x Faster Counterfactual Regret Minimization by Compiling the Game to Static Dataflow and CUDA Graph Replay</h1>
+<p><strong>Authors:</strong> Boning Li, Longbo Huang<br />
+<strong>ArXiv ID:</strong> <a href="https://arxiv.org/abs/2609.11923">arXiv:2609.11923</a> [cs.DC]<br />
+<strong>Submitted:</strong> September 10, 2026  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>逆事实遗憾最小化 (Counterfactual Regret Minimization, CFR) 是求解大规模不完全信息博弈纳什均衡的核心算法，但历史上它一直属于极少数“CPU 跑得比 GPU 还快”的特殊数值密集型负载。这是因为博弈树遍历包含数百万个微小且相互依赖的汇聚与分散 (Gather/Scatter) 操作，在 GPU 上单核函数运行耗时仅数微秒，使得底层框架调度与核函数发射开销彻底吞噬了算力红利。来自清华大学的研究团队敏锐地指出，在博弈规则固定的前提下，除具体数值更新外，整个 CFR 迭代的执行拓扑结构在运行前完全确定。基于这一洞察，他们推出了 <strong>GPU-CFR</strong> 编译器与运行时系统，将博弈树提前编译为平铺静态数据流数组与批次遍历，并深度整合 <strong>CUDA Graph Replay</strong> 技术将整轮迭代捕获为单一图任务发射。在单张 NVIDIA A100 GPU 上，GPU-CFR 相比以往最先进的 GPU-CFR 实现了最高 80.4 倍的惊人加速，并在大规模博弈场景下超越顶尖 CPU 方案多达 258 倍。</p>
+<hr />
+<h2 id="_2">📋 内容概要</h2>
+<blockquote>
+<h2 id="summary">📋 Summary</h2>
+</blockquote>
+<p>在过去很长一段时间里，逆事实遗憾最小化 (Counterfactual Regret Minimization, CFR) 算法在 CPU 上的运行速度反而超越了 GPU。其根本原因在于：包含数十亿状态的庞大博弈树遍历过程，往往需要通过通用树接口调用数以百万计轻量、相互依赖的收集 (Gather) 和分发 (Scatter) 步骤。在 GPU 上，每个计算核函数的执行仅需微秒级别，导致频繁的核函数发射 (Kernel Launch) 与计算框架调度开销牢牢占据了总耗时的主导地位。</p>
+<blockquote>
+<p>Counterfactual Regret Minimization (CFR) algorithms have historically run faster on CPUs than on GPUs due to the massive overhead of managing millions of small, interdependent gather and scatter steps across game trees containing billions of states. Because individual GPU kernels finish in microseconds, kernel launches and framework dispatch overheads routinely dominate execution time. </p>
+</blockquote>
+<p><strong>GPU-CFR</strong> 提出了全新的编译器与运行时架构，其核心洞察在于：针对任何特定的确定博弈，除具体的数值变量之外，CFR 单次迭代过程中的所有结构拓扑元素在正式运行之前均是完全已知的。通过将博弈预编译为<strong>静态数据流</strong> (Static Dataflow) ——包括扁平化边与信息集数组、预计算的内存索引以及深度维度的批量分层传递——GPU-CFR 完全固定了底层的操作执行序列，使得迭代轮次之间仅有求解器的数值状态发生变动。</p>
+<blockquote>
+<p><strong>GPU-CFR</strong> introduces a novel compiler and runtime built on the key observation that, for any fixed game, all structural elements of a CFR iteration (excluding numerical values) are entirely deterministic before execution begins. By compiling games into <strong>static dataflow</strong>—flat edge and information-set arrays, precomputed indices, and depth-level batched passes—GPU-CFR fixes the execution sequence so that only solver states change between iterations. </p>
+</blockquote>
+<p>结合静态概率折叠 (Static Chance Folding) 、深度层级执行块、双通道可达概率缓冲区以及 <strong>CUDA Graph Replay</strong> (CUDA 计算图录制与重放) 等深度优化，GPU-CFR 将整个迭代过程录制并封装为单次计算图发射，彻底消除了框架调度开销。在单张 A100 GPU 上针对涵盖扑克牌、骰子以及棋类博弈的 8 种测试套件中，GPU-CFR 相比此前的 GPU-CFR 实现取得了 <strong>29.8 倍至 80.4 倍的加速比</strong>；在其中规模最大的四种博弈中，更是比业内顶尖的开源 CPU 实现 LiteEFG 快出 <strong>14 倍至 258 倍</strong>。</p>
+<blockquote>
+<p>Leveraging optimizations like static chance folding, depth-level execution blocks, a dual-lane reach buffer, and <strong>CUDA Graph Replay</strong>, GPU-CFR eliminates framework overhead by capturing the entire iteration into a single graph launch. On an A100 GPU across an eight-game suite (spanning card, dice, and board games), GPU-CFR achieves a <strong>29.8x to 80.4x speedup</strong> over prior GPU-CFR implementations, and is <strong>14x to 258x faster</strong> than LiteEFG (a leading open-source CPU implementation) on the four largest games.</p>
+</blockquote>
+<hr />
+<h2 id="_3">📑 论文元数据与参考信息</h2>
+<blockquote>
+<h2 id="metadata-reference">📑 Metadata &amp; Reference</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">字段</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>所属学科</strong></td>
+<td style="text-align: left;">分布式、并行与集群计算 (<code>cs.DC</code>)；人工智能 (<code>cs.AI</code>)；计算机科学与博弈论 (<code>cs.GT</code>)；数学软件 (<code>cs.MS</code>)；程序设计语言 (<code>cs.PL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI 链接</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2609.11923">10.48550/arXiv.2609.11923</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>全文获取链接</strong></td>
+<td style="text-align: left;">• <a href="https://arxiv.org/pdf/2609.11923">查看 PDF</a><br>• <a href="https://arxiv.org/html/2609.11923v1">HTML 网页版</a><br>• <a href="https://arxiv.org/src/2609.11923">TeX 源码</a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Subjects</strong></td>
+<td style="text-align: left;">Distributed, Parallel, and Cluster Computing (<code>cs.DC</code>); Artificial Intelligence (<code>cs.AI</code>); Computer Science and Game Theory (<code>cs.GT</code>); Mathematical Software (<code>cs.MS</code>); Programming Languages (<code>cs.PL</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2609.11923">10.48550/arXiv.2609.11923</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Full-Text Links</strong></td>
+<td style="text-align: left;">• <a href="https://arxiv.org/pdf/2609.11923">View PDF</a><br>• <a href="https://arxiv.org/html/2609.11923v1">HTML Version</a><br>• <a href="https://arxiv.org/src/2609.11923">TeX Source</a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_4">🔍 论文摘要</h2>
+<blockquote>
+<h2 id="abstract">🔍 Abstract</h2>
+<p>逆事实遗憾最小化 (CFR) 是当今罕见的在 CPU 上运行速度依然快于 GPU 的大规模数值计算负载之一。在算法的每一次迭代中，程序都需要通过通用的博弈树接口，在包含多达数十亿状态的博弈树上执行数百万次细碎、相互依赖的收集 (Gather) 与发散 (Scatter) 步骤。在 GPU 上，每个核函数微秒级即可执行完毕，以至于核函数启动发射与框架调度开销牢牢主导了实际运行时间，使得此前各色 GPU 实现往往不敌深度优化的 CPU 代码。</p>
+<p>我们观察到，对于任何固定规则的博弈，除了具体的数值变量之外，CFR 迭代的一切要素在第一次运行前便已全部确定。基于这一关键洞察，我们提出了 GPU-CFR——一个包含编译器与运行时的系统。它一次性将任意博弈编译为静态数据流结构：扁平化的边和信息集数组、预先计算的索引以及按深度分层的批处理流程彻底固化了整个运算执行序列，迭代之间仅更新求解器内部状态。借助静态偶然事件折叠、深度层级执行块以及双通道可达概率缓冲区，框架调度操作数量被削减了高达 18.1 倍。</p>
+<p>鉴于张量形状、内存索引和缓冲区地址永恒固定不变，CUDA Graph Replay 能够一次性录制整个迭代流程，并在后续运行中仅凭单次图发射即可无缝重放。在单块 A100 GPU 上，针对涵盖纸牌、掷骰子和棋盘游戏的 8 款博弈套件评测表明，GPU-CFR 的运行速度比相同加速卡上此前最快的 GPU CFR 快 29.8 至 80.4 倍；在四款规模最大的博弈中，更是比最前沿的开源 CPU 实现 LiteEFG 快出 14 至 258 倍。静态编译表征贡献了绝大部分优势：即便在不使用任何硬件加速卡的 8 线程 CPU 上运行，编译版本也已经比原始 GPU 基线快 2.2 至 51.1 倍。在 CPU 路径上，经过优化的执行流能在二进制位级别精确复现参考迭代值，且博弈树构建与计算图捕获的开销在初次求解过程中即可完全摊销。在不改动任何数学更新法则的前提下，GPU-CFR 在该套件的所有大中型博弈任务中均全面超越了现有的 CPU 与 GPU 基线方案。</p>
+<blockquote>
+<p>Counterfactual regret minimization (CFR) is one of the few large numerical workloads that still runs faster on CPUs than on GPUs. Each iteration sweeps a game tree with up to billions of states in millions of small, interdependent gather and scatter steps issued through a generic tree interface. On a GPU every kernel finishes in microseconds, so kernel launches and framework dispatch dominate the run time, and prior GPU implementations have lost to optimized CPU code. </p>
+<p>We observe that for a fixed game, everything about a CFR iteration except the numerical values is known before the first iteration runs. We propose GPU-CFR, a compiler and runtime built on this observation. It compiles any game once into static dataflow: flat edge and information-set arrays, precomputed indices, and depth-level batched passes fix the entire operation sequence, and only solver state changes between iterations. Static chance folding, depth-level execution blocks, and a dual-lane reach buffer cut the number of framework operations by up to 18.1x. </p>
+<p>Because shapes, indices, and buffer addresses never change, CUDA Graph Replay records the iteration once and replays it with a single graph launch. On one A100, across an eight-game suite that spans card games, dice games, and board games, GPU-CFR runs 29.8--80.4x faster than the fastest prior GPU CFR on the same accelerator, and 14--258x faster than LiteEFG, one of the fastest open-source CPU implementations, on the four largest games. The compiled representation carries most of that margin: on eight CPU threads with no accelerator it is already 2.2--51.1x faster than the GPU baseline. On the CPU the optimized path reproduces the reference iterates bitwise, and tree construction and graph capture pay for themselves within the first solve. GPU-CFR beats every CPU and GPU baseline on the mid-to-large games of the suite without changing the update rule.</p>
+</blockquote>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">GPU加速</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">博弈论</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">逆事实遗憾最小化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">CUDA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据流编译</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
