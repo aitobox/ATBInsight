@@ -5,6 +5,70 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-14/脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-14/脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制/</guid>
+      <pubDate>Mon, 14 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在面对需要执行数十步甚至上百步的复杂长程任务时，仅依靠“大语言模型 + 简单调用循环”构建的 AI 智能体 (AI Agent) 往往会因为“上下文溢出”和“目标迷失”而功亏一篑。许多人寄希望于模型上下文窗口的无限扩张，但实测表明，随着输入长度增长，模型的注意力机制会发生严重的“上下文腐烂”，在长文本中迷失关键线索。真正的解法不在于模型本身，而在于包裹在模型外层的系统架构——“脚手架 (Harness)”。本文系统梳理了 LangChain Deep Agents、Claude Code、Manus、OpenAI Codex 以及 Amazon Bedrock AgentCore 等顶尖工业级框架的设计哲学，深入解析了它们在长程任务中赖以维持系统稳定、控制上下文预算与防范目标丢失的 4 大核心工程机制。
+
+---
+
+在长程任务中，以简单循环运行的大语言模型 (Large Language Model, LLM) 智能体往往不可避免地会由于“上下文溢出”与“目标迷失”而走向失败。单纯扩大上下文窗口绝非万灵药，因为随着输入长度的不断攀升，模型的注意力表现会逐步退化。相反，真正的解决之道深植于“脚手架 (Harness)”——即围绕在模型周围的系统架构层之中。本文将深入探讨现代智能体框架 (如 LangChain Deep Agents、Claude Code、Manus、OpenAI Codex 以及 Amazon Bedrock AgentCore) 所采用的 4 大核心机制，解析它们如何在长时间跨度的长程操作中维护状态、规划上下文预算并保护智能体目标不被遗忘。
+
+&gt; **Summary:** On long-horizon tasks, LLM agents running in simple loops inevitably fail due to *context overflow* and *goal loss*. Expanding the context window is not a silver bullet because attention degrades as input length grows. Instead, the solution lies within the **harness**—the architectural layer surrounding the model. This article explores four core mechanisms used by modern agent frameworks (such as LangChain Deep Agents, Claude Code, Manus, OpenAI Codex, and Amazon Bedrock AgentCore) to maintain state, budget context, and protect agent goals over extended operations.
+
+---
+
+## 为什么更大的上下文窗口无法根治问题
+
+&gt; ## Why a Bigger Window Does Not Fix It
+
+面对上下文长度的限制，人们最容易想到的直观解法就是直接把上下文窗口做大。然而，大量实证研究表明，这种方法的效果远不及预期。[Chroma 的上下文腐烂 (Context Rot) 报告](https://www.trychroma.com/research/context-rot)在评估了包括 GPT-4.1、Claude 4、Gemini 2.5 和 Qwen3 在内的 18 款大语言模型后发现，哪怕是在最简单的检索任务中，随着输入长度的增加，模型的表现也会变得越来越不可靠。
+
+&gt; The obvious fix for context limits is a larger context window. However, empirical evidence shows it helps less than expected. [Chroma’s Context Rot report](https://www.trychroma.com/research/context-rot) evaluated 18 LLMs (including GPT-4.1, Claude 4, Gemini 2.5, and Qwen3) and found that performance grows increasingly unreliable as input length grows, even on simple retrieval tasks.
+
+Anthropic 发布的[上下文工程指南](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)深入解释了这一底层机理：
+* 注意力机制对于 $n$ 个 Token 会产生 $n^2$ 对成对关系；
+* 每新增一个 Token，都会消耗模型有限的“注意力预算”；
+* 上下文是一种边际收益递减的稀缺资源，而不是一个深不见底的无限容积桶。
+
+&gt; Anthropic’s [context engineering guide](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) explains the mechanism: 
+&gt; * Attention creates $n^2$ pairwise relationships for $n$ tokens.
+&gt; * Every added token depletes a finite "attention budget." 
+&gt; * Context is a resource with diminishing returns, not an infinite bucket.
+
+对于智能体的运行循环而言，实际情况比理论听起来还要严峻得多。Manus 的实测数据显示，一个典型的复杂任务通常需要大约 50 次工具调用，输入与输出的 Token 比例接近惊人的 100:1。每一次工具返回的环境观察结果都会直接涌入上下文并堆积在那里。随着对话拉长，最初的用户指令被不断推向窗口中央——而这恰恰是模型召回与注意力衰减最严重的“迷失在中间 (Lost-in-the-Middle)”盲区。因此，目标迷失绝不仅仅是模型偶尔犯错的小毛病，而是在长程任务中放任上下文野蛮生长所必然导致的工程必然。
+
+&gt; For an agent loop, this is worse than it sounds. Manus reports that a typical task needs around 50 tool calls, and the input-to-output token ratio runs near 100:1. Each observation lands in context and stays there. The original instruction drifts toward the middle of the window—the exact zone where recall degrades. Goal loss is not just a model bug; it is the expected outcome of an unmanaged context on long-running tasks.
+
+---
+
+## 机制 1：上下文预算控制与数据卸载
+
+&gt; ## Mechanism 1: Context Budgeting and Offloading
+
+脚手架的首要职责，就是严格把关并裁决哪些内容**绝不能**进入上下文窗口。
+
+&gt; The first job of a harness is deciding what *never* enters the window at all.
+
+* **Deep Agents**：内置了两条极为严苛的数据卸载规则：
+  1. 当工具返回的内容超过 **20,000 个 Token** 时，系统会直接将其写入底层文件系统，并在上下文中替换为该文件路径以及前 10 行内容的简短预览。
+  2. 当会话上下文占用到模型窗口的 **85%** 时，较早前的写入与编辑工具调用记录 (由于其实际文件内容早已保存在磁盘上) 会被截断为轻量级的指针引用。只有当数据卸载手段用尽且空间依然不足时，系统才会动用会话摘要作为兜底方案。
+* **Claude Code**：同样实践了极其类似的预算管控原则：
+  * 自动记忆 (Auto-memory) 的体积被严格限制在前 200 行以内或 25KB 以下；
+  * MCP 工具定义 (Tool Schema) 默认保持延迟加载状态，仅在需要时通过工具搜索按需加载完整 Schema；
+  * 在完成上下文压缩后，任何重新读取且体积超过 5,000 Token 的文件，都只会以路径引用的形式返回，而非直接灌入原始内容。
+
+&gt; * **Deep Agents:** Ships with two strict offloading rules:
+&gt;   1. When a tool response exceeds **20,000 tokens**, it is written to the filesystem and replaced with a file path plus a preview of the first 10 lines.
+&gt;   2. When session context crosses **85%** of the model’s window, older write and edit tool calls (whose file contents already live on disk) are truncated to a pointer. Summarization is only used as a fallback when offloading runs out of room.
+&gt; 
+&gt; * **Claude Code:** Applies similar budgeting principles:
+&gt;   * Auto-memory is capped at the first 200 lines or 25KB.
+&gt;   * MCP tool schemas remain deferred by default, loading full schemas on demand via tool search.
+&gt;   * After compaction, any re-read file over 5,000 tokens returns as a path reference rather than raw content.</description>
+    </item>
+    <item>
       <title>面向高扇出智能体沙箱的内存压缩技术</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-13/面向高扇出智能体沙箱的内存压缩技术/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-13/面向高扇出智能体沙箱的内存压缩技术/</guid>
@@ -3513,75 +3577,6 @@ This paper introduces an interface-aware KV quantization scheme co-designed spec
   * **3.1–3.6× lower KV read energy** compared to existing methods mapped to the same NVM.
   * **8× lower metadata overhead** relative to KIVI (requiring only one scalar per vector, roughly 3%).
   * Maintains high accuracy for 4-bit KV caches across 3B to 14B models and context lengths up to 32,000 tokens under realistic storage and crossbar noise levels.</description>
-    </item>
-    <item>
-      <title>面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术 (Damage-Aware Bandit Pruning for Vision and Language Transformers)</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着视觉和语言Transformer模型规模的不断膨胀，如何在有限的计算资源下对其进行高效压缩已成为深度学习领域的核心挑战之一。传统剪枝方法往往忽略了不同功能单元（如注意力头和MLP通道组）在协同工作时产生的交互影响，且在评估过程中容易受到批次间差异的干扰。
-
-本文介绍了一篇由 Salem Ameen 和 Sunil Vadera 于2026年8月提交的最新研究《Damage-Aware Bandit Pruning for Vision and Language Transformers》。该论文提出了一种新颖的结构化训练后剪枝技术，将 Transformer 模型中的功能单元选择建模为受约束评估预算下的“感知损伤多臂老虎机问题”（damage-aware multi-armed bandit problem）。通过引入成对损伤计算（Paired Damage Calculation）以及平滑有界奖励函数驱动的 UCB 或 Thompson 采样策略，该方法能够在极少评估预算下实现高效、稳健的剪枝。
-
-在包含 GPT-2、OPT、Qwen2.5、ViT 及 Swin 等多种视觉与语言模型的广泛实验中，该方法相比随机、幅度、静态显著性及预算贪心等传统基线，显著降低了模型性能衰退。各项统计检验（如自助法置信区间和配对检验）充分验证了其优越的统计显著性与鲁棒性。
-
----
-
-# 面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术 (Damage-Aware Bandit Pruning for Vision and Language Transformers)
-
-## 摘要 (Summary)
-
-&gt; **Damage-Aware Bandit Pruning for Vision and Language Transformers** is a research paper authored by Salem Ameen and Sunil Vadera (submitted on August 2, 2026). The paper introduces a novel structured post-training pruning technique for transformer models that frames functional unit selection (such as attention heads and MLP channel groups) as a **damage-aware multi-armed bandit problem** under a constrained evaluation budget.
-
-**面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术**是一篇由 Salem Ameen 和 Sunil Vadera 于 2026 年 8 月 2 日提交的研究论文。该论文为 Transformer 模型引入了一种新颖的结构化训练后剪枝技术，该技术将功能单元（如注意力头和 MLP 通道组）的选择在受限的评估预算下建模为**感知损伤的多臂老虎机问题**。
-
-&gt; Key highlights of the methodology and findings include:
-&gt; * **Paired Damage Calculation:** Attention heads and MLP channel groups are temporarily masked on calibration batches. "Paired damage" is defined as the masked loss minus the base loss on the exact same batch, significantly reducing batch-to-batch variation.
-&gt; * **Bandit Policies &amp; Selection:** A smooth, bounded reward function drives either a UCB-style policy or fractional-Beta Thompson Sampling. The final pruning mask is constructed sequentially by adding one unit at a time.
-&gt; * **Evaluation &amp; Models:** Experiments span multiple language and vision models (including GPT-2, OPT, Pythia, Qwen2.5, SmolLM2, ViT-B/16, DeiT-Tiny, and Swin-Tiny) across datasets like WikiText-2, LAMBADA, and Imagenette.
-&gt; * **Statistical Rigor:** Compared against random, magnitude, static-saliency, and budgeted-greedy selection methods, the bandit approaches consistently reduce degradation. Out of 28 highlighted comparisons, 23 bootstrap confidence intervals exclude zero, 11 paired tests achieve $p &lt; 0.05$, and six pass the Benjamini-Hochberg correction ($q &lt; 0.05$ across 116 total dataset-wise tests).
-
-该方法论和研究发现的核心亮点包括：
-* **成对损伤计算（Paired Damage Calculation）：** 在校准批次上对注意力头和 MLP 通道组进行临时掩码。所谓“成对损伤”定义为完全相同的批次上，掩码后的损失减去基础损失，从而显着减少批次间的变异性。
-* **老虎机策略与选择（Bandit Policies &amp; Selection）：** 一个平滑、有界的奖励函数驱动着 UCB 风格的策略或分数 Beta 汤普森采样（fractional-Beta Thompson Sampling）。最终的剪枝掩码通过每次添加一个单元的方式顺序构建。
-* **评估与模型（Evaluation &amp; Models）：** 实验涵盖了多个语言和视觉模型（包括 GPT-2、OPT、Pythia、Qwen2.5、SmolLM2、ViT-B/16、DeiT-Tiny 和 Swin-Tiny），涉及 WikiText-2、LAMBADA 和 Imagenette 等数据集。
-* **统计严谨性（Statistical Rigor）：** 与随机、幅度、静态显著性和预算贪心选择方法相比，老虎机方法持续降低了性能退化。在 28 个重点比较中，有 23 个自助法置信区间不包含零，11 个配对检验达到了 $p &lt; 0.05$，并且有 6 个通过了本杰米尼-霍赫贝格校正（在总共 116 个数据集层面的检验中 $q &lt; 0.05$）。
-
----
-
-## 文档详情 (Document Details)
-
-&gt; * **arXiv Identifier:** [arXiv:2609.05448](https://arxiv.org/abs/2609.05448) [cs.AI]
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Secondary Subjects:** Machine Learning (`cs.LG`)
-&gt; * **Authors:** Salem Ameen, Sunil Vadera
-&gt; * **Submission Date:** August 2, 2026
-&gt; * **Document Length:** 23 pages, 6 figures
-
-* **arXiv 标识符：** [arXiv:2609.05448](https://arxiv.org/abs/2609.05448) [cs.AI]
-* **主要主题：** 人工智能 (`cs.AI`)
-* **次要主题：** 机器学习 (`cs.LG`)
-* **作者：** Salem Ameen, Sunil Vadera
-* **提交日期：** 2026年8月2日
-* **文档页数：** 23页，6张图表
-
----
-
-## 访问与资源 (Access &amp; Resources)
-
-&gt; * **Full-Text PDF:** [View PDF](https://arxiv.org/pdf/2609.05448)
-&gt; * **DOI:** [10.48550/arXiv.2609.05448](https://doi.org/10.48550/arXiv.2609.05448)
-&gt; * **External Links:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.05448)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.05448)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.05448)
-
-* **全文 PDF：** [查看 PDF](https://arxiv.org/pdf/2609.05448)
-* **DOI：** [10.48550/arXiv.2609.05448](https://doi.org/10.48550/arXiv.2609.05448)
-* **外部链接：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.05448)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.05448)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.05448)</description>
     </item>
   </channel>
 </rss>
