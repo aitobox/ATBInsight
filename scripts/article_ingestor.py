@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sqlite3
 import datetime
 import yaml
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -57,19 +58,49 @@ def fetch_full_article_content(url: str) -> str:
         return ""
 
 
-def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: float = 70.0) -> tuple[str, float, str]:
+def is_arxiv_entry(entry: dict) -> bool:
     """
-    Evaluates an article entry using parallel Chief Editor Agent subprocess (agy run).
-    Returns (status, score, filepath/reason).
+    Detects whether an entry originates from arXiv based on url, title or content.
     """
-    # Open individual DB connection for thread safety
+    url = (entry.get("url") or "").lower()
+    title = (entry.get("title") or "").lower()
+    content = (entry.get("content") or "").lower()
+    return "arxiv.org" in url or "arxiv" in url or "arxiv" in title or "arxiv:" in content[:1000]
+
+
+def get_processed_arxiv_count(conn: sqlite3.Connection, target_dir: str) -> int:
+    """
+    Counts how many arXiv entries have already been processed for the target directory/date.
+    """
+    cur = conn.cursor()
+    dir_pattern = f"%{target_dir}%"
+    date_pattern = f"%{os.path.basename(target_dir)}%"
+    cur.execute(
+        """
+        SELECT count(*) FROM processed_entries 
+        WHERE status = 'processed' 
+          AND (output_path LIKE ? OR output_path LIKE ?)
+          AND (url LIKE '%arxiv.org%' OR url LIKE '%arxiv%' OR title LIKE '%arxiv%')
+        """,
+        (dir_pattern, date_pattern),
+    )
+    row = cur.fetchone()
+    return row[0] if row else 0
+
+
+def evaluate_entry(entry: dict, db_path: str, threshold: float = 70.0) -> tuple[str, float, dict, str]:
+    """
+    Evaluates an article entry using parallel Chief Editor Agent subprocess (agy run/llm).
+    Returns (status, score, entry, message).
+    Status is one of: 'cached', 'skipped', 'qualified'.
+    """
     conn = init_db(db_path)
     entry_id = str(entry.get("id"))
     title = entry.get("title", "Untitled")
 
     try:
         if is_entry_processed(conn, entry_id):
-            return ("cached", 0.0, "Already cached")
+            return ("cached", 0.0, entry, "Already cached")
 
         url = entry.get("url") or ""
         raw_content = entry.get("content") or ""
@@ -94,16 +125,31 @@ def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: 
                 score,
                 "skipped",
             )
-            return ("skipped", score, "Score below threshold")
+            return ("skipped", score, entry, "Score below threshold")
 
-        logger.info(f"  -> Score {score:.1f} >= {threshold:.1f}. Localizing images for entry ID {entry_id}...")
+        return ("qualified", score, entry, "Score meets threshold")
+    finally:
+        conn.close()
+
+
+def materialize_entry(entry: dict, score: float, target_dir: str, db_path: str) -> tuple[str, float, str]:
+    """
+    Downloads/localizes images, refines markdown, saves the article to target_dir and marks it processed in DB.
+    Returns (status, score, filepath).
+    """
+    conn = init_db(db_path)
+    entry_id = str(entry.get("id"))
+    title = entry.get("title", "Untitled")
+
+    try:
+        logger.info(f"Localizing images for approved entry ID {entry_id} ('{title}')...")
         raw_content = entry.get("content") or ""
         localized_raw_md = localize_images(raw_content, target_dir, conn)
 
         entry_copy = dict(entry)
         entry_copy["content"] = localized_raw_md
 
-        logger.info(f"  -> Refining article content via LLM...")
+        logger.info(f"Refining article content via LLM for entry ID {entry_id}...")
         refined_md = refine_markdown(entry_copy)
 
         os.makedirs(target_dir, exist_ok=True)
@@ -121,10 +167,22 @@ def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: 
             "processed",
             filepath,
         )
-        logger.info(f"  -> Successfully saved screened article to '{filepath}'.")
+        logger.info(f"Successfully saved screened article to '{filepath}'.")
         return ("processed", score, filepath)
     finally:
         conn.close()
+
+
+def process_single_entry(entry: dict, target_dir: str, db_path: str, threshold: float = 70.0) -> tuple[str, float, str]:
+    """
+    Evaluates and materializes an article entry.
+    Maintained for backward compatibility and single-entry invocations.
+    Returns (status, score, filepath/reason).
+    """
+    status, score, eval_entry, msg = evaluate_entry(entry, db_path, threshold)
+    if status == "qualified":
+        return materialize_entry(eval_entry, score, target_dir, db_path)
+    return (status, score, msg)
 
 
 def run_pipeline(
@@ -135,6 +193,7 @@ def run_pipeline(
     override_days: int | None = None,
     max_workers: int = 5,
     threshold: float = 70.0,
+    max_arxiv: int = 3,
 ):
     cfg = {}
     if os.path.exists(config_path):
@@ -148,7 +207,7 @@ def run_pipeline(
     password = os.getenv("MINIFLUX_PASSWORD") or miniflux_cfg.get("password") or ""
     days = override_days if override_days is not None else miniflux_cfg.get("days", 7)
 
-    logger.info(f"Starting AI Insight Pipeline execution (days={days}, target_date={target_date}, max_workers={max_workers}, threshold={threshold}).")
+    logger.info(f"Starting AI Insight Pipeline execution (days={days}, target_date={target_date}, max_workers={max_workers}, threshold={threshold}, max_arxiv={max_arxiv}).")
     entries = fetch_miniflux_entries(
         url=url,
         username=username,
@@ -181,27 +240,76 @@ def run_pipeline(
     skipped_count = 0
 
     if uncached_entries:
-        logger.info(f"Launching {max_workers} parallel Chief Editor Agents for parallel article evaluation (threshold: {threshold})...")
+        logger.info(f"Phase 1.1: Launching {max_workers} parallel Chief Editor Agents for article evaluation (threshold: {threshold})...")
+        qualified_entries: list[tuple[dict, float]] = []
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(process_single_entry, entry, target_dir, db_path, threshold)
+                executor.submit(evaluate_entry, entry, db_path, threshold)
                 for entry in uncached_entries
             ]
             for future in as_completed(futures):
                 try:
-                    status, score, msg = future.result()
-                    if status == "processed":
-                        processed_count += 1
+                    status, score, eval_entry, msg = future.result()
+                    if status == "qualified":
+                        qualified_entries.append((eval_entry, score))
                     elif status == "skipped":
                         skipped_count += 1
                     elif status == "cached":
                         cached_count += 1
                 except Exception as exc:
-                    logger.error(f"Worker generated an exception: {exc}")
+                    logger.error(f"Worker generated an exception during evaluation: {exc}")
+
+        # Phase 1.2: Enforce daily quota for arXiv papers (Top N by score)
+        non_arxiv_qualified = [(e, s) for e, s in qualified_entries if not is_arxiv_entry(e)]
+        arxiv_qualified = [(e, s) for e, s in qualified_entries if is_arxiv_entry(e)]
+
+        conn = init_db(db_path)
+        already_processed_arxiv = get_processed_arxiv_count(conn, target_dir)
+        conn.close()
+
+        remaining_arxiv_quota = max(0, max_arxiv - already_processed_arxiv)
+        logger.info(
+            f"Phase 1.2: Qualified entries: {len(qualified_entries)} (Non-arXiv: {len(non_arxiv_qualified)}, arXiv: {len(arxiv_qualified)}). "
+            f"Daily arXiv quota: {max_arxiv}, already processed today: {already_processed_arxiv}, remaining quota: {remaining_arxiv_quota}."
+        )
+
+        # Sort arXiv papers descending by score and pick top N
+        arxiv_qualified.sort(key=lambda item: item[1], reverse=True)
+        approved_arxiv = arxiv_qualified[:remaining_arxiv_quota]
+        exceeded_arxiv = arxiv_qualified[remaining_arxiv_quota:]
+
+        if exceeded_arxiv:
+            conn = init_db(db_path)
+            for entry, score in exceeded_arxiv:
+                entry_id = str(entry.get("id"))
+                title = entry.get("title", "Untitled")
+                url = entry.get("url", "")
+                mark_entry(conn, entry_id, title, url, score, "skipped")
+                logger.info(f"  -> arXiv Entry ID {entry_id} ('{title}') [Score: {score:.1f}] skipped: Exceeded daily arXiv quota of {max_arxiv} papers.")
+                skipped_count += 1
+            conn.close()
+
+        approved_entries = non_arxiv_qualified + approved_arxiv
+        logger.info(f"Phase 1.3: Materializing {len(approved_entries)} approved articles ({len(non_arxiv_qualified)} Non-arXiv, {len(approved_arxiv)} Top arXiv)...")
+
+        if approved_entries:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [
+                    executor.submit(materialize_entry, entry, score, target_dir, db_path)
+                    for entry, score in approved_entries
+                ]
+                for future in as_completed(futures):
+                    try:
+                        status, score, filepath = future.result()
+                        if status == "processed":
+                            processed_count += 1
+                    except Exception as exc:
+                        logger.error(f"Worker generated an exception during materialization: {exc}")
 
     logger.info(
         f"Pipeline run complete. "
-        f"Processed: {processed_count}, Skipped (Low Quality): {skipped_count}, Cached (Previously Handled): {cached_count}."
+        f"Processed: {processed_count}, Skipped (Low Quality / Quota Exceeded): {skipped_count}, Cached (Previously Handled): {cached_count}."
     )
 
 
@@ -211,7 +319,14 @@ if __name__ == "__main__":
     parser.add_argument("--days", type=int, help="Number of past days to fetch entries for (e.g. 7)")
     parser.add_argument("--workers", type=int, default=5, help="Number of parallel Chief Editor agent workers")
     parser.add_argument("--threshold", type=float, default=70.0, help="Minimum score threshold to accept article (default: 70.0)")
+    parser.add_argument("--max-arxiv", type=int, default=3, help="Maximum number of arXiv papers to accept per day (default: 3)")
     args = parser.parse_args()
 
-    run_pipeline(target_date=args.date, override_days=args.days, max_workers=args.workers, threshold=args.threshold)
+    run_pipeline(
+        target_date=args.date,
+        override_days=args.days,
+        max_workers=args.workers,
+        threshold=args.threshold,
+        max_arxiv=args.max_arxiv,
+    )
 

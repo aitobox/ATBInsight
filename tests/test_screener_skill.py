@@ -32,8 +32,10 @@ def test_screener_skill_exists_and_synced():
     assert "Engineering Value & Practical Insights" in content_skills
     assert "Originality & Thinking Quality" in content_skills
     
-    # Threshold check
+    # Threshold and Quota check
     assert "70" in content_skills
     assert "breakdown" in content_skills
     assert "verdict" in content_skills
+    assert "Daily arXiv Quota" in content_skills
+    assert "Top 3 by score" in content_skills
 

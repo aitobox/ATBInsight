@@ -59,7 +59,7 @@
   - 模拟世界级资深技术主编与底层架构师（Chief Editor Persona）对抓取到的候选文章进行独立审阅与 4 维量化打分（0~100 分）。
   - **4 维量化体系**：技术深度与硬核度 (30%)、核心领域契合度 (30%)、工程实践与落地借鉴价值 (25%)、原创性与独立思考质量 (15%)。
   - **严格一票否决（Score = 0）**：周报汇总（Weekly/Daily Roundup）、非核心计算领域的交叉学科应用论文（农业/医疗/生物/材料/金融等）、小修小补灌水论文（仅微调/套用榜单）、商业公关营销软文、浅薄入门科普、政策/监管/政治纠纷、<2000 字符短浅碎文。
-  - **收录门槛**：得分 $\ge 70$ 方可进入本地归档 `bak/origin/YYYY-MM-DD/`，严格奉行“宁缺毋滥”。
+  - **收录门槛与配额**：得分 $\ge 70$ 方可入围；针对来自 arXiv 的学术论文实行**每日最多收录 3 篇（Top 3 by score）**的配额优选机制，多篇达标时仅选前 3 篇最高分，其余一律淘汰，严格奉行“宁缺毋滥”。
 
 ### 3. `tech-article-translator` (双语技术翻译官)
 - **路径**：[`skills/tech-article-translator/SKILL.md`](file:///opt/aitobox/ATBInsight/skills/tech-article-translator/SKILL.md)

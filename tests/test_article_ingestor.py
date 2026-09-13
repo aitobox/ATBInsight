@@ -89,3 +89,71 @@ def test_fetch_full_article_content(mock_get):
     result = fetch_full_article_content("https://example.com/post")
     assert "Full original content paragraph" in result
 
+
+def test_is_arxiv_entry():
+    from scripts.article_ingestor import is_arxiv_entry
+    assert is_arxiv_entry({"url": "https://arxiv.org/abs/2609.12345", "title": "Paper", "content": "..."})
+    assert is_arxiv_entry({"url": "https://example.com/p", "title": "Analysis of arXiv:2609.12345", "content": "..."})
+    assert is_arxiv_entry({"url": "https://example.com/p", "title": "Paper", "content": "Published on arxiv:2609..."})
+    assert not is_arxiv_entry({"url": "https://blog.cloudflare.com/post", "title": "Postmortem", "content": "Kernel trace"})
+
+
+@patch("scripts.article_ingestor.fetch_miniflux_entries")
+@patch("scripts.article_ingestor.score_article")
+@patch("scripts.article_ingestor.refine_markdown")
+@patch("scripts.article_ingestor.localize_images")
+def test_run_pipeline_arxiv_quota_top_3(mock_loc, mock_ref, mock_score, mock_fetch, tmp_path):
+    # 5 arXiv papers and 1 normal engineering blog post, all qualifying with score >= 70
+    entries = [
+        {"id": "arxiv_1", "title": "arXiv Paper 1", "content": "Content 1", "url": "https://arxiv.org/abs/1"},
+        {"id": "arxiv_2", "title": "arXiv Paper 2", "content": "Content 2", "url": "https://arxiv.org/abs/2"},
+        {"id": "arxiv_3", "title": "arXiv Paper 3", "content": "Content 3", "url": "https://arxiv.org/abs/3"},
+        {"id": "arxiv_4", "title": "arXiv Paper 4", "content": "Content 4", "url": "https://arxiv.org/abs/4"},
+        {"id": "arxiv_5", "title": "arXiv Paper 5", "content": "Content 5", "url": "https://arxiv.org/abs/5"},
+        {"id": "blog_1", "title": "Engineering Deep Dive", "content": "Blog content", "url": "https://blog.eng.com/deep"},
+    ]
+    mock_fetch.return_value = entries
+
+    scores = {
+        "arxiv_1": 75.0,
+        "arxiv_2": 95.0,  # Top 1
+        "arxiv_3": 85.0,  # Top 3
+        "arxiv_4": 90.0,  # Top 2
+        "arxiv_5": 72.0,
+        "blog_1": 82.0,   # Non-arXiv, must be accepted
+    }
+    mock_score.side_effect = lambda e: scores[e["id"]]
+    mock_ref.side_effect = lambda e: f"# Refined {e['id']}"
+    mock_loc.side_effect = lambda c, d, conn: c
+
+    db_path = str(tmp_path / "cache.db")
+    out_dir = str(tmp_path / "docs" / "blog" / "posts")
+
+    run_pipeline(db_path=db_path, output_dir=out_dir, target_date="2026-09-13", max_arxiv=3)
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    # The top 3 arXiv papers (arxiv_2=95, arxiv_4=90, arxiv_3=85) should be processed
+    for approved_id in ["arxiv_2", "arxiv_4", "arxiv_3"]:
+        cur.execute("SELECT status, score, output_path FROM processed_entries WHERE entry_id = ?", (approved_id,))
+        row = cur.fetchone()
+        assert row is not None, f"{approved_id} should be recorded"
+        assert row[0] == "processed", f"{approved_id} should be processed"
+        assert os.path.exists(row[2]), f"File for {approved_id} must exist"
+
+    # Non-arXiv blog post must be processed regardless of arXiv quota
+    cur.execute("SELECT status, score, output_path FROM processed_entries WHERE entry_id = 'blog_1'")
+    row_blog = cur.fetchone()
+    assert row_blog[0] == "processed"
+    assert os.path.exists(row_blog[2])
+
+    # The remaining 2 arXiv papers (arxiv_1=75, arxiv_5=72) should be skipped due to quota
+    for exceeded_id in ["arxiv_1", "arxiv_5"]:
+        cur.execute("SELECT status, score, output_path FROM processed_entries WHERE entry_id = ?", (exceeded_id,))
+        row = cur.fetchone()
+        assert row is not None, f"{exceeded_id} should be recorded in DB"
+        assert row[0] == "skipped", f"{exceeded_id} should be skipped due to exceeding quota"
+        assert row[2] == ""
+
+

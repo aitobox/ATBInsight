@@ -49,6 +49,12 @@ For articles that pass all strict rejection criteria, evaluate them across four 
 
 **Selection Threshold**: ONLY articles scoring **>= 70** are accepted (`verdict: "ACCEPT"`). All articles scoring < 70 are rejected (`verdict: "REJECT"`). Better to have 1-2 truly stellar articles than a flood of mediocrity ("宁缺毋滥").
 
+## Daily arXiv Quota & Selection Limit (每日 arXiv 论文配额与优选规则)
+- **Strict Daily Cap of 3 Papers (每日最多收录 3 篇)**:
+  - 为防止学术预印本泛滥并确保工业级硬核工程实践的绝对占比，ATBInsight 对 arXiv 论文设定严格的每日配额：**每天最多只收录 3 篇** 来自 arXiv 的学术论文。
+  - 若当日有多篇 arXiv 论文达到收录门槛（$\ge 70$ 分），系统流水线将严格按打分从高到低排序，**仅收录得分最高的前 3 篇 (Top 3 by score)**，其余超额的 arXiv 论文一律淘汰。
+  - **评审主编极度苛刻原则**：对于带有 `[Academic / arXiv Entry]` 标识的论文，主编必须秉持最高级别的挑剔与审慎：仅限直接解决模型架构底层瓶颈、系统级训练/推理效率突破、具有工业级复现价值的重大理论突破，坚决避免给常规调参或跑榜实验打高分。
+
 ## Instructions
 1. First, check if any of the Strict Rejection Criteria apply. If yes, immediately set `score` to 0, `verdict` to "REJECT", all breakdown values to 0, and explain which rule was triggered in `reason`.
 2. Otherwise, evaluate each of the four dimensions fairly and sum them up to produce `score`.
