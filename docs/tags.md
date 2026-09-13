@@ -193,6 +193,7 @@ title: 标签浏览
 - [Magenta：闭环数学推理与 Lean 形式化验证](blog/posts/2026-09-13-Magenta-闭环数学推理与Lean形式化验证.md)
 - [Ecdysis：面向大模型智能体运行时脚手架的高效进化训练](blog/posts/2026-09-13-Ecdysis-面向大模型智能体运行时脚手架的高效进化训练.md)
 - [扎根智能体记忆：面向企业级智能体的环境探测式记忆管理](blog/posts/2026-09-13-扎根智能体记忆-面向企业级智能体的环境探测式记忆管理.md)
+- [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 
 ## AI 编程
 
@@ -1015,6 +1016,7 @@ title: 标签浏览
 - [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
 - [PrimeAgentOrchestrator：面向个人 AI 基础设施的记忆预加载智能体衍生系统](blog/posts/2026-08-25-PrimeAgentOrchestrator：面向个人 AI 基础设施的记忆预加载智能体衍生系统.md)
 - [智能体插件的维护与共演化：Claude Code 插件市场的实证研究](blog/posts/2026-09-01-智能体插件的维护与共演化：Claude Code 插件市场的实证研究.md)
+- [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 
 ## ClickHouse
 
@@ -2232,6 +2234,10 @@ title: 标签浏览
 ## LanceDB
 
 - [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
+
+## LangChain
+
+- [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 
 ## Large Language Models
 
@@ -4553,6 +4559,7 @@ title: 标签浏览
 
 - [考虑使用 ACE？我们能用更少的 Token 实现它](blog/posts/2026-08-12-考虑使用 ACE？我们能用更少的 Token 实现它.md)
 - [相同事实，不同更新：推理设置如何塑造大模型在医疗资源分配中的行为](blog/posts/2026-08-21-相同事实，不同更新：推理设置如何塑造大模型在医疗资源分配中的行为.md)
+- [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 
 ## 上下文强化学习
 
@@ -19990,6 +19997,7 @@ title: 标签浏览
 - [SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统](blog/posts/2026-08-27-SuperLocalMemory 4.0：面向AI智能体的受管控内存操作系统.md)
 - [静态分配与恒定工作量：构建高可靠系统的架构模式](blog/posts/2026-09-04-静态分配与恒定工作量：构建高可靠系统的架构模式.md)
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+- [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 
 ## 系统演示
 
