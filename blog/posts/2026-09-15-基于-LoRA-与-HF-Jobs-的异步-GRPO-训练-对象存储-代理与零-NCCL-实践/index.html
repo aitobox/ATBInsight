@@ -1,0 +1,1423 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-15-%E5%9F%BA%E4%BA%8E-LoRA-%E4%B8%8E-HF-Jobs-%E7%9A%84%E5%BC%82%E6%AD%A5-GRPO-%E8%AE%AD%E7%BB%83-%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8-%E4%BB%A3%E7%90%86%E4%B8%8E%E9%9B%B6-NCCL-%E5%AE%9E%E8%B7%B5/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lora-hf-jobs-grpo-nccl" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#async-grpo-with-lora-across-hf-jobs-a-bucket-a-proxy-and-no-nccl" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Async GRPO with LoRA across HF Jobs: A Bucket, a Proxy, and No NCCL
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Async GRPO with LoRA across HF Jobs: A Bucket, a Proxy, and No NCCL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        背景引言
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Introduction
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        分布式训练面临的挑战
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-challenge-of-distributed-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Challenge of Distributed Training
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hugging-face-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        架构解析：深度融合 Hugging Face Jobs 与对象存储桶 🪣
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-architecture-leveraging-hugging-face-jobs-and-storage-buckets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Architecture: Leveraging Hugging Face Jobs and Storage Buckets 🪣
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        三大核心任务构建细节
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-three-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Three Jobs
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vllm" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        vLLM 推理副本
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-vllm-replicas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The vLLM Replicas
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sanity-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        数据集选择：合理性验证集 (Sanity Set)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dataset-choice-the-sanity-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Dataset Choice: The Sanity Set
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        训练器 (Trainer)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-trainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Trainer
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        代理服务器 (Proxy)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Proxy
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Proxy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kv" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基于 KV 前缀的采样请求路由
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#routing-rollouts-by-kv-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing Rollouts by KV Prefix
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        全流程运行实验结果
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-run-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Full Run Results
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Full Run Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        权重同步效率
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weight-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Weight Sync
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        路由命中表现
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#routing-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Routing Performance
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        奖励演进趋势
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reward-progression" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reward Progression
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        追寻“乒乓瓶颈”：全链路渐进式调优
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chasing-the-bottleneck-ping-pong" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chasing the Bottleneck Ping-Pong
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        动手实践
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Try It
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        参考文献
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        References
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型推理能力对齐与强化学习 (Reinforcement Learning, RL) 探索中，群体相对策略优化 (Group Relative Policy Optimization, GRPO) 已成为提升模型复杂推理能力的关键方法，但传统的分布式多节点训练往往严重依赖昂贵且配置繁琐的 NCCL 高速互联网络与跨节点共享文件系统。针对这一工程痛点，本文介绍了一种轻量优雅的分布式解耦训练方案：结合 TRL 库最新支持的 AsyncGRPOTrainer 与低秩适应 (Low-Rank Adaptation, LoRA) 技术，在相互网络隔离的 Hugging Face Jobs 容器环境中开展异步强化学习。利用仅数兆字节大小的 Rank-1 权重只需通过挂载的云端对象存储桶 (Storage Bucket) 进行同步，配合定制的反向代理服务器实现基于 KV 缓存前缀的智能路由与状态广播，彻底摆脱了复杂的跨节点 NCCL 通信依赖。通过进一步优化微批次打包、禁用梯度检查点并增大并发在飞请求上限，训练耗时从 3 小时 27 分钟大幅缩短至 53 分钟，获得了高达 3.9 倍的速度提升。</p>
+<hr />
+<h1 id="lora-hf-jobs-grpo-nccl">基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践</h1>
+<blockquote>
+<h1 id="async-grpo-with-lora-across-hf-jobs-a-bucket-a-proxy-and-no-nccl">Async GRPO with LoRA across HF Jobs: A Bucket, a Proxy, and No NCCL</h1>
+</blockquote>
+<h2 id="_2">核心概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>本文探讨了如何借助 <strong>AsyncGRPOTrainer</strong> 与 <strong>LoRA</strong> (Low-Rank Adaptation) 低秩适应技术，在分布式 <strong>Hugging Face Jobs</strong> 之间运行异步强化学习 (Reinforcement Learning, RL) 训练，且全程无需依赖跨节点的共享网络文件系统或复杂的 NCCL 集群通信。</p>
+<blockquote>
+<p>This article explores how to run asynchronous Reinforcement Learning (RL) training via <strong>AsyncGRPOTrainer</strong> using <strong>LoRA</strong> (Low-Rank Adaptation) across distributed <strong>Hugging Face Jobs</strong> without relying on a shared network file system or NCCL. </p>
+</blockquote>
+<p>本文的核心亮点包括：
+- <strong>轻量级权重同步</strong>：由于 Rank-1 的 LoRA 适配器仅有区区几兆字节大小，我们可以轻松通过各个独立 Job 间挂载的<strong>对象存储桶 (Storage Bucket)</strong> 进行文件同步，从而完全避开繁重的多节点网络直接通信。
+- <strong>代理路由与状态广播</strong>：通过一个定制的代理服务器统一处理认证请求头，将生成采样任务 (Rollouts) 智能路由到匹配其 KV 缓存 (KV-cache) 前缀的副本节点，并将最新的适配器更新广播同步给所有副本。
+- <strong>显著的性能飞跃</strong>：通过精细调优训练微批次 (Microbatches)、关闭梯度检查点 (Gradient Checkpointing) 并提高在飞请求 (In-flight) 上限，500 步的整体训练时间从 <strong>3 小时 27 分钟锐减至 53 分钟</strong>（取得了高达 3.9 倍的加速比）。</p>
+<blockquote>
+<p>Key highlights include:
+- <strong>Lightweight Synchronization:</strong> Because rank-1 LoRA adapters are only a few megabytes, they can easily sync via a <strong>Storage Bucket</strong> mounted across separate jobs, avoiding heavy multi-node communication.
+- <strong>Proxy Routing &amp; Broadcasting:</strong> A custom proxy server handles authentication headers, routes rollouts to replicas matching their KV-cache prefix, and broadcasts adapter updates to all replicas.
+- <strong>Performance Gains:</strong> By tweaking training microbatches, disabling gradient checkpointing, and raising in-flight limits, training time for 500 steps drops from <strong>3 hours 27 minutes down to 53 minutes</strong> (a 3.9× speedup).</p>
+</blockquote>
+<hr />
+<h2 id="_3">背景引言</h2>
+<blockquote>
+<h2 id="introduction">Introduction</h2>
+</blockquote>
+<p>随着 <a href="https://github.com/huggingface/trl/pull/7017">PR #7017</a> 的合并（并在 TRL v1.14 版本中正式发布），TRL 库的 <a href="https://huggingface.co/docs/trl/en/async_grpo_trainer"><code>AsyncGRPOTrainer</code></a> 迎来了对 LoRA 的原生支持。现在的异步训练器可以只针对轻量级 LoRA 适配器展开训练，无需更新完整模型，并且仅需将适配器参数实时同步到 vLLM 推理引擎中。本文将详细介绍一个基于该特性搭建的真实工程项目，在该项目中，模型的训练与推理彻底解耦，不再共享同一台物理机。</p>
+<blockquote>
+<p>LoRA support recently landed in TRL's <a href="https://huggingface.co/docs/trl/en/async_grpo_trainer"><code>AsyncGRPOTrainer</code></a> with <a href="https://github.com/huggingface/trl/pull/7017">PR #7017</a> (shipped in TRL v1.14). The asynchronous trainer can now train a LoRA adapter instead of the full model, syncing only the adapter to vLLM. This post covers a real-world project built on top of it, where training and inference no longer share a machine.</p>
+</blockquote>
+<p>LoRA 训练在强化学习场景中表现出奇契合。正如 Thinking Machines 在其博文 <a href="https://thinkingmachines.ai/blog/lora/">LoRA Without Regret</a> 中所揭示的，在基于策略梯度的强化学习中，哪怕仅使用 Rank 1 的 LoRA，其效果也能与全量微调 (Full Fine-Tuning) 旗鼓相当。背后的数学机理在于：每个回合中优势函数 (Advantage Function) 仅能提供大约 <code>~O(1)</code> 比特的信息增益，因此极低秩的 Rank-1 适配器便具备足够的容量去吸收并掌握这些信号。</p>
+<blockquote>
+<p>LoRA training is particularly suited for RL, as shown in Thinking Machines's blog <a href="https://thinkingmachines.ai/blog/lora/">LoRA Without Regret</a>. They demonstrate that LoRA can match full fine-tuning for policy-gradient RL, even with rank 1. This stems from the fact that the advantage function only gives <code>~O(1)</code> bits of information per episode, so a rank-1 adapter has enough capacity to absorb it.</p>
+</blockquote>
+<p>从分布式系统工程的视角来看，一个 1.5B 参数量模型的 Rank-1 适配器文件仅有区区几兆字节，而完整模型权重则高达约 3 GB。我们无需在每次迭代后传输庞大的完整模型权重，仅需分发极小的适配器即可。此外，vLLM 支持同时在显存中保留多个 LoRA 适配器：旧的生成采样任务可以使用其启动时对应的旧策略从容执行完毕，而全新的采样任务则能无缝切换并使用最新的策略权重。</p>
+<blockquote>
+<p>From a systems perspective, a rank-1 adapter for a 1.5B model is a few megabytes, whereas the full model is ~3 GB. Instead of sending full weights after every update, we send just the adapter. Furthermore, vLLM can keep several adapters loaded at once: old rollouts finish with the policy they started with, while new rollouts use the latest one.</p>
+</blockquote>
+<h3 id="_4">分布式训练面临的挑战</h3>
+<blockquote>
+<h3 id="the-challenge-of-distributed-training">The Challenge of Distributed Training</h3>
+</blockquote>
+<p>TRL 的 <code>AsyncGRPOTrainer</code> 将模型训练与样本生成解耦，使得两者能够在独立的计算节点上以不同的速率并行运转。然而，当我们尝试在 <a href="https://huggingface.co/docs/huggingface_hub/guides/jobs">Hugging Face Jobs</a> 上落地这一架构时（在该平台上，每个 Job 都是运行在独立虚拟机内的单容器），意味着容器之间既没有共享本地磁盘，也无法通过本地网络 <code>localhost</code> 或预先配置好的多机通信库 NCCL 互通。</p>
+<blockquote>
+<p>TRL's <code>AsyncGRPOTrainer</code> separates training and generation so they can run on separate machines and speeds. However, doing this with <a href="https://huggingface.co/docs/huggingface_hub/guides/jobs">Hugging Face Jobs</a>—where each Job is a single container on a single VM—means no shared local disk and no shared <code>localhost</code> or NCCL group across nodes. </p>
+</blockquote>
+<p>如果采用全量权重同步机制，这种无直接内网互联的环境根本无法扩展。但有了 LoRA 之后，每次需要同步的数据量变得极其轻量。HF Jobs 支持挂载由<a href="https://huggingface.co/docs/hub/storage-buckets">对象存储桶 (Storage Buckets)</a> 支持的数据卷，通过 FUSE 文件系统挂载到每个 Job 的容器内。这样一来，它就扮演了跨节点共享文件系统的角色，甚至完全不需要在计算节点间建立直接的底层网络通道。</p>
+<blockquote>
+<p>With full-weight sync, this setup wouldn't scale. With LoRA, however, the sync data is tiny. HF Jobs provide volumes backed by <a href="https://huggingface.co/docs/hub/storage-buckets">Storage Buckets</a> that can be mounted as a FUSE filesystem in every Job, serving as a shared filesystem across nodes with zero direct network path required.</p>
+</blockquote>
+<p>我们的整体系统架构由以下几个核心部分组成：
+1. 一个运行 <code>AsyncGRPOTrainer</code> 的<strong>训练器 Job (Trainer Job)</strong>，结合了 LoRA 与 FSDP (Fully Sharded Data Parallel) 技术。
+2. <strong>两个 vLLM 推理 Job (vLLM Jobs)</strong>，各自对外提供基座模型及最新 LoRA 适配器的推理服务。
+3. 一个统一挂载在所有三个 Job 中相同路径下的<strong>对象存储桶 (Storage Bucket)</strong>。
+4. 一个轻量级的<strong>反向代理服务器 (Proxy Server)</strong>，负责将采样生成请求精准路由给 KV 缓存前缀匹配度最高的推理副本，并向所有推理副本广播最新的适配器加载指令。</p>
+<blockquote>
+<p>Our architecture consists of:
+1. A <strong>trainer Job</strong> running <code>AsyncGRPOTrainer</code> with LoRA and FSDP.
+2. <strong>Two vLLM Jobs</strong>, each serving the base model plus the latest adapter.
+3. A <strong>Storage Bucket</strong> mounted in all three jobs at the same path.
+4. A <strong>proxy server</strong> that routes rollouts to replicas matching their KV prefix and broadcasts adapter loads.</p>
+</blockquote>
+<hr />
+<h2 id="hugging-face-jobs">架构解析：深度融合 Hugging Face Jobs 与对象存储桶 🪣</h2>
+<blockquote>
+<h2 id="the-architecture-leveraging-hugging-face-jobs-and-storage-buckets">The Architecture: Leveraging Hugging Face Jobs and Storage Buckets 🪣</h2>
+</blockquote>
+<p>纯适配器的同步链路运行机制如下：每隔指定的优化器迭代步数，训练器就会将当前最新的 LoRA 适配器保存到 <code>&lt;output_dir&gt;/.vllm_lora/trl-policy-v{N}</code> 目录下，通过原子重命名操作完成安全发布，随后将其文件路径发送给 vLLM 的 <code>/v1/load_lora_adapter</code> 端点。vLLM 直接从本地挂载的磁盘读取这些文件，此后各生成采样工作节点便能指定请求 <code>model="trl-policy-v{N}"</code>。</p>
+<blockquote>
+<p>The adapter-only sync path works as follows: every few optimizer steps, the trainer saves the adapter under <code>&lt;output_dir&gt;/.vllm_lora/trl-policy-v{N}</code>, publishes it via an atomic rename, and sends its path to vLLM's <code>/v1/load_lora_adapter</code> endpoint. vLLM loads the files from disk, allowing rollout workers to request <code>model="trl-policy-v{N}"</code>.</p>
+</blockquote>
+<p>通过借助 <a href="https://github.com/huggingface/hf-mount"><code>hf-mount</code></a> 工具，在每一个 Job 中将<a href="https://huggingface.co/docs/hub/storage-buckets">对象存储桶 (Storage Bucket)</a> 作为数据卷挂载到完全相同的绝对路径下：</p>
+<blockquote>
+<p>By mounting a <a href="https://huggingface.co/docs/hub/storage-buckets">Storage Bucket</a> as a volume using <a href="https://github.com/huggingface/hf-mount"><code>hf-mount</code></a> at the exact same path in every Job:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1"># every Job gets the same bucket at the same absolute path</span>
+hf<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>run<span class="w"> </span>...<span class="w"> </span>-v<span class="w"> </span>hf://buckets/aminediroHF/asyncgrpo-lora-buckets:/lora<span class="w"> </span>...
+</code></pre></div>
+<p>训练器直接将权重写入 <code>/lora/&lt;run&gt;/.vllm_lora/</code>，而各推理服务器则能从相同的本地路径直接读取，天然透明。</p>
+<blockquote>
+<p>The trainer writes to <code>/lora/&lt;run&gt;/.vllm_lora/</code> and servers read from the same path natively.</p>
+</blockquote>
+<figure class="image text-center">
+<img alt="基于 Hugging Face Jobs 的 LoRA 异步 GRPO 训练。训练器 Job 运行 AsyncGRPOTrainer 与代理，两个 vLLM Job 负责部署基座模型并加载最新适配器，对象存储桶统一挂载在三者的 /lora 路径下。" src=".././images/40d67ce2a5f6.png"/>
+<figcaption>图 1: 三个 Job 与存储桶协同架构。TRL 通过本地网络与代理交互，代理通过 HTTPS 与各副本通信，而适配器目录则直接通过挂载的存储桶流转。</figcaption>
+</figure>
+
+<p>训练检查点 (Checkpoints) 以及最终训练产出的适配器也统一保存在该存储桶中，从而确保即便是使用低成本抢占式实例 (Spot Instances)，任务被中断打断后也能安全无缝地恢复状态继续执行。</p>
+<blockquote>
+<p>Checkpoints and the final adapter are also stored in the bucket, ensuring that ephemeral jobs can be safely preempted and resumed.</p>
+</blockquote>
+<hr />
+<h2 id="_5">三大核心任务构建细节</h2>
+<blockquote>
+<h2 id="the-three-jobs">The Three Jobs</h2>
+</blockquote>
+<h3 id="vllm">vLLM 推理副本</h3>
+<blockquote>
+<h3 id="the-vllm-replicas">The vLLM Replicas</h3>
+</blockquote>
+<p>每个推理副本占用单张 GPU 并直接基于官方镜像 <code>vllm/vllm-openai</code> 运行，开启运行时动态加载 LoRA 权重功能，并预留充足的适配器显存槽位 (Adapter Slots)。</p>
+<blockquote>
+<p>Each replica uses a single GPU and the stock <code>vllm/vllm-openai</code> image, enabling runtime LoRA loading and reserving enough adapter slots.</p>
+</blockquote>
+<p>所需要预留的适配器槽位数量取决于最大陈旧度参数 <code>max_staleness</code>。例如，当设置 <code>max_staleness=4</code> 时，当训练器推进到 <code>v7</code> 版本时，此前在 <code>trl-policy-v3</code> 策略下生成的样本仍可能正在用于训练计算。因此，vLLM 必须在显存中同时保留当前最新策略及其之前的 4 个历史版本，再加上热更新切换时所需预留的 1 个额外缓冲槽位，总共需要配置 <code>--max-loras 6</code>。</p>
+<blockquote>
+<p>The number of adapter slots depends on <code>max_staleness</code>. With <code>max_staleness=4</code>, a sample generated under <code>trl-policy-v3</code> is still used for training while the trainer is at <code>v7</code>. vLLM must serve the current policy plus the four before it, plus one extra slot during the swap, requiring <code>--max-loras 6</code>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1"># --expose 8000                       reachable at https://&lt;job_id&gt;--8000.hf.jobs</span>
+<span class="c1"># -v ...:/lora:ro                     read-only: the server only reads adapters</span>
+<span class="c1"># VLLM_ALLOW_RUNTIME_LORA_UPDATING=1  enables /v1/load_lora_adapter</span>
+<span class="c1"># VLLM_SERVER_DEV_MODE=1              enables /pause, /resume, /server_info (TRL needs all three)</span>
+<span class="c1"># --max-loras 6                       max_staleness=4 -&gt; 4+2 adapter slots</span>
+<span class="k">for</span><span class="w"> </span>replica<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+hf<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>run<span class="w"> </span>--detach<span class="w"> </span>--flavor<span class="w"> </span>h200<span class="w"> </span>--timeout<span class="w"> </span>8h<span class="w"> </span>--secrets<span class="w"> </span>HF_TOKEN<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--expose<span class="w"> </span><span class="m">8000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-v<span class="w"> </span><span class="s2">&quot;hf://buckets/</span><span class="si">${</span><span class="nv">BUCKET</span><span class="si">}</span><span class="s2">:/lora:ro&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-e<span class="w"> </span><span class="nv">VLLM_ALLOW_RUNTIME_LORA_UPDATING</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-e<span class="w"> </span><span class="nv">VLLM_SERVER_DEV_MODE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--<span class="w"> </span>vllm/vllm-openai:v0.27.1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>vllm<span class="w"> </span>serve<span class="w"> </span>Qwen/Qwen2.5-Math-1.5B<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--max-model-len<span class="w"> </span><span class="m">4096</span><span class="w"> </span>--logprobs-mode<span class="w"> </span>processed_logprobs<span class="w"> </span>--generation-config<span class="w"> </span>vllm<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--enable-lora<span class="w"> </span>--max-lora-rank<span class="w"> </span><span class="m">1</span><span class="w"> </span>--max-loras<span class="w"> </span><span class="m">6</span>
+<span class="k">done</span>
+</code></pre></div>
+<h3 id="sanity-set">数据集选择：合理性验证集 (Sanity Set)</h3>
+<blockquote>
+<h3 id="the-dataset-choice-the-sanity-set">The Dataset Choice: The Sanity Set</h3>
+</blockquote>
+<p>我们选用了来自论文《通过 FP16 消除训练与推理不匹配》(Defeating the Training-Inference Mismatch via FP16, Qi et al., 2025) 中的数据集 <a href="https://huggingface.co/datasets/sail/Sanity-Test-R1D-1.5B"><code>sail/Sanity-Test-R1D-1.5B</code></a>。该数据集收录了 1,460 道解题成功率在 20% 到 80% 之间的数学题目，能在 2 小时以内完整跑完一轮迭代，是进行快速验证测试的理想基准。</p>
+<blockquote>
+<p>We used <a href="https://huggingface.co/datasets/sail/Sanity-Test-R1D-1.5B"><code>sail/Sanity-Test-R1D-1.5B</code></a> from <em>Defeating the Training-Inference Mismatch via FP16</em> (Qi et al., 2025). Containing 1,460 math problems with success rates between 20% and 80%, it offers an ideal validation benchmark that can be cycled through in under two hours.</p>
+</blockquote>
+<h3 id="trainer">训练器 (Trainer)</h3>
+<blockquote>
+<h3 id="the-trainer">The Trainer</h3>
+</blockquote>
+<p>训练脚本配置并初始化了带有 LoRA 设置的 <code>AsyncGRPOTrainer</code>：</p>
+<blockquote>
+<p>The trainer script initializes <code>AsyncGRPOTrainer</code> with LoRA configuration:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoraConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trl.experimental.async_grpo</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncGRPOConfig</span><span class="p">,</span> <span class="n">AsyncGRPOTrainer</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">AsyncGRPOConfig</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;/lora/sanity-lora-r1&quot;</span><span class="p">,</span>       <span class="c1"># on the bucket: adapters, checkpoints and the final adapter all land here</span>
+    <span class="n">vllm_server_base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">,</span>   <span class="c1"># the proxy, not a vLLM Job; TRL never sees the Jobs URLs</span>
+    <span class="n">max_staleness</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">weight_sync_steps</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>                     <span class="c1"># publish an adapter every 4 optimizer steps</span>
+    <span class="n">save_strategy</span><span class="o">=</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span> <span class="n">save_steps</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>    <span class="c1"># checkpoints go to the same bucket -&gt; resume after preemption</span>
+    <span class="o">...</span>
+<span class="p">)</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">AsyncGRPOTrainer</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;Qwen/Qwen2.5-Math-1.5B&quot;</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+    <span class="n">peft_config</span><span class="o">=</span><span class="n">LoraConfig</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lora_alpha</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">target_modules</span><span class="o">=</span><span class="s2">&quot;all-linear&quot;</span><span class="p">),</span>  <span class="c1"># plain LoRA vLLM can serve as-is</span>
+    <span class="o">...</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="proxy">代理服务器 (Proxy)</h2>
+<blockquote>
+<h2 id="the-proxy">The Proxy</h2>
+</blockquote>
+<p>在训练器与各 vLLM 推理 Job 之间引入代理服务器是基于以下两点刚性诉求：
+1. HF Jobs 暴露的对外服务端口需要附带 <code>Authorization: Bearer &lt;HF token&gt;</code> 身份验证头。
+2. 我们希望实现多 GPU 并行生成采样，同时避免触发 vLLM 内部复杂的数据并行 (Data Parallel) 约束。</p>
+<blockquote>
+<p>A proxy between the trainer and the vLLM Jobs is required because:
+1. Exposed Job ports require an <code>Authorization: Bearer &lt;HF token&gt;</code> header.
+2. We want multi-GPU generation without triggering vLLM's internal data-parallel constraints.</p>
+</blockquote>
+<p>该代理直接运行在训练器 Job 本地的 <code>127.0.0.1:8000</code>。它的核心职责包括：
+- 将每个采样生成请求智能路由到最可能命中并持有其 KV 缓存的副本节点上。
+- 将改变状态的操作指令（如适配器加载、暂停推理、恢复推理）广播分发到所有推理副本。</p>
+<blockquote>
+<p>The proxy runs locally at <code>127.0.0.1:8000</code> on the trainer Job. It:
+- Routes each rollout request to the replica most likely to hold its KV cache.
+- Broadcasts state-changing requests (adapter loads, pause, resume) to all replicas.</p>
+</blockquote>
+<h3 id="kv">基于 KV 前缀的采样请求路由</h3>
+<blockquote>
+<h3 id="routing-rollouts-by-kv-prefix">Routing Rollouts by KV Prefix</h3>
+</blockquote>
+<p>路由器通过以适配器名称为种子构建 16 个 Token 的分块哈希链。在评估采样请求时，它会比对匹配的前缀长度，兼顾通用的系统提示词 (System Prompt) 与模板，将请求分派给命中率最高的最优副本（若目标副本当前过载，则会自动溢出分流到当前负载最低的副本）。</p>
+<blockquote>
+<p>The router chains 16-token block hashes seeded with the adapter name. When evaluating requests, it compares matching prefix lengths, accounts for common system prompts/templates, and assigns the request to the best-suited replica (or spills it to the least-loaded one if the target replica is overwhelmed).</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_one</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;/v1/load_lora_adapter&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">200</span> <span class="ow">or</span> <span class="s2">&quot;No adapter found&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="ow">or</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">deadline</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">out</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">lora_retry_s</span><span class="p">)</span>          <span class="c1"># this replica&#39;s mount has not seen the directory yet</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">load_one</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">ups</span><span class="p">))</span>
+<span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">st</span> <span class="o">!=</span> <span class="mi">200</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">results</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">send</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;/v1/unload_lora_adapter&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">unload</span><span class="p">)</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">st</span> <span class="o">==</span> <span class="mi">200</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">web</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="mi">504</span> <span class="k">if</span> <span class="n">timed_out</span> <span class="k">else</span> <span class="n">st</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;rolled back on the others&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="_6">全流程运行实验结果</h2>
+<blockquote>
+<h2 id="full-run-results">Full Run Results</h2>
+</blockquote>
+<h3 id="_7">权重同步效率</h3>
+<blockquote>
+<h3 id="weight-sync">Weight Sync</h3>
+</blockquote>
+<ul>
+<li><strong>完整同步耗时</strong>：中位数 (p50) 仅为 8.5 秒</li>
+<li><strong>适配器保存至存储桶</strong>：1.1 秒</li>
+<li><strong>推理副本加载适配器</strong>：约 7 秒</li>
+<li><strong>同步成功率</strong>：在累计 252 次适配器加载中达成 100% 成功率</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Whole sync time:</strong> 8.5 s (p50)</li>
+<li><strong>Adapter save to bucket:</strong> 1.1 s</li>
+<li><strong>Replica adapter acceptance:</strong> ~7 s</li>
+<li><strong>Success rate:</strong> 100% across 252 adapter loads.</li>
+</ul>
+</blockquote>
+<h3 id="_8">路由命中表现</h3>
+<blockquote>
+<h3 id="routing-performance">Routing Performance</h3>
+</blockquote>
+<ul>
+<li><strong>亲和性命中率 (Affinity Hits)</strong>：84.5%</li>
+<li><strong>过载分流率 (Spills)</strong>：1.3%</li>
+<li><strong>未命中/冷启动 (Cold)</strong>：14.2%</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Affinity Hits:</strong> 84.5%</li>
+<li><strong>Spills:</strong> 1.3%</li>
+<li><strong>Unmatched (Cold):</strong> 14.2%</li>
+</ul>
+</blockquote>
+<h3 id="_9">奖励演进趋势</h3>
+<blockquote>
+<h3 id="reward-progression">Reward Progression</h3>
+</blockquote>
+<p>平均奖励得分 (Mean Reward) 从前 20 步的 <strong>0.145</strong> 稳步攀升至最后 20 步的 <strong>0.438</strong>。在全部 126 次权重同步过程中，策略比率 (Policy Ratio) 始终稳定保持在 <code>0.9993</code> 到 <code>1.0004</code> 这一极小波动范围内。</p>
+<blockquote>
+<p>Mean reward climbed from <strong>0.145</strong> over the first 20 steps to <strong>0.438</strong> over the last 20 steps. The policy ratio remained stable between <code>0.9993</code> and <code>1.0004</code> throughout all 126 syncs.</p>
+</blockquote>
+<hr />
+<h2 id="_10">追寻“乒乓瓶颈”：全链路渐进式调优</h2>
+<blockquote>
+<h2 id="chasing-the-bottleneck-ping-pong">Chasing the Bottleneck Ping-Pong</h2>
+</blockquote>
+<p>通过深入分析 <code>perf/rollout_wait_s</code>（生成等待耗时）、<code>rollout/backpressure_s</code>（生成背压耗时）以及队列占用率等系统指标，我们在 5 次循序渐进的实验迭代中逐步完成了流水线调优：</p>
+<blockquote>
+<p>By analyzing metrics like <code>perf/rollout_wait_s</code>, <code>rollout/backpressure_s</code>, and queue occupancy, we optimized our pipeline across 5 progressive runs:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">指标 / 参数</th>
+<th style="text-align: left;">Run 1 (<code>r1-dp2</code>)</th>
+<th style="text-align: left;">Run 5 (<code>r1-dp3-inflight384</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>挂钟总时间 (500 步)</strong></td>
+<td style="text-align: left;">3 小时 27 分钟</td>
+<td style="text-align: left;"><strong>53 分钟</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>单步耗时 (<code>perf/step_s</code>)</strong></td>
+<td style="text-align: left;">22.9 秒</td>
+<td style="text-align: left;">4.8 秒</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>训练器 MFU (<code>perf/mfu_fwd_bwd</code>)</strong></td>
+<td style="text-align: left;">3.9%</td>
+<td style="text-align: left;">23.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>每步样本量 (Samples per Step)</strong></td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">168</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>奖励演进区间</strong></td>
+<td style="text-align: left;">0.145 → 0.438</td>
+<td style="text-align: left;">0.145 → 0.416</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric / Parameter</th>
+<th style="text-align: left;">Run 1 (<code>r1-dp2</code>)</th>
+<th style="text-align: left;">Run 5 (<code>r1-dp3-inflight384</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Wall Clock (500 steps)</strong></td>
+<td style="text-align: left;">3 h 27 min</td>
+<td style="text-align: left;"><strong>53 min</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Step Time (<code>perf/step_s</code>)</strong></td>
+<td style="text-align: left;">22.9 s</td>
+<td style="text-align: left;">4.8 s</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trainer MFU (<code>perf/mfu_fwd_bwd</code>)</strong></td>
+<td style="text-align: left;">3.9%</td>
+<td style="text-align: left;">23.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Samples per Step</strong></td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">168</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Reward Progression</strong></td>
+<td style="text-align: left;">0.145 → 0.438</td>
+<td style="text-align: left;">0.145 → 0.416</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><a href=".././images/50228716b8f0.png" rel="nofollow"><img alt="图 1" src=".././images/50228716b8f0.png"/></a>
+<em>图 1: trackio 运行记录 <code>r1-dp2</code>。在 500 个迭代步中，奖励从 0.15 攀升至 0.44；<code>ratio</code> 稳定保持在 0.9993 到 1.0004 之间。</em></p>
+<blockquote>
+<p><em>Figure 1. trackio run <code>r1-dp2</code>. Reward climbs from 0.15 to 0.44 over 500 steps; <code>ratio</code> stays between 0.9993 and 1.0004.</em></p>
+</blockquote>
+<p><a href=".././images/3d5f9979a75b.png" rel="nofollow"><img alt="图 2" src=".././images/3d5f9979a75b.png"/></a>
+<em>图 2: trackio 运行记录 <code>r1-dp2</code>。系统受限于训练端瓶颈。</em></p>
+<blockquote>
+<p><em>Figure 2. trackio run <code>r1-dp2</code>. Trainer-bound bottleneck.</em></p>
+</blockquote>
+<p><a href=".././images/9025aa1c88d8.png" rel="nofollow"><img alt="图 3" src=".././images/9025aa1c88d8.png"/></a>
+<em>图 3: 打包微批次以提高模型浮点利用率 (MFU) 与整体吞吐量。</em></p>
+<blockquote>
+<p><em>Figure 3. Packing microbatches improves MFU and throughput.</em></p>
+</blockquote>
+<p><a href=".././images/f9a64a9e394b.png" rel="nofollow"><img alt="图 4" src=".././images/f9a64a9e394b.png"/></a>
+<em>图 4: 关闭梯度检查点后，性能瓶颈转移至样本生成阶段。</em></p>
+<blockquote>
+<p><em>Figure 4. Disabling gradient checkpointing shifts the bottleneck to generation.</em></p>
+</blockquote>
+<p><a href=".././images/30e787f2c702.png" rel="nofollow"><img alt="图 5" src=".././images/30e787f2c702.png"/></a>
+<em>图 5: 增加第三个推理副本。</em></p>
+<blockquote>
+<p><em>Figure 5. Adding a third replica.</em></p>
+</blockquote>
+<p><a href=".././images/55bb339665f0.png" rel="nofollow"><img alt="图 6" src=".././images/55bb339665f0.png"/></a>
+<em>图 6: 全部五次 trackio 运行记录曲线重叠对比。</em></p>
+<blockquote>
+<p><em>Figure 6. All five trackio runs overlaid.</em></p>
+</blockquote>
+<p><a href=".././images/1a71391852b3.png" rel="nofollow"><img alt="图 7" src=".././images/1a71391852b3.png"/></a>
+<em>图 7: 对应实际挂钟时间的奖励演进曲线。Run 5 仅耗费 52 分钟即可达到目标，而 Run 1 则耗时 3 小时 26 分钟。</em></p>
+<blockquote>
+<p><em>Figure 7. Reward against wall-clock minutes. Run 5 reaches the goal in 52 minutes instead of 3h 26m.</em></p>
+</blockquote>
+<hr />
+<h2 id="_11">动手实践</h2>
+<blockquote>
+<h2 id="try-it">Try It</h2>
+</blockquote>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/AmineDiro/hfjobs-lora-buckets<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>hfjobs-lora-buckets
+hf<span class="w"> </span>auth<span class="w"> </span>login
+<span class="nv">MAX_STEPS</span><span class="o">=</span><span class="m">20</span><span class="w"> </span><span class="nv">RUN_TAG</span><span class="o">=</span>smoke<span class="w"> </span>./run_all.sh<span class="w"> </span>--wait<span class="w">        </span><span class="c1"># ~15 min, three Jobs, cancels the servers when done</span>
+<span class="nv">MAX_STEPS</span><span class="o">=</span><span class="m">500</span><span class="w"> </span>./run_all.sh<span class="w"> </span>--wait<span class="w">                     </span><span class="c1"># run 1: the reference batch shape, ~3.5 h</span>
+<span class="nv">TOKEN_BUDGET</span><span class="o">=</span><span class="m">16384</span><span class="w"> </span><span class="nv">GRAD_ACCUM</span><span class="o">=</span><span class="m">6</span><span class="w"> </span><span class="nv">GRADIENT_CHECKPOINTING</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">PROXY_LORA_RETRY_S</span><span class="o">=</span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">MAX_INFLIGHT</span><span class="o">=</span><span class="m">384</span><span class="w"> </span><span class="nv">QUEUE_MAXSIZE</span><span class="o">=</span><span class="m">768</span><span class="w"> </span><span class="nv">MAX_STEPS</span><span class="o">=</span><span class="m">500</span><span class="w"> </span>./run_all.sh<span class="w"> </span>--wait<span class="w">   </span><span class="c1"># run 5: same recipe, ~55 min</span>
+</code></pre></div>
+<hr />
+<h2 id="_12">参考文献</h2>
+<blockquote>
+<h2 id="references">References</h2>
+</blockquote>
+<ul>
+<li>John Schulman 等人，<a href="https://thinkingmachines.ai/blog/lora/">LoRA Without Regret</a>，Thinking Machines Lab，2025年9月。</li>
+<li>TRL，<a href="https://huggingface.co/docs/trl/en/async_grpo_trainer"><code>AsyncGRPOTrainer</code></a> 官方技术文档。</li>
+<li>TRL <a href="https://github.com/huggingface/trl/pull/7017">PR #7017</a>：<code>AsyncGRPOTrainer</code> 对 PEFT/LoRA 的支持。</li>
+<li>Hugging Face <a href="https://huggingface.co/docs/huggingface_hub/guides/jobs">Jobs</a> 与 <a href="https://huggingface.co/docs/hub/storage-buckets">Storage Buckets</a>。</li>
+<li>Penghui Qi 等人，<a href="https://huggingface.co/papers/2510.26788">Defeating the Training-Inference Mismatch via FP16</a>，arXiv:2510.26788，2025年。</li>
+</ul>
+<blockquote>
+<ul>
+<li>John Schulman et al., <a href="https://thinkingmachines.ai/blog/lora/">LoRA Without Regret</a>, Thinking Machines Lab, September 2025.</li>
+<li>TRL, <a href="https://huggingface.co/docs/trl/en/async_grpo_trainer"><code>AsyncGRPOTrainer</code></a> documentation.</li>
+<li>TRL <a href="https://github.com/huggingface/trl/pull/7017">PR #7017</a>: PEFT/LoRA support for <code>AsyncGRPOTrainer</code>.</li>
+<li>Hugging Face <a href="https://huggingface.co/docs/huggingface_hub/guides/jobs">Jobs</a> and <a href="https://huggingface.co/docs/hub/storage-buckets">Storage Buckets</a>.</li>
+<li>Penghui Qi et al., <a href="https://huggingface.co/papers/2510.26788">Defeating the Training-Inference Mismatch via FP16</a>, arXiv:2510.26788, 2025.</li>
+</ul>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nc">@article</span><span class="p">{</span><span class="nl">qi2025precisionrl</span><span class="p">,</span>
+<span class="w">  </span><span class="na">title</span><span class="p">=</span><span class="s">{Defeating the Training-Inference Mismatch via FP16}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">author</span><span class="p">=</span><span class="s">{Qi, Penghui and Liu, Zichen and Zhou, Xiangxin and Pang, Tianyu and Du, Chao and Lee, Wee Sun and Lin, Min}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">journal</span><span class="p">=</span><span class="s">{arXiv preprint arXiv:2510.26788}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">year</span><span class="p">=</span><span class="s">{2025}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">强化学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GRPO</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">LoRA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Hugging Face</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">vLLM</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">分布式训练</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

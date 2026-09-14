@@ -5,6 +5,709 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型推理能力对齐与强化学习 (Reinforcement Learning, RL) 探索中，群体相对策略优化 (Group Relative Policy Optimization, GRPO) 已成为提升模型复杂推理能力的关键方法，但传统的分布式多节点训练往往严重依赖昂贵且配置繁琐的 NCCL 高速互联网络与跨节点共享文件系统。针对这一工程痛点，本文介绍了一种轻量优雅的分布式解耦训练方案：结合 TRL 库最新支持的 AsyncGRPOTrainer 与低秩适应 (Low-Rank Adaptation, LoRA) 技术，在相互网络隔离的 Hugging Face Jobs 容器环境中开展异步强化学习。利用仅数兆字节大小的 Rank-1 权重只需通过挂载的云端对象存储桶 (Storage Bucket) 进行同步，配合定制的反向代理服务器实现基于 KV 缓存前缀的智能路由与状态广播，彻底摆脱了复杂的跨节点 NCCL 通信依赖。通过进一步优化微批次打包、禁用梯度检查点并增大并发在飞请求上限，训练耗时从 3 小时 27 分钟大幅缩短至 53 分钟，获得了高达 3.9 倍的速度提升。
+
+---
+
+# 基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践
+
+&gt; # Async GRPO with LoRA across HF Jobs: A Bucket, a Proxy, and No NCCL
+
+## 核心概要
+
+&gt; ## Summary
+
+本文探讨了如何借助 **AsyncGRPOTrainer** 与 **LoRA** (Low-Rank Adaptation) 低秩适应技术，在分布式 **Hugging Face Jobs** 之间运行异步强化学习 (Reinforcement Learning, RL) 训练，且全程无需依赖跨节点的共享网络文件系统或复杂的 NCCL 集群通信。
+
+&gt; This article explores how to run asynchronous Reinforcement Learning (RL) training via **AsyncGRPOTrainer** using **LoRA** (Low-Rank Adaptation) across distributed **Hugging Face Jobs** without relying on a shared network file system or NCCL. 
+
+本文的核心亮点包括：
+- **轻量级权重同步**：由于 Rank-1 的 LoRA 适配器仅有区区几兆字节大小，我们可以轻松通过各个独立 Job 间挂载的**对象存储桶 (Storage Bucket)** 进行文件同步，从而完全避开繁重的多节点网络直接通信。
+- **代理路由与状态广播**：通过一个定制的代理服务器统一处理认证请求头，将生成采样任务 (Rollouts) 智能路由到匹配其 KV 缓存 (KV-cache) 前缀的副本节点，并将最新的适配器更新广播同步给所有副本。
+- **显著的性能飞跃**：通过精细调优训练微批次 (Microbatches)、关闭梯度检查点 (Gradient Checkpointing) 并提高在飞请求 (In-flight) 上限，500 步的整体训练时间从 **3 小时 27 分钟锐减至 53 分钟**（取得了高达 3.9 倍的加速比）。
+
+&gt; Key highlights include:
+&gt; - **Lightweight Synchronization:** Because rank-1 LoRA adapters are only a few megabytes, they can easily sync via a **Storage Bucket** mounted across separate jobs, avoiding heavy multi-node communication.
+&gt; - **Proxy Routing &amp; Broadcasting:** A custom proxy server handles authentication headers, routes rollouts to replicas matching their KV-cache prefix, and broadcasts adapter updates to all replicas.
+&gt; - **Performance Gains:** By tweaking training microbatches, disabling gradient checkpointing, and raising in-flight limits, training time for 500 steps drops from **3 hours 27 minutes down to 53 minutes** (a 3.9× speedup).
+
+---
+
+## 背景引言
+
+&gt; ## Introduction
+
+随着 [PR #7017](https://github.com/huggingface/trl/pull/7017) 的合并（并在 TRL v1.14 版本中正式发布），TRL 库的 [`AsyncGRPOTrainer`](https://huggingface.co/docs/trl/en/async_grpo_trainer) 迎来了对 LoRA 的原生支持。现在的异步训练器可以只针对轻量级 LoRA 适配器展开训练，无需更新完整模型，并且仅需将适配器参数实时同步到 vLLM 推理引擎中。本文将详细介绍一个基于该特性搭建的真实工程项目，在该项目中，模型的训练与推理彻底解耦，不再共享同一台物理机。
+
+&gt; LoRA support recently landed in TRL's [`AsyncGRPOTrainer`](https://huggingface.co/docs/trl/en/async_grpo_trainer) with [PR #7017](https://github.com/huggingface/trl/pull/7017) (shipped in TRL v1.14). The asynchronous trainer can now train a LoRA adapter instead of the full model, syncing only the adapter to vLLM. This post covers a real-world project built on top of it, where training and inference no longer share a machine.
+
+LoRA 训练在强化学习场景中表现出奇契合。正如 Thinking Machines 在其博文 [LoRA Without Regret](https://thinkingmachines.ai/blog/lora/) 中所揭示的，在基于策略梯度的强化学习中，哪怕仅使用 Rank 1 的 LoRA，其效果也能与全量微调 (Full Fine-Tuning) 旗鼓相当。背后的数学机理在于：每个回合中优势函数 (Advantage Function) 仅能提供大约 `~O(1)` 比特的信息增益，因此极低秩的 Rank-1 适配器便具备足够的容量去吸收并掌握这些信号。
+
+&gt; LoRA training is particularly suited for RL, as shown in Thinking Machines's blog [LoRA Without Regret](https://thinkingmachines.ai/blog/lora/). They demonstrate that LoRA can match full fine-tuning for policy-gradient RL, even with rank 1. This stems from the fact that the advantage function only gives `~O(1)` bits of information per episode, so a rank-1 adapter has enough capacity to absorb it.
+
+从分布式系统工程的视角来看，一个 1.5B 参数量模型的 Rank-1 适配器文件仅有区区几兆字节，而完整模型权重则高达约 3 GB。我们无需在每次迭代后传输庞大的完整模型权重，仅需分发极小的适配器即可。此外，vLLM 支持同时在显存中保留多个 LoRA 适配器：旧的生成采样任务可以使用其启动时对应的旧策略从容执行完毕，而全新的采样任务则能无缝切换并使用最新的策略权重。
+
+&gt; From a systems perspective, a rank-1 adapter for a 1.5B model is a few megabytes, whereas the full model is ~3 GB. Instead of sending full weights after every update, we send just the adapter. Furthermore, vLLM can keep several adapters loaded at once: old rollouts finish with the policy they started with, while new rollouts use the latest one.</description>
+    </item>
+    <item>
+      <title>几乎零开销的状态-预测解耦架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/几乎零开销的状态-预测解耦架构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/几乎零开销的状态-预测解耦架构/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在传统自回归大语言模型 (Large Language Model, LLM) 中，隐藏状态往往要同时承担两项相互冲突的繁重任务：一方面需要高度压缩并总结历史上下文，另一方面又必须竭力预测下一个 Token。状态-预测解耦 (State–Prediction Separation, SPS) 技术虽然通过将单次前向传播拆分为“状态流”与“预测流”成功化解了这一矛盾，但以往方案却带来了约 1.9 倍的惊人预训练计算开销。本文提出了一套革新机制，借助巧妙的“免费暂停 Token” (Free Pause Token) 设计，使预测流在推理过程中不写入任何键值缓存 (KV Cache) 且不占用额外上下文位置，真正实现了推理阶段的近乎零开销。同时，配合双阶段拆分、共享门控 FFN 等多项训练期优化，在几乎不增加端到端耗时的情况下全面提升了模型预测精度，为大模型基础架构设计开辟了兼顾高收益与低成本的新路径。
+
+---
+
+## 📌 内容概要
+
+&gt; ## Summary
+
+状态-预测解耦 (State–Prediction Separation, SPS) 是一项旨在减轻语言模型双重竞争负担的架构技术——通过将模型的前向传播过程拆分为“状态流”与“预测流”，使模型无需同时兼顾“总结历史上下文”与“预测下一个 Token”这两个相互掣肘的目标。然而，传统的 SPS 方法计算代价高昂，通常需要消耗标准预训练浮点运算量 (FLOPs) 的约 $1.9\times$。
+
+&gt; State–prediction separation (SPS) is a technique that relieves language models of competing burdens—summarizing the context versus predicting the next token—by splitting the forward pass into a state stream and a prediction stream. However, traditional SPS is computationally expensive, typically costing roughly $1.9\times$ the standard pretraining FLOPs. 
+
+本文提出了一系列优化机制，不仅让状态-预测解耦在推理阶段变得**近乎零开销**，同时还大幅削减了训练阶段的额外负担：
+
+&gt; This paper introduces mechanisms to make state–prediction separation **almost free** during inference while drastically reducing training overhead:
+
+* **免费暂停 Token (Free Pause Token) ：** 构建一种完全不向显存写入任何键值 (Keys / Values) 的预测流，使其直接复用序列中现有的位置，既不会膨胀上下文长度，也无需额外的 KV 缓存 (KV Cache) 或解码步数。
+* **训练期加速优化 (Training Optimizations) ：** 引入两阶段拆分算法 (完整保留高效的 FlashAttention 内核算子) 、$w=0$ 预测窗口、共享门控前馈网络 (Shared Gated FFN) 以及仅在训练尾声分阶段引入解耦策略。
+
+&gt; * **Free Pause Token:** A prediction stream that writes no keys or values, allowing it to leverage existing sequence positions without increasing context length, requiring a KV cache, or adding decoding steps.
+&gt; * **Training Optimizations:** Incorporates a two-pass split (preserving FlashAttention kernels), a $w=0$ prediction window, a shared gated FFN, and phasing the separation toward the tail of training.
+
+这些优化方案协同发力，在等浮点算力 (Isoflop) 、等参数量 (Isoparameter) 与等训练 Token 量 (Isotoken) 的公平对比下，相比标准按次词预测训练的 Transformer 实现了显著性能飞跃，同时将实际物理耗时与硬件开销压至最低。
+
+&gt; Together, these adjustments achieve an *isoflop*, *isoparameter*, and *isotoken* improvement over standard next-token-trained transformers while minimizing wall-clock and hardware overhead.
+
+---
+
+## 🔍 论文摘要
+
+&gt; ## Abstract
+
+状态-预测解耦 (SPS) 通过将前向传播划分为状态流与预测流，有效卸下了语言模型隐藏状态肩负的两大对立重担——即压缩上下文语义与预测下一个 Token。这种解耦固然收效显著，但代价也极其高昂：预测流本质上是对整个主干网络的二次前向遍历，使得预训练所需的 FLOPs 膨胀至约 $1.9\times$；而在采用灵活的注意力掩码时，实际训练物理耗时更是进一步恶化。
+
+&gt; State–prediction separation (SPS) relieves a language model's hidden state of two competing burdens—summarizing the context and predicting the next token—by splitting the forward pass into a state stream and a prediction stream. The separation works, but it is expensive: the prediction stream is a second pass over the whole backbone, costing $\sim$$1.9\times$ the pretraining FLOPs, and even more in terms of wall-clock time when using a flexible attention mask. 
+
+本篇论文致力于让状态-预测解耦变得近乎免费。我们将解耦设计推向极致，提出了“免费暂停 Token”机制：构建一种完全不写入任何键 (Keys) 或值 (Values) 的预测流，从而顺理成章地“搭便车”复用序列现有的位置坐标。在 10 亿 (1B) 参数规模的模型实测中，该机制为标准 Transformer 的下一个 Token 预测精度带来了 2 到 3 centinats 的切实提升；而且因为它没有引入任何额外的位置开销，因而在推理端完全没有代价——既不增加上下文长度，无需消耗 KV 缓存，也无需多余的解码步骤，延迟几乎毫无增加；至于推理阶段轻微增加的理论浮点计算量，由于当前推理吞吐的核心瓶颈并不在计算本身，因此基本可以忽略不计。
+
+&gt; This paper makes state–prediction separation almost free. We take the separation to its limit with a free pause token: a prediction stream that writes no keys or values at all and so rides the sequence's existing positions. It improves next-token prediction of a standard Transformer by 2-3 centinats in practice on a 1B parameter model, and because it adds no position it costs nothing at inference—no added context length, no KV cache, no decode steps, and essentially no latency, with the growth in inference flops typically irrelevant as it is not the active bottleneck on throughput. 
+
+如此一来，所有的计算额外开销便被完整转移并浓缩在训练阶段。为此，我们设计了四重核心机制来极限压缩训练成本：
+
+&gt; The cost is therefore entirely in training where we use four mechanisms to drive it down: 
+
+1. **两阶段拆分机制 (Two-Pass Split) ：** 确保高效的 FlashAttention 内核算子始终可用；
+2. **$w{=}0$ 预测窗口 ($w{=}0$ Prediction Window) ：** 极限裁剪预测流所关注的上下文窗口；
+3. **共享门控 FFN (Shared Gated FFN) ：** 每个物理位置仅计算一次前馈网络，而非每个数据流各自重复计算；
+4. **尾程分阶段解耦 (Phasing Separation) ：** 将解耦机制巧妙安排在预训练运行周期的尾声阶段切入。
+
+&gt; 1. A two-pass split that keeps FlashAttention kernels viable, 
+&gt; 2. The $w{=}0$ prediction window, 
+&gt; 3. A shared gated FFN that evaluates one FFN per position rather than one per stream, and 
+&gt; 4. Phasing the separation onto the tail of the run. 
+
+多项优化齐头并进，使得相对于高度优化的预训练基线管线，整体物理训练时间开销被大幅压低至 $1.33\times$，同时成功挽回了经典 SPS 约 94% 的性能增益；在更温和平滑的“质量/算力”权衡曲线下，训练耗时增幅甚至可以低至 $1.09\times$。此外，共享 FFN 优化还同步削减了推理所需的原始浮点运算量。最终，该研究达成了在等算力 (Isoflop) 、等参数 (Isoparameter) 以及等 Token (Isotoken) 条件下，相对于标准单次预测 Transformer 的全方位实质突破。
+
+&gt; Together these bring the overhead versus an optimized pretraining pipeline to $1.33\times$ wall-clock while recovering ~94% of the gain compared to SPS, and to as low as $1.09\times$ along a graceful quality/compute tradeoff. Furthermore, the FFN optimization reduces the raw flops required at inference time. The result is an isoflop, isoparameter, and isotoken improvement over standard next token trained transformers.
+
+---
+
+## 🔗 全文阅读与相关资源
+
+&gt; ## Links and Resources
+
+* **全文阅读链接：**
+  * [阅读 PDF 论文](https://arxiv.org/pdf/2609.03807)
+  * [网页版 HTML (实验性)](https://arxiv.org/html/2609.03807v4)
+  * [TeX 源码包](https://arxiv.org/src/2609.03807)
+* **开源授权：** [知识共享署名 4.0 国际许可 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
+
+&gt; * **Full-Text Options:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2609.03807)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.03807v4)
+&gt;   * [TeX Source](https://arxiv.org/src/2609.03807)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
+    </item>
+    <item>
+      <title>修复 NZXT Signal 4K30 采集卡 (第二部分)：攻克绿粉色画面显示异常</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/修复-NZXT-Signal-4K30-采集卡-第二部分-攻克绿粉色画面显示异常/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/修复-NZXT-Signal-4K30-采集卡-第二部分-攻克绿粉色画面显示异常/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在成功修复了一块因电感虚焊而无法开机的二手 NZXT Signal 4K30 视频采集卡后，作者在接入特定 720p60 的 HDMI 信号源时遭遇了诡异的“绿粉色画面”异常。借助 AI (Claude) 的反编译辅助与硬件 UART 调试分析，作者顺藤摸瓜排查到设备芯片所采用的 ITE 官方驱动源码，精准锁定了因 DVI 模式信号识别错误导致误配 YUV 4:2:2 色彩格式的固件 Bug。通过逆向固件升级程序并仅修改 1 字节的汇编指令，作者成功修复了这一顽疾，让被官方弃用的老硬件重焕生机，并向社区公开了完整的免拆机刷机补丁。
+
+---
+
+# 修复 NZXT Signal 4K30 采集卡 (第二部分)：攻克绿粉色画面显示异常
+
+&gt; # Fixing an NZXT Signal 4K30, Part 2: The Green/Pink Video Bug
+
+## 概要
+
+&gt; ## Summary
+
+在通过重新焊接松脱的电感引脚、成功救活了一块在二手平台淘来的“故障” NZXT Signal 4K30 视频采集卡后，作者又发现了一个棘手的画面色彩 Bug：当接入某个特定的 720p60 HDMI 信号源时，采集到的视频画面居然严重偏色，呈现出失真的绿粉相间色调。在 AI (Claude) 的协助下，作者对该采集卡的固件以及板载 IT6805 HDMI 接收芯片的原厂驱动进行了深入逆向分析，最终将罪魁祸首锁定在 DVI 模式信号处理代码中的逻辑缺陷——该缺陷引发了 YUV 与 RGB 颜色模式的错误匹配。随后，作者通过逆向工程剖析了固件升级工具，仅通过修改底层机器码中的单个字节汇编指令便彻底解决了该问题，恢复了正常的视频色彩采集，并将这一补丁开源分享给了社区。
+
+&gt; After successfully repairing a dead, thrifted NZXT Signal 4K30 capture card by fixing a bad solder joint, the author discovered a stubborn color bug: a specific 720p60 HDMI source caused the captured video to appear in distorted green and pink hues. With the help of AI (Claude) to analyze the device's firmware and vendor drivers for the IT6805 HDMI receiver IC, the author traced the issue to a YUV vs. RGB mismatch caused by a bug in the handling of DVI-mode signals. By reverse-engineering the firmware updater and patching a single byte of assembly, the author successfully fixed the bug, restored proper color capture, and published the patch for the community.
+
+---
+
+&gt; ---
+
+## 故障背景
+
+&gt; ## Background on the Issue
+
+去年，我在 eBay 上廉价淘到了一台有故障的 NZXT Signal 4K30 USB 视频采集卡并[成功完成了硬件修复](https://www.downtowndougbrown.com/2025/01/easy-repair-of-a-defective-nzxt-signal-4k30-capture-card/)。在修好电路板上一颗接触不良的电感焊点、让设备顺利恢复供电后，我拿各种不同的 HDMI 设备对它进行了测试。正如我在上一篇文章中所提到的：
+
+&gt; Last year, I [repaired an NZXT Signal 4K30 USB capture device](https://www.downtowndougbrown.com/2025/01/easy-repair-of-a-defective-nzxt-signal-4k30-capture-card/) bought cheaply on eBay. After fixing a bad solder joint on an inductor that restored power to the board, I tested it with various HDMI sources. As I noted in my initial post:
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; 我确实遇到了一个这块卡“极不感冒”的 720p60 HDMI 信号源——采集出来的画面全变成了粉色和绿色。
+&gt; 
+&gt; I did find one 720p60 HDMI source that it doesn’t like — the captured video shows up as pink and green.
+
+在网络论坛上，其他玩家在使用 PS5 和 Nintendo Switch 等游戏主机时也曾反馈过类似的画面偏色问题 (参见 Reddit 讨论帖 [1](https://www.reddit.com/r/NZXT/comments/17csgqa/picture_is_green_and_pink_from_signal_4k30/) 与 [2](https://www.reddit.com/r/obs/comments/16l8efg/pink_and_green_screen/))。下面就是从那个“刺头”信号源采集到的实际画面截图：
+
+&gt; Similar issues had been reported by other users online regarding devices like the PS5 and Nintendo Switch (see Reddit threads [1](https://www.reddit.com/r/NZXT/comments/17csgqa/picture_is_green_and_pink_from_signal_4k30/) and [2](https://www.reddit.com/r/obs/comments/16l8efg/pink_and_green_screen/)). Here is what the captured video looked like from the problematic source:
+
+&lt;figure&gt;&lt;a href="https://www.downtowndougbrown.com/wp-content/uploads/2026/09/yuv422.jpg" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank"&gt;&lt;img fetchpriority="high" decoding="async" width="1024" height="576" src="./images/7cf0bff403eb.jpg" alt="" srcset="./images/7cf0bff403eb.jpg 1024w, http://localhost/proxy/55wFvJYYkZWCSoXgAbm3JH7YQu0SUJxtRmoyug0EjfE=/aHR0cHM6Ly93d3cuZG93bnRvd25kb3VnYnJvd24uY29tL3dwLWNvbnRlbnQvdXBsb2Fkcy8yMDI2LzA5L3l1djQyMi0zMDB4MTY5LmpwZw== 300w, http://localhost/proxy/bJOY9EJ_CFY-PnUDK-i2BGY_kkTg34oLIaT4v3A2ZwM=/aHR0cHM6Ly93d3cuZG93bnRvd25kb3VnYnJvd24uY29tL3dwLWNvbnRlbnQvdXBsb2Fkcy8yMDI2LzA5L3l1djQyMi03Njh4NDMyLmpwZw== 768w, http://localhost/proxy/ijKmt2oEdMt4P1zUQePA0VQV549egU5ZNRS7f1w3aT0=/aHR0cHM6Ly93d3cuZG93bnRvd25kb3VnYnJvd24uY29tL3dwLWNvbnRlbnQvdXBsb2Fkcy8yMDI2LzA5L3l1djQyMi5qcGc= 1280w" sizes="(max-width: 1024px) 100vw, 1024px" loading="lazy"/&gt;&lt;/a&gt;&lt;/figure&gt;
+
+画面色彩彻底错乱了——呈现出诡异的黄绿色和紫红色，这是极其典型的 RGB 与 YUV 视频色彩空间配置错位现象。鉴于 NZXT 似乎已经完全退出了视频采集卡市场 (各大主流零售渠道均已下架该设备，相关资料也被打入冷门支持归档)，指望联系官方售后出补丁显然是一条死胡同。
+
+&gt; The colors were completely wrong—green and purple—which is classic behavior for an RGB vs. YUV video mismatch. Because NZXT appears to have exited the capture card market (the device is no longer sold on major retailers and is relegated to support pages), contacting them for a fix was a dead end. 
+
+---
+
+&gt; ---
+
+## 借助 AI 展开逆向排查
+
+&gt; ## Investigating with AI
+
+最近一段时间，我一直在尝试利用 Claude 协助进行深度的逆向工程与底层漏洞排查工作。例如之前为 Elgato Game Capture HD60 S 编写[通过逆向工程构建的 Linux 内核 V4L2 驱动](https://github.com/dougg3/hd60s-linux-driver) (当时我[借助 Ghidra 工具进行了反汇编分析](https://www.downtowndougbrown.com/2024/09/fixing-an-elgato-hd60-s-hdmi-capture-device-with-the-help-of-ghidra/))。于是我决定看看 Claude 能否帮我搞定这个困扰已久的固件幽灵。
+
+&gt; Recently, I've been using Claude for in-depth reverse engineering and bug investigations, such as writing a [reverse-engineered Linux kernel V4L2 driver](https://github.com/dougg3/hd60s-linux-driver) for the Elgato Game Capture HD60 S (which I [analyzed via Ghidra](https://www.downtowndougbrown.com/2024/09/fixing-an-elgato-hd60-s-hdmi-capture-device-with-the-help-of-ghidra/)). I decided to see if Claude could help solve this lingering firmware problem.
+
+我给 Claude 提供了以下材料：
+* 在硬件维修过程中梳理出的设备元器件与芯片文档；
+* 来自 Reddit 社区关于该 Bug 的现象描述与截图；
+* [NZXT 于 2022 年发布的最终版固件更新包](https://support.nzxt.com/hc/en-us/articles/35642755429019-Signal-4K30-Downloads)；
+* Signal 4K30 采集卡内部采用的 [ITE IT6805 HDMI 接收芯片驱动代码仓库](https://github.com/Qiuzixing/IP5000-A302/tree/b7f61f612672301979b6f062129f8ffd0163c45d/modules/ast_modules/it6805)。
+
+&gt; I fed Claude:
+&gt; * Documentation of the device's components gathered during the hardware repair.
+&gt; * Descriptions and images of the bug from Reddit.
+&gt; * [NZXT’s final 2022 firmware update](https://support.nzxt.com/hc/en-us/articles/35642755429019-Signal-4K30-Downloads).
+&gt; * A GitHub repository containing [ITE’s driver for the IT6805 HDMI receiver IC](https://github.com/Qiuzixing/IP5000-A302/tree/b7f61f612672301979b6f062129f8ffd0163c45d/modules/ast_modules/it6805) used by the Signal 4K30.
+
+不到 15 分钟，Claude 便赞同了我的猜想：这极大概率是 YUV 与 RGB 格式匹配错误引起的。为了进一步收窄排查范围，我使用便携式示波器找到了微控制器 (MCU) 未标明引脚定义的调试排针上的 TX (发送) 引脚，并在连入问题信号源时抓取了它的 UART 串口输出日志。结合我此前编写 Elgato HD60 S 驱动时积累的经验，我们赫然发现：**输入信号源设备当前居然是以 DVI 模式而非标准 HDMI 模式进行输出的**，这意味着传输的数据流中缺少了诸如 AVI InfoFrames 这类包含色彩元数据的附加数据包。
+
+&gt; Within 15 minutes, Claude agreed it was likely a YUV vs. RGB mismatch. To narrow it down, I used a portable oscilloscope to identify the TX pin on the microcontroller's unmarked debug header and captured its UART output while connected to the problematic source. Combined with details from my Elgato HD60 S driver, we discovered that **the source device was outputting in DVI mode instead of HDMI mode**, meaning it lacked extra data packets like AVI InfoFrames.
+
+---
+
+&gt; ---
+
+## 在驱动源码中揪出根因
+
+&gt; ## Pinpointing the Bug in the Driver Code
+
+Claude 在 [ITE 原厂的 IT6805 芯片驱动源码](https://github.com/Qiuzixing/IP5000-A302/blob/b7f61f612672301979b6f062129f8ffd0163c45d/modules/ast_modules/it6805/iTE6805_SYS.c)中敏锐地发现了一段极度可疑的代码，而这段代码同样原封不动地存在于 NZXT 的固件中：
+
+&gt; Claude highlighted a suspicious section in [ITE’s stock IT6805 driver](https://github.com/Qiuzixing/IP5000-A302/blob/b7f61f612672301979b6f062129f8ffd0163c45d/modules/ast_modules/it6805/iTE6805_SYS.c) that also existed in NZXT's firmware:
+
+```c
+// REG6B[5:4]: Reg_ColMod_Set Input color mode set 00: RGB mode - 01: YUV422 mode, 10: YUV444 mode, 11: YUV420 mode
+chgbank(0);
+if (iTE6805_Check_HDMI_OR_DVI_Mode(iTE6805_DATA.CurrentPort) == MODE_HDMI)
+{
+    HDMIRX_DEBUG_PRINT(("---- CSC HDMI mode ----\n"));
+    ...
+    hdmirxset(0x6B, 0x30, iTE6805_DATA.AVIInfoFrame_Input_ColorFormat &lt;&lt; 4);// seting input format by info frame ??? do not need ???
+    ...
+}
+else
+{
+    ...
+    HDMIRX_DEBUG_PRINT(("---- CSC DVI mode ----\n"));
+    hdmirxset(0x6B, 0x30, 0x10);                        // seting input format to RGB
+    ...
+}
+```</description>
+    </item>
+    <item>
+      <title>UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在以 Claude Code 等为代表的多轮 AI 智能体 (AI Agent) 深度交互场景中，长系统提示与历史执行记录等长前缀被频繁复用，使得键值缓存 (KV Cache) 产生的显存占用呈爆炸式激增，成为限制 GPU 吞吐与高并发服务能力的头号瓶颈。针对这一极端内存受限的工业级部署难题，研究团队提出了创新的 4-bit KV 缓存压缩框架 **UltraQuant**。该方案创造性地结合了非对称 K/V 量化策略、Walsh-Hadamard 旋转变换以及针对 AMD CDNA4 架构量身定制的硬件加速解码内核，在削减一半 KV 显存开销的同时，保持了几乎无损的任务精度。真实生产环境重放测试表明，UltraQuant 在长上下文与高并发压力下实现了相比原生 BF16 最高 4.38 倍的有效请求吞吐量提升，为大规模落地智能体推理提供了高性价比的硬件级解法。
+
+---
+
+## 📌 内容概要
+
+&gt; ## Summary
+
+**UltraQuant** 是一套专为在显存受限与高并发严苛条件下运行的“重度上下文” AI 智能体 (AI Agent) 所设计的全新 4 位键值缓存 (KV Cache) 压缩框架。通过将下游任务质量、缓存常驻留存率以及线上推理服务吞吐量进行联合端到端优化，UltraQuant 彻底破解了多轮智能体工作流中因超长文本前缀被反复调用而导致的巨大显存压力难题。
+
+&gt; **UltraQuant** is a novel 4-bit key-value (KV) cache compression framework designed specifically for context-heavy AI agents operating under memory-constrained, high-concurrency conditions. By jointly optimizing task quality, cache residency, and serving throughput, UltraQuant addresses the massive memory pressure introduced by multi-round agent workflows where long text prefixes are repeatedly reused. 
+
+其核心技术亮点包括：
+
+&gt; Key technical highlights include:
+
+* **鲁棒的 4-bit 量化设计 (Robust 4-bit Design) ：** 采用针对 K 与 V 张量的非对称处理方案、Walsh-Hadamard 旋转变换、移除 QJL (Quick Johnson-Lindenstrauss) 以及分块缩放 (Block-Scale) 变体设计。
+* **硬件加速服务优化 (Hardware-Accelerated Serving) ：** 引入了高度优化的解码注意力内核算子，并为基于 CDNA4 架构的 AMD GPU 量身打造了 FP4 近似计算路径 (支持 FP8 查询、FP4 KV 张量、UE8M0 分组缩放系数以及原生的 Scaled-MFMA 指令加速) 。
+* **令人瞩目的性能飞跃 (Significant Performance Gains) ：** 在真实生产环境 Claude Code 的执行轨迹回放测试中，UltraQuant 相比原生 BF16 基线取得了高达 **2.71x** (在 MiniMax-M2.5 上) 和 **4.38x** (在 Qwen3-235B 上) 的达标请求吞吐量提升，在将 KV 显存开销直接砍半的同时，性能表现比肩甚至超越了硬件级 FP8 KV 缓存。
+
+&gt; * **Robust 4-bit Design:** Uses asymmetric K/V treatment, Walsh-Hadamard rotation, removal of QJL (Quick Johnson-Lindenstrauss), and block-scale variants.
+&gt; * **Hardware-Accelerated Serving:** Introduces optimized decode-attention kernels and an FP4 approximation path tailored for AMD GPUs using CDNA4 architecture (featuring FP8 queries, FP4 KV tensors, UE8M0 group scales, and native scaled-MFMA support).
+&gt; * **Significant Performance Gains:** Replays of production Claude Code traces show UltraQuant delivers **2.71x** (MiniMax-M2.5) and **4.38x** (Qwen3-235B) the qualified-request throughput of standard BF16 baselines, matching or exceeding hardware FP8 KV while cutting KV memory footprint in half.
+
+---
+
+## 📄 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 标识符：** [arXiv:2606.20474](https://arxiv.org/abs/2606.20474) [cs.LG]
+* **论文作者：** Inesh Chakrabarti, David Limpus, Aditi Ghai Rana, Bowen Bao, Spandan Tiwari, Thiago Crepaldi, Ashish Sirasao
+* **主学科领域：** 机器学习 (`cs.LG`)
+* **次要学科领域：** 人工智能 (`cs.AI`)、系统性能 (`cs.PF`)
+* **收录会议/期刊：** EMNLP 2026 Industry Track (11 页，9 幅图表)
+* **提交历史版本：** 
+  * v1: 2026 年 6 月 18 日
+  * v3 (当前版本): 2026 年 9 月 11 日
+
+&gt; * **arXiv ID:** [arXiv:2606.20474](https://arxiv.org/abs/2606.20474) [cs.LG]
+&gt; * **Authors:** Inesh Chakrabarti, David Limpus, Aditi Ghai Rana, Bowen Bao, Spandan Tiwari, Thiago Crepaldi, Ashish Sirasao
+&gt; * **Primary Subject:** Machine Learning (`cs.LG`)
+&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Performance (`cs.PF`)
+&gt; * **Conference/Venue:** EMNLP 2026 Industry Track (11 pages, 9 figures)
+&gt; * **Submission History:** 
+&gt;   * v1: June 18, 2026
+&gt;   * v3 (Current): September 11, 2026
+
+---
+
+## 🔍 论文摘要
+
+&gt; ## Abstract
+
+重度依赖上下文的智能体系统给键值缓存 (KV Cache) 带来了沉重的显存压力：长文本前缀在众多短轮次交互中被高频复用，而并发能力的高低直接决定了服务系统能否让 GPU 算力保持满载。针对这一核心应用场景，我们系统性地探索了 4-bit KV 缓存压缩技术，以 TurboQuant 风格的旋转变换与码本量化作为精度基准锚点，并以 vLLM 的 FP8 KV 缓存作为工业部署的工程锚点。本项研究主要包含三大核心贡献：
+
+&gt; Context-heavy agents place substantial pressure on the key-value (KV) cache: long prefixes are reused across many short turns, while concurrency determines whether the serving system can keep GPUs utilized. We study 4-bit KV-cache compression for this setting, using TurboQuant-style rotation and codebook quantization as a quality anchor and vLLM FP8 KV caching as the deployment anchor. We report three contributions. 
+
+1. **工作负载建模 (Workload Framing) ：** 我们围绕多轮智能体工作负载重新构建了 4-bit KV 缓存的设计范式，在此范式下，任务完成质量、缓存驻留率与服务吞吐量必须作为一个整体进行联合评估。
+2. **鲁棒实用的工程设计 (Robust Practical Design) ：** 我们阐述了使 4-bit 链路保持高鲁棒性所必需的工程设计抉择，包括针对 K/V 张量的非对称处理、Walsh-Hadamard 旋转变换、舍弃 QJL 方案以及引入分块缩放变体。
+3. **硬件级服务推理优化 (Hardware Serving Optimizations) ：** 我们展示了针对 AMD GPU 的深度服务优化成果，包括高度优化的解码注意力内核，以及 UltraQuant 专属的 FP4 近似计算路径——该路径利用 FP8 查询、FP4 KV 张量、UE8M0 分组缩放因子，并在 CDNA4 硬件架构上提供了原生的 Scaled-MFMA 矩阵计算支持。
+
+&gt; 1. **Workload Framing:** We frame 4-bit KV caching around multi-round agent workloads where task quality, cache residency, and serving throughput must be measured jointly.
+&gt; 2. **Robust Practical Design:** We describe the practical design choices needed to make the 4-bit path robust, including asymmetric K/V treatment, Walsh-Hadamard rotation, QJL removal, and block-scale variants.
+&gt; 3. **Hardware Serving Optimizations:** We present serving optimizations on AMD GPUs, including optimized decode-attention kernels and UltraQuant, an FP4 approximation path that uses FP8 queries, FP4 KV tensors, UE8M0 group scales, and native scaled-MFMA support on CDNA4. 
+
+在对真实生产环境 Claude Code 追踪轨迹的自适应 SLO (Adaptive-SLO) 回放测试中，UltraQuant 相比 BF16 基线分别达成了 **2.71x** (搭载 MiniMax-M2.5) 与 **4.38x** (搭载 Qwen3-235B) 的达标请求吞吐量，在仅占用一半 KV 字节空间的情况下，性能比肩甚至超越了硬件级 FP8 KV 方案。UltraQuant 在长上下文、高并发且内存严重受限的服务场景中能够发挥出极其巨大的加速效益。
+
+&gt; On an adaptive-SLO replay of production Claude Code traces, UltraQuant sustains **2.71x** (MiniMax-M2.5) and **4.38x** (Qwen3-235B) the qualified-request throughput of the BF16 baseline, matching or exceeding hardware FP8 KV while using half the KV bytes. UltraQuant delivers its largest gains in long-context, high-concurrency, memory-constrained serving regimes.
+
+---
+
+## 🔗 访问与资源链接
+
+&gt; ## Access &amp; Resources
+
+* **全文阅读链接：**
+  * [阅读 PDF 论文](https://arxiv.org/pdf/2606.20474)
+  * [网页版 HTML (实验性)](https://arxiv.org/html/2606.20474v3)
+  * [TeX 源码包](https://arxiv.org/src/2606.20474)
+* **外部学术引用与检索工具：**
+  * [Google 学术检索 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2606.20474)
+  * [Semantic Scholar 检索](https://api.semanticscholar.org/arXiv:2606.20474)
+  * [NASA ADS 天体物理数据系统检索](https://ui.adsabs.harvard.edu/abs/arXiv:2606.20474)
+
+&gt; * **Full-Text Options:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2606.20474)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2606.20474v3)
+&gt;   * [TeX Source](https://arxiv.org/src/2606.20474)
+&gt; * **External Citations &amp; Tools:** 
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2606.20474)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2606.20474)
+&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2606.20474)</description>
+    </item>
+    <item>
+      <title>NVIDIA 开源 OSMO：一份 YAML 编排物理 AI 训练、仿真与真机测试</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/NVIDIA-开源-OSMO-一份-YAML-编排物理-AI-训练-仿真与真机测试/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/NVIDIA-开源-OSMO-一份-YAML-编排物理-AI-训练-仿真与真机测试/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>物理 AI (Physical AI) 与具身智能机器人的研发流程极其复杂，传统上往往割裂在数据中心训练集群、工作站物理仿真环境以及机器人机载边缘计算硬件这三大异构层级之间，迫使工程师维护大量繁重的胶水脚本和孤立调度器。为破解这一“三电脑”难题，NVIDIA 正式开源了 Kubernetes 原生的工作流编排工具——OSMO。开发团队只需编写一份简洁的 YAML 配置文件，即可在统一控制平面下无缝调度从分布式训练、物理仿真到硬件在环真机测试的端到端管线。该工具的开源大幅降低了异构算力编排的技术门槛，为物理 AI 与机器人系统的规模化工程落地注入了强大动力。
+
+---
+
+## 概述
+
+&gt; ## Summary
+
+在传统的机器人开发过程中，工程师们常常饱受“算力碎片化”的困扰：数据中心里的训练集群、工作站上的物理仿真环境，以及机器人机载的边缘计算硬件，往往各自为战，需要依赖五花八门的调度器和脆弱的“胶水脚本”强行串联。**NVIDIA OSMO** 正是为了化解这一痛点而生的开源云原生 (Kubernetes-native) 工作流编排调度工具。开发团队仅凭一份简洁的 YAML 配置文件，就能无缝协同跨越异构算力层级的物理 AI (Physical AI) 研发全链路——从模型训练、物理仿真再到硬件在环 (Hardware-in-the-Loop, HIL) 真机测试，彻底摆脱了编写繁琐底层基础设施代码的噩梦。
+
+&gt; Robot development traditionally suffers from a fragmented compute problem, requiring separate schedulers and glue scripts across data-center training clusters, workstation simulation environments, and edge hardware. **NVIDIA OSMO** solves this challenge as an open-source, Kubernetes-native workflow orchestrator. By leveraging a single YAML file, development teams can seamlessly orchestrate physical AI pipelines—spanning model training, physics simulation, and hardware-in-the-loop (HIL) robot testing—across heterogeneous compute tiers without writing complex infrastructure code.
+
+---
+
+## “三电脑”难题
+
+&gt; ## The Three Computer Problem
+
+NVIDIA 将物理 AI 的开发挑战形象地归纳为 **“三电脑”难题 (Three Computer Problem)**：
+
+&gt; NVIDIA frames physical AI as a **three computer problem**:
+
+1. **模型训练**：在数据中心级 GPU (如 GB200 或 H100 集群) 上大规模执行；
+2. **物理仿真**：在工作站级 RTX 硬件上运行，用于物理动力学解算和传感器画面的高逼真渲染；
+3. **部署与测试**：在 Jetson AGX Thor 等边缘端计算设备上运行，开展硬件在环验证。
+
+&gt; 1. **Training:** Executed on data-center GPUs (such as GB200 or H100 clusters).
+&gt; 2. **Simulation:** Handled on workstation-class RTX hardware for physics and sensor rendering.
+&gt; 3. **Deployment &amp; Testing:** Run on edge devices like the Jetson AGX Thor for hardware-in-the-loop (HIL) validation.
+
+在以往的工作流中，每个层级都高度依赖孤立的工具链，导致各阶段交接时摩擦不断，研发人员不得不编写大量脆弱的自定义编排脚本。**[NVIDIA OSMO](https://github.com/NVIDIA/OSMO)** 的破局思路在于：将这三大计算层级视为同一个统一控制平面下的不同后端资源。在工作流定义中，开发者只需指定特定的目标 *平台* (Platform) (例如 `gb200`、`rtx-pro-6000` 或 `jetson-agx-thor`)，便能彻底屏蔽底层繁杂的基础设施细节，由 OSMO 智能地将任务分发路由至最合适的计算资源池中。
+
+&gt; Traditionally, each tier relies on isolated tooling, resulting in friction-heavy handoffs and custom orchestration scripts. **[NVIDIA OSMO](https://github.com/NVIDIA/OSMO)** addresses this by treating all three tiers as backends under a unified control plane. Workflows abstract away underlying infrastructure by targeting a specific *platform* (e.g., `gb200`, `rtx-pro-6000`, or `jetson-agx-thor`), allowing OSMO to intelligently route tasks to appropriate compute pools.
+
+---
+
+## 工作流是如何运作的
+
+&gt; ## What a Workflow Looks Like
+
+一个标准的 OSMO 管线可以在单份配置文件内无缝衔接不同阶段的串行任务与数据流：
+
+&gt; A canonical pipeline links data across sequential tasks within a single configuration:
+
+* **`simulation`**：在 `rtx-pro-6000` 工作站硬件上运行 Isaac Sim 仿真容器；
+* **`train-policy`**：在由 8 块 GPU 组成的 `gb200` 集群上启动 PyTorch 训练容器，直接消费并读取上游仿真任务输出的数据；
+* **`evaluate-thor`**：将训练完成的策略部署到 `jetson-agx-thor` 边缘端设备上运行 ROS 应用程序，并将评测结果持久化记录到指定命名的数据集中。
+
+&gt; * **`simulation`**: Executes an Isaac Sim container on `rtx-pro-6000` hardware.
+&gt; * **`train-policy`**: Runs a PyTorch container on an 8-GPU `gb200` cluster, consuming the simulation task's output.
+&gt; * **`evaluate-thor`**: Deploys a ROS application on a `jetson-agx-thor` edge device using the trained policy, recording results to a named dataset.
+
+在具体实现上，任务间的依赖关系通过 `inputs` 进行声明，数据持久化由 `outputs` 统筹，而硬件资源的精准分配则完全交由 `platform` 决定。根据 **[官方用户指南 (User Guide)](https://nvidia.github.io/OSMO/main/user_guide/)**，OSMO 还支持诸多高阶配置特性，包括串行与并行任务组、用于参数化管线的 Jinja 模板渲染、自动化失败重试策略，以及跨算力池的基于优先级的抢占式调度。
+
+&gt; Task dependencies are managed via `inputs`, persistence is handled through `outputs`, and resource allocation is determined by `platform`. The **[User Guide](https://nvidia.github.io/OSMO/main/user_guide/)** supports advanced configurations including serial and parallel task groups, Jinja templating for parameterized pipelines, automated retry policies, and priority-based preemption across compute pools.
+
+---
+
+## 核心能力
+
+&gt; ## Key Capabilities
+
+* **跨平台可移植性**：实现“一次编写，随处部署”。无论是在笔记本电脑上通过 Docker/KIND 进行本地调试，还是无缝横向扩展至 EKS、AKS、GKE 以及完全物理隔离 (Air-gapped) 的本地私有集群。在 6.3.0 版本中，OSMO 还引入了支持多云提供商的 `deploy-k8s.sh` 脚本以简化集群部署，并深度集成了 MinIO、Azure Blob 及 AWS S3 等主流存储方案。
+* **交互式开发体验**：开发者可以直接将本地的 VS Code、Jupyter 或 SSH 会话挂载连接至远程 GPU 节点，使用 `exec` 交互式进入正在运行的容器任务，并通过 `osmo workflow rsync download` 命令实现文件的近实时双向同步。
+* **先进的智能调度**：在 **[NVIDIA KAI Scheduler](https://github.com/NVIDIA/KAI-Scheduler)** 的强力驱动下，OSMO 针对多 GPU 工作负载支持 NVLink 拓扑感知的计算放置，并提供细粒度的组级超时控制，防止某项停滞卡死的任务阻塞其他关联工作流。
+* **企业级安全与身份认证**：具备完备的企业级安全管控体系，内置基于角色的访问控制 (RBAC) 授权 Sidecar 容器、OAuth2 代理集成、Envoy 网关处的 TLS 终端终止，并原生支持公有云工作负载身份认证机制 (如 Azure Workload Identity 与 AWS IRSA)。
+* **AI 智能体原生集成**：通过专门的 **[AGENTS.md](https://github.com/NVIDIA/OSMO/blob/main/AGENTS.md)** 指南和模型上下文协议 (Model Context Protocol, MCP) 部署路径提供开箱即用的原生支持，OSMO 能够与 **Claude Code、OpenAI Codex 以及 Cursor** 等主流编程智能体深度融合，实现工作流的自动化提交、运行监控与故障排查。
+
+&gt; * **Portability:** Write once and deploy locally via Docker/KIND on a laptop, or scale out to EKS, AKS, GKE, and air-gapped on-premise clusters. The 6.3.0 release introduces a multi-provider `deploy-k8s.sh` script to streamline provisioning alongside storage integrations for MinIO, Azure Blob, and AWS S3.
+&gt; * **Interactive Development:** Developers can attach VS Code, Jupyter, or SSH sessions directly to remote GPU nodes, `exec` into active tasks, and utilize `osmo workflow rsync download` for real-time file synchronization.
+&gt; * **Advanced Scheduling:** Powered by the **[NVIDIA KAI Scheduler](https://github.com/NVIDIA/KAI-Scheduler)**, OSMO supports NVLink topology-aware placement for multi-GPU workloads and configurable per-group timeouts to prevent stalled tasks from blocking sibling workflows.
+&gt; * **Security and Identity:** Features robust enterprise controls including an RBAC authorization sidecar, OAuth2 proxy integration, TLS termination at the Envoy gateway, and cloud workload identity support (Azure Workload Identity, AWS IRSA).
+&gt; * **Agent Integration:** Featuring native support via **[AGENTS.md](https://github.com/NVIDIA/OSMO/blob/main/AGENTS.md)** and Model Context Protocol (MCP) deployment paths, OSMO integrates directly with coding agents like **Claude Code, OpenAI Codex, and Cursor** to automate workflow submission, monitoring, and debugging.
+
+---
+
+## 核心要点
+
+&gt; ## Key Takeaways
+
+* **统一步调与协同编排**：只需一份统一的 YAML 配置，即可跨越不同的 Kubernetes 集群协调贯通模型训练、仿真渲染与边缘真机评测。
+* **开箱即用，生产就绪**：基于 Apache-2.0 开源协议发布，可通过 NGC Helm Chart 一键部署，并提供基于 KIND 的本地快速上手工作流。
+* **企业级特性全面加持**：依托 KAI Scheduler 实现具备 NVLink 拓扑感知的任务调度，配备细粒度超时控制与原生的 OAuth2/RBAC 安全认证体系。
+* **生态成熟，久经实战**：已在 NVIDIA 内部的 GR00T、Isaac Lab、Isaac Sim 及 Isaac ROS 等前沿具身智能框架中历经高强度实战检验。
+* **弃用与升级预警**：独立的 dataset 命令行工具与旧版 `/datasets` API 自 6.3 版本起已正式弃用，并将在 6.4 版本中彻底移除，全面转向由工作流原生接管的数据集输出机制。
+
+&gt; * **Unified Orchestration:** Coordinate training, simulation, and edge testing from a single YAML configuration across diverse Kubernetes clusters.
+&gt; * **Production Ready:** Apache-2.0 licensed, available via NGC Helm charts, and features a local KIND quickstart workflow.
+&gt; * **Enterprise Features:** Leverages KAI Scheduler with NVLink-aware placement, granular timeouts, and native OAuth2/RBAC security.
+&gt; * **Ecosystem Proven:** Battle-tested across frameworks like GR00T, Isaac Lab, Isaac Sim, and Isaac ROS.
+&gt; * **Deprecation Notice:** The standalone dataset CLI and legacy `/datasets` API are deprecated as of version 6.3 and removed in 6.4 in favor of workflow-managed dataset outputs.
+
+---
+
+## 相关资源与链接
+
+&gt; ## Resources &amp; Links
+
+* **[GitHub 开源仓库](https://github.com/NVIDIA/OSMO)**
+* **[官方文档指南](https://nvidia.github.io/OSMO/main/user_guide/)**
+* **[版本发布说明](https://github.com/NVIDIA/OSMO/releases)**
+* **[Cookbook 实战范例](https://github.com/NVIDIA/OSMO/blob/main/cookbook)**
+* **[NVIDIA OSMO 产品主页](https://developer.nvidia.com/osmo)**
+
+&gt; * **[GitHub Repository](https://github.com/NVIDIA/OSMO)**
+&gt; * **[Official Documentation](https://nvidia.github.io/OSMO/main/user_guide/)**
+&gt; * **[Release Notes](https://github.com/NVIDIA/OSMO/releases)**
+&gt; * **[Cookbook Examples](https://github.com/NVIDIA/OSMO/blob/main/cookbook)**
+&gt; * **[NVIDIA OSMO Product Page](https://developer.nvidia.com/osmo)**</description>
+    </item>
+    <item>
+      <title>AsyncFlow：面向高效大模型后训练的异步流式强化学习框架</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/AsyncFlow-面向高效大模型后训练的异步流式强化学习框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/AsyncFlow-面向高效大模型后训练的异步流式强化学习框架/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在当今大语言模型 (Large Language Model, LLM) 的研发体系中，后训练阶段的强化学习 (Reinforcement Learning, RL) 已成为激发模型深度推理与泛化能力的关键核心技术。然而，现有的强化学习系统架构往往面临严峻的技术困境：同机部署架构难以应对大规模集群扩展，任务解耦架构则受阻于繁复的数据流交互与计算硬件的空转等待，且大多数主流框架均与特定的训练或推理底层引擎深度绑定。针对这一系列痛点，研究团队提出了专为高效后训练量身打造的异步流式强化学习框架 AsyncFlow。该框架凭借全流式分布式数据存储与调度传输模块、允许在参数陈旧度阈值内延迟更新的异步生产者-消费者工作流，以及架构层面上与底层引擎彻底解耦的面向服务接口设计，成功消除了硬件资源空转，取得了相比业内顶尖基准平均 1.59 倍的显著吞吐量提升，为下一代大规模强化学习训练系统的设计提供了重要的工程启示。
+
+---
+
+# AsyncFlow：面向高效大模型后训练的异步流式强化学习框架
+
+&gt; # AsyncFlow: An Asynchronous Streaming RL Framework for Efficient LLM Post-Training
+
+## 核心概述
+
+&gt; ## Summary
+
+强化学习 (Reinforcement Learning, RL) 已成为大语言模型 (Large Language Model, LLM) 后训练阶段不可或缺的关键技术。然而，传统的强化学习框架面临着严峻的局限性：将训练与生成任务同机部署的系统往往受限于扩展性瓶颈；将任务物理分离部署的系统则在处理复杂数据流与硬件资源空转等待方面步履维艰；此外，绝大多数现有框架都与特定的训练或推理引擎深度绑定，缺乏通用性。
+
+&gt; Reinforcement learning (RL) has become critical in the post-training phase of Large Language Models (LLMs). However, traditional RL frameworks face severe limitations: task-collocated systems suffer from scalability bottlenecks, task-separated systems struggle with complex dataflows and resource idling, and most frameworks are tightly coupled to specific training or inference engines. 
+
+为了突破这些瓶颈，研究人员推出了 **AsyncFlow**——一个专为大模型后训练设计的异步流式强化学习框架，其核心特性包括：
+* **分布式数据存储与传输模块**：提供全局全景式数据管理与细粒度调度能力，天然支持全流式传输，实现自动化流水线重叠与动态负载均衡。
+* **异步生产者-消费者工作流**：在预设的参数陈旧度 (Staleness) 容忍阈值内，策略性推迟参数同步更新，从而将计算设备的空闲等待时间压缩至最低。
+* **计算架构完全解耦**：彻底摆脱与底层具体训练和推理引擎的强绑定，通过面向服务的 API 接口对外开放，提供高度模块化与灵活定制的使用体验。
+* **卓越的系统性能**：相较于业界领先的基准系统，取得了平均 **1.59 倍**的端到端吞吐量提升。
+
+&gt; To overcome these challenges, researchers introduce **AsyncFlow**, an asynchronous streaming RL framework featuring:
+&gt; * A **distributed data storage and transfer module** for panoramic data management, fine-grained scheduling, automated pipeline overlapping, and dynamic load balancing.
+&gt; * An **asynchronous producer-consumer workflow** designed to minimize computational idleness by strategically deferring parameter updates within predefined staleness thresholds.
+&gt; * **Architectural decoupling** from underlying training and inference engines, exposed via service-oriented user interfaces for a modular and customizable experience.
+&gt; * **Superior performance**, demonstrating an average throughput increase of **1.59x** compared to state-of-the-art baselines.
+
+---
+
+## 论文元数据与发布信息
+
+&gt; ## Metadata &amp; Publication Details
+
+| 字段 | 详情 |
+| :--- | :--- |
+| **arXiv ID** | [arXiv:2507.01663](https://arxiv.org/abs/2507.01663) [cs.LG] |
+| **主分类** | 机器学习 (`cs.LG`)、人工智能 (`cs.AI`) |
+| **提交历史** | • **v1:** 2025年7月2日&lt;br&gt;• **v2 (当前版本):** 2026年9月11日 |
+| **DOI** | [10.48550/arXiv.2507.01663](https://doi.org/10.48550/arXiv.2507.01663) |
+| **许可协议** | [Creative Commons Attribution-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/) ![license icon](./images/5283893486a4.png) |
+
+&gt; | Field | Details |
+&gt; | :--- | :--- |
+&gt; | **arXiv ID** | [arXiv:2507.01663](https://arxiv.org/abs/2507.01663) [cs.LG] |
+&gt; | **Primary Subject** | Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`) |
+&gt; | **Submission History** | • **v1:** Jul 2, 2025&lt;br&gt;• **v2 (Current):** Sep 11, 2026 |
+&gt; | **DOI** | [10.48550/arXiv.2507.01663](https://doi.org/10.48550/arXiv.2507.01663) |
+&gt; | **License** | [Creative Commons Attribution-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/) ![license icon](./images/5283893486a4.png) |
+
+---
+
+## 作者信息
+
+&gt; ## Authors
+
+* Zhenyu Han, Ansheng You, Haibo Wang, Kui Luo, Guang Yang, Wenqi Shi, Menglong Chen, Sicheng Zhang, Zeshun Lan, Chunshi Deng, Huazhong Ji, Wenjie Liu, Yu Huang, Yixiang Zhang, Chenyi Pan, Jing Wang, Xin Huang, Chunsheng Li, Jianping Wu
+
+&gt; * Zhenyu Han, Ansheng You, Haibo Wang, Kui Luo, Guang Yang, Wenqi Shi, Menglong Chen, Sicheng Zhang, Zeshun Lan, Chunshi Deng, Huazhong Ji, Wenjie Liu, Yu Huang, Yixiang Zhang, Chenyi Pan, Jing Wang, Xin Huang, Chunsheng Li, Jianping Wu
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+强化学习 (Reinforcement Learning, RL) 已成为大语言模型 (Large Language Model, LLM) 后训练阶段的关键支柱技术。传统的同机共存强化学习框架面临着严峻的扩展性瓶颈，而任务解耦分离的强化学习框架在管理复杂数据流与解决计算资源闲置方面也遭遇重重挑战。此外，多数现存框架与底层的大模型训练或推理引擎深度绑定，难以灵活支持自主定制的计算引擎。为了应对这些挑战，我们提出了专为高效后训练量身打造的异步流式强化学习框架 AsyncFlow。具体而言，我们引入了一个分布式数据存储与传输模块，以全流式传输的方式提供全局全景式数据管理与细粒度调度能力。该架构天然支持强化学习各项任务之间的自动化流水线重叠与动态负载均衡。此外，我们提出了一种异步生产者-消费者工作流，通过在陈旧度容忍阈值内策略性推迟参数更新过程，从而最大限度减少计算资源的等待与闲置。最后，AsyncFlow 的核心功能在架构层面上与底层训练及推理引擎完全解耦，并封装为面向服务的用户接口，带来了高度模块化与可定制的用户体验。大量的实验结果表明，与当前最先进的基准系统相比，AsyncFlow 实现了平均 1.59 倍的吞吐量提升。本文所提出的系统架构为设计下一代强化学习训练系统提供了极具落地价值的实践见解。
+
+&gt; Reinforcement learning (RL) has become a pivotal technology in the post-training phase of large language models (LLMs). Traditional task-collocated RL frameworks suffer from significant scalability bottlenecks, while task-separated RL frameworks face challenges in managing complex dataflows and resolving resource idling. Furthermore, most existing frameworks are tightly coupled with LLM training or inference engines, making them difficult to support custom-designed engines. To address these challenges, we propose AsyncFlow, an asynchronous streaming RL framework tailored for efficient post-training. Specifically, we introduce a distributed data storage and transfer module that provides panoramic data management and fine-grained scheduling capabilities in a fully streamed manner. This architecture inherently enables automated pipeline overlapping among RL tasks and dynamic load-balancing. Moreover, we propose an asynchronous producer-consumer workflow, which is engineered to minimize computational idleness by strategically deferring the parameter update process within staleness thresholds. Finally, the core capabilities of AsyncFlow are architecturally decoupled from underlying training and inference engines and encapsulated by service-oriented user interfaces, offering a modular and customizable user experience. Extensive experiments demonstrate an average throughput of 1.59x compared to the state-of-the-art baseline. The architecture presented in this work provides actionable insights for designing next-generation RL training systems.
+
+---
+
+## 全文获取与相关资源
+
+&gt; ## Access Full-Text &amp; Resources
+
+* **PDF 版本：** [查看 PDF](https://arxiv.org/pdf/2507.01663)
+* **HTML 在线版：** [arXiv HTML (实验性)](https://arxiv.org/html/2507.01663v2)
+* **TeX 源码：** [源代码 (.tar.gz)](https://arxiv.org/src/2507.01663)
+
+&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2507.01663)
+&gt; * **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2507.01663v2)
+&gt; * **TeX Source:** [Source Code (.tar.gz)](https://arxiv.org/src/2507.01663)</description>
+    </item>
+    <item>
+      <title>2026 年各类 Unix 系统的平均负载机制深度剖析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-15/2026-年各类-Unix-系统的平均负载机制深度剖析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/2026-年各类-Unix-系统的平均负载机制深度剖析/</guid>
+      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在 Unix 与类 Unix 操作系统的运维监控中，“平均负载 (load average)”一直是最核心却也最容易被误读的性能指标。早在十年前，作者就曾对各类开源 Unix 系统的负载统计口径进行过深入梳理；如今时隔十年，作者结合最新的内核源码再度带来现代视角的权威解读。调查表明，几乎所有的现代类 Unix 阵营成员 (包括 NetBSD、OpenBSD、FreeBSD 和 Illumos) 都高度一致地将平均负载严格定义为“运行中与可运行进程”的数量；唯独 Linux 独树一帜，将处于不可中断等待状态 (TASK_UNINTERRUPTIBLE，如磁盘 I/O 或硬件驱动阻塞) 的任务一并纳入计算。本文不仅带你穿透各家内核源码的具体实现差异，更追溯了 Linux 这一特殊设计背后的历史渊源与技术权衡。
+
+---
+
+# 2026 年各类 Unix 系统的平均负载机制深度剖析
+
+&gt; # The Many Load Averages of Unix(es) in 2026
+
+## 概要
+
+&gt; ## Summary
+
+在对各大开源 Unix 系统中“平均负载 (load average)”定义差异展开首次调查的整整十年后，本文结合最新的内核源码链接，对这一经典主题进行了全新的梳理。核心发现与十年前依然保持一致：几乎所有的 Unix 系统都严格将平均负载定义为“正在运行中与处于就绪态的可运行进程”的总数；唯独 Linux 独树一帜，将处于不可中断等待状态 (例如正在等待磁盘 I/O 或特定硬件驱动响应) 的进程同样计入了负载之中。
+
+&gt; A decade after investigating the divergent definitions of "load average" across various free Unixes, this article provides a modern refresher with current kernel source links. The core finding remains consistent: while virtually all Unix systems define the load average strictly by the count of running and runnable processes, Linux stands apart by also including processes in uninterruptible states (such as those waiting on disk I/O and specific hardware drivers).
+
+---
+
+&gt; ---
+
+## 引言
+
+&gt; ## Introduction
+
+十年前，我曾写过一篇题为[《Unix 家族各自为政的平均负载》](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix)的文章，探讨不同开源 Unix 系统对“平均负载”的定义差异，并揭示了它们之间惊人的分歧。时光荏苒，许多系统的底层实现已然演进——再加上我也意识到十年前自己对某些 BSD 系统的机制理解可能存在偏差——是时候结合当前最新的内核源码链接来做一次全新的知识更新了。本次重点聚焦于 Linux 以及各大 `*BSDs` 系统。
+
+&gt; A decade ago, I wrote [The many load averages of Unix(es)](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix) to explore how different free Unixes defined "load average," which revealed significant divergence. Since things have changed—and acknowledging potential misunderstandings of the BSDs a decade ago—it is time for a refresher complete with current kernel source links, focusing primarily on Linux and the `*BSDs`.
+
+一句话概括核心结论：**除了 Linux 以外的所有现代类 Unix 系统，大体上都一致认同平均负载只统计可运行的进程；唯有 Linux 会额外将等待某些特定资源的进程 (尤其是等待磁盘 I/O 的任务) 一并计算在内。**
+
+&gt; To summarize: **everyone except Linux agrees that the load average counts only runnable processes (more or less); only Linux also includes processes waiting on certain sorts of things, especially disk I/O.**
+
+*(关于 BSD 家族的这段演进历史，可参见[十年前的第一篇文章](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix)。)*
+
+&gt; *(For the historical path of the BSDs, see [the first entry](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix).)*
+
+---
+
+&gt; ---
+
+## NetBSD
+
+&gt; ## NetBSD
+
+在所有系统中，[NetBSD](https://netbsd.org/) 的实现最为一目了然，因为它的平均负载计算逻辑高度集中在单一源码文件中：[`sys/kern/kern_sync.c`](https://github.com/NetBSD/src/blob/trunk/sys/kern/kern_synch.c#L1192)。
+
+&gt; [NetBSD](https://netbsd.org/) offers the most accessible situation because its load average calculation is consolidated in a single place: [`sys/kern/kern_sync.c`](https://github.com/NetBSD/src/blob/trunk/sys/kern/kern_synch.c#L1192). 
+
+NetBSD 的平均负载统计涵盖：
+* 所有正在运行或处于就绪态的可运行进程；
+* 正在通过 `fork` 系统调用创建中的子进程；
+* *在当前时钟滴答 (tick) 周期内*刚进入睡眠状态的进程 (这是由于 [`sched_lwp_stats()`](https://github.com/NetBSD/src/blob/trunk/sys/kern/kern_runq.c#L1035) 恰好在负载计算函数检查之前递增了 `l-&gt;l_slptime` 计数)。
+
+&gt; NetBSD's load average counts:
+&gt; * All processes that are running or runnable
+&gt; * Processes being created via a `fork`
+&gt; * Processes that went to sleep *during the current tick* (because [`sched_lwp_stats()`](https://github.com/NetBSD/src/blob/trunk/sys/kern/kern_runq.c#L1035) increments `l-&gt;l_slptime` right before the load average calculation checks it).
+
+尽管 NetBSD 的 [`getloadavg(3)`](https://man.netbsd.org/getloadavg.3) 手册页并未显式写明第三条这一技术细节，但这也合情合理：毕竟在当前滴答周期内刚休眠的进程，在被统计之前的大部分时间里很可能都在保持运行。
+
+&gt; While the NetBSD [`getloadavg(3)`](https://man.netbsd.org/getloadavg.3) manual page doesn't explicitly document this nuance, it is forgivable; processes that went to sleep this tick were presumably running earlier in the tick before being counted.
+
+---
+
+&gt; ---
+
+## OpenBSD
+
+&gt; ## OpenBSD
+
+在 [OpenBSD](https://openbsd.org/) 中，平均负载是根据分配给各个 CPU 的可运行任务数量汇总计算而来的 ([源码参考 1](https://github.com/openbsd/src/blob/master/sys/kern/sched_bsd.c#L113))。每当进程进入或离开运行队列时，该计数都会被动态更新 ([源码参考 2](https://github.com/openbsd/src/blob/master/sys/kern/kern_sched.c#L268))。
+
+&gt; In [OpenBSD](https://openbsd.org/), the load average is computed from the number of runnable tasks assigned to each CPU ([cf](https://github.com/openbsd/src/blob/master/sys/kern/sched_bsd.c#L113)). This count is dynamically updated as processes enter and leave the run queue ([cf](https://github.com/openbsd/src/blob/master/sys/kern/kern_sched.c#L268)). 
+
+OpenBSD 的 [`getloadavg(3)`](https://man.openbsd.org/man3/getloadavg.3) 手册页明确记录了这一定义。虽然早期 OpenBSD 曾在历史上把某些休眠线程也视作运行态，但[该机制已于 2017 年被彻底移除](https://github.com/openbsd/src/commit/92dafbefb3c1065c1d820ac18017916cb2ec3be9)。
+
+&gt; The OpenBSD [`getloadavg(3)`](https://man.openbsd.org/man3/getloadavg.3) explicitly documents this definition. Although OpenBSD historically considered some sleeping threads to be running, [this behavior was removed in 2017](https://github.com/openbsd/src/commit/92dafbefb3c1065c1d820ac18017916cb2ec3be9).
+
+*(与我十年前的认知相反，我现在确信 NetBSD 和 OpenBSD 中的 `slptime` 字段统计的是时钟滴答数，而非实际秒数。)*
+
+&gt; *(Contrary to my belief a decade ago, I now believe the `slptime` fields in NetBSD and OpenBSD count ticks rather than seconds.)*
+
+---
+
+&gt; ---
+
+## FreeBSD
+
+&gt; ## FreeBSD
+
+在 FreeBSD 中，平均负载依赖于一组封装略显晦涩的函数所维护的运行计数值 ([源码参考 1](https://cgit.freebsd.org/src/tree/sys/kern/kern_synch.c#n571)，[源码参考 2](https://cgit.freebsd.org/src/tree/sys/kern/sched_4bsd.c#n262))。据我所知，它主要是追踪进程 (线程) 进出运行队列的动态，这与 FreeBSD 的 [`getloadavg(3)`](https://man.freebsd.org/cgi/man.cgi?query=getloadavg&amp;apropos=0&amp;sektion=3&amp;manpath=FreeBSD+15.1-RELEASE&amp;format=html) 手册中给出的常规描述完全吻合。
+
+&gt; In FreeBSD, the load average relies on a running count managed via a somewhat opaque set of functions ([cf](https://cgit.freebsd.org/src/tree/sys/kern/kern_synch.c#n571), [also](https://cgit.freebsd.org/src/tree/sys/kern/sched_4bsd.c#n262)). As far as I can tell, this tracks processes (threads) as they enter and exit the run queues, aligning with the generic claims of the FreeBSD [`getloadavg(3)`](https://man.freebsd.org/cgi/man.cgi?query=getloadavg&amp;apropos=0&amp;sektion=3&amp;manpath=FreeBSD+15.1-RELEASE&amp;format=html) manual.
+
+---
+
+&gt; ---
+
+## Illumos
+
+&gt; ## Illumos
+
+理解 Illumos 内核的具体实现需要花费不少精力，但从现有代码来看，它似乎同样完全依赖于正在运行以及就绪可运行的进程数量 ([源码参考](https://github.com/illumos/illumos-gate/blob/master/usr/src/uts/common/os/clock.c#L1081))。这既契合了 Illumos 的 [`getloadavg(3)`](https://www.illumos.org/man/3C/getloadavg) 手册说明，也印证了[我十年前所描述的情况](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix)。
+
+&gt; Understanding the Illumos kernel's implementation requires more effort than I am willing to spend here, but it appears to rely exclusively on running and runnable processes ([cf](https://github.com/illumos/illumos-gate/blob/master/usr/src/uts/common/os/clock.c#L1081)). This matches the behavior claimed by the Illumos [`getloadavg(3)`](https://www.illumos.org/man/3C/getloadavg) and mirrors [the situation I described a decade ago](https://utcc.utoronto.ca/~cks/space/blog/unix/ManyLoadAveragesOfUnix).
+
+---
+
+&gt; ---
+
+## Linux：独树一帜的特例
+
+&gt; ## Linux: The Odd One Out
+
+Linux 是整个家族中的绝对特例。尽管 Linux 的 [`getloadavg(3)`](https://www.man7.org/linux/man-pages/man3/getloadavg.3.html) 手册宣称平均负载仅统计就绪可运行的进程，但 [`proc_loadavg(5)`](https://www.man7.org/linux/man-pages/man5/proc_loadavg.5.html) 手册在技术层面上更为准确，而内核源码更是将这一点阐释得清清楚楚。
+
+&gt; Linux is the outlier. While the Linux [`getloadavg(3)`](https://www.man7.org/linux/man-pages/man3/getloadavg.3.html) claims that the load average only counts runnable processes, [`proc_loadavg(5)`](https://www.man7.org/linux/man-pages/man5/proc_loadavg.5.html) is technically correct, and the kernel source code makes it explicit.
+
+[`kernel/sched/loadavg.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/loadavg.c) 中的注释和代码均证实：Linux 的平均负载在计算可运行任务之外，还会将**不可中断睡眠 (Uninterruptible)** 的进程 (任务) 一并纳入。系统中有大量的子系统 (尤其是各种硬件驱动程序内部) 会将任务标记为 `TASK_UNINTERRUPTIBLE` 状态。因此，当这类任务在 [`kernel/sched/core.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/core.c#n2255) 中发生阻塞时，它们便会为系统负载做出“贡献”，且其负载增减在[任务阻塞时](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/sched.h#n3071)和[任务重新激活时](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/core.c#n3820)都会被精准追踪。
+
+&gt; Both the comments and code in [`kernel/sched/loadavg.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/loadavg.c) confirm that Linux's load average includes **uninterruptible** processes (tasks) alongside running or runnable ones. A wide variety of subsystems—often within hardware drivers—set tasks to `TASK_UNINTERRUPTIBLE`. Consequently, when such a task blocks in [`kernel/sched/core.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/core.c#n2255), it contributes to the system load, with adjustments tracked [on blocking](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/sched.h#n3071) and [on reactivation](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/sched/core.c#n3820). 
+
+关于 Linux 具体实现的更多技术细节，我在[更早前的一篇文章](https://utcc.utoronto.ca/~cks/space/blog/linux/LoadAverageWhereFrom)中曾进行过详尽解析。
+
+&gt; I covered the specifics of the Linux implementation in detail in [an earlier entry](https://utcc.utoronto.ca/~cks/space/blog/linux/LoadAverageWhereFrom).
+
+---
+
+&gt; ---
+
+## 历史溯源
+
+&gt; ## Historical Context
+
+将等待磁盘 I/O 或处于不可中断等待状态的进程计入负载的做法，最早可以追溯到 [3BSD 的原始行为](https://utcc.utoronto.ca/~cks/space/blog/unix/LoadAverageOrigin)。后来，源于 4BSD 的各类商业 Unix 系统 (例如 SunOS) 也沿袭了这一惯例 (在 SunOS 中，等待 NFS 远程“I/O”的进程同样会推高平均负载，哪怕仅仅是因为远端 NFS 服务器卡死无响应)。
+
+&gt; Counting processes waiting for disk I/O or stuck in uninterruptible waits traces back to [original 3BSD behavior](https://utcc.utoronto.ca/~cks/space/blog/unix/LoadAverageOrigin). This practice was adopted by commercial Unixes derived from 4BSD, such as SunOS (where processes waiting on NFS "I/O" also contributed to the load average, even if delayed by an unresponsive NFS server). 
+
+正如 [Brendan Gregg 曾经撰文探讨过的](https://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html)，极早期的 Linux 版本其实也只统计可运行进程。然而在 1993 年 10 月，Linux 引入修改，将不可中断状态的进程也囊括了进来。颇具讽刺意味的是，正当其他 Unix 变种纷纷着手废弃这一古老机制的时候，Linux 却通过这次改动在事实上倒向了 4BSD 的历史设计。
+
+&gt; As [Brendan Gregg has covered](https://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html), very early Linux versions counted only runnable processes. However, in October 1993, this was extended to include uninterruptible processes. Ironically, this change aligned Linux with historical 4BSD behavior right around the time other Unix variants were phasing it out.
+
+---
+
+&gt; ---
+
+## 后记：关于 Linux 进程状态的一点技术补充
+
+&gt; ## PostScript: A Technical Note on Linux States
+
+Linux 的 [`proc_loadavg(5)`](https://www.man7.org/linux/man-pages/man5/proc_loadavg.5.html) 在严谨的技术层面是准确的：内核向外汇报的所有处于 `TASK_UNINTERRUPTIBLE` 状态的进程，其状态标识均为 `'D'` ([源码参考 1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/proc/array.c#n121)，[源码参考 2](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/sched.h#n95))。
+
+&gt; Linux's [`proc_loadavg(5)`](https://www.man7.org/linux/man-pages/man5/proc_loadavg.5.html) is narrowly technically correct: all processes in `TASK_UNINTERRUPTIBLE` are reported by the kernel as state `'D'` ([cf](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/proc/array.c#n121), [also](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/sched.h#n95)). 
+
+但需要注意的是，这**并不意味着**所有处于该状态的进程都在等待磁盘 I/O；系统中的各种组件——包括特定的 GPU 和以太网驱动——也会出于其他完全无关的等待场景而将进程置于该状态。
+
+&gt; However, this does *not* mean all such processes are waiting for disk I/O; various components—including certain GPU and Ethernet drivers—utilize this status for unrelated waiting states.</description>
+    </item>
+    <item>
       <title>脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-14/脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-14/脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制/</guid>
@@ -3163,420 +3866,6 @@ Kimi K2.7 本身就已经是一款非常出色的编程智能体模型。基座�
 &gt; In other words, **when no ground truth existed, it built it itself.**
 
 ---</description>
-    </item>
-    <item>
-      <title>2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型/</guid>
-      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
-      <description>本文详细介绍了如何在 Sebastian Raschka 的畅销书《Build a Large Language Model (from Scratch)》中的 GPT-2 框架基础之上，实现并扩展**专家混合（Mixture-of-Experts, MoE）**架构。通过将标准的前馈神经网络（FFN）替换为一个路由器和多个专家网络，作者成功在单张 RTX 3090 显卡上从头训练了一个总参数量达 446M（激活参数量为 220M）的 MoE 模型。
-
-项目重点探讨了确保专家负载均衡所需的**辅助损失（auxiliary loss）**机制，并深入剖析了实现高效稀疏路由所需的底层张量操作。这项实验证明，在消费级硬件上独立研究和训练 MoE 架构是完全可行的，为个人开发者和研究人员探索前沿大模型技术提供了宝贵的实战参考。
-
----
-
-## 混合专家模型（MoE）的工作原理
-混合专家模型允许模型在保持极低推理速度（类似小型模型）的同时，拥有大型模型的庞大知识容量。在标准的 Transformer 块中，前馈网络（FFN）是“思考”的核心区域。而 MoE 用多个“专家”和一个动态选择激活特定专家的**路由器（router）**替代了单一的 FFN。
-
-&gt; Mixture-of-Experts models allow for the inference speed of a small model while retaining the knowledge capacity of a large one. In a standard Transformer block, the feed-forward network (FFN) is the primary site for "thinking." An MoE replaces this single FFN with multiple "experts" and a **router** that dynamically selects which experts to activate for each incoming context vector.
-
-&lt;small&gt;&lt;strong&gt;Diagram 1&lt;/strong&gt;: a GPT-2-style LLM at the top level&lt;/small&gt;
-
-&lt;img src="./images/47ce8ea60fff.svg" alt="A GPT-2-style LLM at the top level" title="A GPT-2-style LLM at the top level" loading="lazy"/&gt;
-
-&lt;small&gt;&lt;strong&gt;Diagram 2&lt;/strong&gt;: a GPT-2-style Transformers block&lt;/small&gt;
-
-&lt;img src="./images/90ddd2c650ce.svg" alt="A GPT-2-style Transformers block" title="A GPT-2-style Transformers block" loading="lazy"/&gt;
-
-&lt;small&gt;&lt;strong&gt;Diagram 3&lt;/strong&gt;: an outline of an MoE block&lt;/small&gt;
-
-&lt;img src="./images/932cfea535e0.svg" alt="An MoE block" title="An MoE block" loading="lazy"/&gt;
-
----
-
-## 我是如何将这一切整合在一起的
-该实现的灵感和指导主要来源于四篇奠基性论文：
-1. 《局部专家的自适应混合》（*Adaptive Mixtures of Local Experts*, 1991）
-2. 《出奇庞大的神经网络》（*Outrageously Large Neural Networks*, 2017）
-3. 《GShard》（2020）
-4. 《Switch Transformers》（2021）
-
-最终的架构使用路由器将上下文向量映射到不同的专家。为了确保路由器可训练，其输出被视为权重，从而通过反向传播将路由器与损失函数有效地连接起来。
-
-&gt; The implementation was guided by four foundational papers:
-&gt; 1. *Adaptive Mixtures of Local Experts* (1991)
-&gt; 2. *Outrageously Large Neural Networks* (2017)
-&gt; 3. *GShard* (2020)
-&gt; 4. *Switch Transformers* (2021)
-&gt; 
-&gt; The final architecture uses a router to map context vectors to experts. To ensure the router is trainable, the output is treated as weights, effectively connecting the router to the loss function via back-propagation.
-
----
-
-## 路由器初探
-路由器使用一个线性层来为每个专家生成 logits（对数几率）。我们为每个 Token 选择前 $k$ 个专家（top-$k$）。面临的一个严峻挑战是，标准的路由可能会导致计算图出现“死胡同”，从而使路由器无法接收到梯度。通过采用“先 softmax 后掩码”的方法（或者将非 top-$k$ 的值替换为 $-\infty$），我们确保了路由器依然处于可微的路径中。
-
-&gt; The router uses a linear layer to produce logits for each expert. We select the top-$k$ experts for each token. A critical challenge is that standard routing can lead to "dead-end" computation graphs where the router doesn't receive gradients. By using a softmax-then-mask approach (or replacing non-top-$k$ values with $-\infty$), we ensure the router remains part of the differentiable path.
-
-&lt;small&gt;&lt;strong&gt;Diagram 4&lt;/strong&gt;: An MoE with all experts active&lt;/small&gt;
-
-&lt;img src="./images/40746bdaefa1.svg" alt="An MoE with all experts active" title="An MoE with all experts active" loading="lazy"/&gt;
-
----
-
-## 实际代码
-该实现扩展了 `TransformersBlock`，用 `MixtureOfExperts` 类替换了标准的 `FeedForward` 模块。
-
-&gt; The implementation extends the `TransformersBlock` by replacing the standard `FeedForward` module with a `MixtureOfExperts` class.</description>
-    </item>
-    <item>
-      <title>PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-11/PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制/</guid>
-      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
-      <description>现代对话与检索增强生成（RAG）系统常常面临高延迟的困扰，这会显著降低用户的体验质量（QoE）。为了解决这一问题，作者推出了 **PACE** 这一专为检索增强对话服务设计的新颖框架。PACE 将**感知首响时间（PTFR）**确立为核心的 QoE 优化目标，在严格满足质量和成本约束的同时将其降至最低。
-
-与仅依赖级联路由、语义缓存或自适应检索的传统方法不同，PACE 引入了一种整体性方法，能够联合控制**响应由哪个答案源组成**以及**等待窗口中填充什么内容**。
-
----
-
-# PACE：面向 QoE 高效的检索增强对话服务的感知延迟自适应级联服务路由与填充词控制
-
-**arXiv：** [2609.10372 [cs.CV]](https://arxiv.org/abs/2609.10372)  
-**DOI：** [10.48550/arXiv.2609.10372](https://doi.org/10.48550/arXiv.2609.10372)  
-**作者：** Lin Huang, Yujuan Tan, Weisheng Li, Lixiang Zeng, Kun Yang, Yongzong Wang, Suihan Xiao  
-**提交时间：** 2026年9月9日；*最后修订：2026年9月10日*  
-
----
-
-## 📌 执行摘要
-
-&gt; Modern conversational and retrieval-augmented generation (RAG) systems often struggle with high latency, which degrades user Quality of Experience (QoE). To address this, the authors introduce **PACE**, a novel framework designed for retrieval-augmented dialogue serving. PACE formalizes **Perceived Time-to-First-Response (PTFR)** as a primary QoE objective and minimizes it while strictly adhering to quality and cost constraints. 
-
-现代对话与检索增强生成（RAG）系统常常面临高延迟的困扰，这会显著降低用户的体验质量（QoE）。为了解决这一问题，作者推出了 **PACE** 这一专为检索增强对话服务设计的新颖框架。PACE 将**感知首响时间（PTFR）**确立为核心的 QoE 优化目标，在严格满足质量和成本约束的同时将其降至最低。
-
-&gt; Unlike traditional methods that rely solely on cascaded routing, semantic caching, or adaptive retrieval, PACE introduces a holistic approach that jointly controls **which answer source** composes the response and **what fills the waiting window**.
-
-与仅依赖级联路由、语义缓存或自适应检索的传统方法不同，PACE 引入了一种整体性方法，能够联合控制**响应由哪个答案源组成**以及**等待窗口中填充什么内容**。
-
----
-
-## 🚀 核心机制与创新
-
-&gt; Deployed on a humanoid-robot sales service, PACE integrates three core mechanisms:
-1. **Load-Adaptive Cascading Router:** Intelligently routes queries to balance computational cost and response speed.
-2. **Joint Path-Filler Controller:** Manages the generation pipeline alongside waiting-window fillers to optimize the user's perception of latency.
-3. **Volatility-Aware Cache Admission:** Filters out stale or volatile information before caching responses.
-
-PACE 部署于人形机器人销售服务中，整合了三大核心机制：
-1. **负载自适应级联路由器：** 智能路由查询请求，以平衡计算成本和响应速度。
-2. **联合路径-填充控制器：** 协同管理生成流水线与等待窗口的填充内容，优化用户对延迟的感知。
-3. **波动感知缓存准入机制：** 在缓存响应之前过滤掉陈旧或易变的信息。
-
----
-
-## 📊 性能与结果
-
-&gt; Evaluated on 75,000 requests from the *CarQA* dataset, PACE demonstrated significant performance improvements:
-* **Latency Reduction:** The cascade architecture successfully halved pure-LLM PTFR at the 95th percentile ($P_{95}$) from $0.53\text{s}$ down to $0.29\text{s}$ (at $c16$).
-* **High Load Scaling:** The adaptive controller achieved a $P_{95}$ of $0.41\text{s}$, outperforming standard RAG systems by **2.4 times** under high load while maintaining equal quality.
-* **API Call Efficiency:** The filler controller reduced redundant calls by **94%** with zero content conflicts.
-* **Data Freshness:** Volatility-aware cache admission drastically reduced stale answers from **86% to 0%**.
-* **Guaranteed Safety:** A built-in gating rule ensures the controller never underperforms compared to the baseline, bounding exposure to a single hold period. To the best of the authors' knowledge, this represents the first formal quantification of filler-answer conflict risk in deployed conversational services.
-
-在来自 *CarQA* 数据集的 75,000 个请求上进行的评估表明，PACE 带来了显著的性能提升：
-* **延迟降低：** 级联架构成功将纯大模型 PTFR 在 95 分位数（$P_{95}$）上的延迟从 $0.53\text{s}$ 减半至 $0.29\text{s}$（在 $c16$ 条件下）。
-* **高负载扩展：** 自适应控制器实现了 $0.41\text{s}$ 的 $P_{95}$ 延迟，在高负载下性能超越标准 RAG 系统 **2.4 倍**，同时保持了同等质量。
-* **API 调用效率：** 填充控制器将冗余调用减少了 **94%**，并且零内容冲突。
-* **数据新鲜度：** 波动感知缓存准入机制将陈旧答案的比例从 **86% 大幅降低至 0%**。
-* **安全性保障：** 内置的门控规则确保控制器表现绝不逊色于基线，将暴露风险限制在单个保持期内。据作者所知，这是已部署对话服务中首次对填充答案冲突风险进行形式化量化。
-
----
-
-## 🗂 附加信息
-
-&gt; * **Primary Subject:** Computer Vision and Pattern Recognition (`cs.CV`)
-* **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Robotics (`cs.RO`)
-* **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2609.10372) | [Experimental HTML](https://arxiv.org/html/2609.10372v2) | [TeX Source](https://arxiv.org/src/2609.10372)
-
-* **主要主题：** 计算机视觉与模式识别（`cs.CV`）
-* **次要主题：** 人工智能（`cs.AI`）、机器人学（`cs.RO`）
-* **全文链接：** [查看 PDF](https://arxiv.org/pdf/2609.10372) | [实验性 HTML](https://arxiv.org/html/2609.10372v2) | [TeX 源码](https://arxiv.org/src/2609.10372)</description>
-    </item>
-    <item>
-      <title>2026-09-11-MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-11/MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口/</guid>
-      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在当前的AI研究中，不同决策范式（如强化学习策略、大语言模型、视觉语言模型及人类操作员）通常运行在各自孤立的框架中，缺乏统一的交互基础设施。这导致研究人员很难在完全相同的环境和条件下对异构智能体进行公平的对比和协同。
-
-为了弥合这一差距，本文推出了 **MOSAIC** 开源平台。该平台通过基于进程间通信（IPC）的工作进程协议、统一的算子抽象以及确定性的跨范式评估框架，首次实现了异构智能体在共享强化学习环境中的无缝混合与即兴团队协作。MOSAIC 的推出不仅极大地推动了多智能体系统（MAS）的兼容性研究，也为具身智能与人机混合决策提供了强有力的工具支持。
-
----
-
-## 摘要 (Summary)
-
-&gt; The paper introduces **MOSAIC**, an open-source platform designed to bridge the gap between different decision-making paradigms by enabling heterogeneous agents—including Reinforcement Learning (RL) policies, Large Language Models (LLMs), Vision-Language Models (VLMs), and human operators—to interact within shared reinforcement learning environments. 
-&gt; 
-&gt; Key contributions of MOSAIC include:
-&gt; 1. **IPC-Based Worker Protocol:** Wraps native and third-party frameworks as isolated subprocess workers, executing logic unmodified via a versioned inter-process protocol.
-&gt; 2. **Operator Abstraction:** Forms a universal agent-level interface mapping diverse backends to uniform agent slots.
-&gt; 3. **Deterministic Evaluation Framework:** Features a *manual mode* for lock-step visual inspection and a *script mode* for automated, long-running reproducible experiments.
-
-本文介绍了 **MOSAIC**，这是一个开源平台，旨在弥合不同决策范式之间的鸿沟，使异构智能体（包括强化学习策略、大语言模型、视觉语言模型和人类操作员）能够在共享的强化学习环境中以即兴团队（ad-hoc team）的形式进行交互。
-
-MOSAIC 的核心贡献包括：
-1. **基于 IPC 的工作进程协议：** 将原生和第三方框架包装为隔离的子进程工作进程，通过带版本的进程间协议执行未经修改的逻辑。
-2. **算子抽象：** 形成一个通用的智能体级接口，将不同的后端映射到统一的智能体槽位。
-3. **确定性评估框架：** 具备用于步进式视觉检查的*手动模式*，以及用于自动化、长周期可复现实验的*脚本模式*。
-
----
-
-## 元数据与文档详情 (Metadata &amp; Document Details)
-
-* **arXiv 标识符：** [arXiv:2603.01260](https://arxiv.org/abs/2603.01260) [cs.LG]
-* **研究领域：** 机器学习 (`cs.LG`)；人工智能 (`cs.AI`)
-* **提交日期：** 2026年3月1日（2026年9月10日修订，版本 v3）
-* **作者：** Abdulhamid M. Mousa, Jinhui Pang, Rakhmonberdi Khajiev, Jalaledin M. Azzabi, Abdulkarim M. Mousa, Peng Yong, Yunusa Haruna, Ming Liu
-* **文档与资源：** [MOSAIC 文档](https://mosaic-platform.readthedocs.io)
-
----
-
-## 摘要原文 (Abstract)
-
-&gt; Existing infrastructure cannot deploy agents from different decision-making paradigms within the same environment, making fair cross-paradigm comparison under identical conditions impossible. We present MOSAIC, an open-source platform that enables heterogeneous agents (RL policies, LLMs, VLMs, and human operators) to act within shared reinforcement learning environments in ad-hoc team settings with reproducible results. MOSAIC introduces three contributions. (i) IPC-based worker protocol that wraps native and third-party frameworks as isolated subprocess workers, each executing its own training and inference logic unmodified and communicating through a versioned inter-process protocol. (ii) An operator abstraction that forms an agent-level interface by mapping workers to agent slots: each operator, regardless of whether it is backed by an RL policy, an LLM, or a human, conforms to a minimal universal interface. (iii) A deterministic cross-paradigm evaluation framework with two complementary modes: a manual mode that advances up to $N$ operators in lock-step under shared seeds for fine-grained visual inspection of behavioural differences; and a script mode that drives automated, long-running evaluation via declarative Python scripts for reproducible experiments.
-
-&gt; 现有基础设施无法在同一环境中部署来自不同决策范式的智能体，这使得在相同条件下进行公平的跨范式比较成为不可能。我们提出了 MOSAIC，这是一个开源平台，它使异构智能体（强化学习策略、大语言模型、视觉语言模型和人类操作员）能够在共享的强化学习环境中以即兴团队设置进行操作，并产生可复现的结果。MOSAIC 引入了三项贡献。(i) 基于 IPC 的工作进程协议，将原生和第三方框架包装为隔离的子进程工作进程，每个工作进程都在不修改自身训练和推理逻辑的情况下执行，并通过带版本的进程间协议进行通信。(ii) 算子抽象，通过将工作进程映射到智能体槽位来形成智能体级接口：每个算子（无论其背后是强化学习策略、大语言模型还是人类）都符合最低限度的通用接口。(iii) 具有两种互补模式的确定性跨范式评估框架：手动模式，在共享随机种子下同步推进多达 $N$ 个算子，以便对行为差异进行细粒度视觉检查；脚本模式，通过声明式 Python 脚本驱动自动化、长周期的评估，以实现可复现的实验。
-
----
-
-## 访问与全文链接 (Access &amp; Full-Text Links)
-
-* [查看 PDF](https://arxiv.org/pdf/2603.01260)
-* [HTML 版本（实验性）](https://arxiv.org/html/2603.01260v3)
-* [TeX 源码](https://arxiv.org/src/2603.01260)</description>
-    </item>
-    <item>
-      <title>2026-09-11-Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-11/Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集/</guid>
-      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型（LLM）智能体生态系统快速扩张的背景下，跨日益增多的基准测试对智能体进行评估变得异常困难，这主要是由于复杂的运行环境和零散的智能体集成方式所导致的。本文推出了 **Harbor Adapters**（Harbor 适配器），这是一种统一的评估基础设施，成功将 80 多个基准测试移植以支持任意智能体。基于该基础设施，作者对 54 个基准测试中的 8 个模型进行了大规模评估。
-
-在此基础上，本文提出了 **Harbor-Index**，这是一个高质量、经过精心筛选的元数据集，包含跨越 29 个基准测试的 82 个具有挑战性的任务。Harbor-Index 旨在保持极高的严谨性和难度（即使是最强大的评估模型与框架组合——搭载 Codex 的 GPT-5.5，其通过率也仅为 28.0%），同时为大规模智能体评估提供了一个经济高效的框架。
-
----
-
-## 📌 执行摘要 (Executive Summary)
-
-&gt; Evaluating large language model (LLM) agents across a rapidly expanding ecosystem of benchmarks is exceptionally difficult due to complex environments and fragmented agent integrations. This paper introduces **Harbor Adapters**, a unified evaluation infrastructure that successfully ports over 80 benchmarks to support arbitrary agents. Using this infrastructure, the authors perform a massive evaluation of 8 models across 54 benchmarks. 
-&gt; 
-&gt; Building upon these findings, the paper presents **Harbor-Index**, a high-quality, curated meta-dataset of 82 challenging tasks spanning 29 benchmarks. Harbor-Index is specifically designed to remain rigorous and difficult—even the strongest evaluated model-harness configuration (GPT-5.5 with Codex) tops out at a 28.0% pass rate—while offering an affordable framework for large-scale agentic evaluation.
-
-在快速扩展的基准测试生态系统中评估大语言模型（LLM）智能体异常困难，因为这通常需要复杂的环境和零散的智能体集成。本文推出了 **Harbor Adapters**，这是一个用于智能体基准测试的统一评估基础设施。我们的工作做出了三项贡献。首先，我们开发了基准适配器，将 80 多个基准移植以评估任意智能体，并通过严格的代码审查和对等实验对其进行了验证。其次，我们对 54 个基准测试中的 8 个不同能力层级的模型进行了大规模评估；每个模型都通过 Terminus-2 以及 3 个原生框架之一运行。这使得对智能体能力和失败模式的分析比以往任何时候都更加深入。第三，我们推出了 **Harbor-Index**，这是一个精选的包含 82 个困难、多样且高质量任务的集合，横跨 29 个基准测试，这些任务是从适配后的测试集中经过难度过滤、AI与人工审计以及审计-修复循环精炼而成的。Harbor-Index 保留了大尺度智能体评估的挑战性和广度，同时运行成本经济实惠；没有任何评估的模型-框架配置超过 30% 的通过率，最强者（搭载 Codex 的 GPT-5.5）达到了 28.0%。我们将适配器、评估结果、深入分析和 Harbor-Index 作为开源成果发布，以支持对语言模型智能体进行更可靠、更全面的评估。
-
----
-
-## 👥 作者 (Authors)
-
-&gt; **Lead Authors:** Lin Shi, Haowei Lin, Zixuan Zhu, Xiaoyue Zhou, Xiang Li, Xiangning Lin, Yaxuan Deng, Han Xu, Yuangang Li, Shanda Li, Zizhao Chen, Hanwen Xing, Harsh Raj, Bo Chen, Quan Shi, Steven Dillmann, Yipeng Gao, Puneesh Khanna, Ruofan Lu, Chao Beyond Zhou, Michael Yang, Robert Zhang, Siyuan Chai, Jiayu Chang, Yizhao Chen, Xiaokun Chen, Yiwei Dai, Wenting Yang, Hange Liu, Minghao Liu, Zihan Wang, Adnan El Assadi, Benedikt Stroebl, E. Kelly Buchanan, Han Meng, Junwei He, Longxuan Yu, Radin Shayanfar, Yukyung Lee, Zhikang Dong, Allen G Hart, Anjiang Wei, Anurag Kashyap, Arpandeep Khatua, Audrey Jixin Zheng, Chengrui Ma, David Heineman, Dubing Chen, Hai-Anh Trinh, Haishuo Fang, Hefan Zhang, Hui Shen, Issa Sugiura, Jiankai Sun, Jiechao Gao, Junhong Lin, Junnan Li, Kai Yang, Lei Hsiung, Maoyu Wang, Mengze Tang, Nabil Omi, Negin Raoof, Nicholas Edwards, Octavia Guo, Orfeas Menis Mastromichalakis, Pengliang Ji, Przemysław Hejman, Qi Qi, Qunshu Lin, Richard Zhuang, Rui Yang, Ruichen Zheng, Ryan Marten, Shaghayegh Fazliani, Shizheng Hou, Sicong Jiang, Sijie Li, Boqin Yuan, Michael Glass, Song Bian, Terry Yue Zhuo, Tianqing Wu, Tom Tang, Wanjia Zhao, Weihao Xuan, Wenhua Liang, Xian Liu, Xin Lan, Xuan Zhang, Xuandong Zhao, Yanchuan Tang, Yifan Jiang, Yijiang Li, Yitong Guan, Yizhi Li, Yonghui Liu, Yuheng Tang, Yujun (Audrey) Mao, and Yunfei Zhao *(along with 25 additional co-authors, including Andy Konwinski, Alex Dimakis, Nicholas Carlini, Ludwig Schmidt, and others)*.
-
-**主要作者：** Lin Shi, Haowei Lin, Zixuan Zhu 等（共计百余位作者，包含 Andy Konwinski、Alex Dimakis、Nicholas Carlini、Ludwig Schmidt 等 25 位联合作者）。
-
----
-
-## 🔍 核心贡献 (Key Contributions)
-
-&gt; 1. **Harbor Adapters Infrastructure:** Development of unified benchmark adapters capable of porting more than 80 distinct benchmarks to evaluate arbitrary agents. These adapters are validated via rigorous code review and parity experiments.
-&gt; 2. **Large-Scale Multi-Model Evaluation:** Comprehensive evaluation of 8 models spanning multiple capability tiers across 54 benchmarks. Each model was executed using Terminus-2 alongside one of 3 native harnesses, enabling deep insight into agent capabilities and failure modes.
-&gt; 3. **Harbor-Index Meta-Dataset:** Introduction of a curated suite of 82 difficult, diverse, and high-quality tasks across 29 benchmarks. Filtered through rigorous difficulty criteria, AI/human audits, and an iterative audit-and-fix loop, Harbor-Index preserves evaluation rigor while maintaining practical cost-efficiency.
-
-1. **Harbor Adapters 基础设施：** 开发了统一的基准适配器，能够移植 80 多个不同的基准来评估任意智能体。这些适配器通过严格的代码审查和对等实验得到了验证。
-2. **大规模多模型评估：** 对跨多个能力层级的 8 个模型在 54 个基准测试中进行了全面评估。每个模型都使用 Terminus-2 结合 3 个原生框架之一运行，从而对智能体能力和失败模式提供了深入的见解。
-3. **Harbor-Index 元数据集：** 推出了精选的 82 个困难、多样且高质量的任务套件，横跨 29 个基准。通过严格的难度标准、AI/人工审计以及迭代的审计-修复循环进行过滤，Harbor-Index 在保持评估严谨性的同时，兼具了实用的成本效益。
-
----
-
-## 📊 摘要 (Abstract)
-
-&gt; Evaluating agents on the growing number of agentic benchmarks is challenging because they often require complex environments and agent integrations. We introduce Harbor Adapters, a unified evaluation infrastructure for agentic benchmarks. Our work makes three contributions. First, we develop benchmark adapters that port more than 80 benchmarks to evaluate arbitrary agents, and validate them through rigorous code review and parity experiments. Second, we conduct a large-scale evaluation of 8 models spanning capability tiers across 54 benchmarks; every model is run with Terminus-2 and with one of 3 native harnesses. This enables a broader analysis of agent capabilities and failure modes than was previously possible. Third, we introduce Harbor-Index, a curated set of 82 difficult, diverse, and high-quality tasks spanning 29 benchmarks, refined from the adapted suite through difficulty filtering, AI and human audit, and an audit-and-fix loop. Harbor-Index preserves the challenge and breadth of large-scale agentic evaluations while being affordable to run; no evaluated model-harness configuration exceeds 30% pass rate, and the strongest (GPT-5.5 with Codex) reaches 28.0%. We release the adapters, evaluation results, in-depth analysis, and Harbor-Index as open-source artifacts to support more reliable and comprehensive evaluation of language-model agents.
-
-（详见上文“执行摘要”段落）
-
----
-
-## 🔗 链接与资源 (Links &amp; Resources)
-
-* [在 arXiv 上查看 PDF](https://arxiv.org/pdf/2609.04298)
-* [实验性 HTML 版本](https://arxiv.org/html/2609.04298v3)
-* [TeX 源代码](https://arxiv.org/src/2609.04298)
-* [DOI 引用](https://doi.org/10.48550/arXiv.2609.04298)</description>
-    </item>
-    <item>
-      <title>2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-11/DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-11/DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用/</guid>
-      <pubDate>Fri, 11 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着长程 AI 智能体（Long-horizon AI agents）和百万级长上下文（million-token contexts）的普及，LLM 推理面临着极其沉重的输入密集型内存瓶颈，高带宽内存（HBM）和固态硬盘（SSD）容量常常不堪重负。为此，DeepSeek AI 推出了全新的多模态混合专家（MoE）模型 **DeepSeek-V4.1-Flash**，旨在从根本上解决这一内存挑战。
-
-该模型引入了因果编码器-解码器（Causal Encoder-Decoder）架构、压缩稀疏注意力 2 代（CSA2）、FP4 KV 缓存量化以及解码器 SWA 有界重放（Decoder SWA Bounded Replay）等一系列创新技术。通过这些架构优化，其全局 KV 缓存占用被大幅压缩至每个 token 仅 **890 字节**，相比早期版本实现了数百倍的缩减。同时，它在各项智能体基准测试中展现出顶尖的性能，并且所有权重均在 **MIT 许可证** 下开源，为构建高效、长上下文的 AI 应用提供了强有力的支持。
-
----
-
-## DeepSeek AI Released DeepSeek-V4.1-Flash with 1M Context, FP4 KV Cache, and Cross-Layer Attention Reuse
-
-&gt; DeepSeek AI has launched **DeepSeek-V4.1-Flash**, a multimodal Mixture-of-Experts (MoE) model engineered specifically to tackle the input-heavy memory bottlenecks of long-horizon AI agents and million-token contexts. Featuring a global KV cache footprint of just **890 bytes per token** (a ~437x reduction from DeepSeek-V1) and innovative architectural designs like a Causal Encoder-Decoder and Compressed Sparse Attention 2 (CSA2), the model achieves cutting-edge performance on agentic benchmarks while offering open weights under an **MIT license**.
-
----
-
-## 概述
-
-长程智能体已将大语言模型（LLM）的推理变成了一种输入密集的繁重工作负载。重复的 Prefill（预填充）阶段和百万级的上下文会导致 KV 缓存急剧膨胀，从而对高带宽内存（HBM）、固态硬盘（SSD）容量以及整体带宽造成巨大压力。
-
-&gt; Long-horizon agents have turned LLM serving into an input-heavy workload. Repeated prefills and million-token contexts leave KV caches that strain High Bandwidth Memory (HBM), Solid-State Drive (SSD) capacity, and overall bandwidth. 
-
-[DeepSeek AI](https://huggingface.co/deepseek-ai) 围绕这一核心瓶颈构建了其最新发布的 [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash)。它是一个多模态混合专家（MoE）模型，拥有 **552B 的主干参数**、**196B 的额外 Engram 参数**以及 **1M token 的上下文窗口**。在预填充阶段，它每个 token 激活 **8B 参数**；在解码阶段则激活 **16B 参数**。
-
-&gt; [DeepSeek AI](https://huggingface.co/deepseek-ai) built its newest release—[DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash)—around that exact bottleneck. It is a multimodal Mixture-of-Experts model with **552B backbone parameters**, **196B additional Engram parameters**, and a **1M-token context window**. It activates **8B parameters per token during prefill** and **16B during decode**. 
-
-**它能部署吗？完全可以。** 该模型以 [MIT 许可证](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/main/LICENSE)开源了权重，并在 Hugging Face 上提供了 vLLM、SGLang 和 Transformers 的支持路径。此外，研究团队还介绍了一个包含低、中、高三个推理等级的公共 API。
-
-&gt; **Is it deployable? Yes.** Open weights ship under an [MIT license](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/main/LICENSE) with vLLM, SGLang, and Transformers paths on Hugging Face, and the research team describes a public API with low, high, and max reasoning tiers.
-
----
-
-## 因果编码器-解码器：预填充计算量减半
-
-这个 40 层的骨干网络被拆分为一个 **20 层的因果编码器（causal encoder）** 和一个 **20 层的解码器（decoder）**。受 [YOCO](https://arxiv.org/abs/2405.05254) 的启发，解码器不再计算自身的全局 KV 缓存，而是通过每层的投影权重，直接从最终的编码器隐藏状态中推导出来。
-
-&gt; The 40-layer backbone is split into a **20-layer causal encoder** and a **20-layer decoder**. Inspired by [YOCO](https://arxiv.org/abs/2405.05254), the decoder does not compute its own global KV. Instead, per-layer projection weights derive it from the final encoder hidden state. 
-
-因此，提示词 token 仅在编码器处处理，这**使预填充计算量几乎减半**。每个层中仍然运行着具有 128 token 窗口大小的滑动窗口注意力（SWA），因此解码器的 SWA 状态仅通过重放最后 128 个提示词 token 来重建——研究团队将这一技术称为**解码器 SWA 有界重放（Decoder SWA Bounded Replay）**。
-
-&gt; Prompt tokens therefore stop at the encoder, which **nearly halves prefill compute**. Sliding-window attention (SWA) with a 128-token window still runs in every layer, so decoder SWA states are rebuilt by replaying only the last 128 prompt tokens—a technique the research team calls **Decoder SWA Bounded Replay**.
-
----
-
-## 压缩稀疏注意力 2 代（CSA2）
-
-虽然 DeepSeek-V4 将 CSA 与重度压缩注意力（Heavily Compressed Attention）结合使用，但 V4.1-Flash 采用了纯粹的 CSA2，并沿着层轴（layer axis）直接攻击缓存大小。每个 CSA2 层被静态分配为以下 3 种模式之一：
-
-&gt; While DeepSeek-V4 mixed CSA with Heavily Compressed Attention, V4.1-Flash uses pure CSA2 and attacks cache size along the layer axis. Each CSA2 layer is statically assigned one of 3 modes:
-
-* **Full（全量）**：计算其自身的的主 KV，从中投影出索引器 K，并选择最新的前 512 个（Top-512）索引。
-* **Reindex（重新索引）**：复用上一个 Full 层的的主 KV 和索引器 K，但使用自身的索引器 Q 对其进行重新评分。
-* **Reuse（复用）**：同时复用主 KV 和最新的 Top-K 索引，完全跳过索引器。
-
-&gt; * **Full**: Computes its own main KV, projects indexer K from it, and selects fresh Top-512 indices.
-&gt; * **Reindex**: Reuses main KV and indexer K from the last Full layer but rescores them with its own indexer Q.
-&gt; * **Reuse**: Reuses both the main KV and the latest Top-K indices, skipping the indexer entirely.
-
-每一层都保留自己的主 Q 和 SWA KV。18 个 CSA2 编码器层在 6 个一组（1 个 Full，5 个 Reuse）中共使用 2 的压缩比。20 个解码器层在 4 个一组中采用 1 的压缩比：第一组是 1 个 Full 加上 3 个 Reuse，其余则是 Reindex 加上 3 个 Reuse。解码器中的**分层稀疏索引器（Hierarchical Sparse Indexer）**允许 Full 层构建一个多达 16,384 个位置的候选池（2,048 个大小为 8 的块），从而让后续的 Reindex 层对一个有界集合而非整个上下文进行评分。
-
-&gt; Every layer keeps its own main Q and SWA KV. The 18 CSA2 encoder layers use a compression ratio of 2 in 3 groups of 6 (1 Full, 5 Reuse). The 20 decoder layers use ratio 1 in 5 groups of 4: the first is Full plus 3 Reuse, the rest Reindex plus 3 Reuse. A **Hierarchical Sparse Indexer** in the decoder lets the Full layer build a candidate pool of up to 16,384 positions (2,048 blocks of 8), so later Reindex layers score a bounded set instead of the entire context.
-
----
-
-## FP4 KV、有界重放与其他扩展
-
-* **FP4 KV 量化**：主 KV 缓存被量化为 E2M1 格式，每 16 个通道配备一个 E4M3 比例因子，这遵循了 [NVFP4](https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/) 的设计但去掉了其全局缩放。通过量化感知训练引入该技术，使存储空间较 V4 的 FP8 缓存几乎减少了一半。
-* **优化的 SWA 持久化**：SWA KV 不再持久化保存到 SSD 中。它存储在一个由宿主机 DRAM 的 10% 划分出的分布式池中，TTL（生存时间）为几分钟，而全局 KV 则保持有保障的 72 小时寿命。当发生未命中时，编码器 SWA 有界重放（Encoder SWA Bounded Replay）仅重新计算 128 个 token。
-* **其他架构增强**：包括单通 [mHC](https://arxiv.org/abs/2512.24880)（将激活内存流量减半）、位于第 1 层和第 14 层的 [Engram](https://arxiv.org/abs/2601.07372) 条件内存模块、DSpark 推测解码，以及逐头（head-wise）Muon。当上下文从 4K 增长到 1M 时，单 token 解码的 FLOPs 仅增加 1/4。
-
-&gt; * **FP4 KV Quantization**: The main KV cache is quantized to E2M1 with one E4M3 scale per 16 channels, following [NVFP4](https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/) without its global scale. Introduced through quantization-aware training, this nearly halves storage against V4’s FP8 cache.
-&gt; * **Optimized SWA Persistence**: SWA KV is no longer persisted to SSD. It lives in a distributed pool carved from 10% of host DRAM with a TTL of minutes, while global KV keeps a guaranteed 72-hour lifetime. On a miss, Encoder SWA Bounded Replay recomputes only 128 tokens.
-&gt; * **Additional Architectural Enhancements**: Includes Single-Pass [mHC](https://arxiv.org/abs/2512.24880) (halving activation memory traffic), the [Engram](https://arxiv.org/abs/2601.07372) conditional memory module at layers 1 and 14, DSpark speculative decoding, and head-wise Muon. Single-token decode FLOPs rise by only 1/4 when context grows from 4K to 1M.
-
----
-
-## 训练与结果
-
-预训练涵盖了 **45T 的多模态 token**，文本与多模态的比例为 7:1。稀疏注意力从头开始在 64K 序列长度下进行训练，无需稠密预热（dense warmup），并在 34T token 时将上下文扩展到 1M。基础模型在世界知识和代码能力上与 DeepSeek-V4-Pro-Base 相匹配，同时只使用了总参数的 1/3 和激活参数的 1/4。
-
-&gt; Pre-training covers **45T multimodal tokens** at a 7:1 text-to-multimodal ratio. Sparse attention is trained from scratch at 64K sequence length with no dense warmup, and context is extended to 1M at 34T tokens. The base model matches DeepSeek-V4-Pro-Base on world knowledge and coding while using 1/3 of the total and 1/4 of the activated parameters.
-
-后训练没有引入新的算法，其收益主要来自于大规模的可验证智能体任务合成、跨异构脚手架的强化学习（RL），以及来自 40 多个教师模型的在线策略蒸馏（on-policy distillation）。
-
-&gt; Post-training introduces no new algorithms, deriving gains instead from large-scale synthesis of verifiable agent tasks, RL across heterogeneous scaffolds, and on-policy distillation from over 40 teachers.</description>
-    </item>
-    <item>
-      <title>2026-09-10-高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/高效注意力机制的线性代数基础：SVD压缩下秩坍缩的相位反转/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>现代基于Transformer的基础网络广泛利用自注意力机制进行信息的编码、压缩和传递。本文深入探讨了支撑这一过程的矩阵秩、奇异值分解（SVD）以及特征值分解等基础线性代数概念，通过统一14篇同行评议的研究成果，聚焦于自注意力矩阵的输出秩推导、利用秩行为的压缩方法，以及低秩键值（KV）缓存投影与线性注意力、状态空间模型之间的数学对偶性。
-
-该研究的一大核心发现是关于SVD压缩与网络自然秩坍缩之间相互作用的突破性进展。作者发现，对注意力投影进行SVD压缩会导致网络秩坍缩出现“相位反转”现象：在网络初始化时，SVD会强烈抑制秩坍缩；而在预训练模型上，SVD则会加速秩坍缩。因果分解进一步揭示，压缩过程中SVD所选择的特定子空间起到了决定性作用（在初始化时占约76%的效果，在预训练权重上占83%），其重要性远超算子范数的单纯降低。这一发现为校准感知压缩范式提供了关键改进，并解释了为什么SVD的性能表现优于朴素截断。
-
----
-
-## 导航与资源 (Navigation &amp; Resources)
-
-* **全文链接 (Full-Text Links):** 
-  * [查看 PDF (View PDF)](https://arxiv.org/pdf/2609.06341)
-  * [实验性 HTML (Experimental HTML)](https://arxiv.org/html/2609.06341v1)
-  * [TeX 源码 (TeX Source)](https://arxiv.org/src/2609.06341)
-* **数字对象唯一标识符 (DOI):** [10.48550/arXiv.2609.06341](https://doi.org/10.48550/arXiv.2609.06341)
-* **外部引用与工具 (External Citations &amp; Tools):** 
-  * [谷歌学术 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2609.06341)
-  * [语义学者 (Semantic Scholar)](https://api.semanticscholar.org/arXiv:2609.06341)
-  * [美国宇航局天体物理数据系统 (NASA ADS)](https://ui.adsabs.harvard.edu/abs/arXiv:2609.06341)
-
-&gt; ## Navigation &amp; Resources
-&gt; 
-&gt; * **Full-Text Links:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.06341)
-&gt;   * [Experimental HTML](https://arxiv.org/html/2609.06341v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.06341)
-&gt; * **Digital Object Identifier (DOI):** [10.48550/arXiv.2609.06341](https://doi.org/10.48550/arXiv.2609.06341)
-&gt; * **External Citations &amp; Tools:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.06341)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.06341)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.06341)</description>
-    </item>
-    <item>
-      <title>Interface-Aware KV Cache Quantization for Dense On-Chip NVM in Long-Context LLM Decoding</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-10/面向长上下文大模型解码中密集片上NVM的接口感知KV缓存量化/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-10/面向长上下文大模型解码中密集片上NVM的接口感知KV缓存量化/</guid>
-      <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在长上下文大型语言模型（LLM）的解码阶段，键值（KV）缓存会带来严重的内存带宽瓶颈。虽然将量化的KV缓存存储在密集的片上非易失性内存（NVM）中可以消除片外数据传输，但现有的以GPU为中心的量化方法（如KIVI和KVQuant）无法与NVM硬件约束进行高效匹配，从而导致较高的元数据开销或不兼容的异常值处理。
-
-本文引入了一种专为密集片上NVM架构协同设计的接口感知KV缓存量化方案。通过利用随机旋转和逐向量归一化，该方法统一了坐标范围，使得单个固定的码本即可服务于每个张量类型的所有KV缓存。该设计实现了显著的硬件效率——与基准NVM映射相比，**KV读取能耗降低了 3.1–3.6 倍**，且**元数据开销比 KIVI 低 8 倍**，同时在参数量从 3B 到 14B、上下文长度高达 32k 的模型中保持了稳健的准确性。
-
----
-
-# Interface-Aware KV Cache Quantization for Dense On-Chip NVM in Long-Context LLM Decoding
-
-## Summary
-
-The key-value (KV) cache creates a severe memory bandwidth bottleneck during long-context large language model (LLM) decoding. While storing a quantized KV cache in dense on-chip non-volatile memory (NVM) eliminates off-chip data transfers, existing GPU-centric quantization methods (such as KIVI and KVQuant) fail to align efficiently with NVM hardware constraints, suffering from high metadata overhead or incompatible outlier handling. 
-
-This paper introduces an interface-aware KV quantization scheme co-designed specifically for dense on-chip NVM architectures. By utilizing randomized rotation and per-vector normalization, the method standardizes coordinate ranges so that a single fixed codebook serves the entire KV cache per tensor type. This design achieves significant hardware efficiency—yielding **3.1–3.6× lower KV read energy** compared to baseline NVM mapping and **8× lower metadata overhead** than KIVI—while maintaining robust accuracy across models ranging from 3B to 14B parameters up to 32k context lengths.
-
----
-
-## Metadata
-
-* **arXiv ID:** [arXiv:2609.05764](https://arxiv.org/abs/2609.05764) [cs.AR]
-* **Authors:** Jiahao Zheng, Yifan Qin, Xiaobo Sharon Hu, Yiyu Shi
-* **Primary Subject:** Hardware Architecture (`cs.AR`)
-* **Conference:** IEEE/ACM International Conference on Computer-Aided Design (ICCAD 2026)
-* **Submitted Date:** September 4, 2026
-* **Related DOI:** [10.1145/3831252.3845860](https://doi.org/10.1145/3831252.3845860)
-
----
-
-## Abstract &amp; Key Contributions
-
-* **Problem Addressed:** Standard GPU-tailored KV cache quantization techniques incur heavy metadata overhead (e.g., ~25% for KIVI) or require sparse outlier handling incompatible with dense on-chip NVM hardware arrays.
-* **Proposed Hardware-Software Co-Design:** 
-  * Stores the quantized KV cache directly in dense on-chip NVM.
-  * Employs a small static analog crossbar exclusively for fixed rotation, leaving attention operations in on-chip digital logic.
-  * Applies randomized rotation and per-vector normalization to unify coordinate ranges.
-* **Performance Highlights:**
-  * **3.1–3.6× lower KV read energy** compared to existing methods mapped to the same NVM.
-  * **8× lower metadata overhead** relative to KIVI (requiring only one scalar per vector, roughly 3%).
-  * Maintains high accuracy for 4-bit KV caches across 3B to 14B models and context lengths up to 32,000 tokens under realistic storage and crossbar noise levels.</description>
     </item>
   </channel>
 </rss>

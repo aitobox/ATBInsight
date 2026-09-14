@@ -1,0 +1,688 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-15-UltraQuant-%E9%9D%A2%E5%90%91%E9%87%8D%E5%BA%A6%E4%B8%8A%E4%B8%8B%E6%96%87%E6%99%BA%E8%83%BD%E4%BD%93%E7%9A%84-4-bit-KV-Cache-%E5%8E%8B%E7%BC%A9%E6%8A%80%E6%9C%AF/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ultraquant-4-bit-kv-cache" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="ultraquant-4-bit-kv-cache">UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术</h1>
+<blockquote>
+<h1 id="ultraquant-4-bit-kv-caching-for-context-heavy-agents">UltraQuant: 4-bit KV Caching for Context-Heavy Agents</h1>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2606.20474">arXiv:2606.20474</a> [cs.LG]</li>
+<li><strong>Authors:</strong> Inesh Chakrabarti, David Limpus, Aditi Ghai Rana, Bowen Bao, Spandan Tiwari, Thiago Crepaldi, Ashish Sirasao</li>
+<li><strong>Primary Subject:</strong> Machine Learning (<code>cs.LG</code>)</li>
+<li><strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>), Performance (<code>cs.PF</code>)</li>
+<li><strong>Conference/Venue:</strong> EMNLP 2026 Industry Track (11 pages, 9 figures)</li>
+<li><strong>Submission History:</strong> </li>
+<li>v1: June 18, 2026</li>
+<li>v3 (Current): September 11, 2026</li>
+</ul>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在以 Claude Code 等为代表的多轮 AI 智能体 (AI Agent) 深度交互场景中，长系统提示与历史执行记录等长前缀被频繁复用，使得键值缓存 (KV Cache) 产生的显存占用呈爆炸式激增，成为限制 GPU 吞吐与高并发服务能力的头号瓶颈。针对这一极端内存受限的工业级部署难题，研究团队提出了创新的 4-bit KV 缓存压缩框架 <strong>UltraQuant</strong>。该方案创造性地结合了非对称 K/V 量化策略、Walsh-Hadamard 旋转变换以及针对 AMD CDNA4 架构量身定制的硬件加速解码内核，在削减一半 KV 显存开销的同时，保持了几乎无损的任务精度。真实生产环境重放测试表明，UltraQuant 在长上下文与高并发压力下实现了相比原生 BF16 最高 4.38 倍的有效请求吞吐量提升，为大规模落地智能体推理提供了高性价比的硬件级解法。</p>
+<hr />
+<h2 id="_2">📌 内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p><strong>UltraQuant</strong> 是一套专为在显存受限与高并发严苛条件下运行的“重度上下文” AI 智能体 (AI Agent) 所设计的全新 4 位键值缓存 (KV Cache) 压缩框架。通过将下游任务质量、缓存常驻留存率以及线上推理服务吞吐量进行联合端到端优化，UltraQuant 彻底破解了多轮智能体工作流中因超长文本前缀被反复调用而导致的巨大显存压力难题。</p>
+<blockquote>
+<p><strong>UltraQuant</strong> is a novel 4-bit key-value (KV) cache compression framework designed specifically for context-heavy AI agents operating under memory-constrained, high-concurrency conditions. By jointly optimizing task quality, cache residency, and serving throughput, UltraQuant addresses the massive memory pressure introduced by multi-round agent workflows where long text prefixes are repeatedly reused. </p>
+</blockquote>
+<p>其核心技术亮点包括：</p>
+<blockquote>
+<p>Key technical highlights include:</p>
+</blockquote>
+<ul>
+<li><strong>鲁棒的 4-bit 量化设计 (Robust 4-bit Design) ：</strong> 采用针对 K 与 V 张量的非对称处理方案、Walsh-Hadamard 旋转变换、移除 QJL (Quick Johnson-Lindenstrauss) 以及分块缩放 (Block-Scale) 变体设计。</li>
+<li><strong>硬件加速服务优化 (Hardware-Accelerated Serving) ：</strong> 引入了高度优化的解码注意力内核算子，并为基于 CDNA4 架构的 AMD GPU 量身打造了 FP4 近似计算路径 (支持 FP8 查询、FP4 KV 张量、UE8M0 分组缩放系数以及原生的 Scaled-MFMA 指令加速) 。</li>
+<li><strong>令人瞩目的性能飞跃 (Significant Performance Gains) ：</strong> 在真实生产环境 Claude Code 的执行轨迹回放测试中，UltraQuant 相比原生 BF16 基线取得了高达 <strong>2.71x</strong> (在 MiniMax-M2.5 上) 和 <strong>4.38x</strong> (在 Qwen3-235B 上) 的达标请求吞吐量提升，在将 KV 显存开销直接砍半的同时，性能表现比肩甚至超越了硬件级 FP8 KV 缓存。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Robust 4-bit Design:</strong> Uses asymmetric K/V treatment, Walsh-Hadamard rotation, removal of QJL (Quick Johnson-Lindenstrauss), and block-scale variants.</li>
+<li><strong>Hardware-Accelerated Serving:</strong> Introduces optimized decode-attention kernels and an FP4 approximation path tailored for AMD GPUs using CDNA4 architecture (featuring FP8 queries, FP4 KV tensors, UE8M0 group scales, and native scaled-MFMA support).</li>
+<li><strong>Significant Performance Gains:</strong> Replays of production Claude Code traces show UltraQuant delivers <strong>2.71x</strong> (MiniMax-M2.5) and <strong>4.38x</strong> (Qwen3-235B) the qualified-request throughput of standard BF16 baselines, matching or exceeding hardware FP8 KV while cutting KV memory footprint in half.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">📄 论文元数据</h2>
+<blockquote>
+<h2 id="paper-metadata">Paper Metadata</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv 标识符：</strong> <a href="https://arxiv.org/abs/2606.20474">arXiv:2606.20474</a> [cs.LG]</li>
+<li><strong>论文作者：</strong> Inesh Chakrabarti, David Limpus, Aditi Ghai Rana, Bowen Bao, Spandan Tiwari, Thiago Crepaldi, Ashish Sirasao</li>
+<li><strong>主学科领域：</strong> 机器学习 (<code>cs.LG</code>)</li>
+<li><strong>次要学科领域：</strong> 人工智能 (<code>cs.AI</code>)、系统性能 (<code>cs.PF</code>)</li>
+<li><strong>收录会议/期刊：</strong> EMNLP 2026 Industry Track (11 页，9 幅图表)</li>
+<li><strong>提交历史版本：</strong> </li>
+<li>v1: 2026 年 6 月 18 日</li>
+<li>v3 (当前版本): 2026 年 9 月 11 日</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2606.20474">arXiv:2606.20474</a> [cs.LG]</li>
+<li><strong>Authors:</strong> Inesh Chakrabarti, David Limpus, Aditi Ghai Rana, Bowen Bao, Spandan Tiwari, Thiago Crepaldi, Ashish Sirasao</li>
+<li><strong>Primary Subject:</strong> Machine Learning (<code>cs.LG</code>)</li>
+<li><strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>), Performance (<code>cs.PF</code>)</li>
+<li><strong>Conference/Venue:</strong> EMNLP 2026 Industry Track (11 pages, 9 figures)</li>
+<li><strong>Submission History:</strong> </li>
+<li>v1: June 18, 2026</li>
+<li>v3 (Current): September 11, 2026</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">🔍 论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>重度依赖上下文的智能体系统给键值缓存 (KV Cache) 带来了沉重的显存压力：长文本前缀在众多短轮次交互中被高频复用，而并发能力的高低直接决定了服务系统能否让 GPU 算力保持满载。针对这一核心应用场景，我们系统性地探索了 4-bit KV 缓存压缩技术，以 TurboQuant 风格的旋转变换与码本量化作为精度基准锚点，并以 vLLM 的 FP8 KV 缓存作为工业部署的工程锚点。本项研究主要包含三大核心贡献：</p>
+<blockquote>
+<p>Context-heavy agents place substantial pressure on the key-value (KV) cache: long prefixes are reused across many short turns, while concurrency determines whether the serving system can keep GPUs utilized. We study 4-bit KV-cache compression for this setting, using TurboQuant-style rotation and codebook quantization as a quality anchor and vLLM FP8 KV caching as the deployment anchor. We report three contributions. </p>
+</blockquote>
+<ol>
+<li><strong>工作负载建模 (Workload Framing) ：</strong> 我们围绕多轮智能体工作负载重新构建了 4-bit KV 缓存的设计范式，在此范式下，任务完成质量、缓存驻留率与服务吞吐量必须作为一个整体进行联合评估。</li>
+<li><strong>鲁棒实用的工程设计 (Robust Practical Design) ：</strong> 我们阐述了使 4-bit 链路保持高鲁棒性所必需的工程设计抉择，包括针对 K/V 张量的非对称处理、Walsh-Hadamard 旋转变换、舍弃 QJL 方案以及引入分块缩放变体。</li>
+<li><strong>硬件级服务推理优化 (Hardware Serving Optimizations) ：</strong> 我们展示了针对 AMD GPU 的深度服务优化成果，包括高度优化的解码注意力内核，以及 UltraQuant 专属的 FP4 近似计算路径——该路径利用 FP8 查询、FP4 KV 张量、UE8M0 分组缩放因子，并在 CDNA4 硬件架构上提供了原生的 Scaled-MFMA 矩阵计算支持。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Workload Framing:</strong> We frame 4-bit KV caching around multi-round agent workloads where task quality, cache residency, and serving throughput must be measured jointly.</li>
+<li><strong>Robust Practical Design:</strong> We describe the practical design choices needed to make the 4-bit path robust, including asymmetric K/V treatment, Walsh-Hadamard rotation, QJL removal, and block-scale variants.</li>
+<li><strong>Hardware Serving Optimizations:</strong> We present serving optimizations on AMD GPUs, including optimized decode-attention kernels and UltraQuant, an FP4 approximation path that uses FP8 queries, FP4 KV tensors, UE8M0 group scales, and native scaled-MFMA support on CDNA4. </li>
+</ol>
+</blockquote>
+<p>在对真实生产环境 Claude Code 追踪轨迹的自适应 SLO (Adaptive-SLO) 回放测试中，UltraQuant 相比 BF16 基线分别达成了 <strong>2.71x</strong> (搭载 MiniMax-M2.5) 与 <strong>4.38x</strong> (搭载 Qwen3-235B) 的达标请求吞吐量，在仅占用一半 KV 字节空间的情况下，性能比肩甚至超越了硬件级 FP8 KV 方案。UltraQuant 在长上下文、高并发且内存严重受限的服务场景中能够发挥出极其巨大的加速效益。</p>
+<blockquote>
+<p>On an adaptive-SLO replay of production Claude Code traces, UltraQuant sustains <strong>2.71x</strong> (MiniMax-M2.5) and <strong>4.38x</strong> (Qwen3-235B) the qualified-request throughput of the BF16 baseline, matching or exceeding hardware FP8 KV while using half the KV bytes. UltraQuant delivers its largest gains in long-context, high-concurrency, memory-constrained serving regimes.</p>
+</blockquote>
+<hr />
+<h2 id="_5">🔗 访问与资源链接</h2>
+<blockquote>
+<h2 id="access-resources">Access &amp; Resources</h2>
+</blockquote>
+<ul>
+<li><strong>全文阅读链接：</strong></li>
+<li><a href="https://arxiv.org/pdf/2606.20474">阅读 PDF 论文</a></li>
+<li><a href="https://arxiv.org/html/2606.20474v3">网页版 HTML (实验性)</a></li>
+<li><a href="https://arxiv.org/src/2606.20474">TeX 源码包</a></li>
+<li><strong>外部学术引用与检索工具：</strong></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2606.20474">Google 学术检索 (Google Scholar)</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2606.20474">Semantic Scholar 检索</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2606.20474">NASA ADS 天体物理数据系统检索</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text Options:</strong> </li>
+<li><a href="https://arxiv.org/pdf/2606.20474">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2606.20474v3">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2606.20474">TeX Source</a></li>
+<li><strong>External Citations &amp; Tools:</strong> </li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2606.20474">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2606.20474">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2606.20474">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">KV Cache</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">量化技术</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">AI 智能体</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">显存优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">UltraQuant</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
