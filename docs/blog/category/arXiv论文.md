@@ -1980,3 +1980,7 @@ title: arXiv论文
 - [GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速](../posts/2026-09-13-GPU-CFR-通过编译为静态数据流与-CUDA-Graph-重放实现-80-倍逆事实遗憾最小化加速.md)
 - [ActMap：基于生成期激活特征图的单次推理不确定性量化](../posts/2026-09-13-ActMap-基于生成期激活特征图的单次推理不确定性量化.md)
 - [terms.txt：面向智能体网络访问的知情同意与补偿协议](../posts/2026-09-13-terms-txt-面向智能体网络访问的知情同意与补偿协议.md)
+- [几乎零开销的状态-预测解耦架构](../posts/2026-09-15-几乎零开销的状态-预测解耦架构.md)
+- [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](../posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
+- [AsyncFlow：面向高效大模型后训练的异步流式强化学习框架](../posts/2026-09-15-AsyncFlow-面向高效大模型后训练的异步流式强化学习框架.md)
+- [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](../posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
