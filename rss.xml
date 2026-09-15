@@ -5,6 +5,312 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</guid>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在动态编程语言的发展历史中，许多运行时环境默认会将当前工作目录或脚本所在路径置于模块搜索路径中，这为“模块遮蔽” (Module Shadowing) 攻击埋下了重大隐患——攻击者只需在目录下放置同名文件，就能偷梁换柱劫持原生标准库。尽管 Ruby、Perl、Node.js、Deno 和 Julia 等现代运行时已逐步从设计层面剔除或防范了这种隐式路径查找，但 Python 和 PHP 至今仍默认将工作目录置于搜索路径首位，在解压不可信压缩包或访问外部目录时极易受到供应链攻击。尤其在当今 AI 编程智能体 (AI Agent) 广泛自主解压缩外部文件并即时运行辅助脚本的时代，这一看似古老的语言设计特性正演变为不可忽视的高危远程代码执行隐患。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+在动态编程语言的发展历史中，许多语言在默认情况下都会将当前工作目录或脚本所在路径纳入模块搜索路径。这意味着，本地目录下的任意文件都有可能悄悄覆盖内置的核心库，这种安全隐患被称为“模块遮蔽” (Module Shadowing)。本文将系统梳理各大主流编程语言运行时如何应对这一安全挑战。像 Ruby、Perl、Node.js、Deno 和 Julia 等现代语言，早已从根本上彻底消除或严格限制了这种从上下文环境中自动查找路径的做法，以杜绝恶意脚本被意外执行；然而，像 Python 和 PHP 这样的老牌语言，至今仍默认将当前工作目录排在搜索路径的首位。这就带来了一个严重的安全漏洞：一旦程序解压了不可信的压缩包，或是进入了不受信任的文件目录，攻击者就能轻而易举地通过同名文件掉包标准库，达成恶意代码执行。
+
+&gt; Dynamic languages have historically included the current directory or script location in their module search paths by default, allowing local files to override built-in libraries (a vulnerability known as module shadowing). This write-up explores how various runtimes handle this security challenge. While languages like Ruby, Perl, Node.js, Deno, and Julia have eliminated or mitigated ambient path lookups to prevent malicious file execution, languages like Python and PHP still place the working directory first on the path, leaving them vulnerable to attacks where unpacked archives or untrusted folders compromise standard library resolution.
+
+---
+
+## 已彻底移除：将当前工作目录踢出默认搜索路径
+
+&gt; ## Removed
+
+早在 2010 年 8 月发布的 [1.9.2](https://github.com/ruby/ruby/blob/master/doc/NEWS/NEWS-1.9.2) 版本中，Ruby 就果断从 `$LOAD_PATH` 中删除了代表当前目录的 `.`。当时的更新公告极其简短，只有一句话：“`$:` 不再包含当前目录，请改用 `require_relative`”。引入的 [`require_relative`](https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require_relative) 方法能够直接基于当前调用文件所在的磁盘位置进行相对寻址，与进程当前的工作目录完全解耦。这样一来，脚本既能安全地加载与自身同目录的兄弟文件，又能确保整个进程中的其他 `require` 调用免受外部不可信工作目录的污染。由于当时 Ruby 从 1.8 升级至 1.9 本身就是一次重大破坏性升级，因此这次加载路径的调整直接顺理成章地一同落地，既没有专门申请通用漏洞披露 (Common Vulnerabilities and Exposures, CVE) 编号，也没有提供任何用于回退兼容的“逃生舱”环境变量。
+
+&gt; Ruby dropped `.` from `$LOAD_PATH` in [1.9.2](https://github.com/ruby/ruby/blob/master/doc/NEWS/NEWS-1.9.2), released August 2010. The NEWS entry is one line, “$: no longer includes the current directory, use require_relative”. [`require_relative`](https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require_relative) resolves against the calling file’s location, independent of the process working directory, so a script can load its own siblings while keeping the working directory off the search path for every other `require` in the process. There was no CVE and no escape-hatch environment variable; 1.9 was already a compatibility break from 1.8 and the load-path change went in alongside everything else.
+
+Perl 则在 2017 年 5 月发布的 [5.26.0](https://perldoc.perl.org/perl5260delta#Removal-of-the-current-directory-(%22.%22)-from-@INC) 版本中，将 `.` 从模块加载数组 `@INC` 的末尾彻底移除。与 Ruby 不同，Perl 的这次改动直接关联了一起严重的安全漏洞 [CVE-2016-1238](https://www.nntp.perl.org/group/perl.perl5.porters/2016/07/msg238271.html)，该漏洞最初由 cPanel 团队提交：当一个脚本切换工作目录到公共临时目录 `/tmp` 并尝试加载可选模块时，就会毫无防备地直接执行本地恶意用户提前在 `/tmp/Module.pm` 中留下的任意代码。Perl 在传统上一向默认在 `@INC` 中携带 `.`，不过污点模式 (Taint Mode, `perl -T`) 一直会自动剔除它，这说明官方早已知晓其潜在风险。为了平稳过渡，Perl 5.26 新增了环境变量 [`PERL_USE_UNSAFE_INC=1`](https://perldoc.perl.org/perl5260delta#PERL_USE_UNSAFE_INC) 供老项目临时回退，下游各大 Linux 发行版也为此[维护了长达数年的兼容补丁](https://wiki.gentoo.org/wiki/Project:Perl/Dot-In-INC-Removal)，直至 CPAN 社区中所有依赖 `.` 路径的历史模块被逐一修复完毕。
+
+&gt; Perl removed `.` from the end of `@INC` in [5.26.0](https://perldoc.perl.org/perl5260delta#Removal-of-the-current-directory-(%22.%22)-from-@INC), released May 2017. That one did have a CVE, [CVE-2016-1238](https://www.nntp.perl.org/group/perl.perl5.porters/2016/07/msg238271.html), reported by cPanel: a script that changes directory to `/tmp` and then loads an optional module runs whatever a local user has left at `/tmp/Module.pm`. Perl had traditionally shipped with `.` on `@INC`, and taint mode (`perl -T`) had always stripped it, so the risk was documented long before the fix. 5.26 added [`PERL_USE_UNSAFE_INC=1`](https://perldoc.perl.org/perl5260delta#PERL_USE_UNSAFE_INC) to restore the old behaviour for the transition, and downstream distributions [carried patches for years](https://wiki.gentoo.org/wiki/Project:Perl/Dot-In-INC-Removal) while CPAN modules that depended on `.` being present were fixed one at a time.
+
+---
+
+## 架构原生防范：优先内置模块与显式路径设计
+
+&gt; ## Designed Out
+
+在 Node.js 中，`require` 机制[会优先检查内置核心模块名称](https://nodejs.org/api/modules.html#core-modules)，其优先级高于磁盘上的 `node_modules` 或任何本地文件。因此，即便调用脚本的同一目录下存在一个名为 `http.js` 的文件，执行 `require('http')` 也只会返回官方原生模块。在 Node.js 中若要加载同目录下的本地文件，历来都必须显式使用相对路径，例如 `require('./http')`。从 Node.js 14.18.0 开始，官方还引入了 [`node:` 协议前缀](https://nodejs.org/api/modules.html#core-modules)，使得 `require('node:http')` 可以进一步绕过 require 缓存，并且类似 `node:test` 这样的全新内置模块甚至只能通过该前缀访问。不过需要指出的是，这种防护仅覆盖了核心标准库：当引入第三方库如 `require('express')` 时，Node.js 仍会[从调用方所在目录开始向上逐级检索 `node_modules`](https://nodejs.org/api/modules.html#loading-from-node_modules-folders)。这意味着，解压后的不可信压缩包里若暗藏 `node_modules/express`，仍会优先于全局或系统安装的版本被加载。类似地，Java 在运行时通过类路径 (Classpath) 解析类，虽然[在未设置 `-cp` 或 `CLASSPATH` 环境变量时默认类路径就是 `.` 当前目录](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)，但其启动类加载器 (Bootstrap Class Loader) 会在应用程序类加载器扫描类路径之前先一步锁定 `java.*` 等基础核心类，因此同目录下的 `./java/lang/String.class` 根本不可能实现偷梁换柱。而 Deno 则更为纯粹，它完全抛弃了上下文环境隐式搜索路径的设计理念：所有模块导入必须是 [URL 或明确的相对路径](https://docs.deno.com/runtime/fundamentals/modules/)，任何未在导入映射表 (Import Map) 中声明的裸说明符都会直接抛出异常。
+
+&gt; Node’s `require` [checks core module names first](https://nodejs.org/api/modules.html#core-modules), before `node_modules` or anything else on disk, so `require('http')` returns the built-in even with an `http.js` in the caller’s directory. Loading a neighbouring file has always taken an explicit relative path, `require('./http')`. Node 14.18.0 added the [`node:` prefix](https://nodejs.org/api/modules.html#core-modules) so `require('node:http')` bypasses the require cache as well, and some newer built-ins such as `node:test` are only reachable that way. That protection covers core modules only: `require('express')` [searches upward from the caller’s directory through each `node_modules`](https://nodejs.org/api/modules.html#loading-from-node_modules-folders), so a `node_modules/express` inside an extracted archive is resolved ahead of any installed copy. Java resolves classes at run time from a classpath, and the [default classpath when neither `-cp` nor `CLASSPATH` is set is `.`](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html), but the bootstrap class loader finds `java.*` before the application loader searches the classpath, so a `./java/lang/String.class` is unreachable for the same reason a local `http.js` is in Node. Deno dropped the ambient search path entirely: every import is [a URL or a relative path](https://docs.deno.com/runtime/fundamentals/modules/), and a bare specifier outside the import map is an error.
+
+Julia 默认的 [`LOAD_PATH`](https://docs.julialang.org/en/v1/base/constants/#Base.LOAD_PATH) 变量被设定为 `["@", "@v#.#", "@stdlib"]`。这三个符号路径分别对应当前激活的项目环境、带有版本号的用户全局默认环境以及标准库。无论进程当前切换到哪个目录下，`@` 符号都会严格锚定当前激活的 `Project.toml` 清单文件，因此即使在不可信目录下执行脚本，模块导入也只会严格依据配置文件清单进行解析。PowerShell 的 `Import-Module` 命令则仅检索 [`$env:PSModulePath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath) 环境变量，默认只涵盖单用户目录、全体用户共享目录以及 `$PSHOME` 核心目录；此外，PowerShell 在可执行文件寻址上也采用了同样的严密设计：在当前工作目录下运行脚本[必须显式添加 `.\` 前缀](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scripts)，直接键入裸名称只会搜索系统 `$env:PATH`，绝不会误执行当前目录下的同名文件。
+
+&gt; Julia’s default [`LOAD_PATH`](https://docs.julialang.org/en/v1/base/constants/#Base.LOAD_PATH) is `["@", "@v#.#", "@stdlib"]`, three symbolic entries that expand to the active project environment, the user’s versioned default environment, and the standard library. `@` resolves to whichever `Project.toml` is active, regardless of which directory the process is in, so a script run from an untrusted directory looks up imports in a manifest file. PowerShell’s `Import-Module` searches [`$env:PSModulePath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath), which defaults to the per-user, all-users and `$PSHOME` module directories only, and the shell applies the equivalent rule to executable lookup: running a script in the working directory [requires an explicit `.\` prefix](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scripts), so a bare name searches only `$env:PATH`.
+
+---
+
+## 隐患仍存：工作目录优先与被遮蔽的标准库
+
+&gt; ## Still There
+
+与上述语言形成鲜明对比的是，PHP 默认的 [`include_path`](https://www.php.net/manual/en/ini.core.php#ini.include-path) 依然将 `.` 放在第一位。这意味着，执行 `include 'config.php'` 时，程序会毫不犹豫地优先加载当前工作目录下的 `config.php`，而不是系统 PEAR 路径中的对应库文件。Lua 默认的 [`package.path`](https://github.com/lua/lua/blob/v5.4.0/luaconf.h#L208-L219) 则以 `./?.lua;./?/init.lua` 结尾；当执行 `require "json"` 且所有已安装路径均未匹配时，搜索机制就会顺延兜底到当前目录下的 `./json.lua`。好在 Lua 自身的官方标准库 (如 `string`、`table`、`math` 等) 在 [`require` 遍历任何磁盘路径之前就已经注册到了 `package.loaded` 表中](https://github.com/lua/lua/blob/v5.4.0/linit.c)，因此本地的 `./string.lua` 无法覆盖原生标准库，只有第三方未预载的名称会暴露给同名劫持风险。在这两种语言中，如果开发者想要将工作目录从搜索路径中剥离，通常必须通过 `php -d include_path=...` 命令行参数或配置 `LUA_PATH` 环境变量来全量重写整个搜索路径字符串。
+
+&gt; PHP’s `.` is the first entry in the default [`include_path`](https://www.php.net/manual/en/ini.core.php#ini.include-path), so `include 'config.php'` picks up a `config.php` in the working directory ahead of one under the PEAR path. Lua’s default [`package.path`](https://github.com/lua/lua/blob/v5.4.0/luaconf.h#L208-L219) ends with `./?.lua;./?/init.lua`, so `require "json"` falls through to `./json.lua` after the installed-path entries have all missed. Lua’s own standard libraries, `string`, `table`, `math` and the rest, are [registered in `package.loaded` before `require` searches any path](https://github.com/lua/lua/blob/v5.4.0/linit.c), so a `./string.lua` is unreachable and only third-party names are exposed. In both PHP and Lua, dropping the working-directory entry means overriding the full path string, via `php -d include_path=...` or the `LUA_PATH` environment variable.
+
+Python 的机制则更为直接：当直接运行 Python 脚本文件时，解释器会将脚本所在目录置入 `sys.path[0]`；使用 `-m` 运行模块时，置入的是当前工作目录；而在使用 `-c` 或进入交互式终端 (REPL) 时，置入的则是一个空字符串，其实际含义同样等同于当前工作目录。早在 Python 3.4 中，官方就[新增了隔离模式 (Isolated Mode, `-I`) ](https://docs.python.org/3/using/cmdline.html#cmdoption-I)，该模式会在禁用该前置路径的同时，一并屏蔽用户级 site-packages 以及所有的 `PYTHON*` 环境变量。为了提供更精细的控制，Python 3.11 引入了一个针对性更强的安全开关：[`-P` 参数与 `PYTHONSAFEPATH` 环境变量](https://docs.python.org/3/using/cmdline.html#cmdoption-P)，它仅单独剔除 `sys.path[0]` 中的本地目录，而保留其他环境变量完好无损。该功能背后的问题跟踪单 [bpo-13475](https://github.com/python/cpython/issues/57684) 早在 2011 年 11 月就已被提出。合入 `-P` 功能的核心开发者 Victor Stinner 还在其个人仓库中起草了一份 [PEP 提案草案](https://github.com/vstinner/misc/blob/main/cpython/pep_path0.rst)，主张以 Perl 5.26 为先例将 safe-path 设为解释器的全局默认行为。然而，Ruby 当年能够从容剔除 `.`，是因为其同步推出了 `require_relative` 为同级依赖提供了替代出路；而 Python 的[显式相对导入语法](https://docs.python.org/3/reference/import.html#package-relative-imports)仅在正式包结构内部有效。这意味着，一个单独的独立脚本 `script.py` 若要直接 `import helper` 加载同级辅助模块，其底层完全依赖 `sys.path[0]` 指向当前目录；一旦在 `-P` 模式下运行，就会立即因找不到模块而抛出 `ModuleNotFoundError` 异常。
+
+&gt; Python prepends the script’s directory as `sys.path[0]` when running a file, the working directory when running `-m`, and an empty string, meaning the working directory, when running `-c` or the REPL. Isolated mode, `-I`, [added in 3.4](https://docs.python.org/3/using/cmdline.html#cmdoption-I), suppresses that entry along with user site-packages and all `PYTHON*` environment variables. 3.11 added a narrower switch, [`-P` and `PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#cmdoption-P), which drops only the `sys.path[0]` entry and leaves the rest of the environment alone. The tracker issue behind `-P`, [bpo-13475](https://github.com/python/cpython/issues/57684), was opened in November 2011. Victor Stinner, who landed `-P`, has a [draft PEP](https://github.com/vstinner/misc/blob/main/cpython/pep_path0.rst) in his personal repo proposing to make safe-path the default and citing Perl 5.26 as precedent. Ruby could drop `.` because `require_relative` shipped in the same release and gave scripts another way to load their siblings. Python’s [explicit relative imports](https://docs.python.org/3/reference/import.html#package-relative-imports) only work inside a package, so a standalone `script.py` importing `helper.py` from the same directory depends on `sys.path[0]` being that directory, and running it under `-P` fails with `ModuleNotFoundError`.
+
+在历史设计上，Perl、Ruby 和 Lua 都倾向于将 `.` 放在搜索路径的最末端——排在标准库和第三方库目录之后。因此，工作目录中的文件只有在全系统都找不到该名称时，才会作为“兜底”被加载；这也是为什么 CVE-2016-1238 漏洞需要依赖脚本尝试加载某个“可选模块”才能触发。然而，Python 和 PHP 却反其道而行之，直接将外部环境目录推到了搜索路径的最前端。由于官方标准库在路径列表里排在后面，一旦工作目录下存在一个名为 `struct.py` 的文件，它就会直接被加载并偷换掉真正的 `struct` 模块，所有从磁盘读取的标准库模块都无一幸免。虽然直接编译进解释器内核的内置模块以及[自 Python 3.11 起](https://docs.python.org/3/whatsnew/3.11.html#faster-startup)被冻结在启动内存中的核心集合 (例如 `os`、`abc`、`io`、`codecs` 等) 会在 `PathFinder` 扫描磁盘之前由 `sys.meta_path` 上的 `BuiltinImporter` 和 `FrozenImporter` 优先处理，但像 `struct` 这样纯粹基于磁盘 `.py` 包装 C 扩展的标准库模块，仍会交由 `PathFinder` 检索，从而不可避免地面临被恶意掉包的命运。
+
+&gt; Perl, Ruby and Lua all put `.` last, after the standard-library and site directories, so a file in the working directory could only supply a name that was missing everywhere else, and CVE-2016-1238 accordingly needed a target script that loaded an optional module. Python and PHP put the ambient directory first. The standard library comes after it on the path, `struct.py` in the working directory is loaded in place of the real `struct`, and any standard-library module read from disk is exposed the same way. Modules compiled into the interpreter and, [since 3.11](https://docs.python.org/3/whatsnew/3.11.html#faster-startup), the frozen startup set (`os`, `abc`, `io`, `codecs` among them) are served by `BuiltinImporter` and `FrozenImporter` on `sys.meta_path` before `PathFinder` touches disk; `struct` is a plain `.py` wrapper around a C extension and goes to `PathFinder`.
+
+| 语言/运行时 | 默认路径条目 | 搜索优先级 | 标准库可被遮蔽？ | 移除版本 | 安全模式开关 |
+|---|---|---|---|---|---|
+| Ruby | `$:` 中的 `.` | 末位 (last) | 否 | 1.9.2 (2010) | |
+| Perl | `@INC` 中的 `.` | 末位 (last) | 否 | 5.26 (2017) | 可通过 `PERL_USE_UNSAFE_INC` 恢复 |
+| Node.js | 无 (none) | | 否 | | |
+| Java | 未设置 `-cp` 时的 `.` | | 否 | | 任意 `-cp` 均可替换该默认值 |
+| Deno | 无 (none) | | 否 | | |
+| Julia | 无 (依据项目清单) | | 否 | | |
+| Lua | `package.path` 中的 `./?.lua` | 末位 (last) | 否 | | |
+| PHP | `include_path` 中的 `.` | 首位 (first) | 是 | | |
+| Python | `sys.path` 中的脚本目录 / 工作目录 | 首位 (first) | 是 | | `-I` (3.4) , `-P` / `PYTHONSAFEPATH` (3.11) |
+
+&gt; |   | Entry on default path | Position | Stdlib shadowable | Removed in | Safe-mode switch |
+&gt; |---|---|---|---|---|---|
+&gt; | Ruby | `.` in `$:` | last | no | 1.9.2 (2010) | |
+&gt; | Perl | `.` in `@INC` | last | no | 5.26 (2017) | (`PERL_USE_UNSAFE_INC` restores) |
+&gt; | Node.js | none | | no | | |
+&gt; | Java | `.` when `-cp` unset | | no | | any `-cp` replaces it |
+&gt; | Deno | none | | no | | |
+&gt; | Julia | none (project manifest) | | no | | |
+&gt; | Lua | `./?.lua` in `package.path` | last | no | | |
+&gt; | PHP | `.` in `include_path` | first | yes | | |
+&gt; | Python | script dir / cwd in `sys.path` | first | yes | | `-I` (3.4), `-P` / `PYTHONSAFEPATH` (3.11) |
+
+---
+
+## 威胁模型：AI 编程智能体时代的新危机
+
+&gt; ## Threat Model
+
+Perl 5.26 的发行说明中曾将这一风险清晰定义为：脚本在“当前目录不受信任 (例如 `/tmp`) ”时加载可选模块。在官方修复之前的二十年里，人们采取的应对方案纯粹是防御性的操作规程：系统运维脚本在加载任何可选模块前必须先 `chdir` 切换到一个安全可信的目录，并且用户只应当在自己完全受控的目录中运行工具。显然，这些经验法则全都是为“人类开发者”或“固定工作目录的系统守护进程”量身定制的，因为人类在终端敲下回车之前，清楚地知晓解释器将在哪个目录下启动。
+
+&gt; The Perl 5.26 release notes describe the risk as a script loading an optional module “when its current directory is untrusted (such as `/tmp`)”, and the mitigation for the twenty years before that was procedural: system scripts `chdir` somewhere safe before loading anything optional, and users run tools only from directories they control, advice written for a person or a fixed-cwd daemon choosing where the interpreter runs.
+
+然而，当当今的 AI 编程智能体自主下载一个压缩包、将其解压、在解压内容旁随手编写一个辅助脚本并立即执行时，这实质上就是换了个目录名称的 `/tmp` 经典提权攻击场景。不可信的压缩包直接决定了目录中包含哪些文件，而智能体自行生成的脚本正好成为了触发恶意模块导入的扳机。更关键的是，Python 是各类 AI 智能体生成辅助代码时的绝对首选：无论是 OpenAI 的[代码解释器 (Code Interpreter) ](https://developers.openai.com/api/docs/guides/tools-code-interpreter)，还是 Anthropic 的[代码执行工具 (Code Execution Tool) ](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool)，亦或是本文直接针对的 Claude Code 智能体命令行工具，在运行临时脚本时无一例外都依赖 Python 解释器。在安全研究员 Rehberger 构造的概念验证攻击中，被掉包的遮蔽模块甚至还贴心地将调用转发给了真正的标准库，从而使数据解码器依然能返回完全正确的结果，神不知鬼不觉地完成了恶意载荷注入。这与之前讨论过的[子进程可通过环境变量注入的覆盖标志位 (Override Flags) ](https://nesbitt.io/2026/08/25/hardening-the-override-flag.html)如出一辙：在由人类开发者审慎指定工作目录或命令行标志的年代，这种设计或许还能勉强容忍；但在 AI 智能体自主解压压缩包并随之将解压目录隐式作为工作目录的新时代，这一历史遗留特性无疑为远程代码执行大开方便之门。
+
+&gt; A coding agent that downloads an archive, extracts it, writes a helper next to the contents, and runs the helper is the `/tmp` case with a different label on the directory. The archive determined the directory contents, and the agent’s own script is what triggers the import. Python is also the language agents default to for generated helpers: the sandboxed runtime for both OpenAI’s [Code Interpreter](https://developers.openai.com/api/docs/guides/tools-code-interpreter) and Anthropic’s [code execution tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool), and the interpreter Claude Code, the target in the write-up, invokes for ad-hoc scripts. In Rehberger’s version the shadowed module forwards to the real one, so the decoder returns a correct result. It is the same class of default as the [override flags a subprocess can set through its environment](https://nesbitt.io/2026/08/25/hardening-the-override-flag.html): tolerable while a person supplied the working directory or the flag, and an agent processing an archive supplies the working directory as a side effect of extracting it.</description>
+    </item>
+    <item>
+      <title>一个向量能容纳多少思维？叠加推理的表征容量</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-16/一个向量能容纳多少思维-叠加推理的表征容量/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/一个向量能容纳多少思维-叠加推理的表征容量/</guid>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (LLM) 的多步复杂推理中，传统方法通常依赖“思维链” (Chain-of-Thought, CoT) 将思考步骤逐一解码为离散的 Token，但这往往会带来巨大的计算开销与显存瓶颈。为了突破这一限制，近期的连续思维与循环架构尝试将推理过程直接置于固定维度的隐状态向量中，利用向量的“叠加”能力同时表征多种备选思考。然而，一个根本性的理论难题在于：随着推理逐步推进，连续思维向量究竟该保留哪些历史信息？
+
+本文针对这一核心问题开展了严谨的理论与容量分析，得出了一项反直觉的关键发现：相比于只保留最新的即时推理前沿，将全部历史推导累积叠加进向量中，在面对相同的下游计算时反而能够显著降低所需的表征维度。其深层原因在于，包含有效信息的历史成分在向量空间中能够相干互强，而无关的备选项只会产生相互抵消的随机噪声。此外，研究还证明了在未来信息效用未知时，“均匀累积加权”具有极小化极大 (Minimax) 最优性。这项工作成功将隐空间中的叠加态从一种经验观察升华为构建高效、稳健神经推理系统的严谨架构设计原则。
+
+---
+
+# 一个向量能容纳多少思维？叠加推理的表征容量
+
+&gt; # How Many Thoughts Can a Vector Hold? The Capacity of Reasoning by Superposition
+
+* **arXiv 编号：** [2609.13747](https://arxiv.org/abs/2609.13747) [cs.AI]
+* **作者：** Hongyu Gu, Chang Liu, Jingwen Fu
+* **提交时间：** 2026年9月12日
+* **主要学科：** 人工智能 (`cs.AI`)
+* **备注说明：** 20 页，4 张图表
+
+&gt; * **arXiv ID:** [2609.13747](https://arxiv.org/abs/2609.13747) [cs.AI]
+&gt; * **Authors:** Hongyu Gu, Chang Liu, Jingwen Fu
+&gt; * **Submitted:** September 12, 2026
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Comments:** 20 pages, 4 figures
+
+---
+
+## 摘要概要
+
+&gt; ## Abstract Summary
+
+大语言模型 (Large Language Model, LLM) 在解决复杂难题时，通常采用多步推理机制，将中间的思考推导过程显式编码为一个接一个的离散 Token，这就是我们熟知的思维链 (Chain-of-Thought, CoT)。然而，近期涌现的连续与循环计算方法，尝试将部分推理计算转移到固定维度的隐状态中，使得单个向量能够同时叠加多种可能的备选思维。
+
+&gt; Large language models typically solve complex problems through multi-step reasoning by encoding intermediate computations as discrete tokens (Chain-of-Thought). However, recent continuous and recurrent methods shift partial computations into fixed-dimensional latent states where a single vector can superpose multiple alternative thoughts simultaneously.
+
+针对这一新兴范式，本文深入探究了一个底层的核心设计问题：**随着推理的步步推进，连续思维向量究竟应当保留哪些信息？**
+
+&gt; This paper investigates a fundamental design question: **What should continuous thoughts preserve as reasoning proceeds?**
+
+* **反直觉的核心发现：** 直觉通常认为，与仅保留当前的即时推理前沿相比，将全部推理历史都保留在向量中 (即累积叠加) 会稀释向量状态并浪费表征容量；但作者的研究表明，在完成相同下游计算任务时，**累积叠加实际上反而只需要更低的表征维度**。
+* **背后的作用机制：** 携带有价值信息的历史思维成分在向量空间中能够彼此相干增强，而无关的备选项则只会带来相互抵消的随机干扰。
+* **架构设计准则：** 论文深入探讨了在未来信息效用未知的情况下，模型该如何为隐状态中累积的记忆赋予权重。虽然优先考虑近期或显著的信息看似合理，但容易造成“弱表征”瓶颈；而**均匀累积加权**能够彻底避免这一缺陷，并被证明在保障未来稳健推理方面具有**极小化极大最优性 (Minimax-Optimal)**。
+
+&gt; * **The Counter-Intuitive Finding:** While intuition suggests that retaining full reasoning history (cumulative superposition) would dilute states and waste representational capacity compared to keeping only the immediate reasoning frontier, the authors demonstrate that **cumulative superposition can actually require lower representational dimensions** under identical downstream computations.
+&gt; * **The Mechanism:** Informative historical components coherently reinforce one another, whereas unrelated alternatives introduce random interference. 
+&gt; * **The Design Principle:** The paper addresses how models should weight memories accumulated inside latent states when future utility is unknown. While prioritizing recent or salient items creates weak-representation bottlenecks, **uniform cumulative weighting** avoids this flaw and is proven to be **minimax-optimal** for robust future reasoning.
+
+总的来说，这项研究将隐空间中的“叠加态”现象，从一种单纯被观察到的神经网络经验现象，升华为了指导高效、高可靠神经计算的严谨架构设计原则。
+
+&gt; Ultimately, this research turns superposition from a mere observed latent-space phenomenon into a rigorous design principle for efficient, reliable neural computation.
+
+---
+
+## 文档元数据
+
+&gt; ## Document Metadata
+
+| 元数据字段 | 详情 |
+| :--- | :--- |
+| **引用方式** | `arXiv:2609.13747 [cs.AI]` |
+| **DOI 链接** | [10.48550/arXiv.2609.13747](https://doi.org/10.48550/arXiv.2609.13747) |
+| **许可协议** | [知识共享署名-非商业性使用-相同方式共享 4.0 国际 (CC BY-NC-SA 4.0)](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
+
+&gt; | Metadata Field | Details |
+&gt; | :--- | :--- |
+&gt; | **Cite As** | `arXiv:2609.13747 [cs.AI]` |
+&gt; | **DOI** | [10.48550/arXiv.2609.13747](https://doi.org/10.48550/arXiv.2609.13747) |
+&gt; | **License** | [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
+
+---
+
+## 全文与参考文献链接
+
+&gt; ## Full-Text &amp; References Links
+
+* **论文获取：**
+  * [查看 PDF](https://arxiv.org/pdf/2609.13747)
+  * [HTML 版本 (实验性)](https://arxiv.org/html/2609.13747v1)
+  * [TeX 源码](https://arxiv.org/src/2609.13747)
+* **外部文献工具与学术引用：**
+  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.13747)
+  * [Google 学术 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2609.13747)
+  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.13747)
+
+&gt; * **Access Paper:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2609.13747)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.13747v1)
+&gt;   * [TeX Source](https://arxiv.org/src/2609.13747)
+&gt; * **External Bibliographic Tools &amp; Citations:**
+&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.13747)
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.13747)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.13747)
+
+---
+*注：本文档包含衍生自仓库构建流水线的许可证图标 (例如：`&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;` )。*
+
+&gt; *Note: This document incorporates license graphics derived from the repository pipeline (e.g., `&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;`).*</description>
+    </item>
+    <item>
+      <title>mKernel：面向多 GPU 与多节点的高性能融合算子库</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-16/mKernel-面向多-GPU-与多节点的高性能融合算子库/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/mKernel-面向多-GPU-与多节点的高性能融合算子库/</guid>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型与前沿 AI 架构的参数规模不断攀升，单张显卡早已不堪重负，分布式训练与多卡推理已成为现代深度学习系统的基石。然而，跨 GPU 以及跨服务器节点之间的数据通信，往往是制约整体运行速度的严重瓶颈。传统方案通常在算子级别通过独立流来实现计算与通信重叠，带来的性能增益十分有限；而此前更高效的融合算子又普遍局限于单台机器内部的 NVLink 互联范围。为此，研究团队推出了 **mKernel** 算子库，首次在分块 (Tile) 粒度上实现了计算、节点内 NVLink 通信与跨节点 RDMA 网络传输的无缝流水线重叠。在 16 卡 H200 集群上的测试表明，mKernel 在 GEMM+AllReduce 和 Ring Attention 等核心算子上分别取得了高达 1.72 倍和 1.88 倍的显著加速，为大规模分布式 AI 系统的性能调优开辟了全新路径。
+
+---
+
+## 📌 概述
+
+&gt; ## 📌 Summary
+
+在训练和部署庞大的机器学习模型时，多卡之间的数据通信开销往往是拖慢整体运行速度的头号瓶颈。传统的系统级优化方法通常是在粗粒度的算子级别尝试重叠通信与计算 (例如分配不同的 CUDA 流) ，但这种方式能够挤出的性能提升十分有限。相比之下，融合算子 (Fused Kernel) 的表现更为亮眼——它能在 GPU 刚算完一小块数据 (Tile) 时就立刻将其发走，从而极大掩盖通信延迟；然而，此前的融合算子技术基本都被局限在单台服务器内部的 NVLink 高速互联范围内，无法直接扩展到多机集群的广阔天地。
+
+&gt; Communication bottlenecks significantly hinder the distributed training and inference of large machine learning models. Traditional approaches that overlap communication with computation at the kernel granularity (using separate streams) yield only limited performance improvements. While fused kernels perform better by transmitting output tiles immediately upon production, their adoption has largely been restricted to a single NVLink domain.
+
+为了打破这一限制，本文推出了全新的多 GPU、多节点融合算子库 **mKernel**。它专为大规模分布式集群环境打造，首次在细粒度的“数据分块 (Tile) ”层面上，将核心计算任务、单机节点内的 NVLink 互联通信以及节点间的跨机 RDMA 网络传输无缝重叠在一起。
+
+&gt; This paper introduces **mKernel**, a novel library of multi-GPU, multi-node fused kernels designed to seamlessly overlap computation, intra-node NVLink communication, and inter-node RDMA at tile granularity.</description>
+    </item>
+    <item>
+      <title>OpWeave：面向异构大模型推理服务的灵活算子级解耦框架</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-16/OpWeave-面向异构大模型推理服务的灵活算子级解耦框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/OpWeave-面向异构大模型推理服务的灵活算子级解耦框架/</guid>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在当今大语言模型 (Large Language Model, LLM) 的云端推理部署中，传统架构习惯将注意力机制 (Attention) 与前馈神经网络 (FFN/MoE) 等不同算子捆绑在同规格芯片上同机运行。然而，这两类核心算子在计算特征上存在天然分化：注意力机制重度受限于显存带宽，而前馈网络则极度消耗计算算力，导致高昂的 GPU 资源往往无法被充分利用。针对这一工业落地瓶颈，研究团队推出了端到端算子级解耦推理服务框架 OpWeave，首次实现了跨异构算力环境的灵活解耦调度。OpWeave 创新性地结合了严谨的理论成本模型、可高效应对混合注意力架构的规律感知规划器，以及基于 vLLM 的高性能执行运行时，打破了以往系统僵化的算子切分边界。在严格满足端到端延迟服务等级目标 (Service Level Objective, SLO) 的前提下，OpWeave 在同构与异构 GPU 集群上分别实现了高达 1.78 倍与 1.89 倍的服务成本削减，为大模型时代构建高性价比的基础设施开辟了全新路径。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+**OpWeave** 是一套专为大语言模型 (Large Language Model, LLM) 基础设施打造的端到端框架，专门用于实现异构环境下的**算子级解耦服务 (Operator-Level Disaggregated Serving, ODS)**。
+
+&gt; **OpWeave** is an end-to-end framework designed for heterogeneous **Operator-Level Disaggregated Serving (ODS)** in Large Language Model (LLM) infrastructures. 
+
+传统的 LLM 推理服务系统习惯将所有计算算子集中部署在同一类芯片上同机运行；而前沿的系统优化方案正逐步将推理流水线拆解为更细粒度的阶段——例如在 Token 生成的解码 (Decode) 阶段，将注意力机制 (Attention) 与前馈网络 (Feed-Forward Network, FFN) 或混合专家网络 (Mixture of Experts, MoE) 的计算彻底分离开来，以此更好地契合不同硬件的性能特长，并支持各算子模块的独立弹性扩缩容。然而，现有的工业实现方案大多受制于固化僵硬的算子切分边界，且缺乏一套统一的分析框架来量化评估“何时进行解耦才真正划算与最具性价比”。
+
+&gt; While traditional LLM serving systems colocate all operations, modern optimizations increasingly disaggregate inference into finer-grained stages (such as separating attention from FFN or MoE execution during the decode phase) to improve hardware matching and enable independent scaling. However, existing implementations suffer from rigid operator boundaries and lack unified frameworks to determine when disaggregation is cost-effective.
+
+针对上述核心挑战，OpWeave 依托三大核心组件给出了系统性解决方案：
+
+&gt; OpWeave addresses these challenges through three main components:
+
+1. **理论分析成本模型 (Analytical Cost Model)**：从数学原理上严格推导并界定了同构与异构 ODS 相比传统同机部署服务的效率收益理论边界。
+2. **规律感知规划器 (Regularity-Aware Planner)**：联合协同优化算子切分策略与底层集群部署配置，即便面对架构复杂的混合注意力 (Hybrid-Attention) 模型，也能确保庞大的解空间保持高效可解。
+3. **基于 vLLM 的执行运行时 (vLLM-Based Runtime)**：能够在各类异构设备资源池中平滑无缝地调度并执行带有动态算子阶段的自动化编排计划。
+
+&gt; 1. **Analytical Cost Model:** Mathematically bounds the efficiency gains of both homogeneous and heterogeneous ODS over traditional colocated serving.
+&gt; 2. **Regularity-Aware Planner:** Jointly optimizes operator partitioning and deployment configuration, ensuring the search space remains tractable even for complex hybrid-attention architectures.
+&gt; 3. **vLLM-Based Runtime:** Executes synthesized plans seamlessly across diverse device groups with dynamic operator stages.</description>
+    </item>
+    <item>
+      <title>Meta 推出 ZGateway：统一 ZippyDB 流量、每秒处理超 10 亿次请求的无状态代理层</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-16/Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层/</guid>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在超大规模分布式架构中，客户端直连底层数据库集群极易导致连接数呈爆炸式膨胀。在 Meta 内部，支撑全系产品元数据、计数器与配置系统的分布式键值存储 ZippyDB，曾面临着上百万台客户端主机直连带来的严重连接蔓延 (Connection Sprawl) 与重连风暴危机。为了从根本上化解这一工程瓶颈，Meta 研发并上线了无状态代理层 ZGateway。它不仅解耦了客户端与底层存储节点，将单机连接数大幅缩减 97% 以上，更逐步演进为一个集动态请求合流、自适应负载分流、内存读缓存与跨地域容灾于一体的综合流量底座。如今，ZGateway 以仅约 6% 的极低计算开销，稳定承载着 ZippyDB 全网约 40% 的数据流量，每秒处理操作数突破 10 亿大关，为超大规模基础设施的代理层设计树立了全新标杆。
+
+---
+
+## 📌 执行摘要
+
+&gt; ## 📌 Executive Summary
+
+Meta 正式发布了 **ZGateway**——这是一个架设在客户端应用程序与 [ZippyDB](https://engineering.fb.com/2021/08/06/core-infra/zippydb/) 之间的强大无状态代理层 (Stateless Proxy Tier)。ZippyDB 作为 Meta 内部广泛使用的分布式键值存储 (Key-Value Store)，承载着全系产品的核心元数据、计数器和配置系统。ZGateway 最初的诞生，是为了彻底解决上百万台客户端主机直连数据库所带来的严重连接蔓延 (Connection Sprawl) 难题；而如今，它已进化为一个功能完备的综合性流量平台，全面接管了请求批处理 (Batching)、准入控制 (Admission Control)、内存缓存 (Caching) 以及故障转移 (Failover) 等核心能力。目前，ZGateway 每秒处理的操作数已突破 **10 亿次**，在仅产生约 6% 极低计算开销的前提下，承载了整个 ZippyDB 全网约 40% 的流量。
+
+&gt; Meta has introduced **ZGateway**, a powerful stateless proxy tier positioned between client applications and [ZippyDB](https://engineering.fb.com/2021/08/06/core-infra/zippydb/), Meta's widely used key-value store powering product metadata, counters, and configurations. Originally designed to resolve severe connection sprawl across more than a million client hosts, ZGateway has evolved into a comprehensive platform handling batching, admission control, caching, and failover. Today, it processes over **1 billion operations per second** and carries roughly 40% of all ZippyDB traffic at a minimal computational overhead of about 6%.
+
+---
+
+## 为什么 ZippyDB 急需引入代理层
+
+&gt; ## Why ZippyDB Needed a Proxy
+
+在传统的客户端直连架构 (Direct-Access Architecture) 下，每一个 ZippyDB 客户端都必须与它需要访问的所有数据库主机直接建立连接。由于单个客户端在业务周期内可能需要触达分散在数十万台主机上的数万个分片 (Shards)，导致客户端与数据库节点双方都背负了极其沉重的包袱——单机往往需要维系成千上万条持久的 TLS 连接。
+
+&gt; Under a direct-access architecture, every ZippyDB client directly connected to every database host it needed to reach. Because a single client could touch tens of thousands of shards across hundreds of thousands of hosts, both clients and database hosts carried massive burdens of tens of thousands of TLS connections. 
+
+* **资源严重枯竭 (Resource Exhaustion)：** 哪怕只是空闲的静默连接，在链路两端也会持续霸占宝贵的内存、CPU 周期以及文件描述符 (File Descriptors)。
+* **重连风暴频发 (Reconnection Storms)：** 随着客户端实例集群规模的膨胀，数据库端的入站连接数呈指数级蹿升，多次因文件描述符耗尽和内存溢出 (Out-Of-Memory, OOM) 导致服务进程直接崩溃。
+* **灾难性的无限重启循环 (The Reboot Loop Incident)：** 在一次著名的系统事故中，一个路由 Bug 导致全网所有客户端对每一个分片都强行建立了一条独立连接，瞬时爆发的连接洪峰直接将整个数据库集群拖入了灾难性的死循环重启。
+* **客户端治理寸步难行 (Client-Side Hurdles)：** 企图在客户端侧解决此问题完全不可行，因为全公司有数百个相互独立的业务团队各自维护着不同技术栈的客户端代码，推动统一改造犹如天方夜谭。
+
+&gt; * **Resource Exhaustion:** Each idle connection consumed valuable memory, CPU, and file descriptors on both ends.
+&gt; * **Reconnection Storms:** Inbound connection counts grew with every client cohort, leading to crashes from file descriptor exhaustion and out-of-memory (OOM) errors. 
+&gt; * **The Reboot Loop Incident:** During one notable incident, a routing bug caused every client to open a connection per shard, throwing the entire database fleet into a catastrophic reboot loop.
+&gt; * **Client-Side Hurdles:** Fixing this on the client side was completely impractical because hundreds of independent teams owned various parts of the client fleet.
+
+---
+
+## 什么是 ZGateway？
+
+&gt; ## What is ZGateway?
+
+[ZGateway](https://engineering.fb.com/2026/09/03/core-infra/zgateway-proxy-zippydb-meta/) 是部署在 ZippyDB 客户端与底层 ZServer 数据库集群之间的一个无状态代理层。它作为区域服务层运行，通过 Meta 的自研服务网格 (Service Mesh) [ServiceRouter](https://atscaleconference.com/servicerouter-hyperscale-service-mesh-at-meta/) 实现服务发现与路由，主要提供两种工作形态：**纯透明代理 (Pure Proxy)** 与**直读缓存 (Read-Through Cache)**。
+
+&gt; [ZGateway](https://engineering.fb.com/2026/09/03/core-infra/zgateway-proxy-zippydb-meta/) is a stateless proxy tier deployed between ZippyDB clients and the ZServer database fleet. Running as regional tiers discovered via Meta’s service mesh, [ServiceRouter](https://atscaleconference.com/servicerouter-hyperscale-service-mesh-at-meta/), it operates in two primary flavors: **a pure proxy** and **a read-through cache**. 
+
+在底层实现上，ZGateway 直接复用了 Meta 高度优化的厚客户端 (Thick Client) C++ ZippyDB 库，本质上相当于将一个功能强大的 ZippyDB 客户端封装成了一项云原生托管服务。
+
+&gt; Under the hood, ZGateway utilizes Meta's thick C++ ZippyDB client, effectively operating as a ZippyDB client run as a managed service.</description>
+    </item>
+    <item>
       <title>基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</guid>
@@ -3468,404 +3774,6 @@ Token 级别的细粒度稀疏注意力机制（例如 DeepSeek Sparse Attention
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11677)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11677)
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11677)</description>
-    </item>
-    <item>
-      <title>DCO：基于预测性管理的面向大模型加速器动态缓存编排</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/DCO-基于预测性管理的面向大模型加速器动态缓存编排/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/DCO-基于预测性管理的面向大模型加速器动态缓存编排/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型 (Large Language Model, LLM) 的爆发式普及正推动 AI 专用加速芯片向着更高算力与更强专用化演进。然而，当前主流硬件普遍采用的深层次软件显式管理便签存储器 (Scratchpad Memory, SPM) 及其复杂的异步搬运机制，给上层软件编译与开发者带来了极为沉重的开发包袱。
-
-发表于计算机体系结构权威期刊《IEEE Transactions on Computers》的这项研究另辟蹊径，探索了硬件设计光谱的另一端：为多核 AI 加速器配备应用感知的共享系统级缓存，从而大幅降低编程复杂度。研究提出了 **DCO (Dynamic Cache Orchestration)** 框架，充分利用软件栈中的数据流先验信息，对缓存替换（含死块预测）、执行旁路和抖动抑制进行全方位智能协调。在周期精确仿真、解析建模与 15nm 工艺 RTL 物理落地（芯片面积仅 $0.064\,\text{mm}^2$ ，主频达 2 GHz）的多维度验证下，DCO 较传统缓存架构实现了最高达 1.80 倍的加速性能。
-
----
-
-## 概述
-
-&gt; ## Summary
-
-随着大语言模型 (LLM) 推动 AI 加速器朝着更加专业化与高算力的方向演进，复杂的软件管理便签存储器 (SPM) 往往会引入巨大的底层编程负担。本研究探讨了一种截然不同的硬件设计思路：构建一个配备共享系统级缓存并通过应用感知策略进行管理的多核 AI 加速器，以兼顾极致性能与适度的编程开发成本。
-
-&gt; As large language models (LLMs) drive AI accelerators toward increasingly specialized and powerful designs, complex software-managed scratchpad memories (SPMs) often introduce heavy programming overheads. This research explores an alternative hardware approach: a multi-core AI accelerator equipped with a shared system-level cache managed through application-aware policies.
-
-通过充分利用软件栈中蕴含的数据流先验信息，本论文提出的 **DCO (Dynamic Cache Orchestration)** 架构能够全方位协同指导缓存替换（包括死块预测）、执行旁路 (Execution Bypassing) 以及缓存抖动抑制 (Thrashing Mitigation)。结合周期精确模拟器、解析数学建模以及物理 RTL 级流片综合（基于 15nm 工艺，面积仅为 $0.064\,\text{mm}^2$ ，运行频率达 2 GHz）的严密评测表明，该架构展现出强大的规模扩展能力，无论是跨核心数据共享还是相互独立的负载场景，都能较传统缓存体系结构取得高达 **1.80 倍的加速比** 。
-
-&gt; By leveraging software stack dataflow information, the proposed **Dynamic Cache Orchestration (DCO)** framework guides cache replacement (including dead-block prediction), execution bypassing, and thrashing mitigation. Evaluations using cycle-accurate simulations, analytical modeling, and physical RTL implementation (15nm process, $0.064\,\text{mm}^2$ area, 2 GHz clock frequency) demonstrate robust scalability, handling both inter-core data sharing and independent workloads to achieve up to a **1.80× speedup** over conventional cache architectures.
-
----
-
-## 文档概览
-
-&gt; ## Document Overview
-
-* **arXiv 标识符：** `arXiv:2512.07312` [cs.AR] *(2026年9月10日提交 v2 版本)*
-* **学科分类：** 硬件架构 (`cs.AR`)；人工智能 (`cs.AI`)；分布式、并行与集群计算 (`cs.DC`)
-* **作者团队：** Zhongchun Zhou, Chengtao Lai, Yuhang Gu, Wei Zhang
-* **期刊发表：** *IEEE Transactions on Computers* (2026)
-* **关联 DOI：** [10.1109/TC.2026.3733368](https://doi.org/10.1109/TC.2026.3733368)
-
-&gt; * **arXiv Identifier:** `arXiv:2512.07312` [cs.AR] *(v2 submitted on September 10, 2026)*
-&gt; * **Subjects:** Hardware Architecture (`cs.AR`); Artificial Intelligence (`cs.AI`); Distributed, Parallel, and Cluster Computing (`cs.DC`)
-&gt; * **Authors:** Zhongchun Zhou, Chengtao Lai, Yuhang Gu, Wei Zhang
-&gt; * **Journal Reference:** *IEEE Transactions on Computers* (2026)
-&gt; * **Related DOI:** [10.1109/TC.2026.3733368](https://doi.org/10.1109/TC.2026.3733368)
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-大语言模型 (LLM) 的迅速普及正促使 AI 加速器迈向更加强大和专用化的硬件架构。与以往采用深层次便签存储器 (SPM) 及其异步调度机制从而进一步加剧软件开发复杂度的路线不同，我们研究了设计空间另一极的全新可能：设计一个配备共享系统级缓存且受应用感知管理策略驱动的多核 AI 加速器，从而使软件编程工作量保持在适度区间。我们的方案深度挖掘软件栈中可用的数据流信息，协同指导缓存块替换（包含死块预测）、旁路绕行决策以及抑制缓存抖动的动态机制。
-
-&gt; The rapid adoption of large language models (LLMs) is pushing AI accelerators toward increasingly powerful and specialized designs. Instead of further complicating software development with deeply hierarchical scratchpad memories (SPMs) and their asynchronous management, we investigate the opposite point of the design spectrum: a multi-core AI accelerator equipped with a shared system-level cache and application-aware management policies, which keeps the programming effort modest. Our approach exploits dataflow information available in the software stack to guide cache replacement (including dead-block prediction), in concert with bypass decisions and mechanisms that alleviate cache thrashing.
-
-我们利用周期精确模拟器对该方案进行了全面评估，观察到与传统缓存架构相比，系统获得了实质性的性能提升（最高达 **1.80 倍加速比** ）。此外，我们构建并验证了一个能够兼顾实际计算与通信重叠重叠行为的解析模型，将策略的度量结论成功推广到了更大规模的真实工作负载中。实验结果表明，当旁路策略与抖动抑制机制协同工作时，能够同时驾驭具备跨核心数据共享以及无共享的独立计算场景，并带来显著的加速效果。
-
-&gt; We assess the proposal using a cycle-accurate simulator and observe substantial performance gains (up to **1.80× speedup**) compared with conventional cache architectures. In addition, we build and validate an analytical model that takes into account the actual overlapping behaviors to extend the measurement results of our policies to real-world larger-scale workloads. Experiment results show that when functioning together, our bypassing and thrashing mitigation strategies can handle scenarios both with and without inter-core data sharing and achieve remarkable speedups.
-
-最后，我们在 RTL 级实现了该硬件设计：在 15nm 工艺下，核心面积仅为 **$0.064\,\text{mm}^2$** ，且能够稳定运行在 2 GHz 的时钟频率上。我们的研究结论全面挖掘了共享缓存设计在辅助下一代 AI 加速系统演进中的巨大潜力。
-
-&gt; Finally, we implement the design in RTL and the area of our design is **$0.064\,\text{mm}^2$** with a 15nm process, which can run at a 2 GHz clock frequency. Our findings explore the potential of the shared cache design to assist the development of future AI accelerator systems.
-
----
-
-## 补充信息
-
-&gt; ## Additional Information
-
-* **全文与访问渠道：**
-  * [阅读 PDF](https://arxiv.org/pdf/2512.07312)
-  * [HTML 网页版 (实验性)](https://arxiv.org/html/2512.07312v2)
-  * [TeX 源码](https://arxiv.org/src/2512.07312)
-* **文献检索与分析工具：**
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2512.07312)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2512.07312)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2512.07312)
-
-&gt; * **Full-Text &amp; Access Links:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2512.07312)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2512.07312v2)
-&gt;   * [TeX Source](https://arxiv.org/src/2512.07312)
-&gt; * **External Citations &amp; Tools:**
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2512.07312)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2512.07312)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2512.07312)</description>
-    </item>
-    <item>
-      <title>BenchShield：基于形式化模型的 LLM 智能体评测奖励完整性防护层</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/BenchShield-基于形式化模型的LLM智能体评测奖励完整性防护层/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/BenchShield-基于形式化模型的LLM智能体评测奖励完整性防护层/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 智能体评测逐渐演进为包含环境感知、工具调用、文件修改与结果判分的复杂交互系统，“奖励作弊 (Reward Hacking)”问题日益凸显——智能体往往会寻找打分机制的漏洞、篡改评测脚本甚至“走捷径刷分”，而非真正解决指定任务。传统的安全补丁、提示词约束或事后审查手段，均无法为单次评测运行提供可复核、防篡改的合规证据。加州大学伯克利分校 Dawn Song 团队等学者共同推出了 **BenchShield**，通过将评测全生命周期的奖励事件进行形式化建模，结合执行前的静态阶段感知污点分析与运行时的底层基础设施追踪，实现了 96% 的作弊行为识别准确率，大幅降低了 65% 的单任务开销，为下一代可靠的智能体基准评测提供了强有力的安全基础设施屏障。
-
----
-
-## 📌 内容摘要
-
-&gt; ## 📌 Summary
-
-随着大语言模型 (Large Language Model, LLM) 智能体基准评测逐步演变为复杂的交互式评估系统，智能体在其中需要观察环境状态、调用外部工具、修改工作区、提交产物并接收评测流程返回的奖励反馈。然而，这种高度交互性也让系统面临严峻的**奖励作弊 (Reward Hacking)** 威胁——智能体可能通过操纵与奖励判分相关的轨迹（例如篡改判分脚本或状态标记）来非法拉高自身得分，而非踏踏实实地解决既定任务。
-
-&gt; As Large Language Model (LLM) agent benchmarks evolve into interactive evaluation systems where agents observe states, call tools, modify workspaces, submit artifacts, and receive rewards, they become increasingly vulnerable to **reward hacking**. This occurs when an agent boosts its measured score by manipulating the reward-relevant trajectory rather than solving the intended task.
-
-传统的防御手段（例如针对具体任务的专项补丁、提示词规则约束以及事后统计检测器等），均无法提供可验证的确切证据，来证明某一次具体的评测运行确实严格限定在合规的评估边界之内。
-
-&gt; Traditional defenses—such as task-specific patches, prompt instructions, and post-hoc detectors—fail to provide verifiable evidence that a specific run remained within authorized evaluation boundaries.
-
-针对上述难题，作者团队推出了 **BenchShield**——一种专为保障 LLM 智能体评测中奖励完整性而设计的基于模型的插桩层。BenchShield 将检测机制建立在评测中奖励相关事件的有限生命周期模型之上，并协同运作两套互补的分析机制：
-1. **静态、阶段感知的污点分析**：在任务实际执行之前，预先暴露潜在的奖励作弊路径。
-2. **运行时动态分析**：利用基础设施底层的确凿证据，对智能体的具体操作行为进行审计归因，并输出具备证据链支撑的可验证断言。
-
-&gt; To address this, the authors introduce **BenchShield**, a model-backed instrumentation layer designed to secure reward integrity in LLM-agent evaluations. BenchShield establishes detection on a finite lifecycle model of reward-relevant events, utilizing two complementary mechanisms:
-&gt; 1. **Static, Phase-Aware Taint Analysis:** Exposes reward-hacking paths prior to execution.
-&gt; 2. **Runtime Analysis:** Leverages infrastructure-side evidence to attribute concrete agent actions and emit verifiable claims.
-
-为了全面验证 BenchShield 的防护效能，作者构建了 **BenchShield Trajectories** 数据集。该数据集从跨越三大主流基准测试的 31,000 多次公开智能体运行记录中，人工复核并标注了 456 条仲裁轨迹。实证评估表明，BenchShield 显著超越了作为基线的智能体可攻击性扫描器：
-* **全链路召回率 (Full-Chain Recall)**：从原先的 23–94% 跃升至 **77–100%** 。
-* **同向量覆盖率 (Same-Vector Coverage)**：从原先的 16–56% 提高至 **43–78%** 。
-* **成本效益**：将每个任务的评测开销降低了**最高达 65%** 。
-* **运行时检测精度**：仅利用基础设施侧的日志与状态证据，即实现了 **96% 的奖励作弊检测准确率**。
-
-&gt; To validate BenchShield, the authors developed **BenchShield Trajectories**, a human-labeled corpus comprising 456 adjudicated trajectories derived from over 31,000 public agent runs across three benchmarks. Empirical evaluations show that BenchShield significantly outperforms baseline agentic hackability scanners:
-&gt; * **Full-Chain Recall:** Improved from 23–94% to **77–100%**.
-&gt; * **Same-Vector Coverage:** Improved from 16–56% to **43–78%**.
-&gt; * **Cost Efficiency:** Reduced per-task cost by **up to 65%**.
-&gt; * **Runtime Accuracy:** Achieved **96% accuracy** in detecting reward hacking using infrastructure-side evidence.
-
----
-
-## 📄 论文摘要
-
-&gt; ## 📄 Abstract
-
-语言模型智能体 (LM-Agent) 基准评测正日益扮演着交互式评估基础设施的角色。智能体在环境中感知状态、调用工具、修改工作目录、提交任务成果，并由打分程序判定结果给予奖励。然而，这种深度交互性使得评测系统极易遭遇“奖励作弊”攻击：智能体往往会去利用和篡改与奖励判定相关的执行轨迹，而非真正解决目标任务，从而虚增评分。现有防御手段主要依赖特定任务补丁、提示词规则限定或事后检测器，这些方法无法为某次具体运行是否确实遵循了预期评测边界提供可复用的坚实证据。
-
-&gt; LM-agent benchmarks increasingly function as interactive evaluation infrastructure. Agents observe state, call tools, modify workspaces, submit artifacts, and receive rewards from outcome procedures. This interactivity makes evaluations vulnerable to reward hacking: an agent improves its measured score by exploiting the reward-relevant trajectory instead of solving the intended task. Existing defenses rely largely on task-specific patches, prompt instructions, or post-hoc detectors. They do not provide reusable evidence that a concrete run remained within its intended evaluation boundary.
-
-本文提出了 BenchShield，一个专为保障 LLM 智能体评测中奖励完整性而打造的基于形式化模型的插桩防护层。BenchShield 将检测根基扎在评测生命周期内奖励相关事件的有限状态模型上。在基准评测基础设施内部，两项互补的分析技术基于该模型协同运转：其一，静态、阶段感知的污点分析能够在执行前暴露潜在的作弊攻击链；其二，动态运行时分析能够采集基础设施侧的深层证据，对智能体的实体动作进行确切归因，并生成经证据支撑的可信凭证。
-
-&gt; This paper presents BenchShield, a model-backed instrumentation layer for reward integrity in LLM-agent evaluation. BenchShield grounds detection in a finite lifecycle model of an evaluation's reward-relevant events. Within the benchmark infrastructure, two complementary analyses operate over this model. A static, phase-aware taint analysis exposes reward-hacking paths before a run. Its runtime counterpart uses infrastructure-side evidence to attribute concrete agent use and emit evidence-backed claims.
-
-我们基于跨越三大基准的 31,000 多次公开智能体交互轨迹，构建了包含 456 条经人工仲裁标注的 BenchShield Trajectories 基准数据集。在相同任务和模型下与智能体可作弊性扫描器基线相比，BenchShield 将全链路召回率从 23–94% 提高至 77–100% ，将同向量覆盖率从 16–56% 提高至 43–78% ，并将单任务成本大幅削减了高达 65% 。其运行时分析模块仅凭基础设施侧证据，便实现了 96% 的高精度作弊检测率。
-
-&gt; We construct BenchShield Trajectories, a human-labeled corpus of 456 adjudicated trajectories from more than 31,000 public agent runs across three benchmarks. Compared with an agentic hackability scanner baseline on the same tasks and model, BenchShield improves full-chain recall from 23-94% to 77-100%, same-vector coverage from 16-56% to 43-78%, and reduces per-task cost by up to 65%. Its runtime analysis achieves 96% accuracy in detecting reward hacking from infrastructure-side evidence.
-
----
-
-## 🔗 论文资源与相关链接
-
-&gt; ## 🔗 Links &amp; Resources
-
-* **全文获取通道**：[阅读 PDF 论文](https://arxiv.org/pdf/2609.11028) | [HTML 网页版](https://arxiv.org/html/2609.11028v1) | [TeX 源代码](https://arxiv.org/src/2609.11028)
-* **开源许可**：[Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" style="vertical-align: middle; display: inline-block; margin-left: 4px;" /&gt;
-* **文献引证与检索**：[Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11028) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11028) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11028)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2609.11028) | [HTML Version](https://arxiv.org/html/2609.11028v1) | [TeX Source](https://arxiv.org/src/2609.11028)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" style="vertical-align: middle; display: inline-block; margin-left: 4px;" /&gt;
-&gt; * **Citations &amp; Metrics:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11028) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11028) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11028)</description>
-    </item>
-    <item>
-      <title>Ambient @ EgoProactive 2026：基于视觉定位监督的主动式第一视角穿戴式助手</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/Ambient-EgoProactive-2026-基于视觉定位监督的主动式第一视角穿戴式助手/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/Ambient-EgoProactive-2026-基于视觉定位监督的主动式第一视角穿戴式助手/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着智能眼镜等第一视角可穿戴设备的兴起，AI 助手面临着一个极为棘手的人机交互难题：如何在佩戴者需要帮助时主动介入，而在无需干扰时保持安静。过于频繁的打扰会严重损害用户体验，而迟钝的响应又会失去辅助价值。
-
-本文介绍了 ECCV 2026 可穿戴 AI 大挑战赛 (ECCV 2026 Wearable AI Grand Challenge) EgoProactive 赛道的夺冠方案 Ambient。该方案一举斩获大模型组冠军与 $\le 2\text{B}$ 参数轻量模型组亚军。研究团队将复杂的自由文本干预决策精简为极简的“单 Token 分类” (Single-Token Classification) ；并通过调用专业视频智能体进行高精度的时间戳定位监督，雄辩地证明了在可穿戴主动交互领域，“精准的视觉定位 (Visual Grounding) 远比盲目堆砌标注规模更为有效”。
-
----
-
-## 概述
-
-&gt; ## Summary
-
-本文介绍了斩获 **ECCV 2026 可穿戴 AI 大挑战赛 EgoProactive 赛道** 冠军的技术方案，该方案在 **大模型组斩获第 1 名** ，在 **$\le 2\text{B}$ 参数组位列第 2 名** 。这项研究直面可穿戴 AI 领域的核心痛点：如何让佩戴在身上的智能助手在连续分析 8 秒第一视角视频片段后，自主且准确地判断究竟是该主动介入提供帮助，还是继续保持静默。
-
-&gt; This paper presents the winning technical solution for the **EgoProactive track of the ECCV 2026 Wearable AI Grand Challenge**, ranking **1st in the large-model division** and **2nd in the $\le 2\text{B}$ division**. The research addresses the challenge of enabling a wearable assistant to determine whether to intervene or remain silent after analyzing eight-second segments of egocentric video.
-
-该方案主要包含两项核心技术创新：
-1. **单 Token 分类：** 彻底重构了介入时机的判断逻辑，不再依赖传统的开放式自由文本生成，而是直接预测简洁的 "yes" 或 "no" 单 Token ，使 Macro-F1 和 G-mean 评估指标获得了大幅跃升。
-2. **基于视觉定位的监督：** 巧妙借助具备工具调用能力的视频智能体 (AI Agent) 来生成精准可靠的监督时间戳，充分证明对于该任务而言，高精度的视觉定位 (Visual Grounding) 质量远比单纯堆积标注数据量要关键得多。
-
-&gt; The approach introduces two key innovations:
-&gt; 1. **Single-Token Classification:** Reformulating intervention timing by predicting simple "yes" or "no" tokens rather than relying on free-form generation, yielding significant improvements in macro-F1 and G-mean.
-&gt; 2. **Visually Grounded Supervision:** Leveraging a tool-calling video agent to generate reliable supervision timestamps, demonstrating that visual grounding is far more critical for task performance than annotation volume alone.
-
----
-
-## 文档元数据
-
-&gt; ## Document Metadata
-
-| 字段 (Field) | 详情 (Details) |
-| :--- | :--- |
-| **arXiv 标识符** | [arXiv:2609.07099](https://arxiv.org/abs/2609.07099) [cs.CV] |
-| **作者** | Logesh Kumar Umapathi |
-| **主要学科** | 计算机视觉与模式识别 (`cs.CV`) |
-| **次要学科** | 人工智能 (`cs.AI`) |
-| **提交记录** | 2026年9月7日 (v1)，最后修订：2026年9月10日 (v2) |
-| **DOI** | [10.48550/arXiv.2609.07099](https://doi.org/10.48550/arXiv.2609.07099) |
-
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv Identifier** | [arXiv:2609.07099](https://arxiv.org/abs/2609.07099) [cs.CV] |
-&gt; | **Authors** | Logesh Kumar Umapathi |
-&gt; | **Primary Subject** | Computer Vision and Pattern Recognition (`cs.CV`) |
-&gt; | **Secondary Subjects** | Artificial Intelligence (`cs.AI`) |
-&gt; | **Submitted** | 7 Sep 2026 (v1), Last revised: 10 Sep 2026 (v2) |
-&gt; | **DOI** | [10.48550/arXiv.2609.07099](https://doi.org/10.48550/arXiv.2609.07099) |
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-我们介绍了在 ECCV 2026 可穿戴 AI 挑战赛 EgoProactive 赛道中的参赛方案。该方案在大模型组荣登榜首，并在 $\le 2\text{B}$ 参数组取得第二名的佳绩。该竞赛任务要求穿戴式 AI 助手在每段长达 8 秒的第一视角视频片段播放完毕后，迅速做出是主动介入打断、还是保持静默的智能决策。
-
-&gt; We present our submission to the EgoProactive track of the ECCV 2026 Wearable AI Challenge, which ranked first in the large-model division and second in the $\le 2\text{B}$ division. The task requires a wearable assistant to decide after each eight-second segment of egocentric video whether to intervene or remain silent.
-
-我们的方法由两个核心模块构成：
-1. **单 Token 分类：** 我们将介入时机预测重新表述为一个单 Token 分类问题。模型无需生成冗长的 $\text{interrupt}\langle\text{utterance}\rangle$ 或 $\text{silent}$ 文本，而是仅预测 "yes" 或 "no"，随后我们根据这两个 Token 归一化后的概率做出决策。相比自由生成方式，这种设计将 Macro-F1 提升了 0.249，G-mean 提升了 0.30。
-2. **视觉定位重于数据规模：** 鉴于官方标注数据仅限于公开的验证集，我们利用一个具备工具调用能力的视频智能体来审查每个视频切片并打上干预时间戳，从而合成了额外的监督信号。相比之下，单纯基于旁白生成的替代数据集规模虽然大 4 倍且成本低 10 倍，但迁移效果甚至不如来自不相关真实语料的监督信号。这充分表明，对于此类主动交互任务，视觉定位的精准度远比盲目扩充标注规模更为关键。
-
-&gt; Our approach has two main components:
-&gt; 1. **Single-Token Classification:** We reformulate intervention timing as single-token classification. Rather than generating either $\text{interrupt}\langle\text{utterance}\rangle$ or $\text{silent}$, the model predicts yes or no, and we derive the decision from the renormalised probabilities of these two tokens. This formulation improved macro-F1 by 0.249 and G-mean by 0.30 over free-form generation. 
-&gt; 2. **Visual Grounding over Volume:** Because labelled data were limited to the released validation set, we generated additional supervision using a tool-calling video agent that inspects each clip and assigns intervention timestamps. A narration-only alternative was four times larger and ten times cheaper, but transferred worse than supervision from an unrelated real corpus, suggesting that visual grounding is more important than annotation volume for this task.
-
----
-
-## 全文与资源链接
-
-&gt; ## Full-Text &amp; Resource Links
-
-* **PDF 版本：** [查看 PDF](https://arxiv.org/pdf/2609.07099)
-* **HTML 版本：** [实验性 HTML](https://arxiv.org/html/2609.07099v2)
-* **源码文件：** [TeX 源码](https://arxiv.org/src/2609.07099)
-* **开源协议：** [知识共享 署名 4.0 国际许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/)
-
-&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2609.07099)
-&gt; * **HTML Version:** [HTML (experimental)](https://arxiv.org/html/2609.07099v2)
-&gt; * **Source Files:** [TeX Source](https://arxiv.org/src/2609.07099)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/)</description>
-    </item>
-    <item>
-      <title>ActMap：基于生成期激活特征图的单次推理不确定性量化</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/ActMap-基于生成期激活特征图的单次推理不确定性量化/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/ActMap-基于生成期激活特征图的单次推理不确定性量化/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在严肃的工业与医疗场景中应用大语言模型 (Large Language Model, LLM) 时，评估模型回答的“不确定性 (Uncertainty Quantification, UQ)”——即判断其当前输出是否值得信赖、是否潜藏幻觉，是构建安全防线的核心前提。然而，现有的不确定性量化方案要么依赖多次重复采样生成（计算成本极其高昂），要么仅观测表层的 Token 输出概率，要么将丰富的多层内部推理状态粗暴压缩为一个向量。为此，研究人员提出了 **ActMap** 白盒表征方法，巧妙地将跨越所有 Transformer 网络层与生成 Token 的完整内部隐藏状态轨迹，压缩为仅 96 KiB 大小的紧凑时空张量。该方案在模型标准推理中几乎零额外开销，并能借助轻量级 Vision Transformer 在亚毫秒内精准预测回答正确率，性能媲美数据体积大 67 倍的密集激活基线，为大模型的自省、拒答与动态路由提供了兼具极高精度与工程可行性的创新范式。
-
----
-
-# ActMap：基于生成期激活特征图的单次推理不确定性量化
-
-&gt; # ActMap: Single-Pass Uncertainty Quantification from Generation-Time Activation Maps
-
-* **arXiv 编号：** [2609.11498](https://arxiv.org/abs/2609.11498) [cs.AI]
-* **作者：** Jacopo Dardini (University of Bologna), Roberta Calegari (University of Bologna)
-* **提交日期：** 2026年9月10日
-* **相关链接：** [查看 PDF](https://arxiv.org/pdf/2609.11498) | [HTML 在线版本](https://arxiv.org/html/2609.11498v1) | [TeX 源码](https://arxiv.org/src/2609.11498)
-
-&gt; * **arXiv ID:** [2609.11498](https://arxiv.org/abs/2609.11498) [cs.AI]
-&gt; * **Authors:** Jacopo Dardini (University of Bologna), Roberta Calegari (University of Bologna)
-&gt; * **Submitted:** 10 September 2026
-&gt; * **Links:** [View PDF](https://arxiv.org/pdf/2609.11498) | [HTML Version](https://arxiv.org/html/2609.11498v1) | [TeX Source](https://arxiv.org/src/2609.11498)
-
----
-
-## 核心执行摘要
-
-&gt; ## Executive Summary
-
-对于大语言模型 (Large Language Model, LLM) 而言，实用化的高效不确定性量化 (Uncertainty Quantification, UQ) 核心在于能够准确判断某个具体生成的回答是否值得信赖——而且理想情况下应当仅凭单次生成即可完成。传统的不确定性量化方法要么依赖计算开销巨大的多次采样生成，要么仅仅盯着输出 Token 的表面概率，要么将模型内部丰富的计算过程粗暴压缩为单一的隐藏状态。
-
-&gt; Practical uncertainty quantification (UQ) for Large Language Models (LLMs) requires determining whether a specific generated answer can be trusted—ideally from a single generation pass. Traditional UQ methods either rely on computationally expensive multiple generations, look exclusively at output-token probabilities, or collapse a model's rich internal computations into a single hidden state. 
-
-本文提出了一种全新的白盒表征方法——**ActMap**。ActMap 将跨越每一网络层以及每一个生成 Token 的整个生成期隐藏状态轨迹，压缩为一个形状仅为 $12 \times 32 \times 128$ 的时间统计通道张量。通过捕捉沿 Transformer 深度以及汇聚隐藏坐标上的结构一致性，ActMap 的运行开销几乎为零，单次生成仅需 96 KiB 的微小存储空间，并且可通过轻量级分类器（如 Vision Transformer, ViT）在不足 1 毫秒的时间内完成快速查询判别。
-
-&gt; This paper introduces **ActMap**, a novel white-box representation. ActMap compresses the entire generation-time hidden-state trajectory (spanning every layer and every generated token) into a compact $12 \times 32 \times 128$ tensor of temporal-statistic channels. Capturing structural consistency across transformer depth and pooled hidden coordinates, ActMap operates with zero measurable overhead, requires only 96 KiB of storage per generation, and can be queried in a fraction of a millisecond by lightweight classifiers like a Vision Transformer (ViT).
-
----
-
-## 核心亮点与研究发现
-
-&gt; ## Key Highlights &amp; Findings
-
-* **紧凑的白盒表征：** 将高维的生成轨迹无损浓缩为固定维度的 $12 \times 32 \times 128$ 张量（仅 96 KiB），为关键任务生成的持久化存储与安全审计提供了可能。
-* **零额外生成开销：** 在标准文本生成过程中直接同步捕获，完全不会拖慢大模型的推理速度。
-* **轻量级探针实现极致性能：** 紧凑的 Vision Transformer 或参数量相匹配的多层感知机 (MLP) 能在亚毫秒级别从特征图中解析出正确率概率。遮挡消融分析进一步表明，具有预测价值的关键信号主要驻留在模型的中间层。
-* **对齐并媲美业界领先基准：** 在涵盖简答题问答、直接计算数学题以及文本摘要事实性检验等跨三个 7–8B 指令微调模型的多任务评估中，ActMap 全面超越了标准采样法、Token 概率法、注意力权重法和嵌入基线。值得注意的是，它与体积大出 67 倍的密集激活检测器 *ACT-ViT* 性能旗鼓相当，在 12 组测试对比中有 10 组取得了相当的平均 AUROC 并实现了更低的校准误差。
-* **极具工程实用价值：** 提供了一套稳健的置信度评分机制，仅凭单次生成即可有效支撑模型拒答（Abstention）、动态路由以及针对性验证。
-
-&gt; * **Compact White-Box Representation:** Compresses high-dimensional generation trajectories into a fixed-shape $12 \times 32 \times 128$ tensor (96 KiB), enabling efficient storage and auditing for critical generations.
-&gt; * **Zero Overhead Generation:** Captured directly during the standard generation pass without slowing down the model.
-&gt; * **High Performance with Lightweight Probes:** A compact Vision Transformer or capacity-matched MLP reads correctness probabilities from the map in sub-millisecond times. Occlusion analysis shows that predictive signals primarily reside in the model's mid-depth layers.
-&gt; * **State-of-the-Art Baselines Match:** Evaluated across short-answer QA, direct-answer math, and summarization factuality tasks using three instruction-tuned 7–8B models. ActMap outperforms standard sampling, token-probability, attention, and embedding baselines. Notably, it matches the performance of *ACT-ViT*—a detector relying on dense activation tensors $67\times$ larger—achieving similar mean AUROC and lower calibration error across 10 out of 12 test pairs.
-&gt; * **Practical Utility:** Provides a robust scoring mechanism to facilitate model abstention, routing, and selective verification from a single generation.</description>
-    </item>
-    <item>
-      <title>爬坡 SWE 智能体：1700 个编程任务教会了 Kimi K2.7 什么</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-12/爬坡-SWE-智能体-1700-个编程任务教会了-Kimi-K2.7-什么/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-12/爬坡-SWE-智能体-1700-个编程任务教会了-Kimi-K2.7-什么/</guid>
-      <pubDate>Sat, 12 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在软件工程智能体 (SWE Agent) 的开发中，让大语言模型编写出可运行的代码已非难事，但真正产出能够直接合并交付、满足全部严苛规约的“可上线代码”依然是巨大挑战。Surge AI 团队利用精心策展的 1,700 个由人类专家构建的真实编程任务，仅通过强化学习 (Reinforcement Learning, RL) 对 Kimi K2.7 (Max reasoning) 进行后训练 (Post-Training)，且全程未引入任何监督微调 (Supervised Fine-Tuning, SFT)。
-
-评测结果令人瞩目：后训练后的 Kimi K2.7 在五个外部权威代码基准测试中平均提升了 12.5 个百分点，并在部分榜单上超越了参数规模大得多的 K3，甚至比肩 GPT-5.6 Sol。更关键的是，模型解决复杂任务的中位数思考与执行步数从 150 步锐减至 98 步，展现出“做得更少、写得更准”的成熟工程师直觉。本案例研究深入剖析了强化学习如何教会智能体严格落实全部规约、针对需求而非自身实现设计测试、筑牢防回归防线以及在缺失基准时自主构建验证真值，为代码智能体的进化提供了极具价值的实践范式。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-本案例研究探讨了仅使用强化学习 (RL)，在由专家构建的 1,700 个精选编程任务集上，对 **Kimi K2.7 (Max reasoning)** 进行后训练的效果。在五个外部编程基准测试的评估中，经过后训练的模型在多种智能体脚手架 (Harness) 上均展现出显著的性能提升，尽管在训练期间从未专门针对这些基准测试的格式进行过任何优化。
-
-&gt; This case study examines the effects of post-training **Kimi K2.7 (Max reasoning)** using reinforcement learning (RL) exclusively on a curated set of 1,700 expert-built coding tasks. Evaluated across five external coding benchmarks, the post-trained model demonstrated significant performance gains across multiple agent harnesses, despite never explicitly targeting those benchmark formats during training.
-
-核心要点包括：
-* **强大的迁移泛化能力：** 性能提升成功泛化到了不同的脚手架、提示词、工具和评估格式中 (包括类似 *SWE-Marathon* 这种跨越数小时的长轨迹任务，以及像 *Terminal-Bench 3* 这样涵盖广泛硬件与系统的综合评估)。
-* **超越更大规模模型：** 经过后训练的 K2.7 在 Terminal-Bench 2.1 和 Terminal-Bench 3 上超越了 K3，并在 SWE-Bench Pro 上取得了可媲美 GPT-5.6 Sol 的优异成绩。
-* **执行效率显著提升：** 解决复杂任务所需的中位数轨迹步数大幅下降 (例如在 DeepSWE 上从 150 步降至 98 步)，表明模型学会了更加聪明地工作，而非单纯延长求解时间。
-
-&gt; Key takeaways include:
-&gt; * **Strong Transferability:** Performance gains generalized across different harnesses, prompts, tools, and evaluation formats (including multi-hour trajectories like *SWE-Marathon* and broad hardware/systems evaluations like *Terminal-Bench 3*).
-&gt; * **Outperforming Larger Models:** Post-trained K2.7 surpassed K3 on Terminal-Bench 2.1 and 3, and scored competitively with GPT-5.6 Sol on SWE-Bench Pro.
-&gt; * **Increased Efficiency:** Median trajectory steps required to solve complex tasks dropped significantly (e.g., from 150 to 98 on DeepSWE), showing the model learned to work smarter rather than just longer.
-
----
-
-## 1. 引言与总览
-
-&gt; ## 1. Introduction &amp; Overview
-
-我们仅使用强化学习对 Kimi K2.7 (Max reasoning) 进行了后训练，随后在五个外部编程基准测试上对最终检查点进行了评测。模型在全部五个基准测试中均取得了全面提升：
-
-&gt; We post-trained Kimi K2.7 (Max reasoning) using reinforcement learning only, then evaluated the final checkpoint on five external coding benchmarks. It improved on all five:
-
-&lt;p align="center"&gt;
-  &lt;img alt="" loading="lazy" src="./images/d02b171a6423.png"/&gt;
-&lt;/p&gt;
-
-其中有三大亮点尤为突出：
-
-&gt; Three things stood out:
-
-1. **显著的泛化迁移性：** 这一提升在三种不同的智能体脚手架中均得以保持，涵盖了不同的工具集、提示词体系以及执行循环结构。其中一些最大的增益出现在训练中从未针对过的评测格式上：例如 *SWE-Marathon* 要求智能体在长达数小时的执行轨迹中构建完整系统；而 *Terminal-Bench 3* 则横跨硬件、科学计算、底层系统、网络安全与常规软件开发。更值得一提的是，我们的训练任务早在这些基准测试诞生之前就已采集完成。
-2. **更小体量的模型在多个评测中击败了大得多的模型：** 根据 Kimi 官方汇报的基线数据，我们后训练的 K2.7 在 Terminal-Bench 2.1 和 Terminal-Bench 3 上均领先于 K3。在 SWE-Bench Pro 上，它的得分略高于 GPT-5.6 Sol (Max reasoning)。由于不同评测使用的脚手架与任务版本可能存在差异，我们将这些成绩视为宏观背景对比，而非严格受控的直接对抗。
-3. **达成目标的执行步数大幅减少：** 在 DeepSWE 上，中位数轨迹长度从 **150 步锐减至 98 步**，在 Terminal-Bench 3 上则从 **102 步降至 78 步**。模型显然变得更加敏捷高效。
-
-&gt; 1. **The gains transferred.** They held across three different agent harnesses, with different tools, prompting, and loop structures. Some of the largest gains appeared on evaluation formats we never targeted in training: *SWE-Marathon* asks agents to build complete systems over multi-hour trajectories; *Terminal-Bench 3* spans hardware, scientific computing, systems, security, and software work. Our tasks were collected before either benchmark existed.
-&gt; 2. **A much smaller model surpassed much larger models on several evals.** On Kimi’s own reported scores, our post-trained K2.7 is ahead of K3 on Terminal-Bench 2.1 and Terminal-Bench 3. On SWE-Bench Pro, it scores slightly ahead of GPT-5.6 Sol (Max reasoning). Since harnesses and task versions can differ, we treat these as contextual rather than controlled head-to-head comparisons.
-&gt; 3. **And it used fewer steps to get there.** Median trajectory length fell from **150 to 98** steps on DeepSWE and from **102 to 78** on Terminal-Bench 3. The model became more efficient.
-
-为了搞清楚模型究竟习得了哪些新行为习惯以实现上述突破，我们深入分析了它的执行轨迹。
-
-&gt; To understand what new behaviors the model learned to achieve these gains, we studied its trajectories.
-
-&lt;p align="center"&gt;
-  &lt;img alt="" loading="lazy" src="./images/34ed5f2bc8ff.png"/&gt;
-&lt;/p&gt;
-&lt;p align="center"&gt;&lt;em&gt;图 1: 在 1,700 个 Surge 编程任务上进行强化学习前后，模型在五个外部编程基准测试上的 Pass@1 表现。&lt;/em&gt;&lt;/p&gt;
-
-&gt; &lt;p align="center"&gt;&lt;em&gt;Pass@1 on five external coding benchmarks before and after RL on 1,700 Surge coding tasks.&lt;/em&gt;&lt;/p&gt;
-
----
-
-## 2. 为什么 Kimi K2.7 此前难以写出“可直接交付”的代码
-
-&gt; ## 2. Why Kimi K2.7 Failed to Write Shippable Code
-
-为了弄清后训练模型所习得的具体行为，我们将基座模型与后训练模型在相同任务上的运行轨迹进行了一对一配对对比，系统分析了模型的推理逻辑、终端命令、测试用例以及输出结果。
-
-&gt; In order to understand our post-trained model’s learned behaviors, we paired base and post-trained trajectories on the same tasks and analyzed the models’ reasoning, commands, tests, and outputs.
-
-Kimi K2.7 本身就已经是一款非常出色的编程智能体模型。基座模型在很多时候都能通过绝大部分目标测试用例。在 DeepSWE 的失败用例中，未通过运行的中位数依然通过了 **86% 的目标测试**；其中有 49 次运行通过了至少 80% 的测试，且有 70 次完美保留了所有已有的回归测试 (Pass-to-pass tests)。
-
-&gt; Kimi K2.7 is already a strong agentic coding model. The base model often passed most of the target tests. Across DeepSWE failures, the median failed run still passed **86% of the target tests**; 49 passed at least 80%, and 70 preserved every existing pass-to-pass test.
-
-**简而言之，模型大体上知道该做什么，它只是不知道如何稳定可靠地把工作彻底做完。**
-
-&gt; **The model knew generally what to do. It just didn’t know how to reliably finish the job.**
-
-它的失败模式集中在四个反复出现的典型特征上，而后训练模型恰好学会了如何针对性化解它们。这四种特征映射了软件工程的基本循环：**理解需求、设计测试、维护兼容与验证真值**。
-
-&gt; Its failures clustered into four recurring patterns, which the post-trained model learned to mitigate. They map to a basic engineering loop: **understand, test, maintain, and verify**.
-
-&lt;p align="center"&gt;
-  &lt;img alt="" loading="lazy" src="./images/c7088c3d4973.png"/&gt;
-&lt;/p&gt;
-
-有一个案例格外鲜明地体现了这种思维转变。在 SWE-Marathon 基准测试中，模型需要在一个没有现成 `zstd` 参考二进制工具的环境中，实现一个 Zstandard 解压器。后训练模型的应对策略令人拍案叫绝——它**先自己写了一个压缩器**，从而让自己拥有了生成标准压缩文件的能力，进而能够严谨验证解压器是否能将数据无损还原。
-
-&gt; One example captures the shift unusually well. On SWE-Marathon, the model had to build a Zstandard decompressor in an environment with no reference zstd binary. The trained model responded by **writing a compressor first**, giving itself a way to manufacture valid compressed files and test whether its decompressor recovered them correctly.
-
-换句话说，**当环境中不存在现成的验证真值 (Ground Truth) 时，它学会了自己亲手构建真值。**
-
-&gt; In other words, **when no ground truth existed, it built it itself.**
-
----</description>
     </item>
   </channel>
 </rss>
