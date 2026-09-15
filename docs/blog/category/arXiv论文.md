@@ -1984,3 +1984,6 @@ title: arXiv论文
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](../posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
 - [AsyncFlow：面向高效大模型后训练的异步流式强化学习框架](../posts/2026-09-15-AsyncFlow-面向高效大模型后训练的异步流式强化学习框架.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](../posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
+- [mKernel：面向多 GPU 与多节点的高性能融合算子库](../posts/2026-09-16-mKernel-面向多-GPU-与多节点的高性能融合算子库.md)
+- [一个向量能容纳多少思维？叠加推理的表征容量](../posts/2026-09-16-一个向量能容纳多少思维-叠加推理的表征容量.md)
+- [OpWeave：面向异构大模型推理服务的灵活算子级解耦框架](../posts/2026-09-16-OpWeave-面向异构大模型推理服务的灵活算子级解耦框架.md)
