@@ -5,6 +5,790 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</guid>
+      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在利用大语言模型 (Large Language Model, LLM) 攻坚科学推理难题时，如何融合多个领域专家的智慧并注入到单一模型中是极具前景的方向。然而，传统的多教师策略内蒸馏 (On-Policy Distillation, OPD) 方法往往采取粗放的“序列级别”策略，误以为专家在整条推理链条的每一个位置都能提供有益指导，反而引入了大量噪音与负迁移。针对这一痛点，本文提出了“验证器门控多专家策略内蒸馏” (Verifier-Gated Multi-Expert On-Policy Distillation, VG-OPD) 架构，通过验证器实时评估专家的真实贡献并定位认知分歧，精准解答了“究竟由哪位专家来传授哪一个 Token”的核心问题。实验表明，该方案在 4B 与 8B 参数规模的学生模型上均取得了顶尖表现，不仅稳居 7 项科学推理基准测试的综合榜首，更为复杂推理场景下的精细化知识蒸馏提供了全新范式。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+多教师策略内蒸馏 (Multi-Teacher On-Policy Distillation, OPD) 是近年来崭露头角的一种前沿方法，它旨在将各垂直领域的专家能力融会贯通到统一模型中：先利用强化学习 (Reinforcement Learning, RL) 训练出各具专长的专家模型，再以学生模型自身采样生成的推理轨迹 (Rollouts) 为基础，将专家能力蒸馏给学生模型。
+
+&gt; Multi-teacher on-policy distillation (OPD) is an emerging approach for integrating specialist AI capabilities into a unified model by training experts using Reinforcement Learning (RL) and distilling them into a student model based on its own rollouts.
+
+然而，传统方法通常在序列级别 (Sequence-level) 进行粗放的均匀监督分配——即把某个提示词 (Prompt) 整体分配给单一领域的专家教师，且整段回答中的每一个 Token 都被赋予相同的权重。这种做法错误地假设了专家老师在整段长回答的每一个字词上都同样有益、都能带来正向启发。
+
+&gt; Traditional methodologies assign supervision uniformly at the sequence level (allocating each prompt to a single domain teacher where every token receives identical weighting). This approach erroneously assumes that a teacher is uniformly helpful across an entire response.
+
+本文的研究表明，在漫长的推理轨迹上，真正有价值的教师指导信号其实是高度稀疏且参差不齐的。为了攻克这一挑战，作者团队提出了**验证器门控多专家策略内蒸馏 (Verifier-Gated Multi-Expert On-Policy Distillation, VG-OPD)**，通过精巧的验证机制，系统解答了*“究竟谁该来教授哪一个 Token？”*的核心问题：
+
+&gt; This paper demonstrates that useful teacher signals are actually sparse and heterogeneous along a reasoning trajectory. To address this, the authors introduce **Verifier-Gated Multi-Expert On-Policy Distillation (VG-OPD)**, which answers the question of *"who should teach which token?"* through a verification mechanism:
+
+* **反事实收益 (Counterfactual Gain)**：基于具体的答案判定准则评估专家的真实贡献，以此决定是否授予该专家教学权限；
+* **分歧精确定位 (Disagreement Localization)**：细致度量专家与学生之间的认知差异，精准圈定需要施加监督的关键位置；
+* **准则重要性设定 (Criterion Importance)**：合理设定各评价维度的权重参数；
+* **加性优势项注入 (Additive Advantage)**：将经过门控过滤的 KL 散度 (Kullback-Leibler Divergence) 作为 Token 级别的加性优势，无缝整合进分组相对策略优化 (Group Relative Policy Optimization, GRPO) 算法中。
+
+&gt; * **Counterfactual Gain:** Evaluates an expert's contribution based on specific answer criteria to authorize teaching rights.
+&gt; * **Disagreement Localization:** Measures divergence between the expert and student to pinpoint supervision.
+&gt; * **Criterion Importance:** Sets the appropriate weighting parameters.
+&gt; * **Additive Advantage:** Incorporates the gated KL divergence into GRPO (Group Relative Policy Optimization) as a token-level additive advantage.
+
+---
+
+## 核心发现与卓越性能
+
+&gt; ## Key Findings &amp; Performance
+
+* **全面领跑权威基准测试 (Benchmark Dominance)**：在面向科学推理任务、利用强化学习训练出的能力专家进行评估时，VG-OPD 在 **4B 和 8B 两种参数规模的学生模型**上均取得了 **7 个基准测试**的综合最优成绩，并在两种规模下均夺得了 5 项基准测试的第一名。尤其在知识密集型的科学推理挑战中，该方法带来的性能飞跃最为显著。
+* **收益来源剖析 (Source of Gains)**：深入分析表明，性能提升的核心动力在于对监督信号进行了经过验证的精准局部定位，而非简单地堆叠更多教师模型或微调蒸馏损失函数。错配监督预算被证实是对模型破坏性最强的做法，盲目全盘蒸馏往往会把强化学习的性能反向拖拽至基线以下——而验证器门控蒸馏机制成功遏制了这一弊端。
+
+&gt; * **Benchmark Dominance:** When instantiated for scientific reasoning using RL-trained capability experts, VG-OPD achieved the best overall performance across **seven benchmarks** for both **4B and 8B student models**, ranking first on five benchmarks at both scales. The most significant performance gains occurred in knowledge-intensive scientific reasoning tasks.
+&gt; * **Source of Gains:** Analysis reveals that improvements stem from localizing verified supervision rather than simply adding more teachers or altering the distillation loss. Misplacing the supervision budget proved to be the most damaging modification, and indiscriminate distillation often dragged RL performance below its baseline—a drawback successfully mitigated by gated distillation.</description>
+    </item>
+    <item>
+      <title>深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-17/深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用/</guid>
+      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着深度学习模型规模的爆发式增长，现代 GPU 硬件面临着严峻的显存带宽瓶颈，传统框架层逐个算子调用的模式会产生海量中间张量的读写开销。NVIDIA 推出的 cuDNN Graph API 及其高层封装 cuDNN Frontend 彻底打破了以往僵硬的库函数黑盒限制，允许开发者以有向计算图的形式自由编排算子。借助该接口，工程师能够将卷积或矩阵乘法与其后续的偏置加法、激活函数、AMAX 规约等操作深度融合成单个高效内核，并精细挑选最优的底层执行引擎。本文通过详实的单卡实测代码，全面拆解了算子融合、引擎自动调优、执行计划序列化持久化、动态维度内核缓存以及 CUDA Graph 捕获等核心技术，为构建极致吞吐与低延迟的生产级推理服务提供了深度实践参考。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+本教程带你深入传统深度学习框架底层，全面探索 NVIDIA **cuDNN Frontend** 计算图 API (Graph API) 的强大功能。它摒弃了过往僵化固定的库函数逐层调用逻辑，转而将所有前向或反向计算建模为由各个算子构成的有向计算图。这种贴近硬件底层的构建方式，赋予了开发者极高的控制权：不仅能够手动挑选最契合当前硬件的底层执行引擎 (Execution Engine)，还能构建高度优化的融合内核 (Fused Kernel) ——彻底消除偏置相加 (Bias Addition)、激活函数 (Activation) 以及 AMAX 极值规约等尾部运算产生的显存往返开销；此外，它还原生支持全引擎自动调优 (Autotuning)、执行计划序列化与反序列化 (Plan Serialization)、动态张量形状 (Dynamic Shapes) 处理，并能无缝接入 CUDA Graph 进行图捕获，从而消除内核启动开销。
+
+&gt; This tutorial explores NVIDIA’s **cuDNN Frontend** graph API from beneath traditional deep learning frameworks. Rather than relying on rigid library calls, computations are modeled as directed graphs of operations. This low-level approach allows developers to manually select execution engines, construct highly optimized fused kernels (eliminating unnecessary memory traffic for operations like bias additions, activations, and AMAX reductions), leverage autotuning, utilize plan serialization, handle dynamic shapes, and integrate with CUDA graph capture. 
+
+文中给出的所有实操代码均在单张 GPU 上完成了严格测试，并与原生 PyTorch 的参考基准进行了逐一比对，在确保数值计算绝对正确的前提下量化测量了算子融合与图优化带来的实际性能飞跃。
+
+&gt; All code examples are tested against PyTorch references on a single GPU to validate correctness and measure performance gains.
+
+---
+
+## 1. 环境配置与系统初始化
+
+&gt; ## 1. Environment Setup &amp; Initialization
+
+我们首先安装 `nvidia-cudnn-frontend` 依赖包，并配置动态链接器以确保系统能够精准定位并加载 `libcudnn.so` 动态库。接着，根据当前 GPU 的硬件计算能力 (Compute Capability) 自动匹配并初始化计算精度（在较新的架构上优先选择 `bfloat16`，否则采用 `float16`），同时定义了一套可复用的通用辅助函数，用于张量描述、计算图编译构建、显存工作区 (Workspace) 分配以及基准性能测试。
+
+&gt; We begin by installing the `nvidia-cudnn-frontend` package and configuring the dynamic loader to ensure `libcudnn.so` is correctly detected. We initialize the working precision (`bfloat16` or `float16` depending on compute capability) and define reusable helper functions for tensor descriptions, graph compilation, workspace allocation, and benchmarking.
+
+```python
+import os
+import sys
+import glob
+import math
+import time
+import ctypes
+import traceback
+import subprocess
+
+RESULTS = {}
+
+def banner(title):
+    print("\n" + "=" * 78)
+    print(title)
+    print("=" * 78)
+
+def section(name):
+    def wrap(fn):
+        def run(*a, **kw):
+            banner(name)
+            try:
+                out = fn(*a, **kw)
+                RESULTS[name] = out if isinstance(out, str) else "ok"
+                return out
+            except Exception as e:
+                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {e}"
+                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
+                traceback.print_exc(limit=3)
+                return None
+        return run
+    return wrap
+
+banner("0. Install nvidia-cudnn-frontend and locate libcudnn")
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "nvidia-cudnn-frontend"],
+    check=True,
+)
+
+import torch
+assert torch.cuda.is_available(), "No GPU. Runtime -&gt; Change runtime type -&gt; GPU."
+torch.backends.cudnn.enabled = True
+_ = torch.nn.functional.conv2d(
+    torch.randn(1, 1, 8, 8, device="cuda"), torch.randn(1, 1, 3, 3, device="cuda")
+)
+torch.cuda.synchronize()
+
+try:
+    import nvidia.cudnn
+    _libdir = os.path.join(os.path.dirname(nvidia.cudnn.__file__), "lib")
+    os.environ["CUDNN_PATH"] = os.path.dirname(nvidia.cudnn.__file__)
+    os.environ["LD_LIBRARY_PATH"] = _libdir + ":" + os.environ.get("LD_LIBRARY_PATH", "")
+    for _so in sorted(glob.glob(os.path.join(_libdir, "libcudnn*.so*"))):
+        try:
+            ctypes.CDLL(_so, mode=ctypes.RTLD_GLOBAL)
+        except OSError:
+            pass
+except Exception as _e:
+    print(f"  (no pip cuDNN package found, relying on system cuDNN: {_e})")
+
+import cudnn
+print("  cuDNN frontend imported successfully.")
+
+banner("1. Environment")
+DEV = torch.device("cuda")
+MAJOR, MINOR = torch.cuda.get_device_capability()
+SM = MAJOR * 10 + MINOR
+CUDNN_VER = cudnn.backend_version()
+
+print(f"  GPU                 : {torch.cuda.get_device_name(0)}")
+print(f"  Compute capability  : sm_{SM}")
+print(f"  Torch / CUDA        : {torch.__version__} / {torch.version.cuda}")
+print(f"  cuDNN backend       : {CUDNN_VER}")
+
+try:
+    print(f"  cuDNN version str   : {cudnn.backend_version_string()}")
+except Exception:
+    pass
+
+DTYPE = torch.bfloat16 if SM &gt;= 80 else torch.float16
+HAS_SDPA = SM &gt;= 80
+print(f"  Working dtype       : {DTYPE}")
+print(f"  Fused SDPA usable   : {HAS_SDPA}")
+
+HANDLE = cudnn.create_handle()
+TORCH2CUDNN = {
+    torch.float16: cudnn.data_type.HALF,
+    torch.bfloat16: cudnn.data_type.BFLOAT16,
+    torch.float32: cudnn.data_type.FLOAT,
+    torch.int32: cudnn.data_type.INT32,
+    torch.int64: cudnn.data_type.INT64,
+    torch.int8: cudnn.data_type.INT8,
+    torch.uint8: cudnn.data_type.UINT8,
+}
+
+def tensor_of(graph, t, name):
+    return graph.tensor(
+        name=name,
+        dim=list(t.size()),
+        stride=list(t.stride()),
+        data_type=TORCH2CUDNN[t.dtype],
+    )
+
+def scalar_of(graph, name):
+    return graph.tensor(
+        name=name,
+        dim=[1, 1, 1],
+        stride=[1, 1, 1],
+        data_type=cudnn.data_type.FLOAT,
+        is_pass_by_value=True,
+    )
+
+def build(graph, heur=None, policy=None):
+    heur = heur or [cudnn.heur_mode.A, cudnn.heur_mode.FALLBACK]
+    graph.validate()
+    graph.build_operation_graph()
+    graph.create_execution_plans(heur)
+    graph.check_support()
+    if policy is None:
+        graph.build_plans()
+    else:
+        graph.build_plans(policy)
+    return graph
+
+def workspace_for(graph):
+    n = graph.get_workspace_size()
+    return torch.empty(max(n, 1), device=DEV, dtype=torch.uint8)
+
+def bench(fn, warmup=10, iters=50):
+    for _ in range(warmup):
+        fn()
+    torch.cuda.synchronize()
+    s, e = torch.cuda.Event(True), torch.cuda.Event(True)
+    s.record()
+    for _ in range(iters):
+        fn()
+    e.record()
+    torch.cuda.synchronize()
+    return s.elapsed_time(e) / iters
+
+def tflops(flops, ms):
+    return flops / (ms * 1e-3) / 1e12
+
+def report(tag, ms, flops=None):
+    extra = f"   ({tflops(flops, ms):7.2f} TFLOP/s)" if flops else ""
+    print(f"    {tag:&lt;34s} {ms:8.3f} ms{extra}")
+```
+
+---
+
+## 2. 算子融合实战：卷积 $\rightarrow$ 偏置加法 $\rightarrow$ ReLU
+
+&gt; ## 2. Fused Convolution $\rightarrow$ Bias $\rightarrow$ ReLU
+
+接下来我们着手构建第一个完整的计算图：将二维卷积 (2D Convolution)、偏置加法 (Bias Addition) 以及非线性激活函数 ReLU 紧密串联，全流程融合成单个 GPU 内核 (Single Kernel)。在张量内存布局上，所有输入输出均严格维持通道后置的 `channels_last` (NHWC) 内存格式，以便充分发挥 NVIDIA Tensor Core 硬件核心的向量化加速吞吐。
+
+&gt; We construct our first computation graph: a 2D convolution followed by a bias addition and a ReLU activation, fused entirely into a single kernel. Tensors are kept in `channels_last` (NHWC) format to match Tensor Core hardware requirements.
+
+```python
+N, C, H, W = 32, 128, 56, 56
+K, R, S = 256, 3, 3
+PAD, STR, DIL = 1, 1, 1
+P = (H + 2 * PAD - DIL * (R - 1) - 1) // STR + 1
+Q = (W + 2 * PAD - DIL * (S - 1) - 1) // STR + 1
+CONV_FLOPS = 2 * N * K * P * Q * C * R * S
+CONV_STATE = {}
+
+@section("2. Fused Conv -&gt; Bias -&gt; ReLU")
+def conv_fusion():
+    x = torch.randn(N, C, H, W, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+    w = torch.randn(K, C, R, S, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+    b = torch.randn(1, K, 1, 1, device=DEV, dtype=DTYPE)
+    y = torch.empty(N, K, P, Q, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+
+    g = cudnn.pygraph(
+        handle=HANDLE,
+        name="conv_bias_relu",
+        io_data_type=TORCH2CUDNN[DTYPE],
+        intermediate_data_type=cudnn.data_type.FLOAT,
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    X = tensor_of(g, x, "X")
+    Wt = tensor_of(g, w, "W")
+    Bt = tensor_of(g, b, "bias")
+
+    conv = g.conv_fprop(
+        image=X, weight=Wt,
+        padding=[PAD, PAD], stride=[STR, STR], dilation=[DIL, DIL],
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    biased = g.bias(input=conv, bias=Bt)
+    Y = g.relu(input=biased)
+    
+    Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
+    Y.set_dim(list(y.size())).set_stride(list(y.stride()))
+
+    t0 = time.perf_counter()
+    build(g)
+    build_ms = (time.perf_counter() - t0) * 1e3
+    ws = workspace_for(g)
+    
+    pack = {X: x, Wt: w, Bt: b, Y: y}
+    g.execute(pack, ws)
+    torch.cuda.synchronize()
+
+    ref = torch.relu(torch.nn.functional.conv2d(x, w, bias=b.flatten(), padding=PAD))
+    err = (y.float() - ref.float()).abs().max().item()
+    scale = ref.float().abs().max().item()
+
+    print(f"    problem  : N{N} C{C} {H}x{W} -&gt; K{K} {R}x{S}  ({DTYPE})")
+    print(f"    build    : {build_ms:.1f} ms   workspace: {ws.numel()/1024:.1f} KiB")
+    print(f"    max |err|: {err:.4f}  (ref max {scale:.2f}, rel {err/max(scale,1e-9):.2e})")
+    assert err / max(scale, 1e-9) &lt; 5e-2, "numerical mismatch vs PyTorch"
+
+    ms_cudnn = bench(lambda: g.execute(pack, ws))
+    ms_torch = bench(lambda: torch.relu(
+        torch.nn.functional.conv2d(x, w, bias=b.flatten(), padding=PAD)))
+    print()
+    report("cuDNN FE (single fused kernel)", ms_cudnn, CONV_FLOPS)
+    report("PyTorch (conv+bias, then relu)", ms_torch, CONV_FLOPS)
+    print(f"    speedup: {ms_torch/ms_cudnn:.2f}x")
+
+    CONV_STATE.update(graph=g, pack=pack, ws=ws, x=x, w=w, b=b, y=y)
+    return f"{ms_cudnn:.3f} ms, {tflops(CONV_FLOPS, ms_cudnn):.1f} TFLOP/s"
+
+conv_fusion()
+```
+
+---
+
+## 3. 自动调优：全引擎候选配置基准评测
+
+&gt; ## 3. Autotuning: Benchmarking All Engine Configurations
+
+与其完全盲目依赖库提供的默认启发式搜索，我们主动向系统查询了多种启发式决策模式（包含模式 `A`、模式 `B` 以及保底降级模式 `FALLBACK`），并通过 `cudnn.build_plan_policy.ALL` 策略构建出所有通过支持检查的候选执行计划 (Execution Plans)，从而横向测评各个可用引擎在当前硬件工况下的实际性能差异与算力发挥。
+
+&gt; Instead of relying purely on default heuristics, we query multiple heuristic modes (`A`, `B`, and `FALLBACK`) and build all candidate plans using `cudnn.build_plan_policy.ALL` to evaluate performance variations across available engines.
+
+```python
+@section("3. Autotuning: build ALL plans, time each engine config")
+def autotune():
+    x, w, b, y = CONV_STATE["x"], CONV_STATE["w"], CONV_STATE["b"], CONV_STATE["y"]
+    g = cudnn.pygraph(
+        handle=HANDLE, name="conv_autotune",
+        io_data_type=TORCH2CUDNN[DTYPE],
+        intermediate_data_type=cudnn.data_type.FLOAT,
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    X = tensor_of(g, x, "X")
+    Wt = tensor_of(g, w, "W")
+    Bt = tensor_of(g, b, "bias")
+    Y = g.relu(input=g.bias(
+        input=g.conv_fprop(image=X, weight=Wt, padding=[PAD, PAD],
+                           stride=[STR, STR], dilation=[DIL, DIL],
+                           compute_data_type=cudnn.data_type.FLOAT),
+        bias=Bt))
+    Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
+    Y.set_dim(list(y.size())).set_stride(list(y.stride()))
+
+    g.validate()
+    g.build_operation_graph()
+    g.create_execution_plans([cudnn.heur_mode.A, cudnn.heur_mode.B, cudnn.heur_mode.FALLBACK])
+    g.check_support()
+    g.build_plans(cudnn.build_plan_policy.ALL)
+    
+    n_plans = g.get_execution_plan_count()
+    print(f"    {n_plans} candidate engine configs survived support checks\n")
+
+    pack = {X: x, Wt: w, Bt: b, Y: y}
+    timings = []
+    for i in range(n_plans):
+        try:
+            g.build_plan_at_index(i)
+            ws_sz = max(g.get_workspace_size_plan_at_index(i), 1)
+            ws = torch.empty(ws_sz, device=DEV, dtype=torch.uint8)
+            ms = bench(lambda: g.execute_plan_at_index(pack, ws, i), warmup=3, iters=15)
+            timings.append((ms, i, ws_sz))
+            print(f"      plan {i:&gt;3d}: {ms:8.3f} ms  "
+                  f"{tflops(CONV_FLOPS, ms):7.2f} TFLOP/s  ws={ws_sz/1024:8.1f} KiB")
+        except Exception as e:
+            print(f"      plan {i:&gt;3d}: unusable ({type(e).__name__})")
+
+    assert timings, "no plan executed"
+    timings.sort()
+    best_ms, best_i, best_ws = timings[0]
+    worst_ms = timings[-1][0]
+
+    print(f"\n    fastest = plan {best_i} @ {best_ms:.3f} ms")
+    print(f"    slowest = {worst_ms:.3f} ms  -&gt; {worst_ms/best_ms:.1f}x spread across engines")
+    print("    Takeaway: heuristics are good, but for a hot shape you ship the")
+    print("    autotuned index (or the serialized plan from section 6).")
+    return f"best plan {best_i} @ {best_ms:.3f} ms ({worst_ms/best_ms:.1f}x spread)"
+
+autotune()
+```
+
+---
+
+## 4. 矩阵乘法尾声流水线：缩放、偏置、激活与 AMAX 规约
+
+&gt; ## 4. Matrix Multiplication Epilogues (Scaling, Bias, Activation, and AMAX)
+
+现在我们将算子融合的范围扩展至批处理矩阵乘法 (Batched Matmul)，并在其尾声 (Epilogue) 阶段嫁接一条复杂的流水线：包含一个主机端标量 alpha 缩放因子相乘、偏置加法、非线性激活，以及提取绝对值最大值的 `AMAX` 极值规约（这一运算在最新的 FP8 低精度训练与量化工作流中至关重要）。
+
+&gt; We expand to batched matrix multiplication with a complex epilogue chain: a host scalar alpha scaling factor, bias addition, activation, and an `AMAX` reduction (useful for FP8 training quantization workflows).
+
+```python
+@section("4. Matmul -&gt; scale -&gt; bias -&gt; activation -&gt; AMAX")
+def matmul_epilogue():
+    Bsz, M, Kd, Nd = 16, 512, 1024, 512
+    MM_FLOPS = 2 * Bsz * M * Nd * Kd
+    a = torch.randn(Bsz, M, Kd, device=DEV, dtype=DTYPE)
+    bm = torch.randn(Bsz, Kd, Nd, device=DEV, dtype=DTYPE)
+    bias = torch.randn(1, 1, Nd, device=DEV, dtype=DTYPE)
+    out = torch.empty(Bsz, M, Nd, device=DEV, dtype=DTYPE)
+    amax = torch.empty(1, 1, 1, device=DEV, dtype=torch.float32)
+
+    alpha_val = 0.125
+    alpha = torch.full((1, 1, 1), alpha_val, dtype=torch.float32)
+
+    g = cudnn.pygraph(
+        handle=HANDLE, name="matmul_epilogue",
+        io_data_type=TORCH2CUDNN[DTYPE],
+        intermediate_data_type=cudnn.data_type.FLOAT,
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    A = tensor_of(g, a, "A")
+    Bt = tensor_of(g, bm, "B")
+    BIAS = tensor_of(g, bias, "bias")
+    ALPHA = scalar_of(g, "alpha")
+
+    acc = g.matmul(A=A, B=Bt, compute_data_type=cudnn.data_type.FLOAT)
+    scaled = g.mul(a=acc, b=ALPHA)
+    biased = g.bias(input=scaled, bias=BIAS)
+
+    act_name = "relu"
+    if hasattr(g, "gelu"):
+        try:
+            act = g.gelu(input=biased)
+            act_name = "gelu"
+        except Exception:
+            act = g.relu(input=biased)
+    else:
+        act = g.relu(input=biased)
+
+    print(f"    activation used: {act_name}")
+    OUT = act
+    OUT.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
+
+    have_amax = True
+    try:
+        AMAX = g.reduction(input=act, mode=cudnn.reduction_mode.AMAX,
+                           compute_data_type=cudnn.data_type.FLOAT)
+        AMAX.set_output(True).set_data_type(cudnn.data_type.FLOAT)
+        AMAX.set_dim([1, 1, 1]).set_stride([1, 1, 1])
+    except Exception as e:
+        have_amax = False
+        print(f"    (AMAX reduction unavailable here: {e})")
+
+    build(g)
+    ws = workspace_for(g)
+    pack = {A: a, Bt: bm, BIAS: bias, ALPHA: alpha, OUT: out}
+    if have_amax:
+        pack[AMAX] = amax
+
+    g.execute(pack, ws)
+    torch.cuda.synchronize()
+
+    ref = torch.matmul(a.float(), bm.float()) * alpha_val + bias.float()
+    ref = torch.nn.functional.gelu(ref) if act_name == "gelu" else torch.relu(ref)
+    rel = ((out.float() - ref).abs().max() / ref.abs().max()).item()
+
+    print(f"    shape    : ({Bsz},{M},{Kd}) x ({Bsz},{Kd},{Nd})")
+    print(f"    rel err  : {rel:.2e}")
+    if have_amax:
+        print(f"    fused AMAX {amax.item():.4f} vs torch {ref.abs().max().item():.4f}")
+
+    ms = bench(lambda: g.execute(pack, ws))
+    def torch_ref():
+        r = torch.baddbmm(bias.expand(Bsz, M, Nd), a, bm, beta=1.0, alpha=alpha_val)
+        r = torch.nn.functional.gelu(r) if act_name == "gelu" else torch.relu(r)
+        return r.abs().amax()
+    ms_t = bench(torch_ref)
+    print()
+    report("cuDNN FE (one fused kernel)", ms, MM_FLOPS)
+    report("PyTorch (bmm + act + amax)", ms_t, MM_FLOPS)
+    print(f"    speedup: {ms_t/ms:.2f}x  -- the win is the epilogue traffic, not the GEMM")
+    return f"{ms:.3f} ms, {tflops(MM_FLOPS, ms):.1f} TFLOP/s, {ms_t/ms:.2f}x vs torch"
+
+matmul_epilogue()
+```
+
+---
+
+## 5. 缩放点积注意力机制 (FlashAttention) 与执行计划序列化
+
+&gt; ## 5. SDPA (FlashAttention) &amp; Plan Serialization
+
+我们基于 cuDNN Graph API 实现了带有因果掩码 (Causal Masking) 的缩放点积注意力机制 (Scaled Dot-Product Attention, SDPA，即工业级 FlashAttention 实现，该特性需要 NVIDIA Ampere 架构及以上的 `SM80+` 硬件支持)；同时，我们展示了执行计划的序列化技术 (Plan Serialization) ——将编译完成的计算图序列化为二进制数据保存至磁盘，后续在生产部署时直接反序列化重载，并通过整数形式的唯一标识符 (UID) 绑定张量即可直接运行，从而彻底消除服务初次冷启动时的实时 JIT 编译等待。
+
+&gt; We implement Scaled Dot-Product Attention (SDPA) with causal masking (requiring Ampere `SM80+` architectures) and demonstrate plan serialization, allowing compiled graphs to be saved to disk, reloaded, and executed via integer UIDs to eliminate startup compilation delays.
+
+```python
+@section("5. SDPA (Flash Attention) with causal masking")
+def sdpa_demo():
+    if not HAS_SDPA:
+        raise RuntimeError(f"fused SDPA needs SM80+ (Ampere), this GPU is sm_{SM}")
+    b, h, s, d = 4, 16, 1024, 64
+    scale = 1.0 / math.sqrt(d)
+    SDPA_FLOPS = 4 * b * h * s * s * d * 0.5
+
+    q = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
+    k = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
+    v = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
+    o = torch.empty(b, h, s, d, device=DEV, dtype=DTYPE)
+
+    g = cudnn.pygraph(
+        handle=HANDLE, name="sdpa",
+        io_data_type=TORCH2CUDNN[DTYPE],
+        intermediate_data_type=cudnn.data_type.FLOAT,
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    Q, Kt, V = tensor_of(g, q, "Q"), tensor_of(g, k, "K"), tensor_of(g, v, "V")
+    causal = True
+    try:
+        O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
+                           is_inference=True, attn_scale=scale, use_causal_mask=True)
+    except TypeError:
+        try:
+            O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
+                               is_inference=True, attn_scale=scale,
+                               diagonal_alignment=cudnn.diagonal_alignment.TOP_LEFT,
+                               right_bound=0)
+        except Exception:
+            causal = False
+            O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
+                               is_inference=True, attn_scale=scale)
+    print(f"    causal masking: {causal}")
+    O.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
+    O.set_dim(list(o.size())).set_stride(list(o.stride()))
+
+    build(g)
+    ws = workspace_for(g)
+    pack = {Q: q, Kt: k, V: v, O: o}
+    g.execute(pack, ws)
+    torch.cuda.synchronize()
+
+    ref = torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=causal, scale=scale)
+    rel = ((o.float() - ref.float()).abs().max() / ref.float().abs().max()).item()
+    print(f"    shape   : b{b} h{h} s{s} d{d}   workspace {ws.numel()/1024:.1f} KiB")
+    print(f"    rel err : {rel:.2e}")
+
+    ms = bench(lambda: g.execute(pack, ws))
+    ms_t = bench(lambda: torch.nn.functional.scaled_dot_product_attention(
+        q, k, v, is_causal=causal, scale=scale))
+    print()
+    report("cuDNN FE SDPA", ms, SDPA_FLOPS)
+    report("torch SDPA (backend's choice)", ms_t, SDPA_FLOPS)
+    print("    Note: torch may already be dispatching to cuDNN or FlashAttention,")
+    print("    so parity here is the expected, healthy outcome.")
+    return f"{ms:.3f} ms, {tflops(SDPA_FLOPS, ms):.1f} TFLOP/s"
+
+sdpa_demo()
+
+@section("6. Serialize a built graph, reload it, execute by UID")
+def serialization():
+    Bsz, M, Kd, Nd = 8, 256, 512, 256
+    a = torch.randn(Bsz, M, Kd, device=DEV, dtype=DTYPE)
+    bm = torch.randn(Bsz, Kd, Nd, device=DEV, dtype=DTYPE)
+    out = torch.empty(Bsz, M, Nd, device=DEV, dtype=DTYPE)
+    UID_A, UID_B, UID_C = 1, 2, 3
+
+    g = cudnn.pygraph(
+        handle=HANDLE, name="serializable_mm",
+        io_data_type=TORCH2CUDNN[DTYPE],
+        intermediate_data_type=cudnn.data_type.FLOAT,
+        compute_data_type=cudnn.data_type.FLOAT,
+    )
+    A = tensor_of(g, a, "A").set_uid(UID_A)
+    Bt = tensor_of(g, bm, "B").set_uid(UID_B)
+    C = g.matmul(A=A, B=Bt, compute_data_type=cudnn.data_type.FLOAT)
+    C.set_output(True).set_data_type(TORCH2CUDNN[DTYPE]).set_uid(UID_C)
+
+    t0 = time.perf_counter()
+    build(g)
+    cold_ms = (time.perf_counter() - t0) * 1e3
+    blob = g.serialize()
+
+    print(f"    cold build      : {cold_ms:.1f} ms")
+    print(f"    serialized plan : {len(blob)} bytes (cache this to disk / ship it)")
+
+    t0 = time.perf_counter()
+    g2 = cudnn.pygraph()
+    try:
+        g2.deserialize(HANDLE, blob)
+    except TypeError:
+        g2.deserialize(blob)
+    warm_ms = (time.perf_counter() - t0) * 1e3
+    print(f"    deserialize     : {warm_ms:.1f} ms  -&gt; {cold_ms/max(warm_ms,1e-6):.1f}x faster startup")
+
+    ws = torch.empty(max(g2.get_workspace_size(), 1), device=DEV, dtype=torch.uint8)
+    g2.execute({UID_A: a, UID_B: bm, UID_C: out}, ws, handle=HANDLE)
+    torch.cuda.synchronize()
+
+    ref = torch.bmm(a.float(), bm.float())
+    rel = ((out.float() - ref).abs().max() / ref.abs().max()).item()
+    print(f"    rel err after reload: {rel:.2e}")
+    return f"{len(blob)} B blob, reload {cold_ms/max(warm_ms,1e-6):.1f}x faster than rebuild"
+
+serialization()
+```
+
+---
+
+## 6. 动态维度处理与 CUDA Graph 捕获加速
+
+&gt; ## 6. Dynamic Shapes and CUDA Graph Capture
+
+在实际推理场景中，为了高效应对多变的批处理大小 (Batch Size) 或变长序列长度 (Sequence Length)，同时避免每次维度微调都触发昂贵的实时 JIT 重新编译，我们跨计算图共享了底层内核缓存 (Kernel Cache)。更进一步，我们还将编译好的执行计划封装进 CUDA Graph 的图捕获机制中，彻底抹平了每次迭代在 CPU 与 GPU 之间的内核启动延迟 (Kernel Launch Latency)。
+
+&gt; To manage dynamic batch sizes or sequence lengths efficiently without incurring continuous JIT compilation overhead, we share a kernel cache across graph iterations. Furthermore, we wrap execution plans inside CUDA graphs to remove per-iteration kernel launch latencies.
+
+```python
+@section("7. Dynamic shapes with a shared kernel cache")
+def dynamic_shapes():
+    kc = cudnn.create_kernel_cache()
+    def make(n):
+        x = torch.randn(n, 64, 32, 32, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+        w = torch.randn(64, 64, 3, 3, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+        y = torch.empty(n, 64, 32, 32, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
+        g = cudnn.pygraph(
+            handle=HANDLE, name=f"dyn_{n}",
+            io_data_type=TORCH2CUDNN[DTYPE],
+            intermediate_data_type=cudnn.data_type.FLOAT,
+            compute_data_type=cudnn.data_type.FLOAT,
+            kernel_cache=kc,
+            is_dynamic_shape_enabled=True,
+        )
+        X, Wt = tensor_of(g, x, "X"), tensor_of(g, w, "W")
+        Y = g.conv_fprop(image=X, weight=Wt, padding=[1, 1], stride=[1, 1],
+                         dilation=[1, 1], compute_data_type=cudnn.data_type.FLOAT)
+        Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
+        Y.set_dim(list(y.size())).set_stride(list(y.stride()))
+
+        t0 = time.perf_counter()
+        build(g)
+        ms = (time.perf_counter() - t0) * 1e3
+        ws = workspace_for(g)
+        g.execute({X: x, Wt: w, Y: y}, ws)
+        torch.cuda.synchronize()
+        return ms
+
+    times = [(n, make(n)) for n in (8, 16, 24, 32)]
+    for n, ms in times:
+        print(f"      batch {n:&gt;3d}: build {ms:7.1f} ms")
+    first, rest = times[0][1], [m for _, m in times[1:]]
+    print(f"\n    first shape {first:.1f} ms, later shapes avg {sum(rest)/len(rest):.1f} ms")
+    print("    The cache lets shape-variant graphs reuse an already-JIT'd kernel,")
+    print("    which is what keeps variable batch/seqlen serving out of rebuild hell.")
+    return f"first {first:.0f} ms vs subsequent {sum(rest)/len(rest):.0f} ms"
+
+dynamic_shapes()
+
+@section("8. CUDA Graph capture around a cuDNN execution plan")
+def cuda_graph_capture():
+    if not CONV_STATE:
+        raise RuntimeError("section 2 did not run, nothing to capture")
+    g, pack, ws = CONV_STATE["graph"], CONV_STATE["pack"], CONV_STATE["ws"]
+    eager_ms = bench(lambda: g.execute(pack, ws))
+
+    side = torch.cuda.Stream()
+    side.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(side):
+        cudnn.set_stream(handle=HANDLE, stream=side.cuda_stream)
+        for _ in range(3):
+            g.execute(pack, ws, handle=HANDLE)
+    torch.cuda.current_stream().wait_stream(side)
+    torch.cuda.synchronize()
+
+    cg = torch.cuda.CUDAGraph()
+    with torch.cuda.graph(cg):
+        cudnn.set_stream(handle=HANDLE, stream=torch.cuda.current_stream().cuda_stream)
+        g.execute(pack, ws, handle=HANDLE)
+    cudnn.set_stream(handle=HANDLE, stream=torch.cuda.current_stream().cuda_stream)
+
+    replay_ms = bench(lambda: cg.replay())
+    report("plain execute()", eager_ms)
+    report("cuda graph replay()", replay_ms)
+    print(f"    launch overhead removed: {(eager_ms-replay_ms)*1e3:.1f} us/iter")
+    print("    Pointers are frozen at capture time -- reuse the same buffers and")
+    print("    copy new data into them, or re-capture.")
+    return f"{eager_ms:.3f} -&gt; {replay_ms:.3f} ms via replay"
+
+cuda_graph_capture()
+
+banner("SUMMARY")
+for name, res in RESULTS.items():
+    print(f"  {name:&lt;58s} {res}")
+
+print("""
+Where to go next
+ - samples/python in the repo: FP8/MXFP8 attention, paged KV cache, MoE grouped GEMM
+ - python/cudnn/: the open-sourced CuTe DSL kernels (SDPA, grouped GEMM + SwiGLU,
+   block-sparse and native sparse attention) you can read and modify
+ - debugging: CUDNN_FRONTEND_LOG_INFO=1 and CUDNN_FRONTEND_LOG_FILE=stdout
+   (use level 10 during CUDA graph capture -- level 1 dumps tensors and is not
+   capture-safe)
+""")
+```
+
+---
+
+## 总结
+
+&gt; ## Conclusion
+
+将深度学习网络层重构为显式的有向计算图，使开发者得以对内核融合、执行引擎筛选、编译生命周期以及内核启动开销拥有极致而精准的控制力。cuDNN Frontend API 在许多高频严苛场景中表现尤为卓越，例如：定制化的算子融合（彻底免除激活与规约尾声中间变量的显存写回）、对频繁调用的热点形状 (Hot Shapes) 进行严密的自动调优，以及结合 CUDA Graph 与执行计划序列化技术打造高性能、极低延迟的生产级在线推理服务闭环。
+
+&gt; By structuring deep learning layers as explicit computation graphs, developers unlock precise control over kernel fusion, engine selection, compilation lifecycles, and launch overheads. The cuDNN Frontend API excels particularly in scenarios involving custom fusions (such as avoiding intermediate writes for activation and reduction epilogues), hot shapes requiring rigorous autotuning, and performance-critical low-latency serving loops enhanced via CUDA graphs and plan serialization.
+
+---
+
+欢迎查阅 **[完整源码链接](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%20Learning/cudnn_frontend_nvidia_tutorial_Marktechpost.ipynb)**。本项目所有成果归原作者研究团队所有。欢迎在 **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** 上关注我们，加入拥有 **[15 万+ 成员的机器学习 SubReddit 社区](https://www.reddit.com/r/machinelearningnews/)**，订阅 **[官方技术周刊](https://magic.beehiiv.com/v1/f5e63dd4-5653-4f09-83e2-321a8b1ba526?email={{email}})**，以及关注我们的 **[Telegram 频道](https://t.me/machinelearningresearchnews)**。
+
+&gt; Check out the **[FULL CODES here](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%20Learning/cudnn_frontend_nvidia_tutorial_Marktechpost.ipynb)**. All credit goes to the researcher of this project. Feel free to follow us on **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** and join our **[150k+ ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**, subscribe to **[our Newsletter](https://magic.beehiiv.com/v1/f5e63dd4-5653-4f09-83e2-321a8b1ba526?email={{email}})**, and join our **[Telegram channel](https://t.me/machinelearningresearchnews)**.
+
+如需洽谈 GitHub 开源项目推广、Hugging Face 专题页面合作、新品发布或线上技术研讨会等商务合作，欢迎 **[点击此处与我们联系](https://forms.gle/wbash1wF6efRj8G58)**。
+
+&gt; For partnership inquiries regarding GitHub repo promotions, Hugging Face pages, product releases, or webinars, **[connect with us here](https://forms.gle/wbash1wF6efRj8G58)**.
+
+本文首发于 [MarkTechPost](https://www.marktechpost.com)，原文标题为 [Inside NVIDIA’s cuDNN Graph API: Fusion, Autotuning, and Plan Reuse with cuDNN Frontend](https://www.marktechpost.com/2026/09/15/inside-nvidias-cudnn-graph-api-fusion-autotuning-and-plan-reuse-with-cudnn-frontend/)。
+
+&gt; The post [Inside NVIDIA’s cuDNN Graph API: Fusion, Autotuning, and Plan Reuse with cuDNN Frontend](https://www.marktechpost.com/2026/09/15/inside-nvidias-cudnn-graph-api-fusion-autotuning-and-plan-reuse-with-cudnn-frontend/) appeared first on [MarkTechPost](https://www.marktechpost.com).</description>
+    </item>
+    <item>
+      <title>Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-17/Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架/</guid>
+      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
+      <description>尽管现代大语言模型在生成简短数学证明方面表现出色，但在面对需要长程决策与精密推演的前沿科学研究时，往往容易因链条脆弱和不确定性累积而遭遇瓶颈。为了攻克这一难题，来自学术界与 Google 等机构的研究团队联合推出了 **Stellar Colosseum** —— 一个与模型无关的多智能体协同与推理竞技框架，专为数学和理论计算机科学 (Theoretical Computer Science, TCS) 等高难度长程科研任务量身打造。该框架创新性地引入了备选策略探索、成熟度门控、结构化证明图、针对性证伪反馈闭环以及重叠随机采样树聚合机制，让多智能体在协同博弈中不断锤炼严密的学术论证。在涵盖 FOCS、STOC 等顶级学术会议的 TCS-Bench 定理证明评测中，Stellar Colosseum 斩获了高达 71.0% 的准确率，并在复杂算法挑战赛中攻克了绝大部分难题，为 AI 辅助前沿科学探索迈出了坚实一步。
+
+---
+
+# Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架
+
+&gt; # Stellar Colosseum: A Many-Agent Harness for Long-Horizon Research in Mathematics and Theoretical Computer Science
+
+**作者：** Honghao Lin, David P. Woodruff, Yuan Deng, Jieming Mao, Song Zuo, Vahab Mirrokni  
+**arXiv 预印本：** [arXiv:2609.15983 [cs.AI]](https://arxiv.org/abs/2609.15983) (提交于 2026 年 9 月 14 日，最后修订于 2026 年 9 月 15 日)   
+**主分类：** 人工智能 (`cs.AI`)  
+**其他分类：** 计算与语言 (`cs.CL`)、机器学习 (`cs.LG`)  
+
+&gt; **Authors:** Honghao Lin, David P. Woodruff, Yuan Deng, Jieming Mao, Song Zuo, Vahab Mirrokni  
+&gt; **arXiv:** [arXiv:2609.15983 [cs.AI]]() (Submitted on 14 Sep 2026, last revised 15 Sep 2026)  
+&gt; **Primary Subject:** Artificial Intelligence (`cs.AI`)  
+&gt; **Additional Subjects:** Computation and Language (`cs.CL`), Machine Learning (`cs.LG`)  
+
+---
+
+## 摘要
+
+&gt; ## Summary
+
+虽然现代语言模型在给出看似严密自洽的简短证明方面表现抢眼，但在面对长程科研难题时却屡屡碰壁。这类长程探索的成败，往往完全取决于一连串环环相扣、充满不确定性且高度脆弱的连锁决策——稍有不慎，推演便前功尽弃。
+
+&gt; While modern language models excel at producing plausible short proofs, they frequently stumble on long-horizon research problems where success hinges on a fragile sequence of uncertain and interdependent decisions. 
+
+为了突破这一瓶颈，研究团队推出了 **Stellar Colosseum** —— 一个专为数学与理论计算机科学 (Theoretical Computer Science, TCS) 复杂长程研究打造的模型无关推理框架。
+
+&gt; To bridge this gap, the authors introduce **Stellar Colosseum**, a model-agnostic inference framework designed for complex research in mathematics and theoretical computer science (TCS).</description>
+    </item>
+    <item>
+      <title>BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-17/BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统/</guid>
+      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
+      <description>当前，能够像人类一样自主操作手机应用的移动端图形用户界面智能体 (GUI Agent) 正成为前沿热点，但现有模型在模拟沙盒中表现出色，一到真实真机环境下往往频频碰壁。本论文推出了 BlueLM-GUI——一个拥有 350 亿参数 (35B-A3B) 的移动端 GUI 智能体，首次确立了以“真实物理设备”为核心的数据与演进飞轮系统。该系统贯彻“珍惜每个样本、交互基于真机、评测动态演进”三大原则，不仅将真机操作中的报错转化为宝贵的高质量训练数据，还在数百台真实物理手机上展开强化学习。在 MobileGUI-VBench 与 AndroidWorld 等权威基准测试中，BlueLM-GUI 均斩获顶尖成绩，大幅超越顶尖闭源与开源模型，为移动端智能体的工业规模化落地开辟了全新路径。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+在移动端，能够帮我们操作手机应用的图形用户界面 (GUI) 智能体 (AI Agent) 正在经历深刻演化——正从以往拼凑式的模块化框架，迅速转向浑然一体的原生端到端训练模型。然而，要想把这种智能体真正推向实际工业化落地，长期以来一直受制于三大棘手瓶颈：
+
+&gt; Mobile Graphical User Interface (GUI) agents are rapidly transitioning from modular frameworks to native, end-to-end trained models. However, industrial deployment has historically been impeded by three persistent bottlenecks:
+
+1. **分布偏差 (Distribution Mismatch)**：传统的沙盒模拟训练环境很难真实还原真实生产环境中的复杂状况；
+2. **失败经验未充分利用 (Underutilized Failures)**：智能体在真机上执行任务遭遇的昂贵报错，往往被随手丢弃，未能转化为反哺训练的养料；
+3. **基准测试易饱和 (Benchmark Saturation)**：固定的静态基准测试很快就会被模型“刷爆”，逐渐失去指引模型持续迭代的能力。
+
+&gt; 1. **Distribution Mismatch:** Sandbox training environments fail to accurately simulate real-world production conditions.
+&gt; 2. **Underutilized Failures:** Expensive errors occurring on physical devices are typically discarded rather than leveraged for training.
+&gt; 3. **Benchmark Saturation:** Static benchmarks quickly saturate, reducing their efficacy in guiding model iteration.
+
+为了攻克这些难题，研究团队推出了 **BlueLM-GUI**——一个基于“以真机为中心”的自我演化飞轮打造的 350 亿参数 (35B-A3B) 移动端 GUI 智能体。BlueLM-GUI 严格秉持三大核心理念——**“珍惜每个样本” (Every Sample Matters)**、**“交互基于真机” (Every Rollout Is Real)** 以及 **“评测动态演进” (Every Query Evolves)**，成功跨越了虚拟模拟与真实应用之间的鸿沟，在多项主流权威评测中均斩获了顶尖水准的性能表现。
+
+&gt; To address these challenges, the authors introduce **BlueLM-GUI**, a 35B-A3B mobile GUI agent built around a real-device-centric self-improvement flywheel. By adhering to three core principles—**Every Sample Matters**, **Every Rollout Is Real**, and **Every Query Evolves**—BlueLM-GUI bridges the gap between simulated training and real-world deployment, achieving state-of-the-art performance across major evaluation suites.
+
+---
+
+## BlueLM-GUI 飞轮的核心设计原则
+
+&gt; ## Core Principles of the BlueLM-GUI Flywheel</description>
+    </item>
+    <item>
       <title>标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</guid>
@@ -3432,348 +4216,6 @@ Magenta 采用了专门设计的裁判机制：其中**命题裁判 (Statement J
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2604.06015)
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2604.06015)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2604.06015)</description>
-    </item>
-    <item>
-      <title>HISA：面向细粒度稀疏注意力的高效分层索引机制</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/HISA-面向细粒度稀疏注意力的高效分层索引机制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/HISA-面向细粒度稀疏注意力的高效分层索引机制/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (Large Language Model, LLM) 处理超长上下文时，细粒度稀疏注意力机制（以 DeepSeek 提出的 DeepSeek Sparse Attention, 简称 DSA 为代表）能够显著压缩注意力计算量。然而，这类机制通常依赖一个轻量级索引器对历史键值进行全局遍历，当上下文急剧延长时，索引器对每个 Query 的前缀全量扫描便成为制约推理吞吐的核心计算瓶颈。
-
-为了攻克这一瓶颈，研究人员在 COLM 2026 上提出了 **HISA (Hierarchical Indexed Sparse Attention)**。HISA 是一种完全即插即用的索引器替换方案，它将单调的扁平扫描重构为两阶段分层检索：“块级粗筛”快速丢弃不相关区域，“Token 级精炼”则在保留的候选块中精准定位关键 Token。在无需任何额外训练或微调的情况下，HISA 可直接无缝集成至 DeepSeek-V3.2 与 GLM-5 等主流模型中，在 64K 上下文下大幅提升内核执行速度，并在各项长文本基准中维持了与原生 DSA 媲美的精度表现。
-
----
-
-## 概述
-
-&gt; ## Summary
-
-Token 级别的细粒度稀疏注意力机制（例如 DeepSeek Sparse Attention，即 DSA）通过在计算注意力子集之前利用轻量级索引器为每个查询 (Query) 筛选出最相关的历史键 (Key) ，从而实现高精度且低计算量的注意力计算。然而，由于索引器必须针对每一个 Query 扫描全部的前缀历史，在处理长文本序列时，这反而成为了阻碍吞吐提升的计算瓶颈。
-
-&gt; Token-level sparse attention mechanisms (such as DeepSeek Sparse Attention, or DSA) select fine-grained historical keys for each query using a lightweight indexer before calculating attention on the subset. However, because the indexer must perform a full-prefix scan for every query, it becomes a computational bottleneck at scale.
-
-**HISA (Hierarchical Indexed Sparse Attention)** 是一种即插即用的索引器替换方案，它将这一线性检索路径重构为一个精巧的两阶段分层流程：
-1. **块级粗筛 (Block-Level Coarse Filtering)：** 对池化后的块级表征进行快速打分，果断剔除不相关的上下文区间；
-2. **Token 级精细定位 (Token-Level Refinement)：** 仅在被保留的候选块内部运行原始的细粒度索引器。
-
-&gt; **HISA (Hierarchical Indexed Sparse Attention)** is a plug-and-play indexer replacement that optimizes this search path into a two-stage hierarchical procedure:
-&gt; 1. **Block-Level Coarse Filtering:** Scores pooled block representations to discard irrelevant regions.
-&gt; 2. **Token-Level Refinement:** Applies the original indexer exclusively within the retained candidate blocks.
-
-无需任何额外的微调或训练，HISA 便可无缝整合到 DeepSeek-V3.2 和 GLM-5 等尖端大模型中。它在 64K 上下文长度下带来了显著的内核加速比，并在保证与原生 DSA 同等生成质量的同时，大幅超越了传统的块级稀疏基准方法。
-
-&gt; Without requiring any additional training or fine-tuning, HISA seamlessly integrates into models like DeepSeek-V3.2 and GLM-5, achieving quality comparable to original DSA while delivering significant speedups (up to $\times$ speedup at 64K context) and outperforming standard block-sparse baselines.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-| 字段 (Field) | 详情 (Details) |
-| :--- | :--- |
-| **arXiv 编号** | [arXiv:2603.28458](https://arxiv.org/abs/2603.28458) [cs.LG] |
-| **论文标题** | HISA: Efficient Hierarchical Indexing for Fine-Grained Sparse Attention |
-| **作者团队** | Yufei Xu, Fanxu Meng, Fan Jiang, Yuxuan Wang, Ruijie Zhou, Zhaohui Wang, Jiexi Wu, Zhixin Pan, Xiaojuan Tang, Wenjie Pei, Tongxuan Liu, Di Yin, Xing Sun, Muhan Zhang |
-| **主要学科** | 机器学习 (`cs.LG`)，人工智能 (`cs.AI`) |
-| **发表会议** | COLM 2026 会议收录论文 |
-| **提交时间** | 2026年3月30日 (v1)；最新修订：2026年9月10日 (v4) |
-
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [arXiv:2603.28458](https://arxiv.org/abs/2603.28458) [cs.LG] |
-&gt; | **Title** | HISA: Efficient Hierarchical Indexing for Fine-Grained Sparse Attention |
-&gt; | **Authors** | Yufei Xu, Fanxu Meng, Fan Jiang, Yuxuan Wang, Ruijie Zhou, Zhaohui Wang, Jiexi Wu, Zhixin Pan, Xiaojuan Tang, Wenjie Pei, Tongxuan Liu, Di Yin, Xing Sun, Muhan Zhang |
-&gt; | **Primary Subject** | Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`) |
-&gt; | **Publication** | Published as a conference paper at COLM 2026 |
-&gt; | **Submitted** | 30 Mar 2026 (v1); Last revised: 10 Sep 2026 (v4) |
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-以 DeepSeek Sparse Attention (DSA) 为代表的 Token 级稀疏注意力机制，通过轻量级索引器为每个查询 (Query) 对全部历史键进行打分，并仅在精选出的子集上计算注意力，从而达成了极为细粒度的键筛选。尽管下游的稀疏注意力本身的计算复杂度优势明显，但其索引器在每个 Query 计算时依然必须全量扫描前缀序列，这带来了随上下文长度增长而急剧恶化的逐层计算瓶颈。我们提出了 HISA (Hierarchical Indexed Sparse Attention)，作为索引器的即插即用替代模块。它将扁平的 Token 级全扫描路径重写为两阶段分层流程：(1) 块级粗筛阶段，对池化后的块表征打分以快速剔除无关区域；紧接着 (2) Token 级精炼阶段，仅在保留下来的候选块内部调用原索引器。HISA 完全保留了下游 Sparse MLA 算子所消费的相同 Token 级 Top-sparse 稀疏模式，且不需要任何额外的模型训练。在算子级基准测试中，HISA 在 64K 上下文下实现了显著加速。在 Needle-in-a-Haystack 和 LongBench 评测中，我们在未经任何微调的情况下直接用 HISA 索引器替换了 DeepSeek-V3.2 与 GLM-5 中的原始索引器。测试结果显示，HISA 在生成质量上与原始 DSA 几乎完全一致，同时大幅优于常规的块级稀疏基准。
-
-&gt; Token-level sparse attention mechanisms, exemplified by DeepSeek Sparse Attention (DSA), achieve fine-grained key selection by scoring every historical key for each query through a lightweight indexer, then computing attention only on the selected subset. While the downstream sparse attention itself scales favorably, the indexer must still scan the entire prefix for every query, introducing an per-layer bottleneck that grows prohibitively with context length. We propose HISA (Hierarchical Indexed Sparse Attention), a plug-and-play replacement for the indexer that rewrites the search path from a flat token scan into a two-stage hierarchical procedure: (1) a block-level coarse filtering stage that scores pooled block representations to discard irrelevant regions, followed by (2) a token-level refinement stage that applies the original indexer exclusively within the retained candidate blocks. HISA preserves the identical token-level top-sparse pattern consumed by the downstream Sparse MLA operator and requires no additional training. On kernel-level benchmarks, HISA achieves up to speedup at 64K context. On Needle-in-a-Haystack and LongBench, we directly replace the indexer in DeepSeek-V3.2 and GLM-5 with our HISA indexer, without any finetuning. HISA closely matches the original DSA in quality, while substantially outperforming block-sparse baselines.
-
----
-
-## 全文与资源链接
-
-&gt; ## Full-Text &amp; Resources
-
-* **PDF 版本：** [查看 PDF](https://arxiv.org/pdf/2603.28458)
-* **HTML 版本：** [arXiv HTML (实验性)](https://arxiv.org/html/2603.28458v4)
-* **源码文件：** [TeX 源码](https://arxiv.org/src/2603.28458)
-* **DOI 检索：** [10.48550/arXiv.2603.28458](https://doi.org/10.48550/arXiv.2603.28458)
-* **开源协议：** [知识共享 署名 4.0 国际许可 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; * **PDF Version:** [View PDF](https://arxiv.org/pdf/2603.28458)
-&gt; * **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2603.28458v4)
-&gt; * **Source Files:** [TeX Source](https://arxiv.org/src/2603.28458)
-&gt; * **DOI:** [10.48550/arXiv.2603.28458](https://doi.org/10.48550/arXiv.2603.28458)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/GPU-CFR-通过编译为静态数据流与-CUDA-Graph-重放实现-80-倍逆事实遗憾最小化加速/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/GPU-CFR-通过编译为静态数据流与-CUDA-Graph-重放实现-80-倍逆事实遗憾最小化加速/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>逆事实遗憾最小化 (Counterfactual Regret Minimization, CFR) 是求解大规模不完全信息博弈纳什均衡的核心算法，但历史上它一直属于极少数“CPU 跑得比 GPU 还快”的特殊数值密集型负载。这是因为博弈树遍历包含数百万个微小且相互依赖的汇聚与分散 (Gather/Scatter) 操作，在 GPU 上单核函数运行耗时仅数微秒，使得底层框架调度与核函数发射开销彻底吞噬了算力红利。来自清华大学的研究团队敏锐地指出，在博弈规则固定的前提下，除具体数值更新外，整个 CFR 迭代的执行拓扑结构在运行前完全确定。基于这一洞察，他们推出了 **GPU-CFR** 编译器与运行时系统，将博弈树提前编译为平铺静态数据流数组与批次遍历，并深度整合 **CUDA Graph Replay** 技术将整轮迭代捕获为单一图任务发射。在单张 NVIDIA A100 GPU 上，GPU-CFR 相比以往最先进的 GPU-CFR 实现了最高 80.4 倍的惊人加速，并在大规模博弈场景下超越顶尖 CPU 方案多达 258 倍。
-
----
-
-## 📋 内容概要
-
-&gt; ## 📋 Summary
-
-在过去很长一段时间里，逆事实遗憾最小化 (Counterfactual Regret Minimization, CFR) 算法在 CPU 上的运行速度反而超越了 GPU。其根本原因在于：包含数十亿状态的庞大博弈树遍历过程，往往需要通过通用树接口调用数以百万计轻量、相互依赖的收集 (Gather) 和分发 (Scatter) 步骤。在 GPU 上，每个计算核函数的执行仅需微秒级别，导致频繁的核函数发射 (Kernel Launch) 与计算框架调度开销牢牢占据了总耗时的主导地位。
-
-&gt; Counterfactual Regret Minimization (CFR) algorithms have historically run faster on CPUs than on GPUs due to the massive overhead of managing millions of small, interdependent gather and scatter steps across game trees containing billions of states. Because individual GPU kernels finish in microseconds, kernel launches and framework dispatch overheads routinely dominate execution time. 
-
-**GPU-CFR** 提出了全新的编译器与运行时架构，其核心洞察在于：针对任何特定的确定博弈，除具体的数值变量之外，CFR 单次迭代过程中的所有结构拓扑元素在正式运行之前均是完全已知的。通过将博弈预编译为**静态数据流** (Static Dataflow) ——包括扁平化边与信息集数组、预计算的内存索引以及深度维度的批量分层传递——GPU-CFR 完全固定了底层的操作执行序列，使得迭代轮次之间仅有求解器的数值状态发生变动。
-
-&gt; **GPU-CFR** introduces a novel compiler and runtime built on the key observation that, for any fixed game, all structural elements of a CFR iteration (excluding numerical values) are entirely deterministic before execution begins. By compiling games into **static dataflow**—flat edge and information-set arrays, precomputed indices, and depth-level batched passes—GPU-CFR fixes the execution sequence so that only solver states change between iterations. 
-
-结合静态概率折叠 (Static Chance Folding) 、深度层级执行块、双通道可达概率缓冲区以及 **CUDA Graph Replay** (CUDA 计算图录制与重放) 等深度优化，GPU-CFR 将整个迭代过程录制并封装为单次计算图发射，彻底消除了框架调度开销。在单张 A100 GPU 上针对涵盖扑克牌、骰子以及棋类博弈的 8 种测试套件中，GPU-CFR 相比此前的 GPU-CFR 实现取得了 **29.8 倍至 80.4 倍的加速比**；在其中规模最大的四种博弈中，更是比业内顶尖的开源 CPU 实现 LiteEFG 快出 **14 倍至 258 倍**。
-
-&gt; Leveraging optimizations like static chance folding, depth-level execution blocks, a dual-lane reach buffer, and **CUDA Graph Replay**, GPU-CFR eliminates framework overhead by capturing the entire iteration into a single graph launch. On an A100 GPU across an eight-game suite (spanning card, dice, and board games), GPU-CFR achieves a **29.8x to 80.4x speedup** over prior GPU-CFR implementations, and is **14x to 258x faster** than LiteEFG (a leading open-source CPU implementation) on the four largest games.
-
----
-
-## 📑 论文元数据与参考信息
-
-&gt; ## 📑 Metadata &amp; Reference
-
-| 字段 | 详情 |
-| :--- | :--- |
-| **所属学科** | 分布式、并行与集群计算 (`cs.DC`)；人工智能 (`cs.AI`)；计算机科学与博弈论 (`cs.GT`)；数学软件 (`cs.MS`)；程序设计语言 (`cs.PL`) |
-| **DOI 链接** | [10.48550/arXiv.2609.11923](https://doi.org/10.48550/arXiv.2609.11923) |
-| **全文获取链接** | • [查看 PDF](https://arxiv.org/pdf/2609.11923)&lt;br&gt;• [HTML 网页版](https://arxiv.org/html/2609.11923v1)&lt;br&gt;• [TeX 源码](https://arxiv.org/src/2609.11923) |
-
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **Subjects** | Distributed, Parallel, and Cluster Computing (`cs.DC`); Artificial Intelligence (`cs.AI`); Computer Science and Game Theory (`cs.GT`); Mathematical Software (`cs.MS`); Programming Languages (`cs.PL`) |
-&gt; | **DOI** | [10.48550/arXiv.2609.11923](https://doi.org/10.48550/arXiv.2609.11923) |
-&gt; | **Full-Text Links** | • [View PDF](https://arxiv.org/pdf/2609.11923)&lt;br&gt;• [HTML Version](https://arxiv.org/html/2609.11923v1)&lt;br&gt;• [TeX Source](https://arxiv.org/src/2609.11923) |
-
----
-
-## 🔍 论文摘要
-
-&gt; ## 🔍 Abstract
-
-&gt; 逆事实遗憾最小化 (CFR) 是当今罕见的在 CPU 上运行速度依然快于 GPU 的大规模数值计算负载之一。在算法的每一次迭代中，程序都需要通过通用的博弈树接口，在包含多达数十亿状态的博弈树上执行数百万次细碎、相互依赖的收集 (Gather) 与发散 (Scatter) 步骤。在 GPU 上，每个核函数微秒级即可执行完毕，以至于核函数启动发射与框架调度开销牢牢主导了实际运行时间，使得此前各色 GPU 实现往往不敌深度优化的 CPU 代码。
-&gt;
-&gt; 我们观察到，对于任何固定规则的博弈，除了具体的数值变量之外，CFR 迭代的一切要素在第一次运行前便已全部确定。基于这一关键洞察，我们提出了 GPU-CFR——一个包含编译器与运行时的系统。它一次性将任意博弈编译为静态数据流结构：扁平化的边和信息集数组、预先计算的索引以及按深度分层的批处理流程彻底固化了整个运算执行序列，迭代之间仅更新求解器内部状态。借助静态偶然事件折叠、深度层级执行块以及双通道可达概率缓冲区，框架调度操作数量被削减了高达 18.1 倍。
-&gt;
-&gt; 鉴于张量形状、内存索引和缓冲区地址永恒固定不变，CUDA Graph Replay 能够一次性录制整个迭代流程，并在后续运行中仅凭单次图发射即可无缝重放。在单块 A100 GPU 上，针对涵盖纸牌、掷骰子和棋盘游戏的 8 款博弈套件评测表明，GPU-CFR 的运行速度比相同加速卡上此前最快的 GPU CFR 快 29.8 至 80.4 倍；在四款规模最大的博弈中，更是比最前沿的开源 CPU 实现 LiteEFG 快出 14 至 258 倍。静态编译表征贡献了绝大部分优势：即便在不使用任何硬件加速卡的 8 线程 CPU 上运行，编译版本也已经比原始 GPU 基线快 2.2 至 51.1 倍。在 CPU 路径上，经过优化的执行流能在二进制位级别精确复现参考迭代值，且博弈树构建与计算图捕获的开销在初次求解过程中即可完全摊销。在不改动任何数学更新法则的前提下，GPU-CFR 在该套件的所有大中型博弈任务中均全面超越了现有的 CPU 与 GPU 基线方案。
-
-&gt; &gt; Counterfactual regret minimization (CFR) is one of the few large numerical workloads that still runs faster on CPUs than on GPUs. Each iteration sweeps a game tree with up to billions of states in millions of small, interdependent gather and scatter steps issued through a generic tree interface. On a GPU every kernel finishes in microseconds, so kernel launches and framework dispatch dominate the run time, and prior GPU implementations have lost to optimized CPU code. 
-&gt; &gt;
-&gt; &gt; We observe that for a fixed game, everything about a CFR iteration except the numerical values is known before the first iteration runs. We propose GPU-CFR, a compiler and runtime built on this observation. It compiles any game once into static dataflow: flat edge and information-set arrays, precomputed indices, and depth-level batched passes fix the entire operation sequence, and only solver state changes between iterations. Static chance folding, depth-level execution blocks, and a dual-lane reach buffer cut the number of framework operations by up to 18.1x. 
-&gt; &gt;
-&gt; &gt; Because shapes, indices, and buffer addresses never change, CUDA Graph Replay records the iteration once and replays it with a single graph launch. On one A100, across an eight-game suite that spans card games, dice games, and board games, GPU-CFR runs 29.8--80.4x faster than the fastest prior GPU CFR on the same accelerator, and 14--258x faster than LiteEFG, one of the fastest open-source CPU implementations, on the four largest games. The compiled representation carries most of that margin: on eight CPU threads with no accelerator it is already 2.2--51.1x faster than the GPU baseline. On the CPU the optimized path reproduces the reference iterates bitwise, and tree construction and graph capture pay for themselves within the first solve. GPU-CFR beats every CPU and GPU baseline on the mid-to-large games of the suite without changing the update rule.</description>
-    </item>
-    <item>
-      <title>FastE：基于读出触发的 LLM 嵌入推理 Token 压缩算法</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/FastE-基于读出触发的-LLM-嵌入推理-Token-压缩算法/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/FastE-基于读出触发的-LLM-嵌入推理-Token-压缩算法/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>利用现代大语言模型 (Large Language Model, LLM) 生成高质量的向量嵌入已成为文本检索与多模态表征的核心基石，然而在长文本推理阶段，庞大的计算开销和显存占用极大限制了其部署扩展性。本文研究团队揭示了嵌入推理中普遍存在的“前缀深度依赖冗余”现象——即在网络较浅层剔除前缀状态对表现伤害极大，但在较深层这些前缀状态高度冗余、极具可压缩性。为此，研究团队提出了一种无需重新训练的即插即用算法 FastE，通过轻量级在线启发式准则在读出与前缀对齐时动态触发压缩，并依据注意力评分进行筛选。实验表明，FastE 能在保持 99.5% 以上检索精度的前提下减少高达 40% 的计算浮点运算量 (FLOPs) ，为大规模向量检索与索引系统提供了高实用价值的加速方案。
-
----
-
-## 📌 内容概要
-
-&gt; ## Summary
-
-**FastE** 是一种无需重新训练、即插即用的推理优化方法，旨在显著提升基于最终读出 (Final-Readout) 的大语言模型 (LLM) 嵌入推理计算效率。通过揭示前缀状态随网络深度递增的可压缩性——即前缀在深层网络中表现出明显的深度依赖冗余，FastE 设计了一种轻量级的在线启发式规则：采用基于批次均值读出-前缀对齐度的统一固定阈值来触发压缩，并利用读出位置对前缀状态的注意力得分对各状态进行重要性排序。
-
-&gt; **FastE** is a training-free, plug-and-play method designed to improve the computational efficiency of final-readout Large Language Model (LLM) embedding inference. By identifying depth-dependent prefix redundancy—where prefix states become increasingly compressible in deeper layers—FastE introduces a lightweight online heuristic. It uses a shared fixed threshold on batch-mean readout-prefix alignment to trigger compression, and ranks prefix states using attention scores received from the readout position. 
-
-实验评估表明，FastE 在多个基准测试、模型规模以及跨模态检索任务中均能大幅降低计算成本 (例如在 NarrativeQA 数据集上使用 Qwen3-Embedding-0.6B 时，将解码器骨干计算浮点量 FLOPs 削减了 **40.11%**，同时保留了完整前向推理 **99.53%** 的 nDCG@10 检索质量) ，且全程无需任何微调或重新训练。
-
-&gt; Evaluations demonstrate that FastE substantially cuts computational costs (e.g., reducing decoder-backbone FLOPs by **40.11%** while retaining **99.53%** of Full Forward nDCG@10 on NarrativeQA using Qwen3-Embedding-0.6B) across multiple benchmarks, scales, and cross-modal retrieval tasks without requiring retraining.
-
----
-
-## 📄 论文元数据
-
-&gt; ## Paper Metadata
-
-| 属性 | 详情 |
-| :--- | :--- |
-| **arXiv 标识符** | [arXiv:2609.08407](https://arxiv.org/abs/2609.08407) [cs.AI] |
-| **主分类** | 计算机科学 &gt; 人工智能 (`cs.AI`) |
-| **论文作者** | Jinsong Shu, Jinyong Wen, Baokun Wang, Zhongle Xie, Lidan Shou, Weiqiang Wang, Gang Chen |
-| **提交历史** | [v1] 2026年9月8日 周二&lt;br&gt;[v2] 2026年9月10日 周四 (当前版本) |
-| **授权许可** | [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png) |
-
-&gt; | Attribute | Detail |
-&gt; | :--- | :--- |
-&gt; | **arXiv Identifier** | [arXiv:2609.08407](https://arxiv.org/abs/2609.08407) [cs.AI] |
-&gt; | **Primary Subject** | Computer Science &gt; Artificial Intelligence (`cs.AI`) |
-&gt; | **Authors** | Jinsong Shu, Jinyong Wen, Baokun Wang, Zhongle Xie, Lidan Shou, Weiqiang Wang, Gang Chen |
-&gt; | **Submission History** | [v1] Tue, 8 Sep 2026&lt;br&gt;[v2] Thu, 10 Sep 2026 (This version) |
-&gt; | **License** | [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png) |
-
----
-
-## 📄 论文摘要
-
-&gt; ## Abstract
-
-在本研究中，我们在基于最终读出机制的 LLM 嵌入模型中发现了深度依赖的前缀冗余性，该现象在包括 Qwen3-Embedding 和 Qwen3-VL-Embedding 等代表性骨干网络中普遍存在。我们发现，在浅层移除前缀状态对模型性能的破坏远大于在深层移除，这表明随着前缀与读出状态在网络中的前向传递，前缀状态变得越来越容易被压缩。为此，我们提出了 FastE，这是一种免训练、即插即用的加速方法。FastE 使用基于批次均值读出-前缀对齐度的共享固定阈值作为轻量级在线启发式标准，自适应决定何时触发压缩，并根据读出位置对前缀状态分配的注意力分数进行排序，决定在后续层中保留哪些状态。实证评估展示了 FastE 大幅削减计算开销的能力：在 NarrativeQA 基准上搭配 Qwen3-Embedding-0.6B 时，该方法降低了 40.11% 的解码器骨干网络 FLOPs，同时保留了完整前向推理 99.53% 的 nDCG@10 分数。在涵盖五个文本嵌入基准测试、两种骨干模型参数规模以及三项跨模态检索任务的评测中，无需任何重训即可通过调节最大剔除比例直接定制“质量-效率”权衡。我们相信，FastE 为检索、索引构建、聚类和多模态表征系统中的可扩展向量嵌入生成提供了切实的工程落地价值。
-
-&gt; In this study, we identify depth-dependent prefix redundancy in final-readout LLM embedding models, notably across representative backbones including Qwen3-Embedding and Qwen3-VL-Embedding. We find that removing prefix states is substantially more damaging in shallow layers than at greater depth, showing that prefix states become increasingly compressible as the prefix and readout states propagate through the network. To this end, we introduce FastE, a training-free, plug-and-play method. FastE uses a shared fixed threshold on batch-mean readout-prefix alignment as a lightweight online heuristic for selecting when compression occurs, and ranks prefix states by the attention scores they receive from the readout position to determine which states are retained in subsequent layers. Our evaluations demonstrate FastE's ability to substantially reduce computational costs: on NarrativeQA with Qwen3-Embedding-0.6B, it reduces decoder-backbone FLOPs by 40.11% while retaining 99.53% of Full Forward nDCG@10. Across five text embedding benchmarks, two backbone scales, and three cross-modal retrieval tasks, the quality-efficiency trade-off is directly customizable through the maximum removal ratio without retraining. We believe FastE offers practical value for scalable embedding generation in retrieval, indexing, clustering, and multimodal representation systems.
-
----
-
-## 🔗 全文阅读与访问链接
-
-&gt; ## Full-Text &amp; Access Links
-
-* [查看 PDF](https://arxiv.org/pdf/2609.08407)
-* [HTML 网页版 (实验性)](https://arxiv.org/html/2609.08407v2)
-* [TeX 源码](https://arxiv.org/src/2609.08407)
-* [DOI 链接](https://doi.org/10.48550/arXiv.2609.08407)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2609.08407)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.08407v2)
-&gt; * [TeX Source](https://arxiv.org/src/2609.08407)
-&gt; * [DOI Link](https://doi.org/10.48550/arXiv.2609.08407)
-
----
-
-## 🛠️ 外部资源与工具
-
-&gt; ## External Resources &amp; Tools
-
-* **文献书目工具：** [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.08407) | [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.08407) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.08407)
-* **代码与相关数据：** 可通过 [Hugging Face](https://huggingface.co/huggingface)、[CatalyzeX](https://www.catalyzex.com) 以及 [alphaXiv](https://alphaxiv.org/) 获取。
-
-&gt; * **Bibliographic Tools:** [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.08407) | [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.08407) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.08407)
-&gt; * **Code &amp; Associated Data:** Available via [Hugging Face](https://huggingface.co/huggingface), [CatalyzeX](https://www.catalyzex.com), and [alphaXiv](https://alphaxiv.org/).</description>
-    </item>
-    <item>
-      <title>Ecdysis：面向大模型智能体运行时脚手架的高效进化训练</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/Ecdysis-面向大模型智能体运行时脚手架的高效进化训练/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/Ecdysis-面向大模型智能体运行时脚手架的高效进化训练/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>自进化的运行时脚手架 (Runtime Harness) 是增强大语言模型智能体 (AI Agent) 执行表现与系统自适应能力的关键基础设施。然而，现有的脚手架进化策略主要依赖单任务实例反馈的迭代搜索，不仅因反复执行智能体和修改代码带来高昂的时间成本，更容易因缺乏针对系统性故障的严谨归因而过拟合于特定任务。为此，本文提出了名为 Ecdysis（意为“蜕皮/蜕变”）的创新框架。Ecdysis 严格区分了模型特定缺陷与系统性脚手架缺陷，采用批次级跨实例故障聚合机制与故障驱动协作精炼方案，实现了高达 1.84 倍的脚手架训练加速，并将推理准确率提升了 18.56%。
-
----
-
-# Ecdysis：面向大模型智能体运行时脚手架的高效进化训练
-
-&gt; # Ecdysis: Efficient and Effective Training of Runtime Harnesses for LLM Agents
-
-## 概要
-
-&gt; ## Summary
-
-**Ecdysis** 是一个旨在提升大语言模型智能体 (AI Agent) 自进化运行时脚手架 (Runtime Harness) 训练效率与效果的创新框架。传统的脚手架进化技术通常依赖迭代搜索过程——即基于单一任务实例的执行反馈，反复对候选脚手架进行评估与修改。虽然这种方法能够实现持续优化，但存在两大核心痛点：
-1. **高昂的时间开销：** 由智能体的反复执行与频繁代码修改所致；
-2. **泛化性能较差：** 由于缺乏系统性的故障诊断机制，极易过拟合于已见任务和特定的失败模式。
-
-&gt; **Ecdysis** is an innovative framework designed to improve the training efficiency and effectiveness of self-evolving runtime harnesses for Large Language Model (LLM) agents. Traditional harness evolution techniques typically rely on iterative search processes—repeatedly evaluating and modifying candidate harnesses based on single task instance feedback. While this approach allows for continuous optimization, it suffers from two major limitations:
-&gt; 1. **High Time Overhead:** Caused by repetitive agent executions and code revisions.
-&gt; 2. **Poor Generalization:** Overfitting to observed tasks and specific failure patterns because of a lack of principled failure diagnosis.
-
-为了攻克这些难题，Ecdysis 明确区分了“针对特定模型的权宜适应” (model-specific accommodations) 与“系统性的脚手架级修复” (systematic harness-level repairs)。通过采用**批次级跨实例故障聚合范式**与**故障驱动协作精炼机制**，Ecdysis 能够跨多个任务联合分析故障证据。这不仅大幅缩短了训练时间，还避免了为特定模型的怪癖做无谓的调整。实验结果表明，与现有方法相比，Ecdysis 在脚手架训练上实现了高达 **1.84 倍的加速**，并将最终推理准确率提升了 **18.56%**。
-
-&gt; To overcome these challenges, Ecdysis differentiates between *model-specific accommodations* and *systematic harness-level repairs*. By leveraging a **batch-level cross-instance failure aggregation paradigm** alongside **Failure-Driven Collaborative Refinement**, Ecdysis jointly analyzes failure evidence across multiple tasks. This significantly reduces training time while avoiding unnecessary adjustments for model-specific quirks. Experimental results demonstrate that Ecdysis achieves up to a **1.84× speedup** in harness training and boosts reasoning accuracy by **18.56%** compared to existing methods.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv ID：** [arXiv:2609.11677](https://arxiv.org/abs/2609.11677) [cs.SE]
-* **主要领域：** 软件工程 (`cs.SE`)
-* **次要领域：** 人工智能 (`cs.AI`)
-* **提交日期：** 2026年9月10日
-* **DOI：** [10.48550/arXiv.2609.11677](https://doi.org/10.48550/arXiv.2609.11677)
-
-&gt; * **arXiv ID:** [arXiv:2609.11677](https://arxiv.org/abs/2609.11677) [cs.SE]
-&gt; * **Primary Subject:** Software Engineering (`cs.SE`)
-&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Date:** September 10, 2026
-&gt; * **DOI:** [10.48550/arXiv.2609.11677](https://doi.org/10.48550/arXiv.2609.11677)
-
----
-
-## 作者
-
-&gt; ## Authors
-
-* Ruiqing Yue
-* Yu Cui
-* Zhuoyu Sun
-* Sicheng Pan
-* Xianhong Xue
-* Tingyu Li
-* Ting Li
-* Wenzhuo Zhu
-* Yi Chen
-* Yifei Liu
-* Baohan Huang
-* Zhe Cui
-* Haibin Zhang
-* Cong Zuo
-
-&gt; * Ruiqing Yue
-&gt; * Yu Cui
-&gt; * Zhuoyu Sun
-&gt; * Sicheng Pan
-&gt; * Xianhong Xue
-&gt; * Tingyu Li
-&gt; * Ting Li
-&gt; * Wenzhuo Zhu
-&gt; * Yi Chen
-&gt; * Yifei Liu
-&gt; * Baohan Huang
-&gt; * Zhe Cui
-&gt; * Haibin Zhang
-&gt; * Cong Zuo
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-自进化运行时脚手架能够显著提升大语言模型智能体 (LLM Agent) 的能力，并为优化智能体执行提供了前景广阔的范式。现有的脚手架进化方法通常依赖迭代搜索，根据任务实例的执行反馈反复评估和修订候选脚手架。虽然该范式能够实现脚手架的持续优化，但频繁的智能体执行和代码修改带来了巨大的时间开销，并且可能过拟合于已知任务和特定失败模式，导致在未见任务上的泛化能力下降。我们发现，缺乏规范严谨的故障诊断机制是脚手架进化的关键瓶颈：观察到的失败既可能源自特定模型的固有缺陷，也可能源于系统性的脚手架缺陷，直接针对个别失败进行优化容易导致不必要的模型特定迎合。为此，我们提出了 Ecdysis——一个兼具高效性与有效性的框架，它将特定模型的权宜迎合与系统性脚手架修复区分开来，通过识别跨任务的复现性失败模式，引导系统优先解决脚手架的系统性缺陷。Ecdysis 采用了批次级跨实例故障聚合范式来联合分析多个任务实例的故障证据，并进一步引入故障驱动协作精炼机制来诊断失败根因并迭代完善脚手架修改规范。通过将跨实例故障分析与多角色诊断相结合，Ecdysis 以更短的训练时间实现了更有效的脚手架进化。实验表明，与现有的脚手架进化方法相比，Ecdysis 在脚手架训练上实现了高达 1.84 倍的加速，同时将生成脚手架的推理准确率提升了 18.56%。
-
-&gt; &gt; Self-evolving runtime harnesses can substantially improve the capabilities of large language model (LLM) agents and provide a promising paradigm for optimizing agent execution. Existing harness evolution methods typically rely on iterative search, repeatedly evaluating and revising candidate harnesses based on execution feedback from task instances. While this paradigm enables continuous harness optimization, it incurs substantial time overhead due to repeated agent executions and code modifications, and may overfit to observed tasks and specific failure patterns, resulting in degraded generalization to unseen tasks. We identify the lack of principled failure diagnosis as a key bottleneck in harness evolution: an observed failure can reflect either model-specific deficiencies or systematic harness deficiencies, and directly optimizing against individual failures can lead to unnecessary model-specific accommodation. We therefore propose Ecdysis, an efficient and effective framework that distinguishes model-specific accommodation from harness-level repair and biases adaptation toward systematic harness deficiencies by identifying recurring cross-task failure patterns. Ecdysis adopts a batch-level cross-instance failure aggregation paradigm to jointly analyze failure evidence from multiple task instances and further introduces Failure-Driven Collaborative Refinement to diagnose failure causes and iteratively refine harness modification specifications. By combining cross-instance failure analysis with multi-role diagnosis, Ecdysis enables more effective harness evolution with lower training time. Experiments show that Ecdysis achieves up to a 1.84x speedup in harness training compared with existing harness evolution methods, while improving the reasoning accuracy of the resulting harnesses by 18.56%.
-
----
-
-## 获取与资源
-
-&gt; ## Access &amp; Resources
-
-* **全文链接：** 
-  * [查看 PDF](https://arxiv.org/pdf/2609.11677)
-  * [HTML 版本 (实验性)](https://arxiv.org/html/2609.11677v1)
-  * [TeX 源码](https://arxiv.org/src/2609.11677)
-* **外部引用与工具：**
-  * [Google 学术](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11677)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11677)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11677)
-
-&gt; * **Full-Text Links:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.11677)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.11677v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.11677)
-&gt; * **External Citations &amp; Tools:**
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11677)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11677)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11677)</description>
     </item>
   </channel>
 </rss>
