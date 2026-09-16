@@ -778,6 +778,10 @@ title: 标签浏览
 
 - [Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统](blog/posts/2026-09-05-Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统.md)
 
+## BlueLM
+
+- [BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统](blog/posts/2026-09-17-BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统.md)
+
 ## Bluesky
 
 - [Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的](blog/posts/2026-08-22-Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的.md)
@@ -1512,6 +1516,10 @@ title: 标签浏览
 - [DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群](blog/posts/2026-08-19-DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群.md)
 - [更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据](blog/posts/2026-08-26-更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据.md)
 
+## GPU 优化
+
+- [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
+
 ## GPU优化
 
 - [在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上](blog/posts/2026-08-07-在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上.md)
@@ -1572,6 +1580,10 @@ title: 标签浏览
 ## GUI
 
 - [截图还是工具？混合 GUI-MCP 计算机操作智能体中的工具调用与多模态上下文管理](blog/posts/2026-08-07-截图还是工具？混合 GUI-MCP 计算机操作智能体中的工具调用与多模态上下文管理.md)
+
+## GUI Agent
+
+- [BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统](blog/posts/2026-09-17-BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统.md)
 
 ## GUI Agents
 
@@ -2731,6 +2743,7 @@ title: 标签浏览
 - [构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制](blog/posts/2026-08-11-构建低延迟多语言语音智能体：NVIDIA Magpie TTS 带来开源权重与全面部署控制.md)
 - [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 - [KernelArc：面向GPU内核优化的多智能体框架](blog/posts/2026-08-25-KernelArc：面向GPU内核优化的多智能体框架.md)
+- [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 
 ## NVIDIA A100
 
@@ -4015,6 +4028,10 @@ title: 标签浏览
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响.md)
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响.md)
 
+## Token级别分配
+
+- [谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏](blog/posts/2026-09-17-谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏.md)
+
 ## Token裁剪
 
 - [位置至关重要：带有Token裁剪与重排的ViT分布式推理中的特征反演攻击](blog/posts/2026-09-03-位置至关重要：带有Token裁剪与重排的ViT分布式推理中的特征反演攻击.md)
@@ -4391,6 +4408,10 @@ title: 标签浏览
 ## cgroups
 
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
+
+## cuDNN
+
+- [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 
 ## debian
 
@@ -8943,6 +8964,10 @@ title: 标签浏览
 
 - [基于损失引导多专家GAN的手语视频合成](blog/posts/2026-08-16-基于损失引导多专家GAN的手语视频合成.md)
 
+## 多专家蒸馏
+
+- [谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏](blog/posts/2026-09-17-谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏.md)
+
 ## 多人竞技游戏
 
 - [CHAMP：在线多人游戏中用于配对与预测的跨域混合架构](blog/posts/2026-09-08-CHAMP：在线多人游戏中用于配对与预测的跨域混合架构.md)
@@ -8989,6 +9014,7 @@ title: 标签浏览
 - [强化学习增强的大语言模型智能体求解复杂车辆路径问题](blog/posts/2026-09-03-强化学习增强的大语言模型智能体求解复杂车辆路径问题.md)
 - [GoAnt：基于质量-多样性多智能体搜索的市场微观结构数据Alpha因子挖掘](blog/posts/2026-09-10-GoAnt：基于质量-多样性多智能体搜索的市场微观结构数据Alpha因子挖掘.md)
 - [SRPO：多智能体大语言模型的集合相对策略优化](blog/posts/2026-09-10-SRPO：多智能体大语言模型的集合相对策略优化.md)
+- [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
 
 ## 多智能体协作
 
@@ -13703,6 +13729,7 @@ title: 标签浏览
 - [学习使用工具：用于工具集成数学推理的强化学习](blog/posts/2026-09-01-学习使用工具：用于工具集成数学推理的强化学习.md)
 - [Magenta：闭环数学推理与 Lean 形式化验证](blog/posts/2026-09-13-Magenta-闭环数学推理与Lean形式化验证.md)
 - [斩获 IMO 金牌的开源秘籍：面向奥林匹克数学的 Nemotron 训练实践](blog/posts/2026-09-13-斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践.md)
+- [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
 
 ## 数学物理
 
@@ -18174,6 +18201,7 @@ title: 标签浏览
 
 - [面向格罗滕迪克常数的长周期AI数学研究：人机数学协作案例研究](blog/posts/2026-08-18-面向格罗滕迪克常数的长周期AI数学研究：人机数学协作案例研究.md)
 - [语义提升算子与保持性下不可判定类的闭包性](blog/posts/2026-09-13-语义提升算子与保持性下不可判定类的闭包性.md)
+- [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
 
 ## 瓶颈诊断
 
@@ -19361,6 +19389,10 @@ title: 标签浏览
 
 - [AtomBridge：面向科学实验长程任务的智能体化 VLA 推理插件](blog/posts/2026-08-18-AtomBridge：面向科学实验长程任务的智能体化 VLA 推理插件.md)
 
+## 科学推理
+
+- [谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏](blog/posts/2026-09-17-谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏.md)
+
 ## 科学文献
 
 - [HalluPeer：用于检测科学同行评审中幻觉的分类法驱动基准](blog/posts/2026-09-05-HalluPeer：用于检测科学同行评审中幻觉的分类法驱动基准.md)
@@ -19478,6 +19510,10 @@ title: 标签浏览
 ## 移动端智能
 
 - [MobileMem：基于一年期移动端体验的学习研究](blog/posts/2026-08-18-MobileMem：基于一年期移动端体验的学习研究.md)
+
+## 移动端智能体
+
+- [BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统](blog/posts/2026-09-17-BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统.md)
 
 ## 移动计算
 
@@ -19889,6 +19925,7 @@ title: 标签浏览
 
 - [PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析](blog/posts/2026-08-07-PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析.md)
 - [Nova：面向深度学习的端到端 MLIR 编译器](blog/posts/2026-08-26-Nova：面向深度学习的端到端 MLIR 编译器.md)
+- [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 
 ## 算子解耦
 
@@ -21282,6 +21319,10 @@ title: 标签浏览
 
 - [基于Whisper的波斯语语音情绪识别中ASR自适应与表征降维研究](blog/posts/2026-08-11-基于Whisper的波斯语语音情绪识别中ASR自适应与表征降维研究.md)
 
+## 自动调优
+
+- [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
+
 ## 自动驾驶
 
 - [探究自动驾驶轻量级视觉语言模型中的视觉概念探测](blog/posts/2026-08-11-探究自动驾驶轻量级视觉语言模型中的视觉概念探测.md)
@@ -21371,6 +21412,10 @@ title: 标签浏览
 ## 自我改进循环
 
 - [廉价验证器，巨大的盲区：衡量降本级联架构的可靠性成本](blog/posts/2026-09-08-廉价验证器，巨大的盲区：衡量降本级联架构的可靠性成本.md)
+
+## 自我演进
+
+- [BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统](blog/posts/2026-09-17-BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统.md)
 
 ## 自我纠错
 
@@ -24910,6 +24955,10 @@ title: 标签浏览
 - [超越可疑步骤：长程智能体的本体论信任](blog/posts/2026-08-20-超越可疑步骤：长程智能体的本体论信任.md)
 - [解析流式数据：面向长程智能体及其观察者的实时追踪模型](blog/posts/2026-09-03-解析流式数据：面向长程智能体及其观察者的实时追踪模型.md)
 
+## 长程科研
+
+- [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
+
 ## 长视界任务
 
 - [大语言模型中的长视界状态追踪：通过深度依赖工具调用链执行MD5](blog/posts/2026-09-03-大语言模型中的长视界状态追踪：通过深度依赖工具调用链执行MD5.md)
@@ -25594,6 +25643,10 @@ title: 标签浏览
 ## 验证器监督
 
 - [治理记录作为监督：用于结构化工作流修复的验证器选择自训练](blog/posts/2026-08-21-治理记录作为监督：用于结构化工作流修复的验证器选择自训练.md)
+
+## 验证器门控
+
+- [谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏](blog/posts/2026-09-17-谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏.md)
 
 ## 验证套件
 
