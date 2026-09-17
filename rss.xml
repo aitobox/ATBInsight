@@ -5,6 +5,570 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>重构 Packfile：在对象存储上直接运行 Git 的架构实践</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/重构-Packfile-在对象存储上直接运行-Git-的架构实践/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/重构-Packfile-在对象存储上直接运行-Git-的架构实践/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>将 Git 存储服务直接构建在低成本、高弹性的云端对象存储 (例如 AWS S3 或 Tigris) 之上，是许多团队探索云原生存储架构与降低运维开销的理想方案。然而，标准 Git 的 Packfile 打包机制是为本地磁盘设计的，严重依赖微秒级的内核内存映射 `mmap` 与高并发随机寻道；一旦搬到存在数十毫秒网络往返延迟的对象存储上，性能便会迅速恶化至不可用的状态。为了彻底攻克这一难题，开发者借鉴了经典 CD-ROM 光盘中 `.bin`/`.cue` 音轨索引的分离设计，提出了一种专为对象存储定制的列式 Packfile 格式，并巧妙利用精准的 HTTP Range 范围请求与异步预取机制。这一架构突破将 S3 API 请求量削减了数个数量级，在生产级基准测试中使代码推送与克隆提速高达 14.6 倍，为现代分布式版本控制与云端底层系统架构开辟了全新路径。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+构建一个以对象存储 (Object Storage) (例如 Tigris) 为底座的 Git 服务器，听起来似乎很直观：只需搭建一层文件系统转译层，让 Git 能够操作对象存储即可。然而，标准的 Git Packfile 是为本地磁盘量身设计的，高度依赖操作系统内核的 `mmap` 内存映射以及低延迟的本地文件系统极速读取。一旦将这些读取操作映射为跨越网络的对象存储往返，面对生产环境级别的大型仓库时，这种方案的扩展性便会彻底崩溃。
+
+&gt; Building a Git server backed by object storage (like Tigris) sounds straightforward: use a filesystem translation layer so Git can speak object storage. However, standard Git packfiles are designed for local disks and rely heavily on the kernel's `mmap` and fast, low-latency filesystem reads. When translated over network round-trips to object storage, this approach fails to scale for production-sized repositories. 
+
+为了解决这个问题，作者从老式 CD-ROM 光盘的 `.bin`/`.cue` 索引单中汲取灵感，发明了一种专为对象存储原生打造的全新 Packfile 格式。通过构建一个带有二进制索引文件 (`objects.cue`) 的列式存储结构，索引中同时记录了精确的文件偏移量以及压缩与解压后的双重尺寸，客户端得以发起高效的 HTTP Range 范围请求。这一专属设计不仅大幅削减了访问 S3/对象存储的请求次数，更将代码推送 (push) 和克隆 (clone) 的性能最高提升了整整 14.6 倍。
+
+&gt; To solve this, the author invented an object-storage-native packfile format inspired by CD-ROM `.bin`/`.cue` sheets. By creating a columnar store with a binary index (`objects.cue`) containing both compressed and uncompressed sizes alongside precise file offsets, clients can execute efficient HTTP Range requests. This custom approach drastically reduced S3/object storage requests and accelerated push/clone performance by up to 14.6x.
+
+---
+
+## Git 到底是什么？不过是一堆可怜的零散对象！
+
+&gt; ## What is Git? A Miserable Little Pile of Objects!
+
+当你提交一次代码时，Git 会把你的改动作为经过压缩的、基于内容寻址的对象 (Content-Addressed Objects) 保存在 `.git` 目录中 (本文称之为“dotgit”)。
+
+&gt; When you make a commit, Git stores your changes as compressed, content-addressed objects inside the `.git` directory (referred to here as "dotgit"). 
+
+```bash
+$ mkdir ~/tmp/gitexample
+$ git init &amp;&amp; git branch -m main
+$ echo "Hello, blog!" &gt;&gt; hello.txt
+$ git add .
+$ git commit -sm "chore: initial commit"
+```
+
+这一操作会在底层生成一片由裸对象和具名引用构成的“对象之海”：
+
+&gt; This produces a sea of bare objects and named references:
+
+&lt;figure&gt;&lt;figcaption&gt;图 01: 对象的海洋与指向它们的引用命名&lt;/figcaption&gt;&lt;pre&gt;  .git/objects/                    refs/heads/main                                     │  ├── 1c/7a26a901..ec7966  ─────▶  commit 1c7a26a  │                                  │  ├── 8e/67afbb2e..857bd3  ─────▶    tree 8e67afb  │                                  │  hello.txt  └── 9c/c9867337..09fe26  ─────▶    blob 9cc9867                                          "Hello, blog!"   the filename is the sha1 of the bytes in the file, so the same  content is always, everywhere, the very same object&lt;/pre&gt;&lt;/figure&gt;
+
+读取其中的某个对象需要对其进行解压：
+
+&gt; Reading an object requires decompressing it:
+
+```bash
+$ file .git/objects/**/* | grep -v directory
+.git/objects/1c/7a26a901724b4ce766655ac387413fb9ec7966: zlib compressed data
+.git/objects/8e/67afbb2ee6bdcbb79061dfdfb93febce857bd3: zlib compressed data
+.git/objects/9c/c9867337c2ebae85ba2350f901e0bcc209fe26: zlib compressed data
+
+$ python3 -c "import sys, zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))" &lt; .git/objects/9c/c9867337c2ebae85ba2350f901e0bcc209fe26
+blob 13Hello, blog!
+```</description>
+    </item>
+    <item>
+      <title>突破 1.58 比特极限：三值大语言模型的极致压缩与加速</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/突破-1.58-比特极限-三值大语言模型的极致压缩与加速/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/突破-1.58-比特极限-三值大语言模型的极致压缩与加速/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>近年来，三值大语言模型 (Ternary Large Language Models, LLMs) 因极高的计算效率备受关注，其每个权重仅取 $\{-1, 0, +1\}$ 三个离散值，理论极限存储成本约为 1.585 比特。但在传统工程实践中，为了便于硬件以 2 的幂次方寻址，工程师普遍假设三种符号等概率分布，并采用“5 个三值权重打包进 1 字节”的折中方案，使实际开销反弹至 1.625 比特。
+
+研究人员系统分析了 29 个真实三值大模型，敏锐地发现权重中数字“0”的实际占比最高可达 51.5%。基于这一非均匀分布特性，本文提出了自适应分布布局方案 BITCOS，将稠密存在位图与紧凑符号向量协同编码，在 26 个模型中全面超越了标准打包方案，最低仅需 1.485 比特即可存储一个权重，一举打破了 1.58 比特的传统认知壁垒。
+
+更为重要的是，BITCOS 深度适配了现代 CPU 与 GPU 的向量指令集（如 AVX-512、AVX2 与 Intel Xe2），不仅大幅节省了内存与带宽，更在端到端解码中带来了高达 1.18 倍至 1.27 倍的吞吐量提升，为超低比特大语言模型在边缘设备和数据中心的高效落地扫清了关键障碍。
+
+---
+
+# 突破 1.58 比特极限：三值大语言模型的极致压缩与加速
+
+&gt; # Breaking the 1.58-bit Barrier for Ternary LLMs
+
+## 论文概要
+
+&gt; ## Summary
+
+* **作者 (Authors) ：** Evangelos Georganas, Alexander Heinecke, Pradeep Dubey
+* **提交时间 (Submitted) ：** 2026 年 9 月 14 日
+* **主要领域 (Primary Subject) ：** 人工智能 (`cs.AI`) / 机器学习 (`cs.LG`)
+* **arXiv 编号 (arXiv ID) ：** [2609.16338](https://arxiv.org/abs/2609.16338)
+
+&gt; * **Authors:** Evangelos Georganas, Alexander Heinecke, Pradeep Dubey
+&gt; * **Submitted:** September 14, 2026
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`) / Machine Learning (`cs.LG`)
+&gt; * **arXiv ID:** [2609.16338](https://arxiv.org/abs/2609.16338)</description>
+    </item>
+    <item>
+      <title>直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在基于大语言模型 (Large Language Model, LLM) 的 AI 智能体 (AI Agent) 工作流中，调用外部工具往往需要耗费大量物理等待时间，在此期间请求的键值缓存 (KV Cache) 会持续占用极其宝贵的 GPU 显存。当前的大模型推理服务系统大多依赖“盲目猜测”来管理这些缓存（例如仅凭工具名称、历史耗时或调用前预估来决定是否换出显存），但这类静态估算在多变的真实场景下根本无法准确预测工具的运行时间。
+
+针对这一瓶颈，清华大学与合作团队提出了一项全新设计理念：正在运行的工具本身其实掌握着精确的内部进度，只是这些信号此前被智能体技术栈层层屏蔽了。作者团队提出让工具调用在运行时主动向推理系统报告进度，并设计了一套轻量级捕获机制。实验表明，该方案在 KV Cache 置换决策点的准确度相比现有最优预测器提升了数倍乃至一个数量级，在生产级推理引擎中成功将工具调用后的 p90 首字延迟 (Time-to-First-Token, TTFT) 降低超过 20%，性能逼近理想全知调度器 (Oracle)。
+
+---
+
+## 总结
+
+&gt; ## Summary
+
+AI 智能体请求在执行过程中，往往需要花费大量的物理时间等待外部工具完成计算。在此期间，该请求对应的键值缓存 (KV Cache) 只能无所事事地滞留在寸土寸金的 GPU 显存当中。目前主流的大语言模型推理系统主要靠“盲猜”来决定如何管理这部分缓存——例如根据工具名称、历史执行耗时、调用前声明的预估时长，或是推理引擎自身的负载情况来进行判断。然而，任何在工具开始运行前就固定下来的静态估算，从根本上都无法准确预测工具的实际耗时，甚至连不同工具调用的耗时先后顺序都排不准。
+
+&gt; Agentic requests spend substantial wall-clock time waiting for external tools to execute, during which their KV cache unnecessarily occupies valuable GPU memory. Current LLM serving systems rely on guesswork to manage this cache (such as evaluating tool names, historical execution times, pre-call duration declarations, or engine occupancy), but pre-call estimates fundamentally fail to accurately predict or even rank tool durations. 
+
+这篇论文揭示了一个被大家忽视的真相：正在运行的工具自身其实已经掌握了必要的进度数据，只是这些关键信息被智能体软件栈连同工具封装给无声地“静音”了。为此，作者团队提出了一种全新的协作机制，让工具调用在执行过程中能够主动、明确地对外汇报其实时运行进度。
+
+&gt; This paper reveals that running tools already possess the necessary progress data, but are silenced by the agent stack. The authors propose a mechanism where tool calls explicitly report their progress during execution.</description>
+    </item>
+    <item>
+      <title>元认知引导：学习科学判断的内在结构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/元认知引导-学习科学判断的内在结构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/元认知引导-学习科学判断的内在结构/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>真正的科学探索绝非单向线性的推导答题，而是一个需要根据涌现的新证据，在“广泛假设探索”、“严格规程执行”与“批判性反思审视”之间灵活切换的长期动态过程。然而，当前的主流大语言模型 (Large Language Models, LLMs) 大多只针对最终输出结果进行监督优化，在面对需要敏锐科学直觉与多变策略掌控的长周期科研任务时往往难以胜任。
+
+为此，本篇论文提出了 **元认知引导 (Metacognitive Steering) ** 技术。研究团队深入挖掘了顶尖科学家在万亿参数混合专家 (MoE) 模型 Kimi 2.6 上的交互轨迹，成功捕捉并定位了支配科学判断的低维控制空间，进而在不改变模型既有参数的前提下，仅在推理阶段即可动态对特定神经网络层施加干预与调控。
+
+这一方法在自主科研系统 **Columbus-1** 中得到了实战检验，不仅独立发现了 Linux 蓝牙协议栈 BlueZ 中的 8 个严重安全漏洞，更成功主导了一枚 10 英尺高固体反推着陆火箭的设计与制造。该研究证明：对过程层面的科学判断进行建模，能够赋予前沿大语言模型可解释、高度动态且收放自如的科研推理决策能力。
+
+---
+
+# 元认知引导：学习科学判断的内在结构
+
+&gt; # Metacognitive Steering: Learning the Structure of Scientific Judgment
+
+**arXiv 编号 (arXiv ID) ：** [2609.16245](https://arxiv.org/abs/2609.16245) [cs.AI]  
+**提交时间 (Submitted) ：** 2026 年 9 月 14 日  
+**作者 (Authors) ：** Vincent Karpf, Joseph Reth, Eike Gerhardt, Audrey Wang, Anna Butz, Jiehao Xing, Jialing Song, Larry Callahan  
+
+&gt; **arXiv ID:** [2609.16245](https://arxiv.org/abs/2609.16245) [cs.AI]  
+&gt; **Submitted:** 14 September 2026  
+&gt; **Authors:** Vincent Karpf, Joseph Reth, Eike Gerhardt, Audrey Wang, Anna Butz, Jiehao Xing, Jialing Song, Larry Callahan  
+
+---
+
+## 论文概要
+
+&gt; ## Summary
+
+当前的大语言模型 (Large Language Models, LLMs) 主要针对最终输出结果的生成进行优化，而普遍缺乏在真实科学推理过程中所必需的长周期动态策略切换能力——例如在自由探索假设、规范严谨执行以及批判性复盘评估之间从容自如地过渡。
+
+&gt; Current large language models are primarily optimized for final output generation rather than the dynamic, long-horizon shifts required during genuine scientific reasoning (e.g., transitioning between exploration, disciplined execution, and critical reassessment).
+
+本文提出了 **元认知引导 (Metacognitive Steering) **，这是一种在推理阶段直接生效的控制方法。它能够在不修改模型任何参数的前提下，精准识别模型当前的认知工作状态，并在特定神经网络层上动态介入调控。通过分析科学家在万亿参数混合专家 (Mixture-of-Experts, MoE) 模型 *Kimi 2.6* 上的真实交互轨迹，作者团队成功识别出控制科学判断行为的低维控制结构。随后，他们将该方法应用于自主科研系统 **Columbus-1** 中，成功引导模型完成了多项极具挑战性的复杂任务——例如在 Linux 蓝牙协议栈 BlueZ 中发现未公开的安全漏洞，以及设计能够通过不可节流固体火箭发动机实现动力反推着陆的火箭。这项工作充分表明，对推理过程层面的科学判断力进行建模，能够赋予前沿模型高度可解释且动态可控的科研策略决策能力。
+
+&gt; This paper introduces **Metacognitive Steering**, an inference-time control method that reads a model's cognitive regime and dynamically intervenes across specific neural layers without modifying its parameters. By analyzing scientist interaction traces on a trillion-parameter mixture-of-experts model (*Kimi 2.6*), the authors identify a low-dimensional control structure governing scientific judgment. Operationalized within the autonomous research system **Columbus-1**, this approach successfully directed complex tasks—such as discovering vulnerabilities in BlueZ and designing a propulsively landing solid-motor rocket—demonstrating how process-level judgment can enable interpretable, dynamic strategy control in frontier models.
+
+---
+
+## 元数据与参考信息
+
+&gt; ## Metadata &amp; Reference Information
+
+* **主要学科领域 (Primary Subject) ：** 人工智能 (`cs.AI`)
+* **DOI 标识符：** [10.48550/arXiv.2609.16245](https://doi.org/10.48550/arXiv.2609.16245)
+* **全文获取链接 (Full-Text Links) ：** 
+  * [查看 PDF (View PDF) ](https://arxiv.org/pdf/2609.16245)
+  * [HTML 网页版（实验性预览）](https://arxiv.org/html/2609.16245v1)
+  * [TeX 源代码 (TeX Source) ](https://arxiv.org/src/2609.16245)
+
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **DOI:** [10.48550/arXiv.2609.16245](https://doi.org/10.48550/arXiv.2609.16245)
+&gt; * **Full-Text Links:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2609.16245)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.16245v1)
+&gt;   * [TeX Source](https://arxiv.org/src/2609.16245)
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+面向长周期科研任务的科学发现智能体 (AI Agent) ，必须能够根据不断演化的证据，在发散探索、规范执行与批判性重新评估之间自如切换。然而，现有的语言模型大多只使用现成科学成果进行训练，并依赖结果级信号进行优化，这导致模型在学习科学判断过程中所必需的“过程级动态切换”时，难以获得充分的监督信号。
+
+&gt; Long-horizon scientific discovery agents must alternate between exploration, disciplined execution, and critical reassessment as evidence changes. Current language models are trained primarily on the products of science and optimized using outcome-level signals, providing limited supervision for these process-level shifts in scientific judgment.
+
+我们深入探索了这种科学判断力是否能够从科学家的人机交互轨迹中提炼出来，并直接用于掌控冻结的前沿大模型内部计算。通过采集真实科学研究活动中的对比干预数据，我们在万亿参数混合专家模型 Kimi 2.6 中发现了一个高度协调的低维控制结构。残差分析、注意力权重子空间对齐以及跨层奇异值分解 (Singular Value Decomposition, SVD) 的实验证据共同表明，在模型的中间深度层存在一个跨越核心神经网络层的“控制界面”。
+
+&gt; We investigate whether such judgment can be recovered from scientist interaction traces and used to control the internal computation of a frozen frontier model. Using contrastive interventions collected during real scientific research, we identify a coordinated, low-dimensional control structure within Kimi 2.6, a trillion-parameter mixture-of-experts model. Residual analysis, attention-weight subspace alignment, and cross-layer singular value decomposition converge on a mid-depth control surface spanning key layers.
+
+基于这一发现，我们提出了 **元认知引导 (Metacognitive Steering) **。这是一种在模型推理阶段起效的控制器，它能在不修改模型参数的前提下，敏锐识别模型的当前认知状态，并针对性地在特定神经网络层上动态组合干预信号，以实现假设探索、程序收敛或批判性反思。行为分析表明，这种干预引导能够促成更持久的探索、主动的思路剪枝，以及对证据高度敏锐的综合研判。
+
+&gt; We introduce **Metacognitive Steering**, an inference-time controller that reads the model's cognitive regime and dynamically composes layer-specific interventions for exploration, procedural convergence, or critical reassessment without modifying model parameters. Behavioral analyses show that this control produces more sustained exploration, explicit pruning, and evidence-responsive synthesis.
+
+我们将该方法在自主科研系统 **Columbus-1** 中付诸实战检验。该系统不仅成功锁定了 Linux 蓝牙协议栈 BlueZ 中 8 个已被独立复现、攻击者可触及的高危漏洞，还全程主导了一枚 10 英尺高火箭的设计、仿真模拟与物理加工制造——该火箭旨在通过不可节流的固体发动机完成极高难度的动力反推软着陆。综合这些实验成果，研究证明了过程层面的科学判断能够为大模型的推理策略提供清晰可解释、高度动态的有效控制监督。
+
+&gt; We operationalize the method in **Columbus-1**, an autonomous research system that identified eight independently reproduced, attacker-reachable vulnerabilities in BlueZ and directed the design, simulation, and fabrication of a ten-foot rocket intended to land propulsively using non-throttleable solid motors. Together, these results show that process-level scientific judgment can provide supervision for interpretable, dynamic control over a model's reasoning strategy.</description>
+    </item>
+    <item>
+      <title>Z.ai 详解基于 10 万张国产芯片的 GLM-5.3-Flash 推理系统架构构建</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>2026 年 9 月 17 日，人工智能企业 Z.ai 正式发布技术报告，详细披露了其如何在由超过 10 万张国产 AI 加速芯片组成的超大规模集群上，从零搭建起面向核心大模型 GLM-5.3-Flash 的生产级推理系统架构。这是国产算力芯片首次在十万卡级别生产环境中承受住超大规模真实业务流量的严苛检验。
+
+尤为引人瞩目的是，该系统的底层算子与架构性能调优并非单纯依赖人类工程师手动完成，而是由以 GLM-5.3 为核心驱动的“基础架构智能体” (Infra Agent) 自主探索与优化完成的。该系统成功应对了稀疏与线性注意力混合架构、高达 100 万 Token 的超长上下文窗口以及复杂多模态请求，最终使集群端到端吞吐量提升了整整三倍，硬件利用效率与单 Token 推理成本比肩主流 NVIDIA 硬件，生动展现了大模型递归自我进化的巨大工程威力。
+
+---
+
+## 总结
+
+&gt; ## Summary
+
+2026 年 9 月 17 日，Z.ai 发布了一份详尽的技术报告，全面展示了其如何从零构建起支撑 **GLM-5.3-Flash** 模型的生产级推理基础设施。该集群由超过 **10 万张国产 AI 加速芯片**组成，这一里程碑代表了国产算力芯片在生产环境中前所未有的部署规模。尤为突出的是，整个基础设施优化的绝大部分工作并不是单纯依赖人类工程师手动完成，而是由基于 **GLM-5.3 驱动的基础架构智能体 (Infra Agent)** 协同完成的。最终构建的推理系统能够游刃有余地支撑模型的复杂混合架构、高达 100 万 Token 的长上下文窗口以及海量多模态请求，其效率指标已可比肩业界主流的 NVIDIA 硬件。
+
+&gt; On September 17, 2026, Z.ai released a comprehensive technical report detailing how it successfully built a production-grade inference infrastructure for its **GLM-5.3-Flash** model from scratch. Operating across a cluster of over **100,000 Chinese-made AI accelerators**, this milestone represents an unprecedented scale for domestic silicon in production. Notably, a significant portion of the infrastructure optimization was driven by an **Infra Agent powered by GLM-5.3** rather than engineers alone. The resulting system successfully handles the model's complex hybrid architecture, 1-million-token context window, and multimodal requests, achieving efficiency levels comparable to mainstream NVIDIA hardware.
+
+---
+
+## 国产芯片上的超大规模推理挑战
+
+&gt; ## Scaling Inference on Domestic Silicon
+
+在这种前所未有的超大体量下驾驭国产芯片集群，团队面临着极为特殊的工程挑战。Z.ai 不仅要应对单芯片片上显存容量与通信带宽的物理制约，还要直面国产算力生态尚不成熟的现实困境——算子底层支持不全、权威的标准开发文档时常缺位等问题屡见不鲜。
+
+&gt; Operating a massive cluster of Chinese-made accelerators at this scale presented unique hurdles. Z.ai faced limitations regarding on-chip memory capacity and bandwidth, coupled with an immature ecosystem where kernel support was incomplete and standard documentation was frequently missing. 
+
+GLM-5.3-Flash 模型本身于 2026 年 8 月 26 日正式发布，拥有 3,200 亿总参数量和 180 亿激活参数，采用了融合稀疏注意力与线性注意力的前沿混合架构。在此前以 *ox-alpha* 的化名在 OpenCode 和 OpenRouter 平台上进行匿名盲测期间，该模型迅速成为两家平台上调用量最高的模型，在上线最初的六天内就处理了超过 62 万亿 Token 的庞大流量。
+
+&gt; The GLM-5.3-Flash model itself—launched on August 26, 2026—features 320 billion total parameters and 18 billion active parameters utilizing a hybrid architecture of sparse and linear attention. Following its anonymous testing phase on OpenCode and OpenRouter under the alias *ox-alpha*, it rapidly became the most-used model on those platforms, processing over 62 trillion tokens within its first six days.
+
+## 密集反馈方法：为智能体打造高效闭环
+
+&gt; ## The Dense Feedback Method
+
+在对复杂的推理基础设施进行深度调优时，传统的端到端性能指标所能提供的帮助十分有限；它们虽然能报警提示性能“发生了”下滑，却无法准确定位问题出在“何处”以及“为什么”。为了打破这种黑盒困境，Z.ai 独创性地引入了**密集反馈方法 (Dense Feedback Method)**。
+
+&gt; Traditional end-to-end metrics provide limited utility when optimizing complex infrastructures; they signal *that* performance dropped, but fail to pinpoint *why*. To bridge this gap, Z.ai implemented a **dense feedback method**. 
+
+该方法将以下多维度的诊断手段有机交织在一起：
+
+&gt; This approach weaves together:
+
+* 正确性测试
+* 运行时日志与关键事件
+* 执行追踪轨迹 (Execution Traces)
+* 微基准测试 (Microbenchmarks) 与端到端宏观指标
+
+&gt; * Correctness tests
+&gt; * Runtime logs and events
+&gt; * Execution traces
+&gt; * Microbenchmarks and end-to-end metrics
+
+通过将这些元素整合为可快速重复执行的自动化工作流，基础架构智能体 (Infra Agent) 每次做出微调后，都可以在局部环境下迅速验证推想，而不必经历漫长的全量集群重新部署与全网压力测试等待。
+
+&gt; By unifying these elements into repeatable workflows, the Infra Agent could locally validate hypotheses without waiting for full deployment and load testing after every tweak. 
+
+Z.ai 为这一反馈闭环确立了三大核心构建准则：
+
+&gt; Z.ai established three core criteria for this feedback loop:
+
+1. **局部精准性 (Locality)**：必须直接绑定到具体的启动参数、代码修改、计算算子、输入边界条件、执行线程或调用路径。
+2. **极高时效性 (Efficiency)**：获取成本极其低廉，且反馈结果必须足够快速及时。
+3. **客观可验证性 (Objective Verification)**：由标准参考实现和对照实验提供强力背书，以实锤确定系统性能因果机制，而非停留在表象的相关性推测上。
+
+&gt; 1. **Locality:** Tied directly to launch parameters, code changes, kernels, input conditions, threads, or execution paths.
+&gt; 2. **Efficiency:** Inexpensive and timely to acquire.
+&gt; 3. **Objective Verification:** Supported by reference implementations and controlled experiments to confirm root causes rather than mere correlations.
+
+在双方协同工作时，人类工程师主要负责界定顶层系统边界并把控生产核心风险（如数值计算精度规范与高并发行为），而智能体则承担了海量细节分析、假设推演与底层代码修改。最终打造出的整套极致优化技术栈，集成了节点内张量并行 (Tensor Parallelism)、ReplaySSM 机制、W8A8 权重激活量化、INT8/FP8/BF16 混合精度缓存量化、Layer Split 层分割技术，以及编码-预填充-解码解耦 (Encode-Prefill-Decode Disaggregated) 架构。
+
+&gt; Working in tandem, engineers defined high-level system boundaries and assessed critical production risks (such as numerical semantics and concurrency behavior), while the agent handled analysis, hypotheses, and code modifications. The optimized stack combined intra-node tensor parallelism, ReplaySSM, W8A8 quantization, mixed-precision INT8/FP8/BF16 cache quantization, Layer Split, and an Encode-Prefill-Decode disaggregated architecture.
+
+## 三大关键工程突破
+
+&gt; ## Three Key Engineering Triumphs</description>
+    </item>
+    <item>
+      <title>VQ-bench：可组合式矢量量化框架与评测基准</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/VQ-bench-可组合式矢量量化框架与评测基准/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/VQ-bench-可组合式矢量量化框架与评测基准/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在人工智能与现代信息检索领域，高维向量是向量数据库和各类大语言模型 (Large Language Model, LLM) 运转的核心数据载体，但全精度的海量向量存储与检索面临着极高的硬件成本。矢量量化 (Vector Quantization, VQ) 技术通过将高维连续向量压缩为紧凑的离散编码，成为大幅削减内存占用并加速相似度计算的关键支柱。然而，学术界与工业界虽然涌现出繁多的量化算法，却因评估指标各异、测试数据集不同以及底层硬件优化不一致，长期缺乏公平可比的标准评测。为此，Pinecone 正式推出了开源框架与基准评测套件 VQ-bench，创新性地将绝大多数复杂量化器解构为由少量核心原语模块组装而成的流水线。VQ-bench 不仅为经典与前沿量化算法提供了统一严谨的横向对比舞台，更让开发者能够像搭积木一样自由组合、快速验证新型量化策略，为向量检索生态注入了强大的模块化基础设施。
+
+---
+
+## 核心内容摘要
+
+&gt; ## Summary
+
+对于向量数据库和大语言模型 (Large Language Model, LLM) 而言，矢量量化 (Vector Quantization, VQ) 是一项不可或缺的关键技术，能够大幅压缩高维向量的存储空间。然而，学术界近年来发表了浩如烟海的量化器算法，由于评测指标各异、测试数据集不统一以及针对不同硬件的底层优化大相径庭，想要对它们进行公平公正的横向对比，一直是一大行业痛点。
+
+&gt; Vector quantization (VQ) is crucial for reducing the storage size of high-dimensional vectors in vector databases and large language models (LLMs). However, evaluating and comparing the sheer volume of published quantizers has historically been challenging due to inconsistent metrics, datasets, and hardware optimizations. 
+
+为了攻克这一难题，Pinecone 推出了开源框架与基准评测套件 **VQ-bench**。它的精妙之处在于，将绝大多数主流量化器抽象为由少量基础“原语”组合而成的模块化“流水线”。本文将深入探讨 VQ-bench 如何实现量化器评测的标准化体系，详细拆解备受关注的 E-RaBitQ 等经典架构，并重点展示在 ArXiv 和 Yahoo 等公开数据集上的核心性能对比结果。
+
+&gt; To solve this, Pinecone introduces **VQ-bench**, an open-source framework and benchmarking suite that models most published quantizers as modular "pipelines" built from a small set of primitive operations. This post outlines how VQ-bench standardizes quantizer evaluation, breaks down popular architectures like E-RaBitQ, and highlights key performance comparisons across datasets like ArXiv and Yahoo.
+
+---
+
+## 引言
+
+&gt; ## Introduction
+
+对于任何向量数据库来说，在对向量进行相似度检索之前，必须先将它们妥善存储在系统中。然而，以全精度直接保存海量的高维向量，硬件开销极为昂贵。**矢量量化 (Vector Quantization, VQ) ** 技术能够显著减少存储单个向量所需的比特位 (Bit) 数，因此成为了构建与运维高效向量数据库的核心技术基石。
+
+&gt; Before a vector database can search vectors, it has to store them. But storing high-dimensional vectors at full precision is quite expensive. **Vector quantization** (VQ) reduces the number of bits needed to store a vector, making it a critical part of maintaining a vector database.
+
+正因为 VQ 在向量数据库与大模型体系中扮演着举足轻重的角色，每年学术界都会涌现出海量的相关研究论文。早在打造首批系统原型时，Pinecone 就已经深入应用了量化技术。不过精益求精的追求永无止境，于是我们着手对近年来的前沿研究成果展开全面调研与基准测试。在这个过程中，市面上数量极其庞大的量化器让我们眼花缭乱；更棘手的是，几乎每篇论文的评测标准都不尽相同——各家使用的测试数据集互不一致，衡量的性能指标五花八门，底层更针对不同的硬件架构做了各自定制的加速优化。我们始终无法在业内找到任何能够对主流顶尖量化算法进行系统性、横向公平对比的研究工作。
+
+&gt; Because VQ is so important (to both vector databases and LLMs), many research papers are published on the topic every year. Pinecone has been using quantization since its first prototypes. But we can always do better, so we set out to survey and benchmark newer results. We were pretty overwhelmed by just how many quantizers are out there. To make matters worse, every paper seemed to evaluate performance differently, measuring different metrics on different datasets and optimizing for different hardware. We were unable to find any systematic attempt to evaluate the leading methods against one another.
+
+显然，想要从零开始百分之百忠实复现几十种量化器，本身就是一项巨大的挑战。幸运的是，随着我们对前沿文献的逐步深挖，一条清晰的规律浮出了水面：许多新发表的量化器本质上只是对现有算法的微小变体。事实上，绝大部分量化器都是基于一组数量相当有限的基础运算单元构建起来的。这激发了我们的灵感：如果我们把这些核心基础单元打包成一个开源原语库，让构建量化器变得如同照着菜单配菜一样简单——只需选定使用哪些原语并排定先后执行顺序，那会怎样？如此一来，我们便能在一个完全统一、透明且可复现的基准线上公平评测所有算法；同时，这也为研究人员探索现有量化器的全新变体、甚至是彻底发明全新的算法，铺平了实验道路。
+
+&gt; Of course, faithfully implementing dozens of quantizers from scratch comes with its own challenges. Luckily, as we dug deeper into the literature, we began to notice a pattern. Many published quantizers are actually just slight variations of existing ones. In fact, most of them are built from a relatively small set of primitive operations. That gave us an idea: what if we published an open-source library of these core primitives, where building a quantizer was as easy as writing a recipe of which primitives to use and in what order? Then, we would be able to evaluate all of these quantizers in a fair and reproducible way. It would also make it easier to experiment with new variations of existing quantizers or invent new ones altogether.
+
+这就是 VQ-bench 项目的缘起。伴随着这篇博文，我们非常自豪地正式向社区开源发布 VQ-bench，包含以下核心资源：
+
+&gt; This was the start of the VQ-bench project. With this post, we're excited to share VQ-bench with the public, including:
+
+* 公开的 [官方网站 (website) ](https://vq-bench.com)：持续更新并展示主流热门量化器的最新基准评测数据；
+* 开源 [GitHub 仓库](https://github.com/pinecone-io/vq-bench)：欢迎社区贡献您自己的量化器实现与运算原语；
+* 专题学术 [论文 (paper) ](https://arxiv.org/abs/2608.11240)：发表于 [VecDB@VLDB 2026](https://vecdb-ws.github.io/vldb2026) 研讨会，并附带完整的 [演讲幻灯片 (talk slides) ](https://vq-bench.com/slides.pdf)。
+
+&gt; * A public [website](https://vq-bench.com) with a running benchmark of popular quantizers
+&gt; * A [GitHub repo](https://github.com/pinecone-io/vq-bench) where you can contribute your own quantizers and primitives
+&gt; * A [paper](https://arxiv.org/abs/2608.11240) on VQ-bench (presented at [VecDB@VLDB 2026](https://vecdb-ws.github.io/vldb2026)), along with the [talk slides](https://vq-bench.com/slides.pdf).
+
+*请注意，目前发布的仅是 VQ-bench 的首个迭代版本；我们非常期待来自社区的宝贵反馈、勘误建议与代码贡献，后续我们也会持续纳入更多前沿量化器。*
+
+&gt; *Note that this is just the first iteration of VQ-bench; we encourage feedback, corrections, and contributions, and we will add more quantizers over time.*
+
+---
+
+## 量化器核心接口
+
+&gt; ## Quantizers
+
+通俗来说，**量化器 (Quantizer) ** 本质上是任何能够接收一组向量、将其压缩编码并在后续按需还原出目标信息的计算实体。在 VQ-bench 体系中，一个标准的量化器必须实现以下四种核心方法：
+
+&gt; A **quantizer** is anything that can take a set of vectors, compress them, and recover desired information later on. In VQ-bench, a quantizer must implement four methods:
+
+| 接口方法 | 功能说明 |
+| :--- | :--- |
+| `fit` | 输入一组向量样本（以及可选的查询向量样本），训练并拟合出量化模型 (*model*) |
+| `encode` | 根据训练好的模型与输入向量集，为每个向量生成对应的紧凑压缩编码 (*codes*) |
+| `reconstruct` | 根据模型以及向量 *x* 的压缩编码，还原重构 (*reconstruct*) 出该向量的近似表示 |
+| `score` | 根据模型、查询向量 *q* 以及向量 *x* 的压缩编码，直接预估两者之间的点积相似度得分 (*score*) ⟨q, x⟩ |
+
+&gt; | Method | Function |
+&gt; | :--- | :--- |
+&gt; | `fit` | given a sample of vectors (and optionally queries), learn a *model* |
+&gt; | `encode` | given the model and a set of vectors, return per-vector *codes* |
+&gt; | `reconstruct` | given the model and the code for vector *x*, *reconstruct* it |
+&gt; | `score` | given the model, a query vector *q*, and the code for *x*, estimate the dot-product *score* ⟨q, x⟩ |
+
+---
+
+## 基础运算原语
+
+&gt; ## Primitives
+
+在学术界的研究中，量化器极少是从零孤立构建的，它们大都是由一组基础运算单元拼接组装而成的。在 VQ-bench 中，这套核心运算单元被形式化定义为**原语 (Primitives) **。一个原语除了实现上述普通量化器具备的四种方法外，还额外实现了两个核心方法，用于精确定义数据如何流转传递给下一个处理阶段：
+
+&gt; Quantizers are rarely built from scratch. In the literature, they are assembled from a small set of basic operations, which VQ-bench formalizes as **primitives**. A primitive implements the same four methods as any other quantizer, plus two more that specify exactly how it hands data to the next stage:
+
+| 接口方法 | 功能说明 |
+| :--- | :--- |
+| `apply` | 根据当前模型对输入向量进行变换，生成下游阶段所接收的数据表示 |
+| `apply_queries` | 根据当前模型对查询向量进行变换，生成下游阶段所接收的查询数据表示 |
+
+&gt; | Method | Function |
+&gt; | :--- | :--- |
+&gt; | `apply` | given the model, transform the vectors into what the next stage should see |
+&gt; | `apply_queries` | given the model, transform the queries into what the next stage should see |
+
+此外，原语的 `reconstruct` 与 `score` 方法分别将下游下一阶段输出的重构向量与得分估计值作为输入，进而完成逆向的数据折叠与聚合。
+
+&gt; A primitive's `reconstruct` and `score` methods also take as input the next stage's reconstruction and score estimate, respectively.
+
+这样一来，每个原语总共实现了六个核心方法。额外增加的两个方法构成了一套级联契约 (Chaining Contract) ，正是它们的存在，才使得各个原语能够像积木一样顺畅组合串联，这正是下一章节要探讨的核心。
+
+&gt; That makes six methods in total. The extra two are the chaining contract: they are what let primitives be composed, which is the subject of the next section.
+
+VQ-bench 将所有原语划分为三大主要类别：
+
+&gt; VQ-bench implements three groups of primitives.
+
+* **调节器 (Conditioners) **：负责对输入数据进行预处理变换，并将处理后的数据传递给下游模块，例如去均值中心化 (`Center`) 、归一化 (`Normalize`) 、主成分分析 (`PCA`) 、随机旋转 (`RandomRotate`) 等；
+* **舍入器 (Rounders) **：负责将连续向量投影映射到有限码本 (Codebook) 中，并将逼近后的残差 (*residual*) 继续向下游传递，例如无符号整数映射 (`CastUint`) 、角度映射 (`CastAngular`) 、正态分布映射 (`CastNormal`) 、K 均值聚类 (`KMeans`) 等；
+* **切分器 (Splitters) **：负责将高维向量拆分为多个子向量切片，并为每个切片分配各自独立的原语处理链，例如子空间分段 (`Segment`) 等。
+
+&gt; * **Conditioners** transform the data and pass it downstream (`Center`, `Normalize`, `PCA`, `RandomRotate`, ...).
+&gt; * **Rounders** cast each vector to a finite codebook, passing the *residual* downstream (`CastUint`, `CastAngular`, `CastNormal`, `KMeans`, ...).
+&gt; * **Splitters** split the vectors and quantize each part with its own chain of primitives (`Segment`).
+
+---
+
+## 模块化流水线架构
+
+&gt; ## Pipelines
+
+所谓的**流水线 (Pipeline) **，是指将两个或多个原语以链表形式级联组合而成的特殊量化器。压缩向量的过程就像沿着流水线正向穿行，而重构还原向量（或计算检索得分）的过程则是反向逆流而上。
+
+&gt; A **pipeline** is a special type of quantizer given by composing two or more primitives in a chain. Compressing a vector walks it forward through the chain, and recovering a vector (or its score) walks it backward.
+
+* **正向传递 (Forward pass) **：`fit` 与 `encode` 遵循相同的正向流转逻辑。在每个处理阶段，它们完成当前阶段的既定任务（训练拟合模型或生成编码）。随后调用 `apply` 方法对向量进行变换并递归传递给下一阶段。流程结束时，`fit` 会将各阶段的模型参数拼接合并，`encode` 则将各阶段生成的编码有序串联。
+* **反向传递 (Backward pass) **：`reconstruct` 从流水线的最后一个阶段开始逆向执行。处于上层的每个阶段依次将自身对应的变换“撤销并叠加”回去（例如重新加上均值中心向量、做逆向旋转等），最终第一阶段就能还原出对原始向量的高精度近似。
+* **得分计算 (`score`)**：整体执行逻辑与反向传递类似，唯一区别在于每个阶段都需要看到与当前阶段视角完全一致的查询向量。因此，它首先通过 `apply_queries` 将查询向量单向正向推导一遍，随后再在计算得分时执行反向聚合。
+
+&gt; * The forward pass: `fit` and `encode` follow the same path. At each stage, they perform that stage's job (learning the model / computing the codes). Then, they call `apply` to transform the vectors to the next stage and recurse. At the end, `fit` concatenates each stage's model and `encode` concatenates each stage's codes.
+&gt; * The backward pass: `reconstruct` starts at the last stage. Each stage above it folds its own contribution back in (e.g., adding back the mean, undoing a rotation, etc.) until the first stage has an approximation of the original vector.
+&gt; * `score` works the same way, except every stage needs the query as *it* saw the data. So, it begins by walking just the query forward with `apply_queries`. Then, it performs the backward pass on the score.
+
+当然，量化器并非必须采用流水线架构。只要一个算法完整实现了上述四个核心方法，就可以作为合法的量化器接入体系，我们的接口充分包容了各类非流水线结构的算法设计。不过，文献中绝大多数已发表的量化方案都可以极其优雅地表达为原语流水线，这也正是这种解构设计能够作为统一基石的巨大价值所在。
+
+&gt; A quantizer does not have to be a pipeline. Anything that implements the four methods qualifies, and the interface leaves room for methods that are built some other way. But most published quantizers can be expressed as pipelines of primitives, which is what makes the decomposition worth building on.
+
+以近年来备受关注的前沿量化算法 E-RaBitQ 为例（在我们的系列基准实验中，它的表现极为出色）。E-RaBitQ 的核心处理管线仅仅由四个原语串联而成：
+
+&gt; For example, E-RaBitQ is a popular quantizer (which we found to be quite performant in our experiments). The E-RaBitQ pipeline consists of four primitives:
+
+1. **中心化 (Center) **：从每个向量中减去整个数据集的均值向量；
+2. **归一化 (Normalize) **：将每个向量缩放调整为单位范数（模长为 1）；
+3. **随机旋转 (Random Rotation) **：对每个向量施加一个随机正交旋转（或随机阿达马旋转，Random Hadamard Rotation）；
+4. **角度映射 (Angular Cast) **：在超球面上根据角度将每个向量映射到离它最近的 $b$ 位 ($b$-bit) 整数网格点上。
+
+&gt; 1. **Center:** subtract the average dataset vector from each vector
+&gt; 2. **Normalize:** scale each vector to unit norm
+&gt; 3. **Random Rotation:** apply a random orthogonal (or random Hadamard) rotation to each vector
+&gt; 4. **Angular Cast:** snap each vector to a &lt;span class="latex-inline inline-flex items-center text-sm sm:text-base"&gt;&lt;!--$!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/$--&gt;&lt;/span&gt;-bit integer grid by rounding to the nearest grid point in angle.
+
+下图直观展示了这一流水线的数据流向，下方表格则详细列出了各个原语在此流水线中所执行的具体函数逻辑：
+
+&gt; A diagram of this pipeline and table for the primitive functions are given below.
+
+&lt;div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3"&gt;
+  &lt;div class="w-full max-w-full"&gt;
+    &lt;div class="flex flex-col items-center justify-center"&gt;
+      &lt;div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in"&gt;
+        &lt;img alt="The E-RaBitQ pipeline." class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1020" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=3840&amp;amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=1920&amp;amp;q=75 1x, /_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=3840&amp;amp;q=75 2x" style="color:transparent" width="1400"/&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class="w-full text-center text-sm text-text-secondary mt-4"&gt;The E-RaBitQ pipeline.&lt;/div&gt;
+&lt;/div&gt;
+
+| 接口方法 | 中心化 (Center) | 归一化 (Normalize) | 随机旋转 (Random Rotation) | 角度映射 (Angular Cast) |
+| :--- | :--- | :--- | :--- | :--- |
+| `fit` | 拟合数据集均值向量 μ | 无 (none) | 生成旋转随机种子 | 无 (none) |
+| `encode` | 无 (none) | 提取向量范数 ‖x‖ | 无 (none) | 提取网格点 grid(x) 及夹角余弦 cos(x, grid(x)) —— 每维度分配 b 比特及一个标量 |
+| `apply` | x → x − μ | x → x / ‖x‖ | x → Rx | x → x − ĝ，其中 ĝ = grid(x) / ‖grid(x)‖ |
+| `apply_queries` | 恒等变换 (identity) | 恒等变换 (identity) | q → Rq | 恒等变换 (identity) |
+| `reconstruct` | y → y + μ | y → ‖x‖ · y | y → Rᵀy | y → y + ĝ |
+| `score` | s → s + ⟨q, μ⟩ | s → ‖x‖ · s | 保持 s 不变，因查询向量同步经过了相同旋转 | s → s + ⟨q, ĝ⟩ / cos(x, grid(x)) |
+
+&gt; | | Center | Normalize | Random Rotation | Angular Cast |
+&gt; | :--- | :--- | :--- | :--- | :--- |
+&gt; | `fit` | mean dataset vector μ | none | rotation seed | none |
+&gt; | `encode` | none | the norm ‖x‖ | none | grid(x) and cos(x, grid(x)) — b bits per dimension and one scalar |
+&gt; | `apply` | x → x − μ | x → x / ‖x‖ | x → Rx | x → x − ĝ, where ĝ = grid(x) / ‖grid(x)‖ |
+&gt; | `apply_queries` | identity | identity | q → Rq | identity |
+&gt; | `reconstruct` | y → y + μ | y → ‖x‖ · y | y → Rᵀy | y → y + ĝ |
+&gt; | `score` | s → s + ⟨q, μ⟩ | s → ‖x‖ · s | s → s, since the query was rotated too | s → s + ⟨q, ĝ⟩ / cos(x, grid(x)) |
+
+---
+
+## 实验评测与结果分析
+
+&gt; ## Experimental Results
+
+我们在来自 [VIBE](https://vector-index-bench.github.io/) 基准的 5 个公开数据集上，全面评测了包含 14 种经典及前沿算法的量化器套件。每个数据集均包含用于量化编码的基础向量集以及用于相似度打分的检索查询集。在此，我们重点展示其中两个典型数据集的评测结果：**ArXiv**（包含 1,344,643 个 768 维向量）和 **Yahoo**（包含 677,305 个 384 维向量）。更详尽完整的评测数据与交互图表均可在 [官方网站 (website) ](https://vq-bench.com) 上公开查阅。
+
+&gt; We evaluated a suite of 14 quantizers on 5 datasets from [VIBE](https://vector-index-bench.github.io/). Each dataset consists of vectors to encode and queries to score. Below, we present some results for two of the datasets: **ArXiv** (1,344,643 vectors in 768 dimensions) and **Yahoo** (677,305 vectors in 384 dimensions). You can view the full results on the [website](https://vq-bench.com).</description>
+    </item>
+    <item>
+      <title>4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-18/4-bit-旋转量化技术深度剖析-消除离群值的极致压缩艺术/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/4-bit-旋转量化技术深度剖析-消除离群值的极致压缩艺术/</guid>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在海量向量检索与大语言模型 (LLM) 部署中，高维嵌入向量的爆炸式增长给服务器内存与带宽带来了严峻挑战。传统的标量或二值量化往往受制于向量维度的“离群值” (Outliers) ，导致低比特压缩时精度急剧下滑。开源向量数据库 Weaviate 在 1.39 版本中重磅升级了旋转量化 (Rotational Quantization, RQ) 技术，正式推出 4-bit 旋转量化，并通过快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 和 SIMD 指令级优化打通了硬件性能瓶颈。该方案在保持与原始精度近乎一致召回率的同时，将堆内存占用骤降 45%，并显著超越了 TurboQuant 等前沿方案，为亿级规模向量检索树立了极致压缩与极速查询的新标杆。
+
+---
+
+## 核心内容摘要
+
+&gt; ## Summary
+
+在 Weaviate 1.39 版本中，**旋转量化 (Rotational Quantization, RQ)** 正式拓展支持了 4-bit 量化，并同步带来了一整套全方位的底层性能升级。这些改进涵盖了旋转计算、距离算子内核、内存访问通道以及编码流水线——不仅让 8-bit RQ 的运行速度实现了质的飞跃，更全新引入了 4-bit RQ。在提供与以往相当的召回率的同时，4-bit RQ 成功将**堆内存 (Heap) 占用削减了 45%**。本文将深入剖析这些性能提升背后的底层技术细节，深度剖析 RQ 在亿级海量数据规模下的扩展表现，并将其与前沿的 TurboQuant 算法进行详尽的横向对比。
+
+&gt; In Weaviate 1.39, **Rotational Quantization (RQ)** is extended to support 4-bit quantization alongside a comprehensive suite of performance updates. These enhancements cover rotations, distance kernels, memory access paths, and encoding pipelines—making 8-bit RQ significantly faster while introducing 4-bit RQ, which delivers comparable recall with a **45% heap reduction**. This post explores the technical details behind these improvements, analyzes RQ's behavior at massive scale, and compares its performance against TurboQuant.
+
+---
+
+## 技术引言
+
+&gt; ## Introduction
+
+去年，我们推出了支持 8-bit 与 1-bit 规格的 [旋转量化 (Rotational Quantization, RQ)](https://weaviate.io/blog/8-bit-rotational-quantization) 。这些量化技术能够在大幅削减内存占用的同时实现极速向量检索，并且相比标量量化 (Scalar Quantization) 和二值量化 (Binary Quantization) 等同类替代方案，拥有显著更出色的召回率表现。
+
+&gt; Last year we introduced [Rotational Quantization](https://weaviate.io/blog/8-bit-rotational-quantization) (or RQ) with 8-bit and 1-bit sizes. These quantization techniques allow for fast vector search, while reducing memory usage, and at better recall than comparable alternatives such as scalar and binary quantization.
+
+在全新的 Weaviate 1.39 中，我们进一步为 RQ 赋予了 4-bit 量化能力，并带来了一整套通用的量化性能优化。旋转计算、距离算子、编码逻辑以及内存访问路径均得到了全链路重构，最终达成了显著成效：1.39 中的 8-bit RQ 运行速度迎来了*大幅飞跃*，而全新的 4-bit RQ 则在保持相近召回率的前提下，实现了 **45%** 的堆内存降幅。
+
+&gt; Weaviate 1.39 extends RQ with 4-bit support, alongside a stack of quantization improvements in general. Rotations, distance kernels, encoding and the memory path have all been improved with net effect: 8-bit RQ is now *significantly faster* in 1.39 and 4-bit RQ provides similar recall with a **45%** heap reduction.
+
+本文将完整记录这一工程探索背后的技术历程，并顺带解答开发者们最常关心的两个核心问题：随着数据集规模呈几何级数膨胀，RQ 的表现依然坚挺吗？以及，RQ 相比业界大热的 TurboQuant 究竟孰优孰劣？
+
+&gt; This post documents the story of that work, and along the way answers two questions people often ask: How does RQ hold up as datasets scale? And how does RQ compare to TurboQuant?
+
+---
+
+## 核心优化与架构升级
+
+&gt; ## Improvements
+
+旋转量化基于 [Extended-RaBitQ](https://arxiv.org/abs/2409.09913) 算法演进而来，通过引入结构化快速旋转机制以及简化的逐向量区间拟合，大幅提升了编码速度。极速的编码性能（即将原始高维向量转换为量化压缩表示的过程）是衡量优秀量化算法的核心指标之一，因为它直接决定了向量数据导入与构建索引时的吞吐效率。
+
+&gt; Rotational quantization is based on [Extended-RaBitQ](https://arxiv.org/abs/2409.09913) with a structured fast rotation and simplified per-vector interval fitting to speed up encoding. Fast encoding performance (converting the original vector into its quantized representation) is an important part of a good quantization algorithm as it can have significant impacts on import performance.
+
+这类方法的第一步，就是将原始向量与一个随机旋转矩阵相乘。这听起来或许有些反直觉，但随机旋转矩阵能赋予向量 [更优异的数学特性](https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization) ——尤其是抹平各维度上的尖锐离群值，使数值更加均匀地散布在整个量化区间的全长之上。
+
+&gt; The first step in these approaches is to multiply the original vector by a random rotation matrix. It may seem counter-intuitive but a random rotation matrix gives [better properties](https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization) to the vector in particular distributing the dimension values over the entire length of the quantization interval.
+
+为了让随机旋转快如闪电，我们采用快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 来对原始向量进行旋转。在 1.39 版本中，我们为 FWHT 增加了 SIMD 硬件指令集级优化支持。在输出结果与原有 Go 语言基线实现完全保持比特级一致 (Bit-identical) 的前提下，取得了如下显著的加速成绩：
+
+&gt; To speed up the random rotation we use Fast Walsh-Hadamard Transforms (FWHT) to rotate the original vector. In 1.39, we added SIMD support for FWHT which led to the below improvements while being bit-identical to the Go reference:
+
+| 变换类型 (Transform) | 处理器架构 (CPU) | 1.38 版本 (Go 原生) | 1.39 版本 (SIMD 加速) | 加速比 (Speedup) |
+| :--- | :--- | ---: | ---: | ---: |
+| FWHT64 | Intel Xeon 8581C (amd64/AVX) | 81.3 ns | 26.5 ns | **3.1×** |
+| FWHT256 | Intel Xeon 8581C (amd64/AVX) | 515 ns | 84.5 ns | **6.1×** |
+| FWHT64 | Apple M1 (arm64/NEON) | 67.4 ns | 21.6 ns | **3.1×** |
+| FWHT256 | Apple M1 (arm64/NEON) | 428 ns | 96.2 ns | **4.5×** |
+
+&gt; | Transform | CPU | 1.38 (Go) | 1.39 (SIMD) | Speedup |
+&gt; | :--- | :--- | ---: | ---: | ---: |
+&gt; | FWHT64 | Intel Xeon 8581C (amd64/AVX) | 81.3 ns | 26.5 ns | **3.1×** |
+&gt; | FWHT256 | Intel Xeon 8581C (amd64/AVX) | 515 ns | 84.5 ns | **6.1×** |
+&gt; | FWHT64 | Apple M1 (arm64/NEON) | 67.4 ns | 21.6 ns | **3.1×** |
+&gt; | FWHT256 | Apple M1 (arm64/NEON) | 428 ns | 96.2 ns | **4.5×** |
+
+配合对 SIMD 编码算子内核的一系列深度优化，整套 RQ 量化家族在向量编码性能上迎来了全方位的净提升：
+
+&gt; Together with some other enhancements to SIMD encode kernels, this led to the following net increases in encoding performance across the whole RQ family:
+
+| 量化器类型 (Quantizer) | 处理器架构 (CPU) | 1.38 版本 | 1.39 版本 | 加速比 (Speedup) |
+| :--- | :--- | ---: | ---: | ---: |
+| RQ8 | Intel Xeon 8581C (amd64/AVX) | 27.3 µs | 7.11 µs | **3.8×** |
+| RQ1 | Intel Xeon 8581C (amd64/AVX) | 15.2 µs | 6.84 µs | **2.2×** |
+| RQ4 (非中心化 / uncentered) | Intel Xeon 8581C (amd64/AVX) | — | 6.36 µs | **1.39 新增** |
+| RQ4 (中心化 / centered) | Intel Xeon 8581C (amd64/AVX) | — | 8.08 µs | **1.39 新增** |
+| RQ8 | Apple M1 (arm64/NEON) | 14.7 µs | 6.18 µs | **2.4×** |
+| RQ1 | Apple M1 (arm64/NEON) | 13.0 µs | 6.18 µs | **2.1×** |
+| RQ4 (非中心化 / uncentered) | Apple M1 (arm64/NEON) | — | 5.65 µs | **1.39 新增** |
+| RQ4 (中心化 / centered) | Apple M1 (arm64/NEON) | — | 7.00 µs | **1.39 新增** |
+
+&gt; | Quantizer | CPU | 1.38 | 1.39 | Speedup |
+&gt; | :--- | :--- | ---: | ---: | ---: |
+&gt; | RQ8 | Intel Xeon 8581C (amd64/AVX) | 27.3 µs | 7.11 µs | **3.8×** |
+&gt; | RQ1 | Intel Xeon 8581C (amd64/AVX) | 15.2 µs | 6.84 µs | **2.2×** |
+&gt; | RQ4 (uncentered) | Intel Xeon 8581C (amd64/AVX) | — | 6.36 µs | **new in 1.39** |
+&gt; | RQ4 (centered) | Intel Xeon 8581C (amd64/AVX) | — | 8.08 µs | **new in 1.39** |
+&gt; | RQ8 | Apple M1 (arm64/NEON) | 14.7 µs | 6.18 µs | **2.4×** |
+&gt; | RQ1 | Apple M1 (arm64/NEON) | 13.0 µs | 6.18 µs | **2.1×** |
+&gt; | RQ4 (uncentered) | Apple M1 (arm64/NEON) | — | 5.65 µs | **new in 1.39** |
+&gt; | RQ4 (centered) | Apple M1 (arm64/NEON) | — | 7.00 µs | **new in 1.39** |</description>
+    </item>
+    <item>
       <title>谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</guid>
@@ -3672,550 +4236,6 @@ $$\mathcal{E}_p(\lambda) = \sup_R [\Phi_p(R) - \lambda\,\mathrm{CoI}_p(R)]$$
 本文提出了一个**统一的信息论分析框架**，将编码器与生成器均建模为随机映射 (Randomized Mappings) ，为两者的泛化表现提供了严格的理论保证。
 
 &gt; This paper introduces a **unified information-theoretic framework** that treats both encoders and generators as randomized mappings to provide rigorous generalization guarantees.</description>
-    </item>
-    <item>
-      <title>T1：面向长程终端任务的强化学习智能体</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/T1-面向长程终端任务的强化学习智能体/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/T1-面向长程终端任务的强化学习智能体/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着 AI 智能体 (AI Agent) 的应用场景加速拓展至自动化编程、科学探索等长链条复杂场景，在命令行终端中稳定执行长程任务成为了核心技术制高点。传统大模型在面对需要数百步工具调用的任务时，往往容易发生状态漂移、轨迹发散和过拟合。本项研究推出了总参数量达 122B 的混合专家模型 (Mixture-of-Experts, MoE) 智能体——**T1**。该模型通过在云端沙箱中操控真实 Shell 终端并依托强化学习进行端到端训练，结合密集过程奖励、Token 标识符训练优化 (TITO) 与路由重放 (R3) 等创新训练配方，在 *Terminal-Bench 2.1* 上取得了 64.0% 的高解题率，并在超长程终端基准测试中以 27.9% 的成绩超越了 GPT-5.4 与 GLM-5.1。
-
----
-
-## 📋 内容摘要
-
-&gt; ## Summary
-
-**T1** 是一个总参数量达 122B 的混合专家模型 (Mixture-of-Experts, MoE) ，通过强化学习 (Reinforcement Learning) 训练以在云端沙盒环境中执行长程终端任务（单任务可支持处理超过 300 轮以上的工具调用）。为了实现稳定的行动者-评论家 (Actor-Critic) 训练，并获得真实的通用能力迁移而非在基准测试上过拟合，作者团队提出了一套全面的训练配方：包含密集过程奖励机制、Token 标识符训练优化 (Token Identifiers Training Optimization, TITO) 以及 Rollout 路由重放 (Rollout Routing Replay, R3)。在 *Terminal-Bench 2.1* 基准测试中，T1 成功解决了 64.0% 的任务（相较基座模型的 43.8% 实现了大幅跃升）；而在更具挑战性的长程终端基准 *Long-Horizon Terminal Bench* 上，其解题率达到 27.9% ，表现超越了 GPT-5.4 与 GLM-5.1 等前沿模型。
-
-&gt; **T1** is a 122B-parameter Mixture-of-Experts (MoE) model trained via reinforcement learning to execute long-horizon terminal tasks in a cloud sandbox environment (handling over 300+ tool-call turns per task). To achieve stable actor-critic training and genuine capability transfer without benchmark overfitting, the authors introduce a comprehensive training recipe featuring dense process rewards, Token Identifiers Training Optimization (TITO), and Rollout Routing Replay (R3). On *Terminal-Bench 2.1*, T1 successfully resolves 64.0% of tasks (up from 43.8% in the base model), and on the *Long-Horizon Terminal Bench*, it reaches 27.9%, outperforming models like GPT-5.4 and GLM-5.1.
-
----
-
-## 📑 论文摘要
-
-&gt; ## Abstract
-
-智能体的实际应用正在快速转向涉及长决策链的复杂任务（如自主编程与科学探索），其中命令行终端操作类任务显得尤为关键。我们隆重推出了 T1——这是一个总参数规模达 122B、采用强化学习进行端到端训练的混合专家模型。它能在云端隔离沙箱中操控真实的 Shell 环境，在单个长程任务中连续执行超过 300 轮以上的工具调用，并通过运行每项任务专属的验证器程序来获取奖励反馈信号。
-
-&gt; Agent usage is shifting toward long-horizon tasks such as coding and scientific discovery, among which terminal tasks are especially important. We introduce T1, a Mixture-of-Experts model of 122B total trained with reinforcement learning, operating a real shell in a cloud sandbox for up to 300+ tool-call turns per task, rewarded by executing each task's own verifier.
-
-我们为此构建了一套完整的工程与训练配方：
-1. **强力热启动预热**：通过密集过程奖励机制对完整交互轨迹打分（依据通过验证器的绝对数量），从而有效稳定 Actor-Critic 强化学习训练过程。
-2. **基于 TITO 与 R3 的高稳定性优化**：
-   - **TITO 构建**：基于采样时实际生成的精确 Token 标识符进行训练，并在多轮交互的轮次边界处引入漂移修复机制。
-   - **Rollout 路由重放 (R3)**：在 MoE 的每一个专家层中，严格记录采样器在每个 Token 上的专家选择路径，并在梯度反向传播训练期间无缝重放。
-3. **分布外 (OOD) 强化训练语料**：构建与 Terminal-Bench 2.1 彻底隔离的独立种子与合成任务池，以确保模型性能的飞跃体现的是真实的跨领域能力迁移，而非针对评估基准的单纯过拟合。
-
-&gt; We provide a comprehensive recipe: 
-&gt; 1. **Aggressive Warm-Starting:** Stabilizes actor-critic training, utilizing a dense process reward scoring trajectories by the absolute number of passing verifiers.
-&gt; 2. **Stable Optimization via TITO and R3:** 
-&gt;    - **TITO Construction:** Training on the exact sampled token identifiers with drift repair at turn boundaries.
-&gt;    - **Rollout Routing Replay (R3):** Recording the sampler's per-token expert choices at every MoE layer and replaying them during training.
-&gt; 3. **Out-of-Distribution Training Corpus:** Isolated seeds and synthesized tasks disjoint from Terminal-Bench 2.1 to ensure gains reflect genuine capability transfer over benchmark overfitting.
-
-通过 TITO 与 R3 的协同优化，我们将模型训练与推理阶段的对数概率差异从 0.021 骤降至 0.013 ，并在损失计算区域实现了完全对齐、零 Token 漂移。
-
-&gt; Together, TITO and R3 cut the training-to-inference log-probability difference from 0.021 to 0.013, with exactly aligned zero token drift in the loss region.
-
----
-
-## 📊 评测结果与模型表现
-
-&gt; ## Results &amp; Performance
-
-* **Terminal-Bench 2.1 基准**：后训练流水线将模型初始解题率从基座模型的 **43.8% 提升至 64.0%** 。
-* **Long-Horizon Terminal Bench 长程基准**：T1 达到了 **27.9%** 的通过率，成功超越了 GPT-5.4 与 GLM-5.1 。
-
-&gt; * **Terminal-Bench 2.1:** Post-training pipeline raises the initial base model performance from **43.8% to 64.0%** resolved.
-&gt; * **Long-Horizon Terminal Bench:** T1 reaches **27.9%**, successfully surpassing GPT-5.4 and GLM-5.1.
-
----
-
-## 🔗 全文阅读与相关资源
-
-&gt; ## Full-Text &amp; Resources
-
-* [阅读 PDF 论文](https://arxiv.org/pdf/2609.11042)
-* [TeX 源代码](https://arxiv.org/src/2609.11042)
-* [DOI 链接](https://doi.org/10.48550/arXiv.2609.11042)
-* **授权协议**：[Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2609.11042)
-&gt; * [TeX Source](https://arxiv.org/src/2609.11042)
-&gt; * [DOI](https://doi.org/10.48550/arXiv.2609.11042)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>REAL-Q：基于动态梯度下降的端到端大语言模型量化</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/REAL-Q-基于动态梯度下降的端到端大语言模型量化/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/REAL-Q-基于动态梯度下降的端到端大语言模型量化/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>训练后量化 (Post-Training Quantization, PTQ) 是在严苛算力与显存限制下低成本部署大语言模型 (Large Language Model, LLM) 的关键技术。然而，当前主流的 PTQ 方案为了数学求解上的便利，普遍采用大幅简化的单层二阶求解器，这不仅割裂了通道间的依赖关系，更因冻结黑塞矩阵 (Hessian) 而导致量化误差随网络深层逐级放大，产生严重的“信息失准”现象。
-
-为此，本文提出了 REAL-Q (Real-time E2E-loss Aligned LLM Quantization) 创新量化范式。REAL-Q 突破了传统方法的分析妥协，直接针对与全局端到端损失对齐的代理目标函数进行优化；通过引入细粒度的动态块级梯度下降与跨层滑动窗口机制，在列块量化过程中动态刷新梯度并平滑阻断误差传递。在 LLaMA-3.1 与 Qwen3 系列模型上的 W4A16 精度评测表明，REAL-Q 相比现有顶尖全局引导基准将端到端 KL 散度降低了高达约 49%，实现了更出色的精度保留。
-
----
-
-## 概述
-
-&gt; ## Summary
-
-训练后量化 (PTQ) 是在严苛显存与硬件限制下高效部署大语言模型 (LLM) 不可或缺的关键手段。然而，当前顶尖的 PTQ 方法通常依赖于针对各层的简化封闭形式二阶求解器。这种做法往往迫使算法做出严重的数学妥协，例如忽略跨通道的相关性、将输出行进行分组池化，以及在整层量化过程中始终冻结黑塞矩阵 (Hessian) ，导致其无法感知损失曲面随权重量化而发生的实时变化，我们称之为**信息失准 (Information Misalignment)** 问题。
-
-&gt; Post-training quantization (PTQ) is a crucial technique for deploying large language models (LLMs) efficiently under strict memory and hardware constraints. Traditional state-of-the-art PTQ methods usually rely on simplified second-order solvers for individual layers, which often leads to major analytical compromises such as ignored cross-channel dependencies, grouped output rows, and frozen Hessians that fail to adapt as the loss landscape shifts (a problem termed **information misalignment**).
-
-为了化解这些局限，本研究提出了 **REAL-Q (Real-time E2E-loss Aligned LLM Quantization)**。REAL-Q 摒弃了以往为了分析可行性而大幅稀释目标的做法，转而直接优化一个与全局端到端损失紧密对齐的代理目标函数。它在列块之间迭代应用细粒度、动态的块级梯度下降 (Block-wise Gradient Descent) ，并将其与平滑的跨层滑动窗口机制相结合，彻底阻断了量化误差在层间的无序累积。在 **LLaMA-3.1 (8B 与 70B)** 以及 **Qwen3 (0.6B–32B)** 模型上的 W4A16 精度评估表明，REAL-Q 相较于现有的全局引导基准方案，实现了高达 **~49% 的端到端 KL 散度降幅** 。
-
-&gt; To resolve these limitations, this paper introduces **REAL-Q (Real-time E2E-loss Aligned LLM Quantization)**. REAL-Q bypasses the need for heavily diluted objectives by optimizing an end-to-end-aligned surrogate of the global loss function. It applies fine-grained, dynamic Block-wise Gradient Descent iteratively across column blocks and couples this with a smooth cross-layer sliding window mechanism to eliminate error propagation. Evaluated on popular models like **LLaMA-3.1 (8B and 70B)** and **Qwen3 (0.6B–32B)** at W4A16 precision, REAL-Q achieves up to a **~49% reduction in end-to-end KL divergence** compared to current globally-guided baselines.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2609.00049](https://arxiv.org/abs/2609.00049) [cs.LG]
-* **研究方向：** 机器学习 (`cs.LG`)，人工智能 (`cs.AI`)
-* **提交日期：**
-  * 首次提交：2026年8月30日 (v1)
-  * 最新修订：2026年9月10日 (v2)
-* **作者列表：** Qian Zhang, Yaoming Li, Zhewen Tan, Yanshu Wang, Heng Lu, Kun Su, Zongwei Lv, Wenhan Yu, Yongge Ma, Yinjun Han, Ruikang Liu, Tong Yang
-
-&gt; * **arXiv ID:** [arXiv:2609.00049](https://arxiv.org/abs/2609.00049) [cs.LG]
-&gt; * **Subject Areas:** Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Dates:** 
-&gt;   * Submitted: August 30, 2026 (v1)
-&gt;   * Last Revised: September 10, 2026 (v2)
-&gt; * **Authors:** Qian Zhang, Yaoming Li, Zhewen Tan, Yanshu Wang, Heng Lu, Kun Su, Zongwei Lv, Wenhan Yu, Yongge Ma, Yinjun Han, Ruikang Liu, Tong Yang
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-训练后量化 (PTQ) 对于在严格的资源限制下部署大语言模型 (LLM) 至关重要。目前最先进的 PTQ 方法通常采用单一的封闭形式二阶求解器来量化每一层：为了保证数学推导的可行性，它们对全局损失进行了大幅近似（舍弃了跨通道耦合、将输出行进行分组池化），并在整个网络层量化过程中彻底冻结求得的黑塞矩阵 (Hessian) ，致使模型无法随着列权重的逐列改变而动态刷新损失曲面，这一现象被称为“信息失准”。
-
-&gt; Post-training quantization (PTQ) is essential for deploying large language models (LLMs) under strict resource constraints. State-of-the-art PTQ methods quantize each layer with a single closed-form second-order solver: to remain analytically tractable, they heavily approximate the global loss (dropping cross-channel coupling, pooling output rows into groups), and they then freeze the resulting Hessian across the entire layer, with no way to refresh it as the loss landscape shifts column by column--a phenomenon we call information misalignment.
-
-我们提出了 REAL-Q (Real-time E2E-loss Aligned LLM Quantization)，这是一种打破这一妥协的新型 PTQ 范式：REAL-Q 不再为了解析上的易解性而稀释目标，而是瞄准全局损失的端到端对齐代理目标，并在每个列块（128 列）处理完毕后，通过细粒度、动态的块级梯度下降进行修正优化。通过将这种细粒度校正与实现平滑跨层过渡的滑动窗口机制相结合，REAL-Q 有效抑制了误差在全网络范围内的扩散传播。在 W4A16 精度的 LLaMA-3.1 (8B 和 70B) 以及 Qwen3 (0.6B-32B) 上，REAL-Q 相比最先进的全局引导方法，将端到端 KL 散度降低了高达约 49%。
-
-&gt; We propose REAL-Q (Real-time E2E-loss Aligned LLM Quantization), a novel PTQ paradigm that breaks this compromise: instead of diluting the objective for the sake of analytic tractability, REAL-Q targets an end-to-end-aligned surrogate of the global loss and refines it via fine-grained, dynamic Block-wise Gradient Descent applied after every column block (128 columns). By coupling this fine-grained correction with a sliding window mechanism for smooth cross-layer transitions, REAL-Q effectively mitigates error propagation across the network. On LLaMA-3.1 (8B and 70B) and Qwen3 (0.6B-32B) at W4A16, REAL-Q reduces end-to-end KL divergence by up to ~49% relative to state-of-the-art globally-guided methods.
-
----
-
-## 资源与访问链接
-
-&gt; ## Access &amp; Resources
-
-* **全文链接：** [查看 PDF](https://arxiv.org/pdf/2609.00049) | [实验性 HTML](https://arxiv.org/html/2609.00049v2) | [TeX 源码](https://arxiv.org/src/2609.00049)
-* **数字对象唯一标识符 (DOI)：** [10.48550/arXiv.2609.00049](https://doi.org/10.48550/arXiv.2609.00049)
-
-&gt; * **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2609.00049) | [Experimental HTML](https://arxiv.org/html/2609.00049v2) | [TeX Source](https://arxiv.org/src/2609.00049)
-&gt; * **Digital Object Identifier (DOI):** [10.48550/arXiv.2609.00049](https://doi.org/10.48550/arXiv.2609.00049)</description>
-    </item>
-    <item>
-      <title>PETSc 中 AI 生成科学计算代码的智能体评估框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/PETSc-中-AI-生成科学计算代码的智能体评估框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/PETSc-中-AI-生成科学计算代码的智能体评估框架/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>尽管大语言模型 (Large Language Models, LLMs) 显著加速了科学计算代码的自动化生成，但传统的评估基准通常仅停留在功能正确性或简单的单元测试层面。然而在面向生产级的高性能计算 (High-Performance Computing, HPC) 软件栈 (如 PETSc 科学计算库) 中，真正的专家级代码不仅需要能够运行，更要求合理的求解器选择、严格的 API 规范遵循、严密的内存管理、并行扩展感知以及极致的运行性能。为此，Argonne 国家实验室等机构的研究者联合推出了 **PETSCAgent-Bench**——一个多维度的智能体评估基准与自动化评测框架。该框架利用工具增强的评估器流水线，结合了确定性编译执行检查与大模型定性裁决，并通过 A2A 和 MCP 协议支持对编程智能体的无缝黑盒测试，揭示了前沿大模型在科学计算代码规范与复杂场景求解中的深层局限。
-
----
-
-## 📌 核心概要
-
-&gt; ## Executive Summary
-
-尽管大语言模型 (LLMs) 极大加速了科学计算代码的编写效率，但传统的代码评估方案往往存在明显短板。现有的绝大多数基准测试仅仅狭隘地关注功能的正确性或任务是否基本完成。然而，基于生产级高性能计算 (HPC) 库开发的代码有着更为苛刻的要求——包括合理的数值求解器选型、对库 API 约定规范的严格遵从、高效的内存管理机制、并行计算感知能力以及极致的硬件执行性能。
-
-&gt; While Large Language Models (LLMs) have significantly accelerated the generation of scientific code, traditional evaluation methods often fall short. Most benchmarks focus narrowly on functional correctness or basic task completion. However, code built on production High-Performance Computing (HPC) libraries requires much more—including proper solver selection, adherence to API conventions, efficient memory management, parallel awareness, and high performance. 
-
-为了填补这一评测空白，科研人员推出了 **PETSCAgent-Bench**，这是一个多维度的基准测试与基于智能体的评估框架，专门用于系统评估 AI 生成的科学计算代码是否能够像人类专家一样熟练运用生产级 HPC 库。
-
-&gt; To address this gap, researchers introduce **PETSCAgent-Bench**, a multidimensional benchmark and agent-based framework designed to evaluate whether AI-generated scientific code utilizes production HPC libraries with expert-level proficiency.
-
----
-
-## 📑 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 标识符：** [arXiv:2603.15976](https://arxiv.org/abs/2603.15976) [cs.AI]
-* **主要学科：** 人工智能 (`cs.AI`)
-* **论文作者：** 
-  * Hong Zhang
-  * Barry Smith
-  * Satish Balay
-  * Le Chen
-  * Murat Keceli
-  * Lois Curfman McInnes
-  * Junchao Zhang
-* **提交历史：** 
-  * 2026年3月16日提交 (v1)
-  * 2026年9月10日最新修订 (v2，当前版本)
-* **DOI 链接：** [10.48550/arXiv.2603.15976](https://doi.org/10.48550/arXiv.2603.15976)
-
-&gt; * **arXiv ID:** [arXiv:2603.15976](https://arxiv.org/abs/2603.15976) [cs.AI]
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** 
-&gt;   * Hong Zhang
-&gt;   * Barry Smith
-&gt;   * Satish Balay
-&gt;   * Le Chen
-&gt;   * Murat Keceli
-&gt;   * Lois Curfman McInnes
-&gt;   * Junchao Zhang
-&gt; * **Submission History:** 
-&gt;   * Submitted on 16 March 2026 (v1)
-&gt;   * Last revised 10 September 2026 (v2, current version)
-&gt; * **DOI:** [10.48550/arXiv.2603.15976](https://doi.org/10.48550/arXiv.2603.15976)
-
----
-
-## 📄 论文摘要
-
-&gt; ## Abstract
-
-虽然 LLM 加快了科学代码的生成速度，但对生成代码进行全面而深入的评估仍然极具挑战性。许多基准仅着重于功能正确性或任务是否运行完毕，这对于依赖生产级 HPC 库的代码而言远远不够，因为在此类场景下，求解器的合理选取、API 使用惯例、内存生命周期管理、并行架构感知以及执行效率同样至关重要。
-
-&gt; While LLMs have accelerated scientific code generation, comprehensively evaluating generated code remains challenging. Many benchmarks emphasize functional correctness or task completion, which is insufficient for code built on production HPC libraries, where solver selection, API conventions, memory management, parallel awareness, and performance also matter. 
-
-我们推出了 **PETSCAgent-Bench**，这是一个多维度的基准测试与智能体驱动的评估框架，用于衡量 AI 生成的科学代码是否能达到专家级调用生产级 HPC 库的水准。该框架配备了一个工具增强型评估器，不仅能自动编译、运行并量化测量代码表现，还将确定性检查与基于 LLM 的质性审查相结合，构建了涵盖五个核心维度的 14 项评估器流水线：
-1. 正确性 (Correctness)
-2. 运行性能 (Performance)
-3. 代码质量 (Code quality)
-4. 算法适用性 (Algorithmic appropriateness)
-5. 库专属约定规范 (Library-specific conventions)
-
-&gt; We introduce **PETSCAgent-Bench**, a multidimensional benchmark and agent-based framework for assessing whether AI-generated scientific code uses a production HPC library as an expert would. A tool-augmented evaluator compiles, executes, and measures code and combines deterministic checks with LLM-based assessments in a 14-evaluator pipeline spanning five key categories:
-&gt; 1. Correctness
-&gt; 2. Performance
-&gt; 3. Code quality
-&gt; 4. Algorithmic appropriateness
-&gt; 5. Library-specific conventions
-
-依托 **A2A** (智能体对智能体交互) 与 **MCP** (模型上下文协议) ，该框架能够对兼容的编程智能体开展端到端的黑盒自动化评测。在面对真实的 PETSc 计算问题时，前沿主流模型虽能生成清晰易读、结构良好的代码，但在处理高难度问题以及遵循库专属约定上依然频繁碰壁——即使生成的代码能够顺利编译并运行通过。这些深层次的软性缺陷，是传统的单维度“通过/失败”指标所完全无法捕获的。
-
-&gt; Using **A2A** and **MCP**, the framework enables black-box evaluation of compatible coding agents. Across realistic PETSc problems, frontier models generate readable, well-structured code but struggle with correctness on challenging problems and with library-specific conventions—even when the code successfully compiles and runs. These are critical limitations that conventional pass/fail evaluation metrics fail to capture.
-
----
-
-## ⚙️ 框架核心特性
-
-&gt; ## Key Framework Features
-
-* **工具增强型评估器 (Tool-Augmented Evaluator)**：自动完成生成科学代码的编译构建、执行追踪与性能剖析。
-* **14 阶段评估流水线 (14-Evaluator Pipeline)**：融合了底层编译器的确定性断言与上层 LLM 的智能定性评审。
-* **多维度评测指标 (Multidimensional Metrics)**：彻底跨越二元“通过/失败”测试，从性能瓶颈、算法架构与特定库工程最佳实践等维度深度洞察。
-* **智能体协议兼容性 (Agentic Compatibility)**：原生集成智能体对智能体 (Agent-to-Agent, A2A) 协作协议与模型上下文协议 (Model Context Protocol, MCP) ，能够无缝评测现代自主编程智能体。
-
-&gt; * **Tool-Augmented Evaluator:** Automatically compiles, executes, and profiles generated scientific code.
-&gt; * **14-Evaluator Pipeline:** Blends deterministic checks with intelligent LLM-based qualitative assessments.
-&gt; * **Multidimensional Metrics:** Moves beyond binary pass/fail outcomes to deeply assess performance, algorithmic design, and library best practices.
-&gt; * **Agentic Compatibility:** Integrates Agent-to-Agent (A2A) protocols and Model Context Protocols (MCP) to evaluate modern autonomous coding agents seamlessly.</description>
-    </item>
-    <item>
-      <title>OpenResearcher：用于长程深度研究智能体轨迹合成的完全开源框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/OpenResearcher-用于长程深度研究智能体轨迹合成的完全开源框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/OpenResearcher-用于长程深度研究智能体轨迹合成的完全开源框架/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>训练能够自主解决复杂科研与调研课题的“深度研究智能体” (Deep Research Agent) ，需要依赖大量交织着网页搜索、证据交叉聚合与多步逻辑推理的高质量长程轨迹数据。然而，当前业界的数据采集管线普遍深度依赖商业闭源的网页搜索 API，不仅调用费用高昂、网络响应脆弱，更因网络内容的实时变动而导致实验轨迹极难复现。
-
-为此，TIGER-AI 实验室联合多家研究机构推出了 **OpenResearcher**，这是一个全流程开源且严格可复现的智能体轨迹合成框架。该框架创新性地将一次性语料冷启动与多轮长程轨迹合成解耦，并在包含 1500 万篇文档的纯离线语料库上，通过 `search`、`open` 与 `find` 三项基础浏览器原子操作闭环运行。借助开源教师模型 `GPT-OSS-120B`，团队合成了超过 9.7 万条研究轨迹，其中包含大量单条工具调用突破 100 次的长程复杂尾部数据。在合成数据上微调 30B-A3B 基座模型后，其在 BrowseComp-Plus 基准上的准确率大幅飙升 34 个百分点达到 54.8%，为学术界开展深度研究智能体的训练与可控评估提供了坚实基石。
-
----
-
-## 📌 核心执行概要
-
-&gt; ## 📌 Executive Summary
-
-训练具备深层推理与调查能力的深度研究智能体，离不开复杂且跨越长步长的决策轨迹，这些轨迹必须将检索操作、证据归纳以及多步骤推理严丝合缝地交织在一起。以往的数据收集管线重度依赖商业化的网络搜索 API，这带来了高昂的经济成本、服务不稳定以及严重的复现难题。
-
-&gt; Training sophisticated deep research agents requires complex, long-horizon trajectories that seamlessly interleave search operations, evidence aggregation, and multi-step reasoning. Traditionally, data collection pipelines rely heavily on proprietary web APIs, which introduces high costs, instability, and reproducibility hurdles.
-
-为了突破这些屏障，作者团队打造了 **OpenResearcher**，这是一个完全开源且可复现的数据管线，旨在将一次性的语料构建与多轮轨迹合成彻底解耦。OpenResearcher 完全在离线环境下基于一个拥有 1500 万篇文档的海量语料库运行，仅依赖三个核心的浏览器原语操作（`search`、`open` 与 `find`）。在开源教师模型 `GPT-OSS-120B` 的驱动下，该管线成功合成了超过 97,000 条高质量轨迹——其中包括大量单条轨迹包含 100 次以上工具调用的超长程子集。在这一合成数据集上对 30B-A3B 骨干模型进行监督微调 (SFT) 后，模型在 **BrowseComp-Plus 上取得了 54.8% 的优异准确率**（相较基座模型显著提升了 34.0 个百分点），并在 BrowseComp、GAIA 和 xbench-DeepSearch 等基准上全面保持强劲的竞争力。
-
-&gt; To overcome these barriers, the authors introduce **OpenResearcher**, a fully open and reproducible pipeline designed to decouple corpus bootstrapping from multi-turn trajectory synthesis. Operating entirely offline over a massive 15-million-document corpus, OpenResearcher uses three core browser primitives (`search`, `open`, and `find`). Powered by the `GPT-OSS-120B` teacher model, the pipeline successfully synthesizes over 97,000 trajectories—including an extensive long-horizon subset featuring upwards of 100 tool calls per trajectory. Fine-tuning a 30B-A3B backbone model on this synthetic dataset yields a remarkable **54.8% accuracy on BrowseComp-Plus** (+34.0 point improvement over the base model), while maintaining competitive performance across benchmarks like BrowseComp, GAIA, and xbench-DeepSearch.
-
----
-
-## 📖 摘要
-
-&gt; ## 📖 Abstract
-
-训练深度研究智能体需要交替进行搜索、证据聚合与多步推理的长程交互轨迹。然而，现有的数据构建方案通常依赖专有的网页 API，使得大规模轨迹合成成本昂贵、稳定性差且难以复现。我们提出了 OpenResearcher，这是一个可复现的完整管线，它将单次语料冷启动与多轮交互轨迹合成解耦，并在一个包含 1500 万文档的语料库上，仅使用三个显式的浏览器原语操作（search、open 和 find）完全离线执行检索与浏览闭环。通过采用 GPT-OSS-120B 作为教师模型，我们合成了超过 9.7 万条轨迹，其中包含大量具有 100 次以上工具调用的长程尾部样例。在这些轨迹上对 30B-A3B 骨干模型进行监督微调后，其在 BrowseComp-Plus 上的准确率达到 54.8%，相较基础模型提升了 34.0 个百分点，同时在 BrowseComp、GAIA 和 xbench-DeepSearch 评测中保持高度竞争力。由于运行环境完全离线且指标完全可观测，它还支持细致的受控消融分析；我们的研究揭示了深度研究系统设计的诸多实用见解，包括数据过滤策略、智能体架构选型，以及检索命中率如何直接映射为最终答案的准确率。我们在 [GitHub 链接](https://github.com/TIGER-AI-Lab/OpenResearcher) 上完整开源了该管线、合成轨迹、模型权重与离线搜索评估环境。
-
-&gt; Training deep research agents requires long-horizon trajectories that interleave search, evidence aggregation, and multi-step reasoning. However, existing data collection pipelines typically rely on proprietary web APIs, making large-scale trajectory synthesis costly, unstable, and difficult to reproduce. We present OpenResearcher, a reproducible pipeline that decouples one-time corpus bootstrapping from multi-turn trajectory synthesis and executes the search-and-browse loop entirely offline using three explicit browser primitives: search, open, and find, over a 15M-document corpus. Using GPT-OSS-120B as the teacher model, we synthesize over 97K trajectories, including a substantial long-horizon tail with 100+ tool calls. Supervised fine-tuning a 30B-A3B backbone on these trajectories achieves 54.8\% accuracy on BrowseComp-Plus, a +34.0 point improvement over the base model, while remaining competitive on BrowseComp, GAIA, and xbench-DeepSearch. Because the environment is offline and fully instrumented, it also enables controlled analysis, where our study reveals practical insights into deep research pipeline design, including data filtering strategies, agent configuration choices, and how retrieval success relates to final answer accuracy. We release the pipeline, synthesized trajectories, model checkpoints, and the offline search environment at [this link](https://github.com/TIGER-AI-Lab/OpenResearcher).
-
----
-
-## ⚙️ 管线核心亮点
-
-&gt; ## ⚙️ Key Pipeline Highlights
-
-* **解耦式系统架构：** 将一次性语料冷启动与多轮长程轨迹生成完全剥离，确保全流程具备严格的可复现性，并显著降低了计算与环境维护开销。
-* **纯离线运行环境：** 彻底摆脱对外部专有商业网页 API 的依赖，在精心构建的 **1500 万篇文档语料库** 上平稳运行，仅使用三个基本浏览器交互原语：
-  1. `search`（搜索）
-  2. `open`（打开）
-  3. `find`（查找）
-* **规模与交互复杂度：** 利用强大的 `GPT-OSS-120B` 开源教师模型产出逾 **9.7 万条合成轨迹** ，形成极具挑战性的长程分布，单任务交互深度可突破 **100 次以上的工具调用** 。
-* **可控的可视化分析：** 得益于环境完全离线且仪表化可追溯，研究者能够深入探究深度研究智能体设计的最佳实践，清晰揭示数据清洗策略、智能体参数配置以及检索召回质量与最终答题准确率之间的内在联系。
-
-&gt; * **Decoupled Architecture:** Separates one-time corpus bootstrapping from multi-turn trajectory generation to ensure full reproducibility and lower computational overhead.
-&gt; * **Offline Execution Environment:** Operates independently of external, proprietary web APIs over a curated **15-million-document corpus** utilizing three fundamental browser primitives:
-&gt;   1. `search`
-&gt;   2. `open`
-&gt;   3. `find`
-&gt; * **Scale &amp; Complexity:** Leverages `GPT-OSS-120B` as a teacher model to produce over **97K trajectories**, featuring a robust long-horizon distribution scaling past **100+ tool calls** per trajectory.
-&gt; * **Controlled Analysis:** The completely instrumented, offline framework permits deep investigation into optimal pipeline design, illuminating best practices for data filtering, agent configurations, and retrieval-to-accuracy correlations.
-
----
-
-## 📊 性能与实验结果
-
-&gt; ## 📊 Performance &amp; Results
-
-当利用合成的研究轨迹在 **30B-A3B 骨干模型** 上实施监督微调 (Supervised Fine-Tuning, SFT) 时，系统取得了令人瞩目的效果：
-* **BrowseComp-Plus：** 取得 **54.8% 的准确率**（相较基础模型实现了 **+34.0 个百分点的飞跃**）。
-* **出色的泛化能力：** 在多个极具挑战性的权威基准测试中持续保持强大的竞争力，包括 **BrowseComp**、**GAIA** 以及 **xbench-DeepSearch**。
-
-&gt; When applying Supervised Fine-Tuning (SFT) using the synthesized trajectories on a **30B-A3B backbone model**, the system achieves:
-&gt; * **BrowseComp-Plus:** **54.8% accuracy** (a massive **+34.0 point improvement** over the baseline model).
-&gt; * **Robust Generalization:** Maintains highly competitive performance across alternative complex benchmarks including **BrowseComp**, **GAIA**, and **xbench-DeepSearch**.
-
----
-
-## 🔗 相关资源与文献索引
-
-&gt; ## 🔗 Additional Links &amp; Resources
-
-* **全文阅读：** [查看 PDF](https://arxiv.org/pdf/2603.20278) | [实验性 HTML](https://arxiv.org/html/2603.20278v2) | [TeX 源码](https://arxiv.org/src/2603.20278)
-* **开源代码与资产：** [GitHub - TIGER-AI-Lab/OpenResearcher](https://github.com/TIGER-AI-Lab/OpenResearcher)
-* **文献检索工具：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2603.20278) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2603.20278) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2603.20278)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2603.20278) | [Experimental HTML](https://arxiv.org/html/2603.20278v2) | [TeX Source](https://arxiv.org/src/2603.20278)
-&gt; * **Code &amp; Artifacts:** [GitHub - TIGER-AI-Lab/OpenResearcher](https://github.com/TIGER-AI-Lab/OpenResearcher)
-&gt; * **Bibliographic Tools:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2603.20278) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2603.20278) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2603.20278)
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
-    </item>
-    <item>
-      <title>Magenta：闭环数学推理与 Lean 形式化验证</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/Magenta-闭环数学推理与Lean形式化验证/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/Magenta-闭环数学推理与Lean形式化验证/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>人类数学交流大多依赖自然语言，大语言模型 (Large Language Model, LLM) 虽擅长自然语言推理，但容易在推导细节中产生细微错误，无法提供像交互式定理证明助手那样百分之百可验证的严格保证。为了解决这一痛点，本文提出了 **Magenta**——一个无需额外训练的智能体流水线 (Agentic Pipeline)，它将大语言模型的自然语言非形式化推理与 Lean 4 形式化验证环境无缝打通。Magenta 仅需自然语言题目，便能自动生成解答、将其转化为 Lean 4 命题并构建经由机器检验的形式化证明，同时通过命题裁判防范虚假命题，并通过错误归因裁判引导精准修正。该方法在 AIME 2025、AIME 2026 及 HMMT 2026 等奥数基准上均取得 100% 的满分成绩，并与开源模型 K2-Horizon-7B 配合攻克了 IMO 2026 全部题目，展现了机器严密验证与大模型推理结合的巨大潜力。
-
----
-
-## 📌 核心摘要
-
-&gt; ## 📌 Summary
-
-尽管大语言模型 (LLM) 在借助自然语言进行非形式化数学推理方面表现优异，但它们往往缺乏机器可检验证明助手所具备的严格性与离散验证能力。
-
-&gt; While large language models (LLMs) perform well in informal mathematical reasoning using natural language, they often miss out on the rigor and discrete verification capabilities offered by machine-checkable proof assistants.
-
-本文介绍了 **Magenta**，这是一种用于连接非形式化推理与形式化推理的免训练智能体流水线 (Agentic Pipeline)。在仅给定自然语言数学问题的前提下，Magenta 能够：
-1. 生成解答。
-2. 将问题和解答形式化表达为一个 **Lean 4 命题**。
-3. 构建一段**经由机器检验的形式化证明**。
-
-&gt; This paper introduces **Magenta**, a training-free agentic pipeline that bridges informal and formal reasoning. Given a natural-language mathematical problem, Magenta:
-&gt; 1. Generates an answer.
-&gt; 2. Expresses the problem and answer as a **Lean 4 statement**.
-&gt; 3. Constructs a **machine-checked proof**.
-
-Magenta 采用了专门设计的裁判机制：其中**命题裁判 (Statement Judge)** 用于确保形式化后的陈述完整保留原始题意（防止产生虚假证明证书），而**错误归因裁判 (Error-Attribution Judge)** 则负责将证明失败的尝试精准路由至数学重新推导或本地 Lean 代码修复。
-
-&gt; Magenta utilizes specialized judges: a **statement judge** to ensure formalizations preserve the original problem (preventing false certificates), and an **error-attribution judge** to route failures either to mathematical re-derivation or local Lean repair.</description>
-    </item>
-    <item>
-      <title>LOCUS：面向高 Token 效率语言生成的任务感知低秩训练后优化</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/LOCUS-面向高-Token-效率语言生成的任务感知低秩训练后优化/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/LOCUS-面向高-Token-效率语言生成的任务感知低秩训练后优化/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>大语言模型 (LLM) 的线上服务与推理成本直接受制于输出序列的长度。然而，现有的偏好对齐算法（如直接偏好优化 DPO）常常会导致模型输出冗长啰嗦，在并未提升实际回答效用的情况下极大地增加了 Token 消耗。本文深入探索了训练后阶段参数更新对生成长度的影响，发现低秩子空间能够在不损害对齐损失的前提下有效重塑序列长度。为此，作者提出了名为 LOCUS 的任务感知低秩微调框架，在冻结主干网络的同时仅微调约 0.25% 的参数，成功使输出序列长度缩减高达 39.84%，为降低大模型部署成本提供了极具工业实用价值的精简方案。
-
----
-
-# LOCUS：面向高 Token 效率语言生成的任务感知低秩训练后优化
-
-&gt; # LOCUS: Task-Aware Low-Rank Post-Training for Token-Efficient Language Generation
-
-## 概要
-
-&gt; ## Summary
-
-大语言模型 (Large Language Model, LLM) 的部署服务成本与其输出序列的长度直接相关。然而，主流的偏好对齐技术往往会使模型生成的回复变得冗长啰嗦，而这种啰嗦并没有带来额外的实用价值。本文深入研究了训练后 (Post-Training) 更新的参数化方式如何影响生成长度，并证明低秩子空间能够在不损害对齐损失的前提下显著改变生成序列的长度。
-
-&gt; Large Language Model (LLM) serving costs are directly tied to the length of their output sequences, yet standard preference-alignment techniques frequently inflate response verbosity without providing extra utility. This paper investigates how post-training update parameterization influences generation length, demonstrating that low-rank subspaces can alter sequence length without compromising alignment loss. 
-
-为了遏制生成内容的冗长现象并降低模型推理成本，作者提出了 **LOCUS**，这是一种新颖的方法，通过挑选任务感知的低秩自适应子空间，在满足严格效用约束的同时最大程度降低输出 Token 成本。通过冻结模型主干并在该子空间内沿用原生偏好目标，LOCUS 在 Pythia-2.8B 上实现了高达 39.84% 的生成长度缩减，在 Qwen2.5-3B 上实现了 14.87–17.58% 的缩减，而整个过程仅需更新 0.24–0.28% 的模型参数，同时保持了一致的偏好诊断表现。
-
-&gt; To address verbosity and reduce serving costs, the author introduces **LOCUS**, a novel method that selects a task-aware low-rank adaptation subspace to minimize output-token costs while upholding a strict utility constraint. By keeping the backbone frozen and utilizing the native preference objective within this subspace, LOCUS achieves substantial reductions in continuation length (up to 39.84% on Pythia-2.8B and 14.87–17.58% on Qwen2.5-3B) while updating only 0.24–0.28% of model parameters and maintaining consistent preference diagnostics.
-
----
-
-## 文档元数据
-
-&gt; ## Document Metadata
-
-* **arXiv ID：** [arXiv:2609.11739](https://arxiv.org/abs/2609.11739) [cs.CL]
-* **标题：** LOCUS: Task-Aware Low-Rank Post-Training for Token-Efficient Language Generation
-* **作者：** Dongfang Zhao
-* **提交日期：** 2026年9月10日
-* **主要领域：** 计算与语言 (`cs.CL`)
-* **次要领域：** 人工智能 (`cs.AI`)，机器学习 (`cs.LG`)
-* **DOI：** [10.48550/arXiv.2609.11739](https://doi.org/10.48550/arXiv.2609.11739)
-* **授权协议：** [知识共享署名-非商业性使用-禁止演绎 4.0 国际许可协议 (CC BY-NC-ND 4.0)](http://creativecommons.org/licenses/by-nc-nd/4.0/) *(查看协议图标：&lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png" style="vertical-align: middle; display: inline-block; max-height: 20px;" /&gt;)*
-
-&gt; * **arXiv ID:** [arXiv:2609.11739](https://arxiv.org/abs/2609.11739) [cs.CL]
-&gt; * **Title:** LOCUS: Task-Aware Low-Rank Post-Training for Token-Efficient Language Generation
-&gt; * **Author:** Dongfang Zhao
-&gt; * **Submitted On:** September 10, 2026
-&gt; * **Primary Subject:** Computation and Language (`cs.CL`)
-&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Machine Learning (`cs.LG`)
-&gt; * **DOI:** [10.48550/arXiv.2609.11739](https://doi.org/10.48550/arXiv.2609.11739)
-&gt; * **License:** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](http://creativecommons.org/licenses/by-nc-nd/4.0/) *(View license icon: &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png" style="vertical-align: middle; display: inline-block; max-height: 20px;" /&gt;)*
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-大语言模型的服务成本与输出序列长度直接成正比，但常规的偏好对齐方法常常会在没有提高回复效用的情况下，导致生成文本越发冗长。我们探讨了训练后更新的参数化形式是否会影响生成长度：研究发现，低秩子空间可以在不改变对齐损失的情况下改变序列长度。为此，我们提出了 **LOCUS**，该方法能够在满足效用约束的前提下，挑选任务感知的低秩自适应子空间以最小化输出 Token 成本。
-
-&gt; Large language model serving costs scale directly with output sequence length, yet standard preference alignment often inflates response verbosity without improving utility. We study whether the parameterization of post-training updates affects generation length: low-rank subspaces alter sequence length without modifying the alignment loss. We present **LOCUS**, a method that selects a task-aware low-rank adaptation subspace to minimize output-token cost subject to a utility constraint. 
-
-在该子空间内，训练后优化在冻结主干网络的同时保留了原生的偏好目标。基于 Anthropic HH-RLHF 对话偏好数据集，我们在 Pythia-2.8B 和 Qwen2.5-3B 这两个约 3B 规模的解码器主干网络上进行了评估，对比了协议对齐的全参数直接偏好优化 (Direct Preference Optimization, DPO) 与 DrDPO 分支，以及公开发布的 SamPO 检查点。实验结果显示，LOCUS 在 Pythia-2.8B 上的续写长度缩减了高达 **39.84%**，在 Qwen2.5-3B 上缩减了 **14.87–17.58%**，且仅需更新 **0.24–0.28%** 的模型参数，模型内部的偏好诊断指标亦未发生实质性改变。
-
-&gt; Within this subspace, post-training retains the native preference objective with a frozen backbone. Across Anthropic HH-RLHF dialogue preferences, we evaluate two $\sim$3B decoder backbones, Pythia-2.8B and Qwen2.5-3B, against protocol-matched full-parameter DPO and DrDPO branches and the released SamPO checkpoint. LOCUS reduces continuation length by up to **39.84%** on Pythia-2.8B and by **14.87–17.58%** on Qwen2.5-3B while updating only **0.24–0.28%** of model parameters, with no material change in the internal preference diagnostic.
-
----
-
-## 获取与资源
-
-&gt; ## Access &amp; Resources
-
-* **全文链接：**
-  * [查看 PDF](https://arxiv.org/pdf/2609.11739)
-  * [HTML 版本 (实验性)](https://arxiv.org/html/2609.11739v1)
-  * [TeX 源码](https://arxiv.org/src/2609.11739)
-* **文献与引用工具：**
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11739)
-  * [Google 学术](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11739)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11739)
-* **代码、数据与演示：**
-  * [Hugging Face](https://huggingface.co/huggingface)
-  * [alphaXiv](https://alphaxiv.org/)
-  * [CatalyzeX 代码查找](https://www.catalyzex.com)
-
-&gt; * **Full-Text Links:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.11739)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.11739v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.11739)
-&gt; * **Bibliographic &amp; Citation Tools:**
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11739)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11739)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11739)
-&gt; * **Code, Data &amp; Demos:**
-&gt;   * [Hugging Face](https://huggingface.co/huggingface)
-&gt;   * [alphaXiv](https://alphaxiv.org/)
-&gt;   * [CatalyzeX Code Finder](https://www.catalyzex.com)</description>
-    </item>
-    <item>
-      <title>LLM 如何遵循指令：多项语言技能的熟练协调，而非通用机制</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/LLM-如何遵循指令-多项语言技能的熟练协调-而非通用机制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/LLM-如何遵循指令-多项语言技能的熟练协调-而非通用机制/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>学界与工业界普遍认为，指令微调 (Instruction Tuning) 赋予了大语言模型 (Large Language Model, LLM) 一种通用的“指令遵循”能力，但其内在的神经机制始终如同黑盒。本文通过在三种经过指令微调的模型上对 9 种不同任务进行诊断性探针 (Diagnostic Probing) 与因果消融分析，系统反驳了“存在单一通用机制”的传统假设。研究发现，模型在不同任务之间的内部表征共享极其有限且呈不对称依赖，结构性约束与语义解析在网络层级上严格分层涌现，且约束解码信号仅在文本生成启动后才会动态出现。这一重要发现表明，大模型的指令遵循本质上是对多种底层语言能力的“熟练协调与组合调用”，而非运行某个抽象统一的全局约束检查器。
-
----
-
-## 📌 核心概要
-
-&gt; ## 📌 Executive Summary
-
-人们通常认为，指令微调赋予了大语言模型 (LLM) 一种跨领域的通用指令遵循能力。然而，其底层的确切运作机制一直未被完全理解。本文深入探讨了指令遵循究竟是依赖于一个单一的**通用机制** (Universal Mechanism) ，还是多种**技能的组合式调用** (Compositional Skill Deployment) 。通过在三种经过指令微调的模型上对 9 种多样化任务展开诊断性探针分析，作者发现了大量一致反对“单一通用机制”假说的证据。相反，指令遵循更准确的本质是多种异构语言能力的**熟练协同** (Skillful Coordination) 。
-
-&gt; It is commonly assumed that instruction tuning provides large language models (LLMs) with a domain-general ability to follow instructions. However, the exact underlying mechanics remain poorly understood. This paper investigates whether instruction-following relies on a single **universal mechanism** or a **compositional skill deployment**. Through diagnostic probing across nine diverse tasks in three instruction-tuned models, the authors find converging evidence against a universal mechanism. Instead, instruction-following is best characterized as the **skillful coordination** of diverse linguistic capabilities.
-
----
-
-## 🔍 关键发现与深度剖析
-
-&gt; ## 🔍 Key Findings &amp; Analysis
-
-本研究从多个方法论视角评估了 LLM 的内部表征行为，得出了以下核心洞察：
-
-&gt; The study evaluates LLM behavior through several methodological lenses, yielding the following insights:
-
-1. **部分且结构化的表征共享**：与专精于特定任务的专用探针相比，在所有任务上联合训练的通用探针表现出*选择性*而非*一致性*的性能衰减。这表明模型内部的表征共享是结构化和局部的，而非全局通用的。
-2. **任务聚类与弱跨任务迁移**：跨任务之间的泛化迁移能力整体较弱，并且严格按照具体的技能相似度进行聚类，而非基于普遍的指令顺从能力。
-3. **稀疏非对称依赖**：因果消融实验表明，不同任务之间表现出稀疏且不对称的依赖关系，而不是共享一个统一集中的表征空间。
-4. **模型层级的复杂度分层分化**：各项任务在不同网络深度上呈现出明显的复杂度分层：
-   - **结构性约束**在神经网络的浅层即早期阶段便快速涌现；
-   - **语义级任务**则在信息处理流水线的更深层网络中才逐步成型。
-5. **生成过程中的时间动态特性**：时序分析显示，约束信号只有在生成实际开始之后才变得可被解码，并在整个回复生成阶段持续保持可解码状态。
-
-&gt; 1. **Partial and Structured Representational Sharing:**  
-&gt;    General probes trained across all tasks exhibit *selective* rather than *uniform* deficits relative to task-specific specialists. This demonstrates that sharing representations is structured and partial rather than global.
-&gt; 
-&gt; 2. **Task Clustering and Weak Transfer:**  
-&gt;    Cross-task transfer is generally weak and tends to cluster strictly by skill similarity rather than general instruction compliance.
-&gt; 
-&gt; 3. **Sparse Asymmetric Dependencies:**  
-&gt;    Causal ablation experiments reveal sparse, asymmetric dependencies between tasks instead of a unified, shared representational space.
-&gt; 
-&gt; 4. **Stratified Layer Complexity:**  
-&gt;    Tasks stratify by complexity across the model layers:
-&gt;    - **Structural constraints** emerge early in the network layers.
-&gt;    - **Semantic tasks** emerge later in the processing pipeline.
-&gt; 
-&gt; 5. **Temporal Dynamics During Generation:**  
-&gt;    Temporal analysis shows that constraint signals only become decodable once generation is already underway, remaining consistently decodable throughout the remainder of the response.
-
----
-
-## 📄 论文摘要
-
-&gt; ## 📄 Abstract
-
-&gt; 人们普遍假设指令微调能赋予语言模型通用的跨领域指令遵循能力，然而其底层运行机制仍缺乏透彻理解。指令遵循究竟依赖于单一的通用机制，还是源于多种技能的组合式调用？我们通过在三种经过指令微调的模型上针对 9 项不同任务开展诊断性探针实验对此进行了深入探究。我们的分析提供了多维度收敛的证据，明确否定了单一通用机制假说。首先，相较于任务特定的专用探针，在全任务上训练的通用探针展现出选择性而非均匀的缺陷，这表明内部表征的共享是局部且结构化的，而非全局统一的。其次，跨任务迁移效果较弱，且严格按技能相似性聚集。第三，因果消融分析揭示了任务之间稀疏且非对称的依赖关系，而非统一共享的表征空间。此外，任务复杂度在模型层级间清晰分层：结构约束在浅层较早涌现，而高级语义任务则在深层后期显现。最后，时序动力学分析表明，约束信号仅在生成过程正式启动后才变得可解码，并在此后的整个生成阶段持续维持。这些发现表明，指令遵循更应被视作多种语言能力的熟练协同运作，而非单一抽象约束校验机制的执行。
-
-&gt; &gt; Instruction tuning is commonly assumed to endow language models with a domain-general ability to follow instructions, yet the underlying mechanism remains poorly understood. Does instruction-following rely on a universal mechanism or compositional skill deployment? We investigate this through diagnostic probing across nine diverse tasks in three instruction-tuned models. Our analysis provides converging evidence against a universal mechanism. First, general probes trained across all tasks show selective rather than uniform deficits relative to task-specific specialists, indicating that representational sharing is partial and structured rather than global. Second, cross-task transfer is weak and clustered by skill similarity. Third, causal ablation reveals sparse asymmetric dependencies rather than shared representations. Tasks also stratify by complexity across layers, with structural constraints emerging early and semantic tasks emerging late. Finally, temporal analysis shows that the constraint signal becomes decodable only once generation is under way, and remains so throughout the response. These findings indicate that instruction-following is better characterized as skillful coordination of diverse linguistic capabilities rather than deployment of a single abstract constraint-checking process.
-
----
-
-## 🔗 访问链接与资源
-
-&gt; ## 🔗 Links &amp; Resources
-
-* **全文阅读：** 
-  * [查看 PDF](https://arxiv.org/pdf/2604.06015)
-  * [HTML 网页版 (实验性)](https://arxiv.org/html/2604.06015v2)
-  * [TeX 源码](https://arxiv.org/src/2604.06015)
-* **授权协议：** [Creative Commons Attribution-NonCommercial-ShareAlike 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) ![license icon](./images/079cd8198ba3.png)
-* **学术指标与引用：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2604.06015)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2604.06015)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2604.06015)
-
-&gt; * **Full-Text Access:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2604.06015)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2604.06015v2)
-&gt;   * [TeX Source](https://arxiv.org/src/2604.06015)
-&gt; * **License:** [Creative Commons Attribution-NonCommercial-ShareAlike 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) ![license icon](./images/079cd8198ba3.png)
-&gt; * **Citations &amp; Metrics:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2604.06015)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2604.06015)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2604.06015)</description>
     </item>
   </channel>
 </rss>

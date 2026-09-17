@@ -1,0 +1,1088 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-18-%E9%87%8D%E6%9E%84-Packfile-%E5%9C%A8%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E4%B8%8A%E7%9B%B4%E6%8E%A5%E8%BF%90%E8%A1%8C-Git-%E7%9A%84%E6%9E%B6%E6%9E%84%E5%AE%9E%E8%B7%B5/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>重构 Packfile：在对象存储上直接运行 Git 的架构实践 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#packfile-git" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              重构 Packfile：在对象存储上直接运行 Git 的架构实践
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="packfile-git">重构 Packfile：在对象存储上直接运行 Git 的架构实践</h1>
+<blockquote>
+<h1 id="you-can-run-git-on-object-storage-if-you-re-make-packfiles">You Can Run Git on Object Storage If You Re-Make Packfiles</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>将 Git 存储服务直接构建在低成本、高弹性的云端对象存储 (例如 AWS S3 或 Tigris) 之上，是许多团队探索云原生存储架构与降低运维开销的理想方案。然而，标准 Git 的 Packfile 打包机制是为本地磁盘设计的，严重依赖微秒级的内核内存映射 <code>mmap</code> 与高并发随机寻道；一旦搬到存在数十毫秒网络往返延迟的对象存储上，性能便会迅速恶化至不可用的状态。为了彻底攻克这一难题，开发者借鉴了经典 CD-ROM 光盘中 <code>.bin</code>/<code>.cue</code> 音轨索引的分离设计，提出了一种专为对象存储定制的列式 Packfile 格式，并巧妙利用精准的 HTTP Range 范围请求与异步预取机制。这一架构突破将 S3 API 请求量削减了数个数量级，在生产级基准测试中使代码推送与克隆提速高达 14.6 倍，为现代分布式版本控制与云端底层系统架构开辟了全新路径。</p>
+<hr />
+<h2 id="_2">核心概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>构建一个以对象存储 (Object Storage) (例如 Tigris) 为底座的 Git 服务器，听起来似乎很直观：只需搭建一层文件系统转译层，让 Git 能够操作对象存储即可。然而，标准的 Git Packfile 是为本地磁盘量身设计的，高度依赖操作系统内核的 <code>mmap</code> 内存映射以及低延迟的本地文件系统极速读取。一旦将这些读取操作映射为跨越网络的对象存储往返，面对生产环境级别的大型仓库时，这种方案的扩展性便会彻底崩溃。</p>
+<blockquote>
+<p>Building a Git server backed by object storage (like Tigris) sounds straightforward: use a filesystem translation layer so Git can speak object storage. However, standard Git packfiles are designed for local disks and rely heavily on the kernel's <code>mmap</code> and fast, low-latency filesystem reads. When translated over network round-trips to object storage, this approach fails to scale for production-sized repositories. </p>
+</blockquote>
+<p>为了解决这个问题，作者从老式 CD-ROM 光盘的 <code>.bin</code>/<code>.cue</code> 索引单中汲取灵感，发明了一种专为对象存储原生打造的全新 Packfile 格式。通过构建一个带有二进制索引文件 (<code>objects.cue</code>) 的列式存储结构，索引中同时记录了精确的文件偏移量以及压缩与解压后的双重尺寸，客户端得以发起高效的 HTTP Range 范围请求。这一专属设计不仅大幅削减了访问 S3/对象存储的请求次数，更将代码推送 (push) 和克隆 (clone) 的性能最高提升了整整 14.6 倍。</p>
+<blockquote>
+<p>To solve this, the author invented an object-storage-native packfile format inspired by CD-ROM <code>.bin</code>/<code>.cue</code> sheets. By creating a columnar store with a binary index (<code>objects.cue</code>) containing both compressed and uncompressed sizes alongside precise file offsets, clients can execute efficient HTTP Range requests. This custom approach drastically reduced S3/object storage requests and accelerated push/clone performance by up to 14.6x.</p>
+</blockquote>
+<hr />
+<h2 id="git">Git 到底是什么？不过是一堆可怜的零散对象！</h2>
+<blockquote>
+<h2 id="what-is-git-a-miserable-little-pile-of-objects">What is Git? A Miserable Little Pile of Objects!</h2>
+</blockquote>
+<p>当你提交一次代码时，Git 会把你的改动作为经过压缩的、基于内容寻址的对象 (Content-Addressed Objects) 保存在 <code>.git</code> 目录中 (本文称之为“dotgit”)。</p>
+<blockquote>
+<p>When you make a commit, Git stores your changes as compressed, content-addressed objects inside the <code>.git</code> directory (referred to here as "dotgit"). </p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>mkdir<span class="w"> </span>~/tmp/gitexample
+$<span class="w"> </span>git<span class="w"> </span>init<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>branch<span class="w"> </span>-m<span class="w"> </span>main
+$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Hello, blog!&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hello.txt
+$<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.
+$<span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-sm<span class="w"> </span><span class="s2">&quot;chore: initial commit&quot;</span>
+</code></pre></div>
+<p>这一操作会在底层生成一片由裸对象和具名引用构成的“对象之海”：</p>
+<blockquote>
+<p>This produces a sea of bare objects and named references:</p>
+</blockquote>
+<figure><figcaption>图 01: 对象的海洋与指向它们的引用命名</figcaption><pre>  .git/objects/                    refs/heads/main                                     │  ├── 1c/7a26a901..ec7966  ─────▶  commit 1c7a26a  │                                  │  ├── 8e/67afbb2e..857bd3  ─────▶    tree 8e67afb  │                                  │  hello.txt  └── 9c/c9867337..09fe26  ─────▶    blob 9cc9867                                          "Hello, blog!"   the filename is the sha1 of the bytes in the file, so the same  content is always, everywhere, the very same object</pre></figure>
+
+<p>读取其中的某个对象需要对其进行解压：</p>
+<blockquote>
+<p>Reading an object requires decompressing it:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>file<span class="w"> </span>.git/objects/**/*<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>directory
+.git/objects/1c/7a26a901724b4ce766655ac387413fb9ec7966:<span class="w"> </span>zlib<span class="w"> </span>compressed<span class="w"> </span>data
+.git/objects/8e/67afbb2ee6bdcbb79061dfdfb93febce857bd3:<span class="w"> </span>zlib<span class="w"> </span>compressed<span class="w"> </span>data
+.git/objects/9c/c9867337c2ebae85ba2350f901e0bcc209fe26:<span class="w"> </span>zlib<span class="w"> </span>compressed<span class="w"> </span>data
+
+$<span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sys, zlib; sys.stdout.buffer.write(zlib.decompress(sys.stdin.buffer.read()))&quot;</span><span class="w"> </span>&lt;<span class="w"> </span>.git/objects/9c/c9867337c2ebae85ba2350f901e0bcc209fe26
+blob<span class="w"> </span>13Hello,<span class="w"> </span>blog!
+</code></pre></div>
+<h3 id="inode-packfile">inode 节点上限与 Packfile 打包文件</h3>
+<blockquote>
+<h3 id="the-inode-limit-and-packfiles">The Inode Limit and Packfiles</h3>
+</blockquote>
+<p>对于像 Linux 内核这样的大型代码仓库，如果存储数以百万计的松散文件，很快就会触及文件系统的 inode 节点上限。Git 解决这一难题的武器正是 <strong>Packfile</strong>——将海量零散对象打包并压缩进单一文件的大包：</p>
+<blockquote>
+<p>For large repositories like the Linux kernel, storing millions of loose files hits inode limits. Git solves this using <strong>packfiles</strong>—compressed bundles that store multiple objects in a single file:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>git<span class="w"> </span>count-objects<span class="w"> </span>-v
+count:<span class="w"> </span><span class="m">756</span>
+size:<span class="w"> </span><span class="m">3500</span>
+<span class="k">in</span>-pack:<span class="w"> </span><span class="m">448</span>
+packs:<span class="w"> </span><span class="m">1</span>
+size-pack:<span class="w"> </span><span class="m">321</span>
+prune-packable:<span class="w"> </span><span class="m">0</span>
+garbage:<span class="w"> </span><span class="m">0</span>
+size-garbage:<span class="w"> </span><span class="m">0</span>
+</code></pre></div>
+<p>你可以使用 <code>git gc</code> 命令强制 Git 将松散对象打包归档。</p>
+<blockquote>
+<p>You can force Git to pack loose objects using <code>git gc</code>.</p>
+</blockquote>
+<hr />
+<h2 id="packfile">Packfile 遭遇的网络延迟难题</h2>
+<blockquote>
+<h2 id="the-network-latency-problem-with-packfiles">The Network Latency Problem with Packfiles</h2>
+</blockquote>
+<p>像 Linux 内核这样体量的仓库，包含了打包在数个吉字节 (GB) 庞大 Packfile 中的数百万个对象：</p>
+<blockquote>
+<p>A repository like the Linux kernel contains millions of objects bundled into multi-gigabyte packfiles:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>xe@zohar:~/Code/linux.git$<span class="w"> </span>git<span class="w"> </span>count-objects<span class="w"> </span>-v
+count:<span class="w"> </span><span class="m">0</span>
+size:<span class="w"> </span><span class="m">0</span>
+<span class="k">in</span>-pack:<span class="w"> </span><span class="m">11827138</span>
+packs:<span class="w"> </span><span class="m">1</span>
+size-pack:<span class="w"> </span><span class="m">3876775</span>
+prune-packable:<span class="w"> </span><span class="m">0</span>
+garbage:<span class="w"> </span><span class="m">0</span>
+size-garbage:<span class="w"> </span><span class="m">0</span>
+</code></pre></div>
+<p>本地文件系统能够借助 <code>mmap</code> 进行近乎瞬时完成的内存映射磁盘读取 (耗时在微秒级别)，而跨越网络访问对象存储的往返耗时却长达数毫秒——这意味着照搬原生 Packfile 处理机制在网络上运行会慢上成千上万倍。</p>
+<blockquote>
+<p>While local filesystems leverage <code>mmap</code> for near-instantaneous memory-mapped disk reads (microseconds), network round-trips to object storage take milliseconds—making native packfile handling millions of times slower. </p>
+</blockquote>
+<p>雪上加霜的是，标准 Git Packfile 索引记录的仅仅是对象的<em>解压后</em>大小，根本不提供其压缩后的精确尺寸，导致你无法精准构造出只读取该对象字节区间的 <strong>HTTP Range 范围请求</strong>。</p>
+<blockquote>
+<p>Furthermore, standard Git packfile indices only reveal the <em>decompressed</em> size of an object, leaving you without the compressed size required to construct an accurate <strong>HTTP Range request</strong>.</p>
+</blockquote>
+<figure><figcaption>图 02: 1100 万个对象、一个 Packfile 与一个索引</figcaption><pre>  $ git count-objects -v          .git/objects/pack/  count:            0             └── pack-45986f41..c5786.pack   3.7 GiB  in-pack:   11827138  packs:            1             eleven million loose files would be  size-pack:  3876775             eleven million inodes. so: one file.    .idx                             .pack  ┌───────────────────────┐       ┌──────────────────────────────────────┐  │ 0002ff4c..  0x0000c   │       │███ ██ ████ █ ███████ ██ █ ████ ██████│  │ 0031ab90..  0x0a13f   │       └──────────────────────────────────────┘  │ 1c7a26a9..  0x1f3a4   │  │ ...                   │  └───────────────────────┘   each row's colour is the run of bytes its offset points at, so a  read is a seek to an offset inside one very big file</pre></figure>
+
+<figure><figcaption>图 03: 一次范围 GET 请求：从 128 MiB 中间精准读取 366 字节</figcaption><pre>  packs/019a7f3c..bin  ┌────────────────────────────────────────────────┐  │                                   ██           │  └───────────────────────────────────▲────────────┘   0                                  │      128 MiB                                      └── 366 bytes, right here   you know where it starts and how long it is, so ask for  exactly that span and nothing else:   GET /packs/019a7f3c..bin  Range: bytes=100663296-100663661   and that is all the bucket sends back:   206 Partial Content  Content-Range: bytes 100663296-100663661/134217728  ┌────┐  │████│  366 B on the wire, not 128 MiB  └────┘</pre></figure>
+
+<hr />
+<h2 id="packfile-20">Packfile 2.0：对象存储狂想曲</h2>
+<blockquote>
+<h2 id="packfiles-v2-object-storage-boogaloo">Packfiles v2: Object Storage Boogaloo</h2>
+</blockquote>
+<p>为了攻克这一瓶颈，作者受到早期复古 CD-ROM 光盘中 <code>.bin</code> 镜像与 <code>.cue</code> 索引单的启发，量身定制了一套全新的 Packfile 格式。</p>
+<blockquote>
+<p>To bridge the gap, the author designed a custom packfile format inspired by CD-ROM <code>.bin</code> and <code>.cue</code> sheets. </p>
+</blockquote>
+<h3 id="bin-cue"><code>.bin</code> 与 <code>.cue</code> 解决之道</h3>
+<blockquote>
+<h3 id="the-bin-and-cue-solution">The <code>.bin</code> and <code>.cue</code> Solution</h3>
+</blockquote>
+<p>就像 CD 光盘的 cue 索引单通过精准记录各音轨位置、使播放器无需通读整张光盘就能任意寻道跳转一样，<code>objgit</code> 也将一份二进制数据文件 (<code>.bin</code>，上限通常为 128Mi) 与一份二进制编码的索引清单 (<code>.cue</code>) 成对组合。</p>
+<blockquote>
+<p>Just as CD cue sheets map out tracks to let players seek arbitrary points in a binary audio file without reading the whole disc, <code>objgit</code> pairs a binary data file (<code>.bin</code>, up to 128Mi) with a binary-encoded cue sheet (<code>.cue</code>).</p>
+</blockquote>
+<figure><figcaption>图 04: CD 光盘 cue sheet 与 objgit cue sheet 解决的是同一个问题</figcaption><pre>CD AUDIO DISC                                   OBJGIT PACKFILE──────────────────────────────────────────      ──────────────────────────────────────────U0008_0000002_0000147.WAV    one big file       objects.bin                  one big file┌──────────┬─────────────┬─────────────────┐    ┌──────────┬─────────────┬─────────────────┐│ track 01 │  track 02   │       ...       │    │  blob A  │   tree B    │       ...       │└──────────┴─────────────┴─────────────────┘    └──────────┴─────────────┴─────────────────┘  ▲          ▲                                    ▲          ▲  │ 00:00    │ 00:13                              │ @0       │ @142 FILE.cue     plain text, parsed top-down        objects.cue  packed records, fixed width┌──────────────────────────────────────────┐    ┌──────────────────────────────────────────┐│ FILE "U0008_0000002_0000147.WAV" WAVE    │    │ HEADER                              16 B ││                                          │    │   magic  version  rec_size  record_count ││ TRACK 01 AUDIO                           │    ├──────────────────────────────────────────┤│ INDEX 01 00:00                           │    │ RECORD 0                            58 B ││ TITLE "U0008_0000002_0000147_0001"       │    │   hash 3a7f…c21        type blob         ││                                          │    │   comp zstd            size 311          ││ TRACK 02 AUDIO                           │    │   bin_offset 0         bin_length 142    ││ INDEX 01 00:13                           │    │   delta_base 0000…0000                   ││ TITLE "U0008_0000002_0000147_0002"       │    ├──────────────────────────────────────────┤└──────────────────────────────────────────┘    │ RECORD 1                            58 B │                                                └──────────────────────────────────────────┘to reach track 2 a player parses everyline above it. it already has the disc.         record N sits at 16 + N*58. one seek,                                                then one ranged GET into objects.bin.</pre></figure>
+
+<h3 id="objgit">Objgit 的列式存储格式</h3>
+<blockquote>
+<h3 id="objgits-columnar-format">Objgit's Columnar Format</h3>
+</blockquote>
+<p>这种全新定制格式在记录 Packfile 偏移量的同时，一并保存了对象压缩后与解压后的双重尺寸。这使得客户端可以直接向 Tigris 发起精准的 HTTP Range 请求，在后台异步下载整包文件的同时，先人一步拉取到当前所需的目标对象。</p>
+<blockquote>
+<p>The custom format stores both compressed and uncompressed sizes alongside packfile offsets. This enables precise HTTP Range requests to extract individual objects from Tigris while the packfile downloads asynchronously in the background.</p>
+</blockquote>
+<figure><figcaption>图 05: 线上传输中的 objects.cue：一个文件头，紧随固定宽度的记录结构</figcaption><pre>objects.cue HEADER   16 bytes, once at the top of the file┌──────────────┬─────────┬──────────┬────────────────────┐│ magic "OGCU" │ version │ rec_size │ record_count       ││          4 B │ u16 2 B │ u16  2 B │ u64            8 B │└──────────────┴─────────┴──────────┴────────────────────┘0              4         6          8                   16 objects.cue RECORD   58 bytes, repeated record_count times┌──────────────┬──────┬──────┬────────────┬────────────┬────────┬──────────────┐│ hash         │ type │ comp │ bin_offset │ bin_length │ size   │ delta_base   ││ sha1  20 B   │ u8 1B│ u8 1B│ u64   8 B  │ u32   4 B  │ u32 4B │ sha1  20 B   │└──────────────┴──────┴──────┴────────────┴────────────┴────────┴──────────────┘0              20     21     22           30           34       38            58 identity hash, delta_base   location bin_offset, bin_length   decode type, comp, size</pre></figure>
+
+<figure><figcaption>图 06: 竞速预取：当整包后台下载进度刚到 2 MiB 时并发发起的四个范围 GET 请求</figcaption><pre>  git wants four objects out of packs/019a7f3c..bin                        A        B             C          D                       ▼        ▼             ▼          ▼              ┌────────────────────────────────────────────────┐  container   │░░░░░░█████░░░░█████░░░░░░░░░█████░░░░░░█████░░│              └────────────────────────────────────────────────┘   five requests go out at once:   A   16 MiB  │      █████                                     │  done       B   40 MiB  │               ████░                            │  cancelled  C   77 MiB  │                             █████              │  done       D  107 MiB  │                                        ███░░   │  cancelled  whole file  │████████████████████████████████████████████████│  done        four ranged GETs race the background download of the whole  file. whatever the download reaches stops needing a GET.</pre></figure>
+
+<hr />
+<h2 id="_3">性能基准测试</h2>
+<blockquote>
+<h2 id="performance-benchmarks">Performance Benchmarks</h2>
+</blockquote>
+<p>团队在三个具有代表性的代码仓库中，对这种全新的列式 <code>.bin</code>/<code>.cue</code> 打包方案进行了基准测试：</p>
+<blockquote>
+<p>The new columnar <code>.bin</code>/<code>.cue</code> packfile approach was benchmarked across three repositories:</p>
+</blockquote>
+<ul>
+<li><strong>objgit</strong>：一个较新的原型代码仓库。</li>
+<li><strong>Xe/x</strong>：一个持续活跃开发了十余年的单体大仓库 (Monorepo)。</li>
+<li><strong>tigris-blog</strong>：一个包含大量图片和不可压缩静态资源的博客仓库。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>objgit</strong>: A newer prototype repository.</li>
+<li><strong>Xe/x</strong>: A monorepo active for over a decade.</li>
+<li><strong>tigris-blog</strong>: A repository containing images and incompressible assets.</li>
+</ul>
+</blockquote>
+<h3 id="push">代码推送 (Push) 测试</h3>
+<blockquote>
+<h3 id="push-tests">Push Tests</h3>
+</blockquote>
+<figure><figcaption>图 07: Push 操作产生的 S3 请求数对比 (格式改造前后，对数坐标)</figcaption><pre>              1         10        100       1,000     10,000              ├─────────┼─────────┼─────────┼─────────┤   objgit    old       ████████████████████████                     231    new       █████████████                                 18   Xe/x    old       ████████████████████████████████████████   9,236    new       ███████████████                               30   tigris-blog    old       ███████████████████████████████████        3,324    new       █████████████████████                        136   ██ old  git packfiles behind a filesystem shim  ██ new  .bin/.cue columnar packfiles</pre></figure>
+
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">仓库</th>
+<th style="text-align: left;">构建版本</th>
+<th style="text-align: left;">耗时</th>
+<th style="text-align: left;">S3 请求数</th>
+<th style="text-align: left;">PUT</th>
+<th style="text-align: left;">GET</th>
+<th style="text-align: left;">HEAD</th>
+<th style="text-align: left;">LIST</th>
+<th style="text-align: left;">Keys</th>
+<th style="text-align: left;">存储桶字节数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">8.7s</td>
+<td style="text-align: left;">231</td>
+<td style="text-align: left;">46</td>
+<td style="text-align: left;">47</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">138</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">829.27 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>2.2s</strong></td>
+<td style="text-align: left;"><strong>18</strong></td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">10</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">902.98 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">3m29.4s</td>
+<td style="text-align: left;">9,236</td>
+<td style="text-align: left;">1,087</td>
+<td style="text-align: left;">2,170</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">5,979</td>
+<td style="text-align: left;">1,082</td>
+<td style="text-align: left;">54.96 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>14.3s</strong></td>
+<td style="text-align: left;"><strong>30</strong></td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">20</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">46.38 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">2m13.4s</td>
+<td style="text-align: left;">3,324</td>
+<td style="text-align: left;">515</td>
+<td style="text-align: left;">522</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">2,287</td>
+<td style="text-align: left;">511</td>
+<td style="text-align: left;">354.67 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>26.5s</strong></td>
+<td style="text-align: left;"><strong>136</strong></td>
+<td style="text-align: left;">9</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">360.75 MiB</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Repo</th>
+<th style="text-align: left;">Build</th>
+<th style="text-align: left;">Wall</th>
+<th style="text-align: left;">S3 requests</th>
+<th style="text-align: left;">PUT</th>
+<th style="text-align: left;">GET</th>
+<th style="text-align: left;">HEAD</th>
+<th style="text-align: left;">LIST</th>
+<th style="text-align: left;">Keys</th>
+<th style="text-align: left;">Bucket bytes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">8.7s</td>
+<td style="text-align: left;">231</td>
+<td style="text-align: left;">46</td>
+<td style="text-align: left;">47</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">138</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">829.27 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>2.2s</strong></td>
+<td style="text-align: left;"><strong>18</strong></td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">10</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">902.98 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">3m29.4s</td>
+<td style="text-align: left;">9,236</td>
+<td style="text-align: left;">1,087</td>
+<td style="text-align: left;">2,170</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">5,979</td>
+<td style="text-align: left;">1,082</td>
+<td style="text-align: left;">54.96 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>14.3s</strong></td>
+<td style="text-align: left;"><strong>30</strong></td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">20</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">46.38 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">2m13.4s</td>
+<td style="text-align: left;">3,324</td>
+<td style="text-align: left;">515</td>
+<td style="text-align: left;">522</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">2,287</td>
+<td style="text-align: left;">511</td>
+<td style="text-align: left;">354.67 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>26.5s</strong></td>
+<td style="text-align: left;"><strong>136</strong></td>
+<td style="text-align: left;">9</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">360.75 MiB</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<figure><figcaption>图 08: Push 操作耗时对比 (对数坐标，右侧标注加速倍数)</figcaption><pre>              1s          10s         100s        1,000s              ├───────────┼───────────┼───────────┤   objgit    old       ███████████                              8.7s    new       ████                                     2.2s   4.0x   Xe/x    old       ████████████████████████████          3m29.4s    new       ██████████████                          14.3s  14.6x   tigris-blog    old       ██████████████████████████            2m13.4s    new       █████████████████                       26.5s   5.0x   ██ old  git packfiles behind a filesystem shim  ██ new  .bin/.cue columnar packfiles</pre></figure>
+
+<h3 id="clone">代码克隆 (Clone) 测试</h3>
+<blockquote>
+<h3 id="clone-tests">Clone Tests</h3>
+</blockquote>
+<figure><figcaption>图 09: Clone 操作产生的 S3 请求数对比 (格式改造前后，对数坐标)</figcaption><pre>              1         10        100       1,000     10,000              ├─────────┼─────────┼─────────┼─────────┤   objgit    old       █████████████████████████                    323    new       ████████████                                  17   Xe/x    old       ████████████████████████████████████       6,428    new       ████████████                                  17   tigris-blog    old       ████████████████████████████████████       3,675    new       ██████████████████████                       158   ██ old  git packfiles behind a filesystem shim  ██ new  .bin/.cue columnar packfiles</pre></figure>
+
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">仓库</th>
+<th style="text-align: left;">构建版本</th>
+<th style="text-align: left;">耗时</th>
+<th style="text-align: left;">S3 请求数</th>
+<th style="text-align: left;">GET</th>
+<th style="text-align: left;">HEAD</th>
+<th style="text-align: left;">LIST</th>
+<th style="text-align: left;">线上传输字节数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">11.8s</td>
+<td style="text-align: left;">323</td>
+<td style="text-align: left;">51</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">272</td>
+<td style="text-align: left;">763.63 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>2.6s</strong></td>
+<td style="text-align: left;"><strong>17</strong></td>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">767.96 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">3m23.5s</td>
+<td style="text-align: left;">6,428</td>
+<td style="text-align: left;">1,091</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">5,337</td>
+<td style="text-align: left;">40.68 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>54.4s</strong></td>
+<td style="text-align: left;"><strong>17</strong></td>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">42.22 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">旧版</td>
+<td style="text-align: left;">2m23.6s</td>
+<td style="text-align: left;">3,675</td>
+<td style="text-align: left;">520</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3,155</td>
+<td style="text-align: left;">350.94 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">新版</td>
+<td style="text-align: left;"><strong>1m22s</strong></td>
+<td style="text-align: left;"><strong>158</strong></td>
+<td style="text-align: left;">155</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">349.04 MiB</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Repo</th>
+<th style="text-align: left;">Build</th>
+<th style="text-align: left;">Wall</th>
+<th style="text-align: left;">S3 requests</th>
+<th style="text-align: left;">GET</th>
+<th style="text-align: left;">HEAD</th>
+<th style="text-align: left;">LIST</th>
+<th style="text-align: left;">Wire bytes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">11.8s</td>
+<td style="text-align: left;">323</td>
+<td style="text-align: left;">51</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">272</td>
+<td style="text-align: left;">763.63 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">objgit</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>2.6s</strong></td>
+<td style="text-align: left;"><strong>17</strong></td>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">767.96 KiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">3m23.5s</td>
+<td style="text-align: left;">6,428</td>
+<td style="text-align: left;">1,091</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">5,337</td>
+<td style="text-align: left;">40.68 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>54.4s</strong></td>
+<td style="text-align: left;"><strong>17</strong></td>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">42.22 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">old</td>
+<td style="text-align: left;">2m23.6s</td>
+<td style="text-align: left;">3,675</td>
+<td style="text-align: left;">520</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3,155</td>
+<td style="text-align: left;">350.94 MiB</td>
+</tr>
+<tr>
+<td style="text-align: left;">tigris-blog</td>
+<td style="text-align: left;">new</td>
+<td style="text-align: left;"><strong>1m22s</strong></td>
+<td style="text-align: left;"><strong>158</strong></td>
+<td style="text-align: left;">155</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">349.04 MiB</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<figure><figcaption>图 10: Clone 操作耗时对比 (对数坐标，右侧标注加速倍数)</figcaption><pre>              1s          10s         100s        1,000s              ├───────────┼───────────┼───────────┤   objgit    old       ███████████                           11.8s    new       █████                                    2.6s   4.5x   Xe/x    old       ████████████████████████████          3m23.5s    new       █████████████████████                   54.4s   3.7x   tigris-blog    old       ██████████████████████████            2m23.6s    new       ███████████████████████               1m22.0s   1.8x   ██ old  git packfiles behind a filesystem shim  ██ new  .bin/.cue columnar packfiles</pre></figure>
+
+<hr />
+<h2 id="_4">总结与展望</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>尽管 Git 原生的 Packfile 格式在本地文件系统上表现极其出色，但面对网络往返延迟时却显得力不从心甚至陷入崩溃。通过将 Packfile 大胆重构为专为对象存储优化的列式 <code>.bin</code>/<code>.cue</code> 双文件架构，不仅可以成百上千倍地削减 S3 API 调用次数，更能让代码推送和克隆操作变得如丝般敏捷轻快。</p>
+<blockquote>
+<p>While Git's default packfile format excels on local filesystems, it collapses under network round-trip latencies. Re-architecting packfiles into a columnar <code>.bin</code>/<code>.cue</code> structure optimized for object storage drastically cuts down S3 request counts and makes pushing and cloning fast and responsive. </p>
+</blockquote>
+<p><em>注：类似 <code>objgit</code> 这样的项目目前仍处于实验探索阶段——身份认证、权限管控以及自动化的 Packfile 压实合并 (compaction) 机制仍在紧锣密鼓的开发中。</em></p>
+<blockquote>
+<p><em>Note: Projects like <code>objgit</code> are still experimental—authentication, authorization, and automated packfile compaction are still under development.</em></p>
+</blockquote>
+<p><em>[展示 Git 存储层级演进的“渐进脑洞”表情包]</em></p>
+<blockquote>
+<p><em>[Expanding brain meme showing Git's storage layers]</em></p>
+</blockquote>
+<p><img src=".././images/7ddb287d2c5a.webp" alt="Expanding brain meme. Small brain: git stores diffs against an empty folder. Bigger brain: git stores the entire files for every version. Galaxy brain: git stores diffs against an empty folder." loading="lazy"/></p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Git</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">对象存储</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">S3</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Packfile</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">底层系统</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

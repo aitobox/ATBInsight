@@ -1,0 +1,1530 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-18-4-bit-%E6%97%8B%E8%BD%AC%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E5%89%96%E6%9E%90-%E6%B6%88%E9%99%A4%E7%A6%BB%E7%BE%A4%E5%80%BC%E7%9A%84%E6%9E%81%E8%87%B4%E5%8E%8B%E7%BC%A9%E8%89%BA%E6%9C%AF/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#4-bit" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="4-bit">4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术</h1>
+<blockquote>
+<h1 id="4-bit-rotational-quantization">4-bit Rotational Quantization</h1>
+</blockquote>
+<p><img alt="4-bit rotational quantization" src=".././assets/images/hero-d584373a01efba8ebdec29de80ed039f.png" /></p>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在海量向量检索与大语言模型 (LLM) 部署中，高维嵌入向量的爆炸式增长给服务器内存与带宽带来了严峻挑战。传统的标量或二值量化往往受制于向量维度的“离群值” (Outliers) ，导致低比特压缩时精度急剧下滑。开源向量数据库 Weaviate 在 1.39 版本中重磅升级了旋转量化 (Rotational Quantization, RQ) 技术，正式推出 4-bit 旋转量化，并通过快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 和 SIMD 指令级优化打通了硬件性能瓶颈。该方案在保持与原始精度近乎一致召回率的同时，将堆内存占用骤降 45%，并显著超越了 TurboQuant 等前沿方案，为亿级规模向量检索树立了极致压缩与极速查询的新标杆。</p>
+<hr />
+<h2 id="_2">核心内容摘要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在 Weaviate 1.39 版本中，<strong>旋转量化 (Rotational Quantization, RQ)</strong> 正式拓展支持了 4-bit 量化，并同步带来了一整套全方位的底层性能升级。这些改进涵盖了旋转计算、距离算子内核、内存访问通道以及编码流水线——不仅让 8-bit RQ 的运行速度实现了质的飞跃，更全新引入了 4-bit RQ。在提供与以往相当的召回率的同时，4-bit RQ 成功将<strong>堆内存 (Heap) 占用削减了 45%</strong>。本文将深入剖析这些性能提升背后的底层技术细节，深度剖析 RQ 在亿级海量数据规模下的扩展表现，并将其与前沿的 TurboQuant 算法进行详尽的横向对比。</p>
+<blockquote>
+<p>In Weaviate 1.39, <strong>Rotational Quantization (RQ)</strong> is extended to support 4-bit quantization alongside a comprehensive suite of performance updates. These enhancements cover rotations, distance kernels, memory access paths, and encoding pipelines—making 8-bit RQ significantly faster while introducing 4-bit RQ, which delivers comparable recall with a <strong>45% heap reduction</strong>. This post explores the technical details behind these improvements, analyzes RQ's behavior at massive scale, and compares its performance against TurboQuant.</p>
+</blockquote>
+<hr />
+<h2 id="_3">技术引言</h2>
+<blockquote>
+<h2 id="introduction">Introduction</h2>
+</blockquote>
+<p>去年，我们推出了支持 8-bit 与 1-bit 规格的 <a href="https://weaviate.io/blog/8-bit-rotational-quantization">旋转量化 (Rotational Quantization, RQ)</a> 。这些量化技术能够在大幅削减内存占用的同时实现极速向量检索，并且相比标量量化 (Scalar Quantization) 和二值量化 (Binary Quantization) 等同类替代方案，拥有显著更出色的召回率表现。</p>
+<blockquote>
+<p>Last year we introduced <a href="https://weaviate.io/blog/8-bit-rotational-quantization">Rotational Quantization</a> (or RQ) with 8-bit and 1-bit sizes. These quantization techniques allow for fast vector search, while reducing memory usage, and at better recall than comparable alternatives such as scalar and binary quantization.</p>
+</blockquote>
+<p>在全新的 Weaviate 1.39 中，我们进一步为 RQ 赋予了 4-bit 量化能力，并带来了一整套通用的量化性能优化。旋转计算、距离算子、编码逻辑以及内存访问路径均得到了全链路重构，最终达成了显著成效：1.39 中的 8-bit RQ 运行速度迎来了<em>大幅飞跃</em>，而全新的 4-bit RQ 则在保持相近召回率的前提下，实现了 <strong>45%</strong> 的堆内存降幅。</p>
+<blockquote>
+<p>Weaviate 1.39 extends RQ with 4-bit support, alongside a stack of quantization improvements in general. Rotations, distance kernels, encoding and the memory path have all been improved with net effect: 8-bit RQ is now <em>significantly faster</em> in 1.39 and 4-bit RQ provides similar recall with a <strong>45%</strong> heap reduction.</p>
+</blockquote>
+<p>本文将完整记录这一工程探索背后的技术历程，并顺带解答开发者们最常关心的两个核心问题：随着数据集规模呈几何级数膨胀，RQ 的表现依然坚挺吗？以及，RQ 相比业界大热的 TurboQuant 究竟孰优孰劣？</p>
+<blockquote>
+<p>This post documents the story of that work, and along the way answers two questions people often ask: How does RQ hold up as datasets scale? And how does RQ compare to TurboQuant?</p>
+</blockquote>
+<hr />
+<h2 id="_4">核心优化与架构升级</h2>
+<blockquote>
+<h2 id="improvements">Improvements</h2>
+</blockquote>
+<p>旋转量化基于 <a href="https://arxiv.org/abs/2409.09913">Extended-RaBitQ</a> 算法演进而来，通过引入结构化快速旋转机制以及简化的逐向量区间拟合，大幅提升了编码速度。极速的编码性能（即将原始高维向量转换为量化压缩表示的过程）是衡量优秀量化算法的核心指标之一，因为它直接决定了向量数据导入与构建索引时的吞吐效率。</p>
+<blockquote>
+<p>Rotational quantization is based on <a href="https://arxiv.org/abs/2409.09913">Extended-RaBitQ</a> with a structured fast rotation and simplified per-vector interval fitting to speed up encoding. Fast encoding performance (converting the original vector into its quantized representation) is an important part of a good quantization algorithm as it can have significant impacts on import performance.</p>
+</blockquote>
+<p>这类方法的第一步，就是将原始向量与一个随机旋转矩阵相乘。这听起来或许有些反直觉，但随机旋转矩阵能赋予向量 <a href="https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization">更优异的数学特性</a> ——尤其是抹平各维度上的尖锐离群值，使数值更加均匀地散布在整个量化区间的全长之上。</p>
+<blockquote>
+<p>The first step in these approaches is to multiply the original vector by a random rotation matrix. It may seem counter-intuitive but a random rotation matrix gives <a href="https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization">better properties</a> to the vector in particular distributing the dimension values over the entire length of the quantization interval.</p>
+</blockquote>
+<p>为了让随机旋转快如闪电，我们采用快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 来对原始向量进行旋转。在 1.39 版本中，我们为 FWHT 增加了 SIMD 硬件指令集级优化支持。在输出结果与原有 Go 语言基线实现完全保持比特级一致 (Bit-identical) 的前提下，取得了如下显著的加速成绩：</p>
+<blockquote>
+<p>To speed up the random rotation we use Fast Walsh-Hadamard Transforms (FWHT) to rotate the original vector. In 1.39, we added SIMD support for FWHT which led to the below improvements while being bit-identical to the Go reference:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">变换类型 (Transform)</th>
+<th style="text-align: left;">处理器架构 (CPU)</th>
+<th style="text-align: right;">1.38 版本 (Go 原生)</th>
+<th style="text-align: right;">1.39 版本 (SIMD 加速)</th>
+<th style="text-align: right;">加速比 (Speedup)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">FWHT64</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">81.3 ns</td>
+<td style="text-align: right;">26.5 ns</td>
+<td style="text-align: right;"><strong>3.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT256</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">515 ns</td>
+<td style="text-align: right;">84.5 ns</td>
+<td style="text-align: right;"><strong>6.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT64</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">67.4 ns</td>
+<td style="text-align: right;">21.6 ns</td>
+<td style="text-align: right;"><strong>3.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT256</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">428 ns</td>
+<td style="text-align: right;">96.2 ns</td>
+<td style="text-align: right;"><strong>4.5×</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Transform</th>
+<th style="text-align: left;">CPU</th>
+<th style="text-align: right;">1.38 (Go)</th>
+<th style="text-align: right;">1.39 (SIMD)</th>
+<th style="text-align: right;">Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">FWHT64</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">81.3 ns</td>
+<td style="text-align: right;">26.5 ns</td>
+<td style="text-align: right;"><strong>3.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT256</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">515 ns</td>
+<td style="text-align: right;">84.5 ns</td>
+<td style="text-align: right;"><strong>6.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT64</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">67.4 ns</td>
+<td style="text-align: right;">21.6 ns</td>
+<td style="text-align: right;"><strong>3.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">FWHT256</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">428 ns</td>
+<td style="text-align: right;">96.2 ns</td>
+<td style="text-align: right;"><strong>4.5×</strong></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>配合对 SIMD 编码算子内核的一系列深度优化，整套 RQ 量化家族在向量编码性能上迎来了全方位的净提升：</p>
+<blockquote>
+<p>Together with some other enhancements to SIMD encode kernels, this led to the following net increases in encoding performance across the whole RQ family:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">量化器类型 (Quantizer)</th>
+<th style="text-align: left;">处理器架构 (CPU)</th>
+<th style="text-align: right;">1.38 版本</th>
+<th style="text-align: right;">1.39 版本</th>
+<th style="text-align: right;">加速比 (Speedup)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">27.3 µs</td>
+<td style="text-align: right;">7.11 µs</td>
+<td style="text-align: right;"><strong>3.8×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ1</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">15.2 µs</td>
+<td style="text-align: right;">6.84 µs</td>
+<td style="text-align: right;"><strong>2.2×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">6.36 µs</td>
+<td style="text-align: right;"><strong>1.39 新增</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">8.08 µs</td>
+<td style="text-align: right;"><strong>1.39 新增</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">14.7 µs</td>
+<td style="text-align: right;">6.18 µs</td>
+<td style="text-align: right;"><strong>2.4×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ1</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">13.0 µs</td>
+<td style="text-align: right;">6.18 µs</td>
+<td style="text-align: right;"><strong>2.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">5.65 µs</td>
+<td style="text-align: right;"><strong>1.39 新增</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">7.00 µs</td>
+<td style="text-align: right;"><strong>1.39 新增</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Quantizer</th>
+<th style="text-align: left;">CPU</th>
+<th style="text-align: right;">1.38</th>
+<th style="text-align: right;">1.39</th>
+<th style="text-align: right;">Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">27.3 µs</td>
+<td style="text-align: right;">7.11 µs</td>
+<td style="text-align: right;"><strong>3.8×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ1</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">15.2 µs</td>
+<td style="text-align: right;">6.84 µs</td>
+<td style="text-align: right;"><strong>2.2×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">6.36 µs</td>
+<td style="text-align: right;"><strong>new in 1.39</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">8.08 µs</td>
+<td style="text-align: right;"><strong>new in 1.39</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">14.7 µs</td>
+<td style="text-align: right;">6.18 µs</td>
+<td style="text-align: right;"><strong>2.4×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ1</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">13.0 µs</td>
+<td style="text-align: right;">6.18 µs</td>
+<td style="text-align: right;"><strong>2.1×</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">5.65 µs</td>
+<td style="text-align: right;"><strong>new in 1.39</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">7.00 µs</td>
+<td style="text-align: right;"><strong>new in 1.39</strong></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<h3 id="_5">距离算子内核优化</h3>
+<blockquote>
+<h3 id="distance-kernels">Distance Kernels</h3>
+</blockquote>
+<p>我们通过引入高效的 SIMD 半字节 (nibble, 即 4 位) 操作函数，使距离算子内核完美适配了 4-bit 规格。同时，在支持的硬件平台上，我们尽可能切换到了 <code>UDOT</code> (arm64 架构) 与 <code>VPDPBUSD</code> (amd64 架构) 字节点积专用指令，这也同步推动了 8-bit 量化性能的跃升。值得注意的是，8-bit 与 4-bit 的距离计算逻辑虽然十分接近，但正如我们在后文所揭示的，4-bit 对内存带宽瓶颈的缓解带来了颠覆性的连锁收益。</p>
+<blockquote>
+<p>The distance kernels were adapted to 4-bits via use of SIMD nibble (half byte) functions. We also switched to <code>UDOT</code> (arm64) and <code>VPDPBUSD</code> (amd64) byte dot functions where possible, which also improved 8-bit quantization. Note the distance functions of 8-bit and 4-bit are similar but there is a big impact on memory bandwidth as explained in the following section.</p>
+</blockquote>
+<p>单次查询向量至量化编码的余弦距离计算延迟 (Cosine Distance) ，1.38 版本对比 1.39 版本：</p>
+<blockquote>
+<p>Single query→code distance computation (cosine), 1.38 vs 1.39:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">算子内核 (Kernel)</th>
+<th style="text-align: left;">处理器架构 (CPU)</th>
+<th style="text-align: right;">维度 (d)</th>
+<th style="text-align: right;">1.38 版本</th>
+<th style="text-align: right;">1.39 版本</th>
+<th style="text-align: right;">加速比 (Speedup)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">34.3 ns</td>
+<td style="text-align: right;">16.6 ns</td>
+<td style="text-align: right;">2.1×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">42.8 ns</td>
+<td style="text-align: right;">19.8 ns</td>
+<td style="text-align: right;">2.2×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">16.0 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">17.7 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">21.9 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">23.4 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">24.9 ns</td>
+<td style="text-align: right;">17.0 ns</td>
+<td style="text-align: right;">1.5×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">31.1 ns</td>
+<td style="text-align: right;">20.0 ns</td>
+<td style="text-align: right;">1.6×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">17.8 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (非中心化 / uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">21.0 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">24.5 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (中心化 / centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">27.0 ns</td>
+<td style="text-align: right;">1.39 新增</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Kernel</th>
+<th style="text-align: left;">CPU</th>
+<th style="text-align: right;">d</th>
+<th style="text-align: right;">1.38</th>
+<th style="text-align: right;">1.39</th>
+<th style="text-align: right;">Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">34.3 ns</td>
+<td style="text-align: right;">16.6 ns</td>
+<td style="text-align: right;">2.1×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">42.8 ns</td>
+<td style="text-align: right;">19.8 ns</td>
+<td style="text-align: right;">2.2×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">16.0 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">17.7 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">21.9 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Intel Xeon 8581C (amd64/AVX2)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">23.4 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">24.9 ns</td>
+<td style="text-align: right;">17.0 ns</td>
+<td style="text-align: right;">1.5×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ8</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">31.1 ns</td>
+<td style="text-align: right;">20.0 ns</td>
+<td style="text-align: right;">1.6×</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">17.8 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (uncentered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">21.0 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">768</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">24.5 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+<tr>
+<td style="text-align: left;">RQ4 (centered)</td>
+<td style="text-align: left;">Apple M1 (arm64/NEON)</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">27.0 ns</td>
+<td style="text-align: right;">new in 1.39</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<h3 id="_6">预取机制与内存访问优化</h3>
+<blockquote>
+<h3 id="prefetching-and-memory-access">Prefetching and Memory Access</h3>
+</blockquote>
+<p>要想让距离算子内核突破 30ns 的极致速度，仅凭算力本身远远不够，还必须保证向量数据能够被 CPU 缓存极速命中。由于图结构的近似最近邻 (Approximate Nearest Neighbor, ANN) 索引（如 HNSW）在检索遍历时呈现高度离散的随机内存访问特征，内存带宽往往才是制约系统性能的<em>头号瓶颈</em>——而非纯粹的距离数学计算。</p>
+<blockquote>
+<p>To achieve sub 30ns distance kernels we also need the vectors to be cached effectively by the CPU cache. As graph ANN indices (like HNSW) have scattered DRAM access, memory bandwidth is often the <em>primary bottleneck</em> in performance - not the distance calculation itself.</p>
+</blockquote>
+<p>为了在 1.39 中彻底攻克这一痛点，我们针对 AMD64 和 ARM64 架构均引入了高能效的预取机制 (Prefetching) （并一举修复了 AMD64 上潜伏数年之久的预取缺陷）。预取的作用在于提前向处理器发出提示指令，告知其下一步将要用到哪些向量数据。当 HNSW 在图上扩展并准备计算邻居节点的距离时，系统会提前将下一批向量批次数据预取装载至高速缓存中。</p>
+<blockquote>
+<p>To improve this in 1.39, we added efficient prefetching for both AMD64 and ARM64 architectures (and fixed a prefetching bug in AMD64 that was many years old). Prefetching helps by hinting to the processor what vectors will be used next. As HNSW expands to compute distances of neighbours we now prefetch or hint ahead of a batch of vector distance computations.</p>
+</blockquote>
+<p>在包含 100 万向量、维度高达 1536 的测试索引中（压缩编码体积约 800 MB，体量远超 CPU 缓存容量），仅通过对比开启与关闭预取指令的 A/B 测试便可发现：预取优化带来了 <strong>7–11% 的查询吞吐量提升</strong>（且收益随搜索参数 ef 增大而持续扩大），同时使数据导入速度<strong>加快了 12%</strong>。</p>
+<blockquote>
+<p>On a 1M-vector index (d=1536, ~800 MB of compressed codes, far beyond CPU cache), an A/B with only the prefetch hints removed shows they contribute <strong>7–11% query throughput</strong> (growing with ef) and <strong>12% faster</strong> imports.</p>
+</blockquote>
+<h3 id="_7">中心化与离群值消除</h3>
+<blockquote>
+<h3 id="centering-and-outliers">Centering and Outliers</h3>
+</blockquote>
+<p>在整条处理流水线已逼近硬件物理极限的速度下，我们开始全力探索 4-bit 下的召回率上限空间。其中一个极具潜力的改进方向是中心化 (Centering) 技术，已知它能为绝大多数嵌入向量数据集带来显著的召回率增益。中心化利用了一个普遍客观规律：大量模型的嵌入向量在空间中并非围绕原点对称，而是拥有非零的均值向量。我们通过在向量子集上计算出该全局均值 <code>μ</code>，进而在压缩编码时对零均值化后的 <code>x − μ</code> 进行编码，查询时使用相同的均值对查询向量进行中心化对齐，最后在计算中还原交叉项。</p>
+<blockquote>
+<p>With the pipeline at hardware speed, we went looking for recall headroom at 4-bits. One open item was centering which we knew can add recall to many embedding datasets. Centering exploits the fact many embeddings have a non-zero mean vector. We compute this mean <code>μ</code> on a subset of the vectors and then encode <code>x − μ</code> against a single mean fitted at compression time, centering the query with the same mean, and add the cross-term back.</p>
+</blockquote>
+<p>在多个真实数据集上的测试表明，中心化带来了惊人的精度跃升，多个数据集的 recall@10 提升了 +0.1 到 +6.1 个百分点 (pp) 。这是由于现实中的嵌入向量往往呈现出强烈的<a href="https://arxiv.org/abs/2401.12143v2">各向异性 (Anisotropic)</a>，尤其是在<a href="https://huggingface.co/blog/lightonai/lateon-regularization">后期交互模型 (Late-interaction models)</a> 中尤为突出。不过，也有部分嵌入模型在训练中进行了中心化正则化以消除该均值偏移，因此我们将该特性设计为可配置选项，用户可通过设置 <code>centering=true</code> 按需启用。</p>
+<blockquote>
+<p>On many datasets centering showed significant recall improvements with recall@10 increasing by +0.1 to +6.1pp across several datasets, as embeddings tend to be <a href="https://arxiv.org/abs/2401.12143v2">anisotropic</a>, particularly <a href="https://huggingface.co/blog/lightonai/lateon-regularization">late-interaction models</a>. However some embedding models are regularized to remove this mean so we make the feature opt-in via a flag <code>centering=true</code>.</p>
+</blockquote>
+<p>此外，当对向量进行量化时，旋转后某些维度上的极端极值（离群坐标）会将量化噪声波及扩散至该向量的每一个维度。通过精准保存绝对值最大的前两个极端坐标分量，我们在中心化的基础上进一步斩获了 +0.2 到 +1.7 个百分点 (pp) 的召回率提升。不仅如此，通过对元数据字节的紧凑封装设计，我们成功将这两个坐标值无缝嵌入到了现有的 16 字节标准元数据头中，完全没有引入任何额外的内存开销。</p>
+<blockquote>
+<p>Additionally, when quantizing a vector the most extreme rotated coordinates add quantization noise to every dimension in that vector. By storing the largest two magnitude coordinates exactly, we managed to add +0.2 to +1.7pp recall on top of centering, and by careful packing of metadata bytes, we found we could store this in the standard 16 byte metadata header we already have.</p>
+</blockquote>
+<hr />
+<h2 id="_8">实测成果与基准测试</h2>
+<blockquote>
+<h2 id="results">Results</h2>
+</blockquote>
+<h3 id="_9">召回率评测</h3>
+<blockquote>
+<h3 id="recall">Recall</h3>
+</blockquote>
+<p>下表展示了各量化方案所能达到的 recall@10 评测结果。为了精准剥离 ANN 图索引结构的影响并纯粹评估量化算法本身的保真度，此处的测试数据基于<em>暴力搜索 (Brute Force)</em> 方式统计得出：</p>
+<blockquote>
+<p>The below table shows the recall@10 achievable by each quantization method. This table shows <em>brute force</em> recall excluding the ANN index to isolate the effect on quantization itself.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">数据集 (Dataset)</th>
+<th style="text-align: left;">RQ4 recall@10 / 重排@20 (rescored@20)</th>
+<th style="text-align: left;">RQ4c recall@10 / 重排@20 (rescored@20)</th>
+<th style="text-align: left;">RQ8 recall@10 / 重排@20 (rescored@20)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">dbpedia-ada002-1536-1M (cosine)</td>
+<td style="text-align: left;">93.5 / 100.0</td>
+<td style="text-align: left;"><strong>96.8 / 100.0</strong></td>
+<td style="text-align: left;">99.0 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">sphere-dpr-768-1M (dot)</td>
+<td style="text-align: left;">90.9 / 99.4</td>
+<td style="text-align: left;"><strong>96.3 / 100.0</strong></td>
+<td style="text-align: left;">98.2 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">sift-128-1M (l2)</td>
+<td style="text-align: left;">81.4 / 97.2</td>
+<td style="text-align: left;"><strong>87.5 / 99.3</strong></td>
+<td style="text-align: left;">96.7 / 99.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">glove-100-1.2M (cosine)</td>
+<td style="text-align: left;">87.0 / 99.2</td>
+<td style="text-align: left;"><strong>89.9 / 99.8</strong></td>
+<td style="text-align: left;">98.5 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">dbpedia-cohere-v2-4096-500k (dot)</td>
+<td style="text-align: left;">98.1 / 100.0</td>
+<td style="text-align: left;"><strong>98.5 / 100.0</strong></td>
+<td style="text-align: left;">99.9 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">msmarco-arctic-embed-m-768-1M (cosine)</td>
+<td style="text-align: left;">94.7 / 100.0</td>
+<td style="text-align: left;"><strong>95.8 / 100.0</strong></td>
+<td style="text-align: left;">99.3 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">nfcorpus-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: left;">72.0 / 88.6</td>
+<td style="text-align: left;"><strong>94.1 / 99.9</strong></td>
+<td style="text-align: left;">93.4 / 99.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">scifact-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: left;">77.7 / 94.0</td>
+<td style="text-align: left;"><strong>94.5 / 100.0</strong></td>
+<td style="text-align: left;">94.9 / 100.0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dataset</th>
+<th style="text-align: left;">RQ4 recall@10 / rescored@20</th>
+<th style="text-align: left;">RQ4c recall@10 / rescored@20</th>
+<th style="text-align: left;">RQ8 recall@10 / rescored@20</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">dbpedia-ada002-1536-1M (cosine)</td>
+<td style="text-align: left;">93.5 / 100.0</td>
+<td style="text-align: left;"><strong>96.8 / 100.0</strong></td>
+<td style="text-align: left;">99.0 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">sphere-dpr-768-1M (dot)</td>
+<td style="text-align: left;">90.9 / 99.4</td>
+<td style="text-align: left;"><strong>96.3 / 100.0</strong></td>
+<td style="text-align: left;">98.2 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">sift-128-1M (l2)</td>
+<td style="text-align: left;">81.4 / 97.2</td>
+<td style="text-align: left;"><strong>87.5 / 99.3</strong></td>
+<td style="text-align: left;">96.7 / 99.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">glove-100-1.2M (cosine)</td>
+<td style="text-align: left;">87.0 / 99.2</td>
+<td style="text-align: left;"><strong>89.9 / 99.8</strong></td>
+<td style="text-align: left;">98.5 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">dbpedia-cohere-v2-4096-500k (dot)</td>
+<td style="text-align: left;">98.1 / 100.0</td>
+<td style="text-align: left;"><strong>98.5 / 100.0</strong></td>
+<td style="text-align: left;">99.9 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">msmarco-arctic-embed-m-768-1M (cosine)</td>
+<td style="text-align: left;">94.7 / 100.0</td>
+<td style="text-align: left;"><strong>95.8 / 100.0</strong></td>
+<td style="text-align: left;">99.3 / 100.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">nfcorpus-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: left;">72.0 / 88.6</td>
+<td style="text-align: left;"><strong>94.1 / 99.9</strong></td>
+<td style="text-align: left;">93.4 / 99.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">scifact-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: left;">77.7 / 94.0</td>
+<td style="text-align: left;"><strong>94.5 / 100.0</strong></td>
+<td style="text-align: left;">94.9 / 100.0</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>接下来尤为关键的是，我们展示了在 Weaviate 中基于真实 HNSW 索引构建下的召回率与查询性能 (QPS) 对比曲线：</p>
+<blockquote>
+<p>Next and importantly, we show recall vs query performance in Weaviate using an HNSW index:</p>
+</blockquote>
+<p><img alt="QPS vs recall@10 on dbpedia-openai-1M for RQ8, RQ4 and RQ4c in Weaviate 1.39, against RQ8 in 1.38" class="themedComponent_mlkZ themedComponent--light_NVdE" src=".././assets/images/qps_recall-8ff87027c926062b388363bbc668dfef.png"/>
+<img alt="QPS vs recall@10 on dbpedia-openai-1M for RQ8, RQ4 and RQ4c in Weaviate 1.39, against RQ8 in 1.38" class="themedComponent_mlkZ themedComponent--dark_xIcU" src=".././assets/images/qps_recall_dark-1f38946eec48bc652fb2351a68c0cc70.png"/></p>
+<p>从图中可以清晰看到，即便是相同的 8-bit 量化器，1.39 相比 1.38 同样呈现出了跨越式的性能飙升。更为惊艳的是，4-bit 量化在大幅削减内存占用的前提下，其“性能-召回率”折线甚至全面超越了过去的 8-bit 方案。</p>
+<blockquote>
+<p>It is quite visible the jump between 1.38 and 1.39 for the same 8-bit quantizer. Additionally the 4-bit performance to recall curves exceed 8-bit while using significantly less memory.</p>
+</blockquote>
+<p>下图展示了在 1536 维高维向量数据集上的堆内存 (Heap) 占用对比。值得一提的是，内存降幅之所以是 45% 而非理论上的 50% 减半，是因为 HNSW 图结构的元数据（主要是紧凑打包的节点邻居连接关系）同样需要占据一定内存。作为基准参考，如果对该数据集完全不进行量化压缩，仅向量数据就需要消耗 5.7 GiB，此外还需叠加额外的图元数据开销。</p>
+<blockquote>
+<p>Here is the heap impact on the 1536 dimension vector dataset. Note you don't see half the memory usage (only 45%) because HNSW graph metadata (mainly the packed connections) also use memory. For reference storing this dataset unquantized would take 5.7GiB plus the graph metadata.</p>
+</blockquote>
+<p><img alt="Go heap in use on dbpedia-openai-1M: peak heap falls from 4.2 GiB with RQ8 in 1.38 to 2.3 GiB with RQ4 and RQ4c in 1.39" class="themedComponent_mlkZ themedComponent--light_NVdE" src=".././assets/images/heap_usage-06469cdeb904ca971f58326394a94ff2.png"/>
+<img alt="Go heap in use on dbpedia-openai-1M: peak heap falls from 4.2 GiB with RQ8 in 1.38 to 2.3 GiB with RQ4 and RQ4c in 1.39" class="themedComponent_mlkZ themedComponent--dark_xIcU" src=".././assets/images/heap_usage_dark-5cd69f53968c6a3f2c92fc354c7a12fe.png"/></p>
+<p>得益于更极速的向量编码算子与距离计算函数，数据导入耗时同样迎来了大幅缩减。在同一数据集上，从 1.38 升级至 1.39 后，RQ8 的导入耗时下降了 16%；而全新的 RQ4 和 RQ4c 相比 1.38 基准线，耗时更是分别大幅缩减了 37% 和 32%。</p>
+<blockquote>
+<p>Import times are also improved due to the faster encoding and distance functions. Imports on the same dataset drop 16% for RQ8 going from 1.38 to 1.39, and RQ4 and RQ4c come in 37% and 32% under the 1.38 baseline respectively.</p>
+</blockquote>
+<p><img alt="Import time on dbpedia-openai-1M: RQ8 is 16% faster in 1.39 than 1.38, and RQ4 and RQ4c are 37% and 32% faster than the 1.38 baseline" class="themedComponent_mlkZ themedComponent--light_NVdE" src=".././assets/images/import_time-e6830ff5f54f68f034b83fe0ae01bbe1.png"/>
+<img alt="Import time on dbpedia-openai-1M: RQ8 is 16% faster in 1.39 than 1.38, and RQ4 and RQ4c are 37% and 32% faster than the 1.38 baseline" class="themedComponent_mlkZ themedComponent--dark_xIcU" src=".././assets/images/import_time_dark-5d02554004921f4fd8e1b110e0e17440.png"/></p>
+<h3 id="rq">面对超大规模扩展，RQ 还能稳得住吗？</h3>
+<blockquote>
+<h3 id="does-it-hold-at-scale">Does it hold at scale?</h3>
+</blockquote>
+<p>我们进行了一项非常硬核的扩展性实验：从 Meta 的 Sphere 语料库（基于 DPR 模型、768 维、点积距离）中随机打乱采样不同规模的子集，并在 100 万 (1M) 到高达 2.5 亿 (250M) 个向量的超大规模跨度上，使用每个测试点 1,000 次查询，直接与真实的精确基准 (Ground Truth) 对比暴力搜索下的 recall@10：</p>
+<blockquote>
+<p>One interesting experiment we performed was to scale subsets of a shuffled sample of Meta's Sphere corpus (DPR, 768-dim, dot product) and then brute-force recall@10 against the exact ground truth, using 1,000 queries per point, from 1M to 250M vectors.</p>
+</blockquote>
+<p><img alt="RQ quantizer recall is constant from 1M to 250M vectors" class="themedComponent_mlkZ themedComponent--light_NVdE" src=".././assets/images/recall_vs_scale-d4dfa56cfac9f7cefbd116c296ba9014.png"/>
+<img alt="RQ quantizer recall is constant from 1M to 250M vectors" class="themedComponent_mlkZ themedComponent--dark_xIcU" src=".././assets/images/recall_vs_scale_dark-164d954820dab6eb911e2175871a9159.png"/></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">量化器类型 (Quantizer)</th>
+<th style="text-align: right;">100 万规模召回率 (Recall 1M)</th>
+<th style="text-align: right;">1000 万规模召回率 (Recall 10M)</th>
+<th style="text-align: right;">1 亿规模召回率 (Recall 100M)</th>
+<th style="text-align: right;">2.5 亿规模召回率 (Recall 250M)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">rq8</td>
+<td style="text-align: right;">97.15</td>
+<td style="text-align: right;">97.09</td>
+<td style="text-align: right;">97.09</td>
+<td style="text-align: right;">96.90</td>
+</tr>
+<tr>
+<td style="text-align: left;">rq4c</td>
+<td style="text-align: right;">94.00</td>
+<td style="text-align: right;">93.51</td>
+<td style="text-align: right;">93.82</td>
+<td style="text-align: right;">93.53</td>
+</tr>
+<tr>
+<td style="text-align: left;">rq4</td>
+<td style="text-align: right;">84.58</td>
+<td style="text-align: right;">83.41</td>
+<td style="text-align: right;">84.63</td>
+<td style="text-align: right;">85.02</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Quantizer</th>
+<th style="text-align: right;">Recall 1M</th>
+<th style="text-align: right;">Recall 10M</th>
+<th style="text-align: right;">Recall 100M</th>
+<th style="text-align: right;">Recall 250M</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">rq8</td>
+<td style="text-align: right;">97.15</td>
+<td style="text-align: right;">97.09</td>
+<td style="text-align: right;">97.09</td>
+<td style="text-align: right;">96.90</td>
+</tr>
+<tr>
+<td style="text-align: left;">rq4c</td>
+<td style="text-align: right;">94.00</td>
+<td style="text-align: right;">93.51</td>
+<td style="text-align: right;">93.82</td>
+<td style="text-align: right;">93.53</td>
+</tr>
+<tr>
+<td style="text-align: left;">rq4</td>
+<td style="text-align: right;">84.58</td>
+<td style="text-align: right;">83.41</td>
+<td style="text-align: right;">84.63</td>
+<td style="text-align: right;">85.02</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>这项测试最重磅的发现是：<strong>在从 100 万到 2.5 亿向量的巨大跨度下，召回率几乎保持完全平稳 (Flat)</strong>。即使使用完全独立的查询集重复运行，测量波动依然被严格锁定在一个极其狭窄的区间内。</p>
+<blockquote>
+<p>The big result here is that recall is flat across a 1M-250M range. Even re-running with independent queries still produced a fairly tight band.</p>
+</blockquote>
+<p>该测试曲线还直观展现了二次重排 (Rescoring) 所释放出的巨大召回率红利（即使用未量化的原始高精度向量对排名前 20 的候选结果进行二次精确距离计算），并清晰证明了中心化 RQ4 (RQ4c) 在应对具有均值偏移的数据集时展现出的卓越稳健性。</p>
+<blockquote>
+<p>This graph also clearly shows the huge recall benefit that comes from rescoring (i.e. rescoring the top 20 vector distances with unquantized vectors), and how RQ4 centered can more accurately handle datasets with skewed mean.</p>
+</blockquote>
+<p>需要说明的是：虽然量化器本身在这一跨度下展现出了近似“尺度无关” (Scale-free) 的稳定召回表现，但近似最近邻 (ANN) 图索引本身的拓扑参数确实会随数据规模扩张而出现一定程度的性能衰减。业界应对这一现象的标准工程方案是对数据集进行合理分片 (Sharding) （在海量数据扩展时，分布式分片原本就是最佳实践推荐）。</p>
+<blockquote>
+<p>A caveat of this result: although the quantizers can have close to scale free recall in this range, the ANN indices do have parameters that degrade with scale. One standard way to handle this is to shard the dataset appropriately (and sharding is usually recommended anyway when scaling to large datasets).</p>
+</blockquote>
+<h3 id="rq4">RQ4 计算均值究竟需要采样多少向量？</h3>
+<blockquote>
+<h3 id="how-many-vectors-does-the-rq4-mean-need">How many vectors does the RQ4 mean need?</h3>
+</blockquote>
+<p>中心化 RQ4 算法在计算均值 <code>μ</code> 时，默认仅需抽取上限为 10,000 个向量的样本即可完成拟合。在启用异步索引的情况下，这一拟合过程完全在后台自动化完成。我们通过在数据集的前 N 个向量上拟合均值，并精确测量其与全量数据真实均值之间的距离，来评估采样区间所覆盖的误差扩散：</p>
+<blockquote>
+<p>RQ4 centered fits the mean μ, from a sample capped at 10,000 vectors by default. This is automatically completed with async indexing enabled. By fitting the mean on the first N vectors of a dataset and measuring its distance to the full-corpus mean we can measure the spread the interval covers:</p>
+</blockquote>
+<p><img alt="Distance from the full-corpus mean as a function of the number of vectors used to fit it, on dbpedia-1M, for a random sample and for dataset order; both follow the sqrt(1/N - 1/M) sampling curve" class="themedComponent_mlkZ themedComponent--light_NVdE" src=".././assets/images/mean_convergence-c3cbd5a5cf8d754a44bd21c866e1cb19.png"/>
+<img alt="Distance from the full-corpus mean as a function of the number of vectors used to fit it, on dbpedia-1M, for a random sample and for dataset order; both follow the sqrt(1/N - 1/M) sampling curve" class="themedComponent_mlkZ themedComponent--dark_xIcU" src=".././assets/images/mean_convergence_dark-d5aacd36b0f62270d2d0722397026878.png"/></p>
+<p>在默认的 10,000 (10k) 样本量下，拟合出的均值与使用 100 倍更庞大数据量算出的结果相比，在语料空间半径中的偏差已不足 ~1%。若耗费庞大算力在全量语料上强行拟合均值，所能换来的精度收益完全微乎其微（在 7 个数据集上的最大差异仅为 0.20 个百分点，甚至有两个数据集在 10k 采样拟合下的表现反而<em>更优</em>）。因此，RQ4 将默认训练样本上限设定为 10,000，能让系统更早享受到内存缩减带来的红利。</p>
+<blockquote>
+<p>At the 10k default the fitted mean sits within ~1% of a corpus radius of where 100x more data would put it. Fitting on the whole corpus instead is worth nothing measurable (largest difference across seven datasets: 0.20pp, with two datasets <em>ahead</em> on the 10k fit). Hence for RQ4 the default training limit is 10,000 which enables memory savings to start earlier.</p>
+</blockquote>
+<h3 id="turboquant">与 TurboQuant 算法的深度对比</h3>
+<blockquote>
+<h3 id="comparison-with-turboquant">Comparison with TurboQuant</h3>
+</blockquote>
+<p>围绕 RQ 技术，社区最常问到的问题之一就是它与 <a href="https://arxiv.org/abs/2504.19874">TurboQuant</a> 相比究竟如何。TurboQuant 同样利用随机旋转，但其不同之处在于旋转后采用 Lloyd-Max 码本 (Lloyd-Max codebooks) 而非均匀网格对向量进行量化。</p>
+<blockquote>
+<p>One question we get about RQ is how it compares to <a href="https://arxiv.org/abs/2504.19874">TurboQuant</a>, another quantization technique using a random rotation but using Lloyd-Max codebooks instead of a uniform grid to quantize the vectors after rotation.</p>
+</blockquote>
+<p>在下方的对比基准测试中，我们使用自身实现与目前主流的开源 TurboQuant <a href="https://github.com/0xsero/turboquant">实现版本</a> 进行了召回率全方位对标。如果您希望了解 RaBitQ 与 TurboQuant 在理论和实验上的更深层次对比，我们强烈推荐阅读论文 <a href="https://arxiv.org/abs/2604.19528">《重温 RaBitQ 与 TurboQuant：方法、理论与实验的对称性对比》(Revisiting RaBitQ and TurboQuant: A Symmetric Comparison of Methods, Theory, and Experiments)</a> ，该文对两种算法的异同进行了更为详尽的数学解构。</p>
+<blockquote>
+<p>For the below comparison we ran a recall benchmark of our own implementation against a popular open-source TurboQuant <a href="https://github.com/0xsero/turboquant">implementation</a>. If you would like more details comparing RaBitQ with TurboQuant we also recommend <a href="https://arxiv.org/abs/2604.19528">Revisiting RaBitQ and TurboQuant: A Symmetric Comparison of Methods, Theory, and Experiments</a>, which goes further into details of comparing the two algorithms.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">数据集 (Dataset)</th>
+<th style="text-align: right;">RQ8</th>
+<th style="text-align: right;">RQ4</th>
+<th style="text-align: right;">RQ4c</th>
+<th style="text-align: right;">4-bit TurboQuant (论文原版 / paper)</th>
+<th style="text-align: right;">4-bit TurboQuant (重归一化 / renorm)</th>
+<th style="text-align: right;">4-bit TurboQuant (中心化+重归一化 / centered+renorm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">dbpedia-ada002-1536-1M (cosine)</td>
+<td style="text-align: right;">99.0</td>
+<td style="text-align: right;">93.5</td>
+<td style="text-align: right;"><strong>96.8</strong></td>
+<td style="text-align: right;">87.4</td>
+<td style="text-align: right;">94.5</td>
+<td style="text-align: right;">96.4</td>
+</tr>
+<tr>
+<td style="text-align: left;">sphere-dpr-768-1M (dot)</td>
+<td style="text-align: right;">98.2</td>
+<td style="text-align: right;">90.9</td>
+<td style="text-align: right;"><strong>96.3</strong></td>
+<td style="text-align: right;">76.6</td>
+<td style="text-align: right;">91.6</td>
+<td style="text-align: right;">95.8</td>
+</tr>
+<tr>
+<td style="text-align: left;">sift-128-1M (l2)</td>
+<td style="text-align: right;">96.7</td>
+<td style="text-align: right;">81.4</td>
+<td style="text-align: right;"><strong>87.5</strong></td>
+<td style="text-align: right;">80.4</td>
+<td style="text-align: right;">81.0</td>
+<td style="text-align: right;">85.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">glove-100-1.2M (cosine)</td>
+<td style="text-align: right;">98.5</td>
+<td style="text-align: right;">87.0</td>
+<td style="text-align: right;"><strong>89.9</strong></td>
+<td style="text-align: right;">79.0</td>
+<td style="text-align: right;">85.4</td>
+<td style="text-align: right;">86.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">dbpedia-cohere-v2-4096-500k (dot)</td>
+<td style="text-align: right;">99.9</td>
+<td style="text-align: right;">98.1</td>
+<td style="text-align: right;"><strong>98.5</strong></td>
+<td style="text-align: right;">97.4</td>
+<td style="text-align: right;">98.2</td>
+<td style="text-align: right;">98.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">msmarco-arctic-embed-m-768-1M (cosine)</td>
+<td style="text-align: right;">99.3</td>
+<td style="text-align: right;">94.7</td>
+<td style="text-align: right;">95.8</td>
+<td style="text-align: right;">91.5</td>
+<td style="text-align: right;">95.1</td>
+<td style="text-align: right;"><strong>95.9</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">nfcorpus-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: right;">93.4</td>
+<td style="text-align: right;">72.0</td>
+<td style="text-align: right;"><strong>94.1</strong></td>
+<td style="text-align: right;">26.8</td>
+<td style="text-align: right;">76.2</td>
+<td style="text-align: right;">93.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">scifact-mlateon-mv-128 (maxsim)</td>
+<td style="text-align: right;">94.9</td>
+<td style="text-align: right;">77.7</td>
+<td style="text-align: right;"><strong>94.5</strong></td>
+<td style="text-align: right;">36.7</td>
+<td style="text-align: right;">81.1</td>
+<td style="text-align: right;">94.1</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>| Dataset | RQ8 | RQ4 | RQ4c | 4-bit TurboQuant (paper) | 4-bit TurboQuant (renorm) | 4-bit TurboQuant (centered+renorm) |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| dbpedia-ada002-1536-1M (cosine) | 99.0 | 93.5 | <strong>96.8</strong> | 87.4 | 94.5 | 96.4 |
+| sphere-dpr-768-1M (dot) | 98.2 | 90.9 | <strong>96.3</strong> | 76.6 | 91.6 | 95.8 |
+| sift-128-1M (l2) | 96.7 | 81.4 | <strong>87.5</strong> | 80.4 | 81.0 | 85.3 |
+| glove-100-1.2M (cosine) | 98.5 | 87.0 | <strong>89.9</strong> | 79.0 | 85.4 | 86.9 |
+| dbpedia-cohere-v2-4096-500k (dot) | 99.9 | 98.1 | <strong>98.5</strong> | 97.4 | 98.2 | 98.2 |
+| msmarco-arctic-embed-m-768-1M (cosine) | 99.3 | 94.7 | 95.8 | 91.5 | 95.1 | <strong>95.9</strong> |
+| nfcorpus-mlateon-mv-128 (maxsim) | 93.4 | 72.0 | <strong>94.1</strong> | 26.8 | 76.2 | 93.2 |
+| scifact-mlateon-mv-128 (maxsim) | 94.9 | 77.7 | <strong>94.5</strong> | 36.7 | 81.1 | 94.1 |</p>
+</blockquote>
+<p>在上述测试中，TurboQuant (paper) 代表论文中未做修改的原始 MSE 变体；(renorm) 代表加入了重新归一化 (Renormalization) 机制——这是后续研究中发现对提升 TurboQuant 基线性能至关重要的补丁；而 (centered+renorm) 则进一步融合了均值中心化，以实现与中心化 RQ4 的同维度公平成准对比。</p>
+<blockquote>
+<p>Here TurboQuant (paper) is the stock TurboQuant MSE variant in the paper, (renorm) adds renormalization which has been found to be important in improving the base TurboQuant, and (centered+renorm) also adds mean centering to make things comparable with centered RQ4.</p>
+</blockquote>
+<p>完全忠实于原始论文的 TurboQuant 在所有测试数据集上全面落败（尤其是在高各向异性的多向量模型如 mLateOn 上，性能甚至出现了断崖式崩溃）。在补齐中心化与重归一化优化后，二者的差距有所收窄，但中心化 RQ4 (RQ4c) 依然在 8 个数据集中的 7 个上稳拔头筹。</p>
+<blockquote>
+<p>Paper-faithful TurboQuant loses on every dataset (and notably collapses with highly anisotropic multi-vector models like mLateOn). When adding centering and renormalization, the gap is closer but RQ4c wins on 7/8 datasets.</p>
+</blockquote>
+<p>最后，细心的读者可能会发现，绝大多数开源实现中几乎看不到“8-bit” TurboQuant 的身影。这是因为在 2-bit 或 4-bit 下行之有效的 SIMD 码本加速黑魔法，在扩展到 8-bit 时会彻底失效（并伴随极其严重的性能崩塌）。相比之下，旋转量化 (RQ) 在工程适应性上展现出无可比拟的优势，能够优雅无缝地覆盖全比特位宽。</p>
+<blockquote>
+<p>Finally, you may have noticed there is no "8-bit" TurboQuant in most public implementations. This is because the SIMD codebook trick that works at 2 or 4 bits no longer works at 8 bits (with large performance decreases). RQ is more adaptable here and usable across the full range.</p>
+</blockquote>
+<hr />
+<h2 id="weaviate-4-bit-rq">如何在 Weaviate 中启用 4-bit RQ</h2>
+<blockquote>
+<h2 id="using-4-bit-rq">Using 4-bit RQ</h2>
+</blockquote>
+<p>4-bit RQ 在 Weaviate 1.39 中已原生集成，只需在原有 RQ 量化器配置中指定 <code>bits</code> 参数即可直接使用：</p>
+<blockquote>
+<p>4-bit RQ ships in Weaviate 1.39 as a <code>bits</code> setting on the existing RQ quantizer.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;vectorIndexConfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;rq&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;centering&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;bits&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>在 Python 客户端中的使用示例：</p>
+<blockquote>
+<p>In the Python client:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">weaviate.classes.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Configure</span><span class="p">,</span> <span class="n">Property</span><span class="p">,</span> <span class="n">DataType</span>
+
+<span class="n">client</span><span class="o">.</span><span class="n">collections</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Recipes&quot;</span><span class="p">,</span>
+    <span class="n">vector_config</span><span class="o">=</span><span class="n">Configure</span><span class="o">.</span><span class="n">Vectors</span><span class="o">.</span><span class="n">text2vec_openai</span><span class="p">(</span>
+        <span class="n">quantizer</span><span class="o">=</span><span class="n">Configure</span><span class="o">.</span><span class="n">VectorIndex</span><span class="o">.</span><span class="n">Quantizer</span><span class="o">.</span><span class="n">rq</span><span class="p">(</span>
+            <span class="n">bits</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="n">centering</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">Property</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="n">DataType</span><span class="o">.</span><span class="n">TEXT</span><span class="p">),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="_10">结语</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>我们非常高兴地向大家呈现对旋转量化所打造的全套性能优化，以及全新推出的 4-bit 规格。旋转量化专为极速向量编码与高频距离计算而精心打磨，在守住高水准召回率的同时，释放了极为可观的内存红利。尽管目前在 Weaviate Cloud 云服务中我们仍默认采用 8-bit，但我们强烈推荐并欢迎大家<a href="https://docs.weaviate.io/weaviate/configuration/compression/rq-compression#4-bit-rq">亲自体验 4-bit RQ</a> ，感受极致的成本节约与轻量级内存表现。</p>
+<blockquote>
+<p>We are excited to announce the suite of performance improvements we have done to Rotational Quantization, along with the new 4-bit size. Rotational quantization is tuned for fast encoding and distance calculations, achieving competitive recall and saving significant memory usage. Although we are keeping our default of 8-bit in Weaviate Cloud, we invite you to <a href="https://docs.weaviate.io/weaviate/configuration/compression/rq-compression#4-bit-rq">try out 4-bit RQ</a> for cost savings and lower RAM usage.</p>
+</blockquote>
+<hr />
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">旋转量化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">4-bit 量化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大模型压缩</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">离群值消除</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

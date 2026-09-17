@@ -1,0 +1,1051 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-18-VQ-bench-%E5%8F%AF%E7%BB%84%E5%90%88%E5%BC%8F%E7%9F%A2%E9%87%8F%E9%87%8F%E5%8C%96%E6%A1%86%E6%9E%B6%E4%B8%8E%E8%AF%84%E6%B5%8B%E5%9F%BA%E5%87%86/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>VQ-bench：可组合式矢量量化框架与评测基准 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#vq-bench" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              VQ-bench：可组合式矢量量化框架与评测基准
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="vq-bench">VQ-bench：可组合式矢量量化框架与评测基准</h1>
+<blockquote>
+<h1 id="vq-bench-a-composable-vector-quantization-framework">VQ-bench: a Composable Vector Quantization Framework</h1>
+<p><strong>Authors:</strong> Ashwin Padaki, Amir Ingber, Edo Liberty<br />
+<strong>Published:</strong> September 17, 2026 | <strong>Categories:</strong> Engineering, Research<br />
+<strong>Links:</strong> <a href="https://vq-bench.com">Website</a> | <a href="https://github.com/pinecone-io/vq-bench">GitHub Repository</a> | <a href="https://arxiv.org/abs/2608.11240">Paper</a> | <a href="https://vq-bench.com/slides.pdf">Talk Slides</a> | <a href="https://vecdb-ws.github.io/vldb2026">VecDB@VLDB 2026</a></p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在人工智能与现代信息检索领域，高维向量是向量数据库和各类大语言模型 (Large Language Model, LLM) 运转的核心数据载体，但全精度的海量向量存储与检索面临着极高的硬件成本。矢量量化 (Vector Quantization, VQ) 技术通过将高维连续向量压缩为紧凑的离散编码，成为大幅削减内存占用并加速相似度计算的关键支柱。然而，学术界与工业界虽然涌现出繁多的量化算法，却因评估指标各异、测试数据集不同以及底层硬件优化不一致，长期缺乏公平可比的标准评测。为此，Pinecone 正式推出了开源框架与基准评测套件 VQ-bench，创新性地将绝大多数复杂量化器解构为由少量核心原语模块组装而成的流水线。VQ-bench 不仅为经典与前沿量化算法提供了统一严谨的横向对比舞台，更让开发者能够像搭积木一样自由组合、快速验证新型量化策略，为向量检索生态注入了强大的模块化基础设施。</p>
+<hr />
+<h2 id="_2">核心内容摘要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>对于向量数据库和大语言模型 (Large Language Model, LLM) 而言，矢量量化 (Vector Quantization, VQ) 是一项不可或缺的关键技术，能够大幅压缩高维向量的存储空间。然而，学术界近年来发表了浩如烟海的量化器算法，由于评测指标各异、测试数据集不统一以及针对不同硬件的底层优化大相径庭，想要对它们进行公平公正的横向对比，一直是一大行业痛点。</p>
+<blockquote>
+<p>Vector quantization (VQ) is crucial for reducing the storage size of high-dimensional vectors in vector databases and large language models (LLMs). However, evaluating and comparing the sheer volume of published quantizers has historically been challenging due to inconsistent metrics, datasets, and hardware optimizations. </p>
+</blockquote>
+<p>为了攻克这一难题，Pinecone 推出了开源框架与基准评测套件 <strong>VQ-bench</strong>。它的精妙之处在于，将绝大多数主流量化器抽象为由少量基础“原语”组合而成的模块化“流水线”。本文将深入探讨 VQ-bench 如何实现量化器评测的标准化体系，详细拆解备受关注的 E-RaBitQ 等经典架构，并重点展示在 ArXiv 和 Yahoo 等公开数据集上的核心性能对比结果。</p>
+<blockquote>
+<p>To solve this, Pinecone introduces <strong>VQ-bench</strong>, an open-source framework and benchmarking suite that models most published quantizers as modular "pipelines" built from a small set of primitive operations. This post outlines how VQ-bench standardizes quantizer evaluation, breaks down popular architectures like E-RaBitQ, and highlights key performance comparisons across datasets like ArXiv and Yahoo.</p>
+</blockquote>
+<hr />
+<h2 id="_3">引言</h2>
+<blockquote>
+<h2 id="introduction">Introduction</h2>
+</blockquote>
+<p>对于任何向量数据库来说，在对向量进行相似度检索之前，必须先将它们妥善存储在系统中。然而，以全精度直接保存海量的高维向量，硬件开销极为昂贵。**矢量量化 (Vector Quantization, VQ) ** 技术能够显著减少存储单个向量所需的比特位 (Bit) 数，因此成为了构建与运维高效向量数据库的核心技术基石。</p>
+<blockquote>
+<p>Before a vector database can search vectors, it has to store them. But storing high-dimensional vectors at full precision is quite expensive. <strong>Vector quantization</strong> (VQ) reduces the number of bits needed to store a vector, making it a critical part of maintaining a vector database.</p>
+</blockquote>
+<p>正因为 VQ 在向量数据库与大模型体系中扮演着举足轻重的角色，每年学术界都会涌现出海量的相关研究论文。早在打造首批系统原型时，Pinecone 就已经深入应用了量化技术。不过精益求精的追求永无止境，于是我们着手对近年来的前沿研究成果展开全面调研与基准测试。在这个过程中，市面上数量极其庞大的量化器让我们眼花缭乱；更棘手的是，几乎每篇论文的评测标准都不尽相同——各家使用的测试数据集互不一致，衡量的性能指标五花八门，底层更针对不同的硬件架构做了各自定制的加速优化。我们始终无法在业内找到任何能够对主流顶尖量化算法进行系统性、横向公平对比的研究工作。</p>
+<blockquote>
+<p>Because VQ is so important (to both vector databases and LLMs), many research papers are published on the topic every year. Pinecone has been using quantization since its first prototypes. But we can always do better, so we set out to survey and benchmark newer results. We were pretty overwhelmed by just how many quantizers are out there. To make matters worse, every paper seemed to evaluate performance differently, measuring different metrics on different datasets and optimizing for different hardware. We were unable to find any systematic attempt to evaluate the leading methods against one another.</p>
+</blockquote>
+<p>显然，想要从零开始百分之百忠实复现几十种量化器，本身就是一项巨大的挑战。幸运的是，随着我们对前沿文献的逐步深挖，一条清晰的规律浮出了水面：许多新发表的量化器本质上只是对现有算法的微小变体。事实上，绝大部分量化器都是基于一组数量相当有限的基础运算单元构建起来的。这激发了我们的灵感：如果我们把这些核心基础单元打包成一个开源原语库，让构建量化器变得如同照着菜单配菜一样简单——只需选定使用哪些原语并排定先后执行顺序，那会怎样？如此一来，我们便能在一个完全统一、透明且可复现的基准线上公平评测所有算法；同时，这也为研究人员探索现有量化器的全新变体、甚至是彻底发明全新的算法，铺平了实验道路。</p>
+<blockquote>
+<p>Of course, faithfully implementing dozens of quantizers from scratch comes with its own challenges. Luckily, as we dug deeper into the literature, we began to notice a pattern. Many published quantizers are actually just slight variations of existing ones. In fact, most of them are built from a relatively small set of primitive operations. That gave us an idea: what if we published an open-source library of these core primitives, where building a quantizer was as easy as writing a recipe of which primitives to use and in what order? Then, we would be able to evaluate all of these quantizers in a fair and reproducible way. It would also make it easier to experiment with new variations of existing quantizers or invent new ones altogether.</p>
+</blockquote>
+<p>这就是 VQ-bench 项目的缘起。伴随着这篇博文，我们非常自豪地正式向社区开源发布 VQ-bench，包含以下核心资源：</p>
+<blockquote>
+<p>This was the start of the VQ-bench project. With this post, we're excited to share VQ-bench with the public, including:</p>
+</blockquote>
+<ul>
+<li>公开的 <a href="https://vq-bench.com">官方网站 (website) </a>：持续更新并展示主流热门量化器的最新基准评测数据；</li>
+<li>开源 <a href="https://github.com/pinecone-io/vq-bench">GitHub 仓库</a>：欢迎社区贡献您自己的量化器实现与运算原语；</li>
+<li>专题学术 <a href="https://arxiv.org/abs/2608.11240">论文 (paper) </a>：发表于 <a href="https://vecdb-ws.github.io/vldb2026">VecDB@VLDB 2026</a> 研讨会，并附带完整的 <a href="https://vq-bench.com/slides.pdf">演讲幻灯片 (talk slides) </a>。</li>
+</ul>
+<blockquote>
+<ul>
+<li>A public <a href="https://vq-bench.com">website</a> with a running benchmark of popular quantizers</li>
+<li>A <a href="https://github.com/pinecone-io/vq-bench">GitHub repo</a> where you can contribute your own quantizers and primitives</li>
+<li>A <a href="https://arxiv.org/abs/2608.11240">paper</a> on VQ-bench (presented at <a href="https://vecdb-ws.github.io/vldb2026">VecDB@VLDB 2026</a>), along with the <a href="https://vq-bench.com/slides.pdf">talk slides</a>.</li>
+</ul>
+</blockquote>
+<p><em>请注意，目前发布的仅是 VQ-bench 的首个迭代版本；我们非常期待来自社区的宝贵反馈、勘误建议与代码贡献，后续我们也会持续纳入更多前沿量化器。</em></p>
+<blockquote>
+<p><em>Note that this is just the first iteration of VQ-bench; we encourage feedback, corrections, and contributions, and we will add more quantizers over time.</em></p>
+</blockquote>
+<hr />
+<h2 id="_4">量化器核心接口</h2>
+<blockquote>
+<h2 id="quantizers">Quantizers</h2>
+</blockquote>
+<p>通俗来说，**量化器 (Quantizer) ** 本质上是任何能够接收一组向量、将其压缩编码并在后续按需还原出目标信息的计算实体。在 VQ-bench 体系中，一个标准的量化器必须实现以下四种核心方法：</p>
+<blockquote>
+<p>A <strong>quantizer</strong> is anything that can take a set of vectors, compress them, and recover desired information later on. In VQ-bench, a quantizer must implement four methods:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">接口方法</th>
+<th style="text-align: left;">功能说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>fit</code></td>
+<td style="text-align: left;">输入一组向量样本（以及可选的查询向量样本），训练并拟合出量化模型 (<em>model</em>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>encode</code></td>
+<td style="text-align: left;">根据训练好的模型与输入向量集，为每个向量生成对应的紧凑压缩编码 (<em>codes</em>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reconstruct</code></td>
+<td style="text-align: left;">根据模型以及向量 <em>x</em> 的压缩编码，还原重构 (<em>reconstruct</em>) 出该向量的近似表示</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>score</code></td>
+<td style="text-align: left;">根据模型、查询向量 <em>q</em> 以及向量 <em>x</em> 的压缩编码，直接预估两者之间的点积相似度得分 (<em>score</em>) ⟨q, x⟩</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>fit</code></td>
+<td style="text-align: left;">given a sample of vectors (and optionally queries), learn a <em>model</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>encode</code></td>
+<td style="text-align: left;">given the model and a set of vectors, return per-vector <em>codes</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reconstruct</code></td>
+<td style="text-align: left;">given the model and the code for vector <em>x</em>, <em>reconstruct</em> it</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>score</code></td>
+<td style="text-align: left;">given the model, a query vector <em>q</em>, and the code for <em>x</em>, estimate the dot-product <em>score</em> ⟨q, x⟩</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_5">基础运算原语</h2>
+<blockquote>
+<h2 id="primitives">Primitives</h2>
+</blockquote>
+<p>在学术界的研究中，量化器极少是从零孤立构建的，它们大都是由一组基础运算单元拼接组装而成的。在 VQ-bench 中，这套核心运算单元被形式化定义为<strong>原语 (Primitives) </strong>。一个原语除了实现上述普通量化器具备的四种方法外，还额外实现了两个核心方法，用于精确定义数据如何流转传递给下一个处理阶段：</p>
+<blockquote>
+<p>Quantizers are rarely built from scratch. In the literature, they are assembled from a small set of basic operations, which VQ-bench formalizes as <strong>primitives</strong>. A primitive implements the same four methods as any other quantizer, plus two more that specify exactly how it hands data to the next stage:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">接口方法</th>
+<th style="text-align: left;">功能说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>apply</code></td>
+<td style="text-align: left;">根据当前模型对输入向量进行变换，生成下游阶段所接收的数据表示</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply_queries</code></td>
+<td style="text-align: left;">根据当前模型对查询向量进行变换，生成下游阶段所接收的查询数据表示</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>apply</code></td>
+<td style="text-align: left;">given the model, transform the vectors into what the next stage should see</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply_queries</code></td>
+<td style="text-align: left;">given the model, transform the queries into what the next stage should see</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>此外，原语的 <code>reconstruct</code> 与 <code>score</code> 方法分别将下游下一阶段输出的重构向量与得分估计值作为输入，进而完成逆向的数据折叠与聚合。</p>
+<blockquote>
+<p>A primitive's <code>reconstruct</code> and <code>score</code> methods also take as input the next stage's reconstruction and score estimate, respectively.</p>
+</blockquote>
+<p>这样一来，每个原语总共实现了六个核心方法。额外增加的两个方法构成了一套级联契约 (Chaining Contract) ，正是它们的存在，才使得各个原语能够像积木一样顺畅组合串联，这正是下一章节要探讨的核心。</p>
+<blockquote>
+<p>That makes six methods in total. The extra two are the chaining contract: they are what let primitives be composed, which is the subject of the next section.</p>
+</blockquote>
+<p>VQ-bench 将所有原语划分为三大主要类别：</p>
+<blockquote>
+<p>VQ-bench implements three groups of primitives.</p>
+</blockquote>
+<ul>
+<li><strong>调节器 (Conditioners) </strong>：负责对输入数据进行预处理变换，并将处理后的数据传递给下游模块，例如去均值中心化 (<code>Center</code>) 、归一化 (<code>Normalize</code>) 、主成分分析 (<code>PCA</code>) 、随机旋转 (<code>RandomRotate</code>) 等；</li>
+<li><strong>舍入器 (Rounders) </strong>：负责将连续向量投影映射到有限码本 (Codebook) 中，并将逼近后的残差 (<em>residual</em>) 继续向下游传递，例如无符号整数映射 (<code>CastUint</code>) 、角度映射 (<code>CastAngular</code>) 、正态分布映射 (<code>CastNormal</code>) 、K 均值聚类 (<code>KMeans</code>) 等；</li>
+<li><strong>切分器 (Splitters) </strong>：负责将高维向量拆分为多个子向量切片，并为每个切片分配各自独立的原语处理链，例如子空间分段 (<code>Segment</code>) 等。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Conditioners</strong> transform the data and pass it downstream (<code>Center</code>, <code>Normalize</code>, <code>PCA</code>, <code>RandomRotate</code>, ...).</li>
+<li><strong>Rounders</strong> cast each vector to a finite codebook, passing the <em>residual</em> downstream (<code>CastUint</code>, <code>CastAngular</code>, <code>CastNormal</code>, <code>KMeans</code>, ...).</li>
+<li><strong>Splitters</strong> split the vectors and quantize each part with its own chain of primitives (<code>Segment</code>).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_6">模块化流水线架构</h2>
+<blockquote>
+<h2 id="pipelines">Pipelines</h2>
+</blockquote>
+<p>所谓的<strong>流水线 (Pipeline) </strong>，是指将两个或多个原语以链表形式级联组合而成的特殊量化器。压缩向量的过程就像沿着流水线正向穿行，而重构还原向量（或计算检索得分）的过程则是反向逆流而上。</p>
+<blockquote>
+<p>A <strong>pipeline</strong> is a special type of quantizer given by composing two or more primitives in a chain. Compressing a vector walks it forward through the chain, and recovering a vector (or its score) walks it backward.</p>
+</blockquote>
+<ul>
+<li><strong>正向传递 (Forward pass) </strong>：<code>fit</code> 与 <code>encode</code> 遵循相同的正向流转逻辑。在每个处理阶段，它们完成当前阶段的既定任务（训练拟合模型或生成编码）。随后调用 <code>apply</code> 方法对向量进行变换并递归传递给下一阶段。流程结束时，<code>fit</code> 会将各阶段的模型参数拼接合并，<code>encode</code> 则将各阶段生成的编码有序串联。</li>
+<li><strong>反向传递 (Backward pass) </strong>：<code>reconstruct</code> 从流水线的最后一个阶段开始逆向执行。处于上层的每个阶段依次将自身对应的变换“撤销并叠加”回去（例如重新加上均值中心向量、做逆向旋转等），最终第一阶段就能还原出对原始向量的高精度近似。</li>
+<li><strong>得分计算 (<code>score</code>)</strong>：整体执行逻辑与反向传递类似，唯一区别在于每个阶段都需要看到与当前阶段视角完全一致的查询向量。因此，它首先通过 <code>apply_queries</code> 将查询向量单向正向推导一遍，随后再在计算得分时执行反向聚合。</li>
+</ul>
+<blockquote>
+<ul>
+<li>The forward pass: <code>fit</code> and <code>encode</code> follow the same path. At each stage, they perform that stage's job (learning the model / computing the codes). Then, they call <code>apply</code> to transform the vectors to the next stage and recurse. At the end, <code>fit</code> concatenates each stage's model and <code>encode</code> concatenates each stage's codes.</li>
+<li>The backward pass: <code>reconstruct</code> starts at the last stage. Each stage above it folds its own contribution back in (e.g., adding back the mean, undoing a rotation, etc.) until the first stage has an approximation of the original vector.</li>
+<li><code>score</code> works the same way, except every stage needs the query as <em>it</em> saw the data. So, it begins by walking just the query forward with <code>apply_queries</code>. Then, it performs the backward pass on the score.</li>
+</ul>
+</blockquote>
+<p>当然，量化器并非必须采用流水线架构。只要一个算法完整实现了上述四个核心方法，就可以作为合法的量化器接入体系，我们的接口充分包容了各类非流水线结构的算法设计。不过，文献中绝大多数已发表的量化方案都可以极其优雅地表达为原语流水线，这也正是这种解构设计能够作为统一基石的巨大价值所在。</p>
+<blockquote>
+<p>A quantizer does not have to be a pipeline. Anything that implements the four methods qualifies, and the interface leaves room for methods that are built some other way. But most published quantizers can be expressed as pipelines of primitives, which is what makes the decomposition worth building on.</p>
+</blockquote>
+<p>以近年来备受关注的前沿量化算法 E-RaBitQ 为例（在我们的系列基准实验中，它的表现极为出色）。E-RaBitQ 的核心处理管线仅仅由四个原语串联而成：</p>
+<blockquote>
+<p>For example, E-RaBitQ is a popular quantizer (which we found to be quite performant in our experiments). The E-RaBitQ pipeline consists of four primitives:</p>
+</blockquote>
+<ol>
+<li><strong>中心化 (Center) </strong>：从每个向量中减去整个数据集的均值向量；</li>
+<li><strong>归一化 (Normalize) </strong>：将每个向量缩放调整为单位范数（模长为 1）；</li>
+<li><strong>随机旋转 (Random Rotation) </strong>：对每个向量施加一个随机正交旋转（或随机阿达马旋转，Random Hadamard Rotation）；</li>
+<li><strong>角度映射 (Angular Cast) </strong>：在超球面上根据角度将每个向量映射到离它最近的 <span class="arithmatex">\(b\)</span> 位 (<span class="arithmatex">\(b\)</span>-bit) 整数网格点上。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Center:</strong> subtract the average dataset vector from each vector</li>
+<li><strong>Normalize:</strong> scale each vector to unit norm</li>
+<li><strong>Random Rotation:</strong> apply a random orthogonal (or random Hadamard) rotation to each vector</li>
+<li><strong>Angular Cast:</strong> snap each vector to a <span class="latex-inline inline-flex items-center text-sm sm:text-base"><!--<span class="arithmatex">\(!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/\)</span>--></span>-bit integer grid by rounding to the nearest grid point in angle.</li>
+</ol>
+</blockquote>
+<p>下图直观展示了这一流水线的数据流向，下方表格则详细列出了各个原语在此流水线中所执行的具体函数逻辑：</p>
+<blockquote>
+<p>A diagram of this pipeline and table for the primitive functions are given below.</p>
+</blockquote>
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="The E-RaBitQ pipeline." class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1020" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;w=1920&amp;q=75 1x, /_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;w=3840&amp;q=75 2x" style="color:transparent" width="1400"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">The E-RaBitQ pipeline.</div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">接口方法</th>
+<th style="text-align: left;">中心化 (Center)</th>
+<th style="text-align: left;">归一化 (Normalize)</th>
+<th style="text-align: left;">随机旋转 (Random Rotation)</th>
+<th style="text-align: left;">角度映射 (Angular Cast)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>fit</code></td>
+<td style="text-align: left;">拟合数据集均值向量 μ</td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">生成旋转随机种子</td>
+<td style="text-align: left;">无 (none)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>encode</code></td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">提取向量范数 ‖x‖</td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">提取网格点 grid(x) 及夹角余弦 cos(x, grid(x)) —— 每维度分配 b 比特及一个标量</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply</code></td>
+<td style="text-align: left;">x → x − μ</td>
+<td style="text-align: left;">x → x / ‖x‖</td>
+<td style="text-align: left;">x → Rx</td>
+<td style="text-align: left;">x → x − ĝ，其中 ĝ = grid(x) / ‖grid(x)‖</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply_queries</code></td>
+<td style="text-align: left;">恒等变换 (identity)</td>
+<td style="text-align: left;">恒等变换 (identity)</td>
+<td style="text-align: left;">q → Rq</td>
+<td style="text-align: left;">恒等变换 (identity)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reconstruct</code></td>
+<td style="text-align: left;">y → y + μ</td>
+<td style="text-align: left;">y → ‖x‖ · y</td>
+<td style="text-align: left;">y → Rᵀy</td>
+<td style="text-align: left;">y → y + ĝ</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>score</code></td>
+<td style="text-align: left;">s → s + ⟨q, μ⟩</td>
+<td style="text-align: left;">s → ‖x‖ · s</td>
+<td style="text-align: left;">保持 s 不变，因查询向量同步经过了相同旋转</td>
+<td style="text-align: left;">s → s + ⟨q, ĝ⟩ / cos(x, grid(x))</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Center</th>
+<th style="text-align: left;">Normalize</th>
+<th style="text-align: left;">Random Rotation</th>
+<th style="text-align: left;">Angular Cast</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>fit</code></td>
+<td style="text-align: left;">mean dataset vector μ</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">rotation seed</td>
+<td style="text-align: left;">none</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>encode</code></td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">the norm ‖x‖</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">grid(x) and cos(x, grid(x)) — b bits per dimension and one scalar</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply</code></td>
+<td style="text-align: left;">x → x − μ</td>
+<td style="text-align: left;">x → x / ‖x‖</td>
+<td style="text-align: left;">x → Rx</td>
+<td style="text-align: left;">x → x − ĝ, where ĝ = grid(x) / ‖grid(x)‖</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>apply_queries</code></td>
+<td style="text-align: left;">identity</td>
+<td style="text-align: left;">identity</td>
+<td style="text-align: left;">q → Rq</td>
+<td style="text-align: left;">identity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>reconstruct</code></td>
+<td style="text-align: left;">y → y + μ</td>
+<td style="text-align: left;">y → ‖x‖ · y</td>
+<td style="text-align: left;">y → Rᵀy</td>
+<td style="text-align: left;">y → y + ĝ</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>score</code></td>
+<td style="text-align: left;">s → s + ⟨q, μ⟩</td>
+<td style="text-align: left;">s → ‖x‖ · s</td>
+<td style="text-align: left;">s → s, since the query was rotated too</td>
+<td style="text-align: left;">s → s + ⟨q, ĝ⟩ / cos(x, grid(x))</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_7">实验评测与结果分析</h2>
+<blockquote>
+<h2 id="experimental-results">Experimental Results</h2>
+</blockquote>
+<p>我们在来自 <a href="https://vector-index-bench.github.io/">VIBE</a> 基准的 5 个公开数据集上，全面评测了包含 14 种经典及前沿算法的量化器套件。每个数据集均包含用于量化编码的基础向量集以及用于相似度打分的检索查询集。在此，我们重点展示其中两个典型数据集的评测结果：<strong>ArXiv</strong>（包含 1,344,643 个 768 维向量）和 <strong>Yahoo</strong>（包含 677,305 个 384 维向量）。更详尽完整的评测数据与交互图表均可在 <a href="https://vq-bench.com">官方网站 (website) </a> 上公开查阅。</p>
+<blockquote>
+<p>We evaluated a suite of 14 quantizers on 5 datasets from <a href="https://vector-index-bench.github.io/">VIBE</a>. Each dataset consists of vectors to encode and queries to score. Below, we present some results for two of the datasets: <strong>ArXiv</strong> (1,344,643 vectors in 768 dimensions) and <strong>Yahoo</strong> (677,305 vectors in 384 dimensions). You can view the full results on the <a href="https://vq-bench.com">website</a>.</p>
+</blockquote>
+<h3 id="reconstruction-error">重构误差 (Reconstruction Error)</h3>
+<blockquote>
+<h3 id="reconstruction-error_1">Reconstruction Error</h3>
+</blockquote>
+<p>**重构均方误差 (Reconstruction MSE) ** 是矢量量化领域的传统评估指标，在诸如大语言模型权重压缩等场景中至关重要。其具体测量方法为：首先从数据集中随机采样 1000 个测试向量 <span class="arithmatex">\(x\)</span>；接着利用待测算法生成对应的重构向量 <span class="arithmatex">\(\hat{x}\)</span>，并计算所有测试样本的均方误差平均值 <span class="arithmatex">\(\|x - \hat{x}\|^2\)</span>。</p>
+<blockquote>
+<p><em>Reconstruction MSE</em> is the traditional metric for VQ, and it's important for applications like LLM weight compression. To measure it, we sample 1000 random dataset vectors <span class="latex-inline inline-flex items-center text-sm sm:text-base"><!--<span class="arithmatex">\(!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/\)</span>--></span>. A quantizer reconstructs <span class="latex-inline inline-flex items-center text-sm sm:text-base"><!--<span class="arithmatex">\(!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/\)</span>--></span> and we measure the average value of <span class="latex-inline inline-flex items-center text-sm sm:text-base"><!--<span class="arithmatex">\(!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/\)</span>--></span>.</p>
+</blockquote>
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Reconstruction MSE for ArXiv" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fa8b05e3a6510b81e6faf8f934872bccb14316c10-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fa8b05e3a6510b81e6faf8f934872bccb14316c10-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">ArXiv</div>
+</div>
+
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Reconstruction MSE for Yahoo" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F38807a656d698a6454458a149604c981dbf7ef1a-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F38807a656d698a6454458a149604c981dbf7ef1a-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">Yahoo</div>
+</div>
+
+<h3 id="recall">召回率评测 (Recall)</h3>
+<blockquote>
+<h3 id="recall_1">Recall</h3>
+</blockquote>
+<p>而在向量数据库与信息检索实际落地场景中，更贴近业务核心表现的指标则是<strong>召回率 (Recall) </strong>，尤其在重排 (Reranking) 阶段中起着决定性作用。为了精确评估该指标，对于每个查询向量，我们首先计算出数据集中真实点积得分最高的前 1000 个目标向量；随后利用量化器快速预估这 1000 个向量的相似度得分，并统计预估得分最高的 Top-10 向量命中真实 Top-10 向量的比例，最终计算所有查询的平均值 (Recall@10)。</p>
+<blockquote>
+<p>For vector databases, a more relevant metric is <em>recall</em>, specifically for reranking. To measure it, we take each query and compute the 1000 dataset vectors of maximum dot-product. A quantizer estimates these 1000 scores, and we measure what fraction of the estimated top-10 were contained in the true top-10 (averaging this fraction over all queries).</p>
+</blockquote>
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Recall@10 for ArXiv" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Ffe3555877169e3ebc12b7264708cf654d69f1a3f-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Ffe3555877169e3ebc12b7264708cf654d69f1a3f-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">ArXiv</div>
+</div>
+
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Recall@10 for Yahoo" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F4111b6789e40ae61c5520935867e0c7d33972b75-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F4111b6789e40ae61c5520935867e0c7d33972b75-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">Yahoo</div>
+</div>
+
+<h3 id="encode-time">编码耗时对比 (Encode Time)</h3>
+<blockquote>
+<h3 id="encode-time_1">Encode Time</h3>
+</blockquote>
+<p>除了量化精度与检索质量，我们还详细记录了量化器对全量数据集进行压缩编码所需的总耗时。在测试实现中，编码过程采用分块流式处理并依托多线程进行并行加速。基准硬件环境配置为搭载 16GB 内存的 Apple M2 Pro 芯片，并在 6 个计算线程下测得。</p>
+<blockquote>
+<p>We also measure how long it takes to encode the entire dataset. Note that encoding is done in chunks and accelerated via multithreading. These results were obtained on an Apple M2 Pro with 16GB RAM using 6 threads.</p>
+</blockquote>
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Encode time for ArXiv" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fbb535f3e72f81764503afafb683b77e9f5c85335-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fbb535f3e72f81764503afafb683b77e9f5c85335-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">ArXiv</div>
+</div>
+
+<div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3">
+  <div class="w-full max-w-full">
+    <div class="flex flex-col items-center justify-center">
+      <div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in">
+        <img alt="Encode time for Yahoo" class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1240" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fe3f7e00f639a34830edb2a9d8f1cd6962ddfb20a-2470x1240.png&amp;w=3840&amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2Fe3f7e00f639a34830edb2a9d8f1cd6962ddfb20a-2470x1240.png&amp;w=3840&amp;q=75 1x" style="color:transparent" width="2470"/>
+      </div>
+    </div>
+  </div>
+  <div class="w-full text-center text-sm text-text-secondary mt-4">Yahoo</div>
+</div>
+
+<h3 id="_8">评测结论与洞察</h3>
+<blockquote>
+<h3 id="discussion">Discussion</h3>
+</blockquote>
+<p>综合上述实验数据，我们可以总结出几条非常明确的技术趋势：乘积量化 (PQ) 与最优乘积量化 (OPQ) 在重构均方误差 (MSE) 方面始终保持着最低的领先水平；在检索召回率方面，EDEN 与 E-RaBitQ 的表现旗鼓相当，尤其在分配较高比特预算时优势更加突出；此外，EDEN 的编码处理速度远快于 PQ、OPQ 和 E-RaBitQ，兼顾了极高的压缩吞吐量与出色的精度表现，因而成为大多数实际工程量化场景中极具吸引力的理想选择。</p>
+<blockquote>
+<p>Overall, we can see some clear trends. PQ and OPQ consistently have the lowest reconstruction MSE. EDEN and E-RaBitQ are comparable in terms of recall, especially at higher bit budgets. EDEN is also much faster to encode than PQ, OPQ, and E-RaBitQ, making it a good candidate for most quantization applications.</p>
+</blockquote>
+<hr />
+<h2 id="_9">参与贡献与社区共建</h2>
+<blockquote>
+<h2 id="contribute">Contribute</h2>
+</blockquote>
+<p>我们在最初架构设计时就将可扩展性作为核心考量，开源 <a href="https://github.com/pinecone-io/vq-bench">GitHub 仓库</a> 非常欢迎两类社区贡献：</p>
+<blockquote>
+<p>We built VQ-bench to be extended, and the <a href="https://github.com/pinecone-io/vq-bench">repo</a> takes two kinds of contributions.</p>
+</blockquote>
+<ul>
+<li><strong>构想出了全新的量化器？</strong> 通常只需编写几行简明代码即可完成实现。正如前文展示的 E-RaBitQ 管线，其源码仅仅是把 <a href="https://github.com/pinecone-io/vq-bench/blob/main/src/quantizers/e_rabitq.rs">四个原语排成一个列表</a>；而学术界发表的众多量化器，本质上也只是对库中已有原语进行重新排列组合而已；</li>
+<li><strong>发明了全新的运算原语？</strong> 只需完整实现前文提到的六个接口方法，新原语便能立刻与目录中的所有现有原语无缝混搭组合。所有现有的以及未来尚未编写的处理流水线，均可自由调用它。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Got a new quantizer?</strong> Usually just a few lines of code. The E-RaBitQ pipeline above is <a href="https://github.com/pinecone-io/vq-bench/blob/main/src/quantizers/e_rabitq.rs">four primitives in a list</a>, and many published quantizers are a similar reordering of primitives the library already ships.</li>
+<li><strong>Got a new primitive?</strong> Implement the six methods above and it composes with every other primitive in the catalog. Every pipeline can use it, including the ones nobody has written yet.</li>
+</ul>
+</blockquote>
+<p>无论你选择哪种贡献方式，都能直接开箱即用整套严谨的自动化评测体系。只需配置一份简短的参数文件，测试框架便会针对全套评测套件运行你的算法，并在完全统一的标准下测量各项关键指标：Recall@k 召回率、重构与得分估计误差、偏差分布、Softmax KL 散度与总变差、每维度占用比特数，以及编码、打分与重构的时空成本。随着我们持续扩充数据集和度量维度，基准评测的覆盖范围正在不断扩大。我们会定期刷新并更新公开发布的基准评测排行榜，届时社区新增的优秀方法也将被同步纳入展示。</p>
+<blockquote>
+<p>Either way, you get the evaluation harness. A short config runs your method over the whole suite, measured exactly the way every other method is measured: recall@k, reconstruction and score error, bias, softmax KL and total variation, size in bits per dimension, and encode, score, and reconstruction cost. Both lists keep growing as we add datasets and metrics. We refresh the published benchmark on a regular cadence, and new methods are folded in then.</p>
+</blockquote>
+<p>我们也热切期待来自原作者与社区的勘误。如果我们对您提出的量化算法理解有偏或实现有误，抑或是遗漏了值得纳入的重要方法，欢迎随时在 GitHub 提交 Issue 与我们深入交流！</p>
+<blockquote>
+<p>We also want corrections. If we implemented your quantizer wrong, or we missed a method worth including, open an issue and tell us.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">矢量量化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">VQ-bench</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">基准测试</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模组化架构</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
