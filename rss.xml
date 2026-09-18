@@ -5,6 +5,322 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-19/我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-19/我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录/</guid>
+      <pubDate>Sat, 19 Sep 2026 00:00:00 GMT</pubDate>
+      <description>本文记录了著名技术开发者 Dan Abramov 作为一名自称的“数学小白”，如何仅凭前沿大语言模型 (Claude 与 ChatGPT) 以及交互式定理证明工具 Lean 4，历时一个月攻克传奇数学家 John Conway 悬置整整 50 年的“全数整数细分猜想” (Omnific Integer Refinement Conjecture) 的奇幻实录。在经历初期 AI 严重胡言乱语、“黑话”满天飞与伪证明破产的泥潭后，作者开创性地搭建了包含项目经理、红队攻防、文献逆向与形式化编译的多智能体协同实验室架构。通过严格的代码隔离、定理反演与编译器内核硬校验，最终成功编译出了一份经 Lean 4 内核无额外公理检验通过的完整证明证书。本文兼具幽默坦诚的个人叙事与前沿形式化验证的深度思考，展现了生成式 AI 赋能前沿跨界探索的巨大潜能。
+
+---
+
+## 核心概要
+
+&gt; # Summary
+
+一名自称“数学小白”的业余爱好者，耗时整整一个月，完全凭借前沿大语言模型 (Large Language Model, LLM) —— Claude 与 ChatGPT，以及形式化定理证明工具 Lean 4，向数学界的公开未解难题发起了冲击：试图证明 John Conway 在 50 年前提出、关于超现实数 (Surreal Numbers) 的**全数整数细分猜想 (Omnific Integer Refinement Conjecture)**。尽管起初遭遇了严重的 AI 幻觉（充斥着大量虚构行话的“AI 垃圾内容”），作者随后精心打造了一套多智能体协同实验室工作流，结合严格的 Lean 4 形式化验证、独立代码文件沙箱隔离与层层递进的红队审计机制。最终，整套系统成功编译出了一份经 Lean 4 编译器内核完备校验的康威猜想证明证书，并向全球数学界同行公开邀请形式化证伪。
+
+&gt; An amateur mathematician ("math noob") spends a month using AI frontier models (Claude and ChatGPT) and the Lean theorem prover to attempt an open mathematical problem: proving John Conway’s 50-year-old **omnific integer refinement conjecture** regarding surreal numbers. Despite initial struggles with AI hallucinations ("slop" and made-up terminology), the author builds a multi-agent laboratory workflow combined with rigorous Lean formalization, independent file isolation, and step-by-step audits. Ultimately, the system successfully compiles a kernel-checked proof certificate of Conway's conjecture in Lean, inviting formal peer refutation.
+
+---
+
+## 我是如何“凭直觉与感觉”搞定康威猜想证明的
+
+&gt; ## How I Vibed a Proof of Conway’s Conjecture
+
+**日期：** 2026年9月18日  
+**作者：** Dan Abramov ([Ko-fi](https://ko-fi.com/gaearon) | [GitHub 源码仓库](https://github.com/gaearon/conway-refinement))
+
+&gt; **Date:** September 18, 2026  
+&gt; **Author:** Dan Abramov ([Ko-fi](https://ko-fi.com/gaearon) | [GitHub Source](https://github.com/gaearon/conway-refinement))
+
+几个月前，AI 在数学领域取得突破的新闻开始频频登上各大媒体头条。[“搞个大突破” (Do a breakthrough)](https://www.theargumentmag.com/p/computer-do-a-breakthrough-no-mistakes) 甚至成了 Twitter 上的热门技术热梗。自然而然地，我也按捺不住好奇心：像我这样一个连高等微积分题解都要到处找答案的[数学小白](https://github.com/gaearon/analysis-solutions)，是不是也能随便找一个悬而未决的数学开放难题，然后让前沿模型帮我把它解出来？
+
+&gt; A few months ago, AI math results started making headlines. [“Do a breakthrough”](https://www.theargumentmag.com/p/computer-do-a-breakthrough-no-mistakes) became a Twitter meme. Naturally, I became curious whether I, too, a [math noob](https://github.com/gaearon/analysis-solutions), could find some open mathematical problem and then have a frontier model solve it.
+
+这花光了我整整一个月的全部业余时间，并烧掉了[天文数字般的 Token](#how-many-tokens)；但我想，我已经成功拿到了由 Lean 4 严格检验通过的[数学证明](https://github.com/gaearon/conway-refinement)，攻克了 John Conway 在 50 年前留下的这一著名猜想：
+
+&gt; It took me an entire month of my free time and a [boatload](#how-many-tokens) of tokens, but I believe I’ve obtained a Lean [proof](https://github.com/gaearon/conway-refinement) of this conjecture posed by John Conway 50 years ago:
+
+![Conjecture: Omnific integers have a refinement property...](./images/conway.jpg)
+
+Conway 的细分猜想断言：全数整数具备优良的因数细分性质——如果四个全数整数满足 $ab = cd$，那么必然存在另外四个整数 $e, f, g, h$，使得 $a = ef$、$b = gh$、$c = eg$ 且 $d = fh$。
+
+&gt; Conway’s refinement conjecture claims that omnific integers have a refinement property: if *ab = cd*, there are integers *e*, *f*, *g*, *h* with *a = ef*, *b = gh*, *c = eg*, *d = fh*.
+
+需要坦诚说明的是，我的证明目前**尚未**经过人类专业数学家的独立同行评审。不过，我掌握着[相当扎实的依据](https://github.com/gaearon/conway-refinement#why-i-think-its-correct)相信这一证明是坚实成立的，并且我非常真诚地欢迎任何人前来挑错和证伪。
+
+&gt; My proof has *not* been independently verified by mathematicians. However, I have [decent reasons](https://github.com/gaearon/conway-refinement#why-i-think-its-correct) to believe the proof is correct, and I genuinely invite a refutation.
+
+目前，该证明已经完全通过了[来自 Palomar 注册表](https://palomar-registry.org/entry?id=PALOMAR-2026-09-03-000002&amp;version=1)的严格机械化检查，几位精通 Lean 4 和该领域的专家也确认[形式化命题本身的陈述](https://github.com/gaearon/conway-refinement/blob/264445c93b78554c408e99e4e7f663693b4e91ab/ConwayRefinement/Standalone/Mathlib/InlineConwayRefinement.lean#L246-L257)完全准确。因此，只要我的证明代码没有意外触发 Lean 4 底层内核的致命 Bug，那么它大概率也是货真价实成立的。
+
+&gt; The proof has passed the mechanical checks [from the Palomar registry](https://palomar-registry.org/entry?id=PALOMAR-2026-09-03-000002&amp;version=1), and a few people familiar with both Lean and the field said that [the statement](https://github.com/gaearon/conway-refinement/blob/264445c93b78554c408e99e4e7f663693b4e91ab/ConwayRefinement/Standalone/Mathlib/InlineConwayRefinement.lean#L246-L257) seems correct. So, assuming my proof doesn’t rely on a Lean kernel bug, it’s likely to be legit too.
+
+在这篇长文中，我将详细记录我的探索路径，以及一路上所踩过的坑和收获的认知。
+
+&gt; In this post, I’ll describe my approach, and some things I learned along the way.
+
+---
+
+## 第一天
+
+&gt; ## First Day
+
+我一直觉得，“在完全不懂数学本质的情况下把它解出来”这个念头既荒谬又离奇，但恰恰是这种荒诞感，让这件事显得格外诱人。
+
+&gt; I thought the idea of “solving” a math problem without understanding its substance is rather absurd, which of course made it all the more appealing.
+
+不过，我可不想随随便便找个平庸的题做；我想要的是那种能够真正牵引我、让我心潮澎湃的问题。
+
+&gt; However, I didn’t just want *any* result; I wanted something that pulls me.</description>
+    </item>
+    <item>
+      <title>当智能体执行提交：认知可串行化保障复杂系统一致性</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-19/当智能体执行提交-认知可串行化保障复杂系统一致性/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-19/当智能体执行提交-认知可串行化保障复杂系统一致性/</guid>
+      <pubDate>Sat, 19 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着自主 AI 智能体 (AI Agent) 逐步接管复杂的生产与业务流程，它们不再仅仅是回答问题的交互助手，而是开始主动对系统状态执行写操作并调用各类外部服务。然而，智能体在漫长推理过程中所依赖的前提依据——包括数据库状态、检索知识、系统策略和委派权限——往往具有随机性且可能在后台被并发修改，使得传统数据库的事务隔离机制难以保证决策与提交动作之间的一致性。为了解决这一制约智能体安全落地的关键瓶颈，本文提出了“认知可串行化 (Cognitive Serializability) ”理论与 TCT 框架。该方案在数学上形式化了认知推导的一致性边界，并在工程实测中以仅 3.22 毫秒的极低额外开销拦截了全部并发异常，为构建高可靠、强一致的智能体自治系统奠定了坚实的理论与工程基石。
+
+---
+
+# 当智能体执行提交：认知可串行化保障复杂系统一致性
+
+&gt; # When AI Agents Commit: Cognitive Serializability Across Data, Evidence, Policy, and Authority
+
+**作者：** Jun He, Deying Yu  
+**提交时间：** 2026年7月28日  
+**主要领域：** 人工智能 (`cs.AI`)  
+**次要领域：** 分布式、并行与集群计算 (`cs.DC`)  
+**arXiv 标识符：** [arXiv:2609.20261 [cs.AI]](https://arxiv.org/abs/2609.20261)  
+**DOI：** [10.48550/arXiv.2609.20261](https://doi.org/10.48550/arXiv.2609.20261)
+
+&gt; **Authors:** Jun He, Deying Yu  
+&gt; **Submitted:** 28 July 2026  
+&gt; **Primary Subject:** Artificial Intelligence (`cs.AI`)  
+&gt; **Secondary Subjects:** Distributed, Parallel, and Cluster Computing (`cs.DC`)  
+&gt; **arXiv Identifier:** [arXiv:2609.20261 [cs.AI]](https://arxiv.org/abs/2609.20261)  
+&gt; **DOI:** [10.48550/arXiv.2609.20261](https://doi.org/10.48550/arXiv.2609.20261)
+
+---
+
+## 核心概述
+
+在现代分布式系统中，自主 AI 智能体往往需要结合各类输入来动态推导出对系统状态的修改动作——这些输入涵盖数据库读取、检索召回的背景证据、业务治理策略、模型自身的置信度以及外部委派的执行权限。然而，由于这些输入具有概率随机性，并且极易在智能体长时推理的“思考”期间在后台发生变动，传统的数据库隔离级别 (仅仅对最终提交的事务进行物理排序) 以及常规的智能体事务处理机制往往难以应对。除非系统契约能巨细靡遗地把所有推导前提都显式转化为谓词条件，否则它们根本无法保证智能体最终提交的修改动作与其推导依据在逻辑上达成统一且有效的严格一致。
+
+为了彻底解决这一痛点，本文正式提出了**认知可串行化 (Cognitive Serializability) **理论与一整套系统框架 (TCT) 。该框架在丝毫不牺牲系统吞吐与响应性能的前提下，能够为复杂智能体系统提供零误差的正确性保障以及确定的向前推进能力。
+
+&gt; ## Summary
+&gt; 
+&gt; Autonomous AI agents dynamically derive state mutations from a wide range of inputs—including database reads, retrieved evidence, governance policies, internal beliefs, and delegated authority. Because these inputs are stochastic and often change while reasoning is actively in progress, traditional database isolation (which orders submitted transactions) and standard agentic transaction processing fall short. They fail to establish a unified valid point of agreement between a mutation and its underlying derivation inputs unless the contract explicitly represents all relevant predicates.
+&gt; 
+&gt; This paper introduces **Cognitive Serializability** and a comprehensive framework (**TCT**) to guarantee zero-error soundness and positive progress in agentic systems without sacrificing performance.
+
+---
+
+## 核心概念与运行机制
+
+* **类型化依赖 Token (Typed Dependency Tokens) ：** 清晰区分数据的“内容完整性”与规则的“通用适用性”。
+* **可信中介机制 (Trusted Mediation) ：** 精准捕获并记录在智能体推理过程中所使用的全部确切数值。
+* **严格认知可串行化 (Strict Cognitive Serializability) ：** 确保所有已提交的执行效果都遵循严格的串行顺序，并在逻辑上等价于所有暴露给推导过程的前提数值全程未发生任何改变。系统防护栅栏 (Fences) 将持续生效，直至运行时事件最终完成封装持久化域的封口确认。
+* **效果兼容型认知准入 (Effect-Compatible Cognitive Admission，弱化版) ：** 依据并发持有的最新依赖向量与当前最新策略，对修改效果重新进行合规校验，从而巧妙避开了对原始随机推导过程进行强行串行化的巨大开销。
+* **TCT 框架 (The TCT Framework) ：** 深度融合以下八大核心组件以强制执行系统一致性：
+  1. 不可变的版本化可执行定义
+  2. 注册表派生的授权计划
+  3. 密封信封机制
+  4. 守卫先行提交事务
+  5. 密封后与信封及见证绑定的授权授予
+  6. 协同提交凭据回执
+  7. 幂等的授权终结确认
+  8. 回执驱动的认知状态对齐
+
+&gt; ## Key Concepts &amp; Mechanisms
+&gt; 
+&gt; * **Typed Dependency Tokens:** Distinguish between content integrity and general applicability.
+&gt; * **Trusted Mediation:** Captures the exact values exposed to an agent's reasoning process.
+&gt; * **Cognitive Serializability (Strict):** Ensures that committed effects follow a strict serial order alongside a logical event where every value exposed to derivation remains entirely unchanged. Fences persist until the runtime event finalizes the sealed durability domain.
+&gt; * **Effect-Compatible Cognitive Admission (Weaker):** Recertifies an effect against a concurrently held current dependency vector and current policy, bypassing the need to serialize the original stochastic derivation.
+&gt; * **The TCT Framework:** Combines several core components to enforce consistency:
+&gt;   1. Immutable versioned executable definitions
+&gt;   2. Registry-derived authority plans
+&gt;   3. Sealed envelopes
+&gt;   4. Guard-first commit transactions
+&gt;   5. Post-seal envelope- and witness-bound grants
+&gt;   6. Co-committed receipts
+&gt;   7. Idempotent grant finalization
+&gt;   8. Receipt-driven epistemic reconciliation
+
+---
+
+## 评测与实验结果
+
+* **理论完备性保障 (Theoretical Guarantees) ：** 通过构建完整的注册轨迹足迹与单一的增长阶段，该架构成功在本地守卫与不兼容的外部资源预留之间建立了无环锁点顺序，严格满足了精确的可串行化条件与观测等价性边界。
+* **实证性能表现 (Empirical Performance) ：** 团队构建了专门的证伪测试套件对系统实现规范进行了高强度检验。实验原型成功拦截了**全部注入的异常与并发冲突**，同时带来的平均提交额外开销仅有 **3.22 毫秒**，几乎可以忽略不计。
+
+&gt; ## Evaluation &amp; Results
+&gt; 
+&gt; * **Theoretical Guarantees:** Complete registered footprints and a single growing phase successfully induce an acyclic lock-point order over local guards and incompatible external reservations, satisfying precise serializability conditions and observational-equivalence boundaries.
+&gt; * **Empirical Performance:** A dedicated falsification suite tested implementation obligations. The prototype successfully prevented **all injected anomalies** while incurring a negligible mean commit overhead of only **3.22 ms**.
+
+---
+
+## 资源与论文获取
+
+* **全文链接 (Full-Text Links) ：** [查看 PDF](https://arxiv.org/pdf/2609.20261) | [实验性 HTML 网页](https://arxiv.org/html/2609.20261v1) | [TeX 源码](https://arxiv.org/src/2609.20261)
+* **授权协议 (License) ：** [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0) ](http://creativecommons.org/licenses/by/4.0/)
+
+&gt; ## Access &amp; Resources
+&gt; 
+&gt; * **Full-Text Links:** [View PDF](https://arxiv.org/pdf/2609.20261) | [Experimental HTML](https://arxiv.org/html/2609.20261v1) | [TeX Source](https://arxiv.org/src/2609.20261)
+&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
+
+&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"/&gt;</description>
+    </item>
+    <item>
+      <title>面向 MIP* = RE 核心定理的长程自动化形式化证明</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-19/FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-19/FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明/</guid>
+      <pubDate>Sat, 19 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在理论计算机科学与量子物理的交叉领域，著名的 $\text{MIP}^* = \text{RE}$ 定理证明了多证明者量子纠缠交互式证明系统等价于所有递归可枚举语言，从根本上颠覆了人们对可计算性与量子纠缠的认知，其证明过程极其宏大繁琐，传统纯人工的形式化检验几乎需要顶尖专家团队耗费数年心血。为了攻克长程数学证明自动化中的“命题漂移”与“证明拼接”等关键瓶颈，本文研究团队创新性地提出了 **FormalFlow** 系统，巧妙引入现代软件工程开发思想，依托全局共享蓝图引导多个 AI 证明智能体 (AI proving agents) 在人类监督下开展嵌套规划、机器证明与严谨代码审查。借助该系统，团队历时 63 天成功在 Lean 4 中完成了 $\text{MIP}^* = \text{RE}$ 底层核心定理——“经典低单变量度数测试的量子可靠性”的完全形式化，产出超过 12.6 万行完全由 AI 智能体生成的代码，并在验证中精准排查与修复了原论文手写证明中存在的隐蔽缺陷与边界条件。这项突破不仅为深奥的量子复杂性理论构筑了经计算机验证的坚实基石，更生动展示出小规模科研团队借助自主 AI 智能体低成本、高质量验证重大科学猜想与顶尖数学证明的广阔前景。
+
+---
+
+# 面向 MIP* = RE 核心定理的长程自动化形式化证明
+
+&gt; # Long-Horizon Autoformalization of a Core Theorem Underlying MIP* = RE
+
+## 核心概要
+
+&gt; ## Summary
+
+里程碑式的数学形式化验证往往需要顶尖专家团队投入数年心血才能完成。本文提出了 **FormalFlow** 系统，在人类专家的统筹监督下协同多个 AI 证明智能体 (AI proving agents) ，共同攻克长程形式化验证 (long-horizon formalization) 中尤为棘手的命题漂移 (statement drift) 与证明拼接 (proof composition) 等核心挑战。FormalFlow 汲取了现代软件工程的研发思想，依托一份全局共享的蓝图 (shared blueprint) 来引导“规划—证明—评审”的嵌套闭环，并由智能体在全流程中持续强化严格的形式化验证。
+
+&gt; Landmark mathematical formalizations typically require specialist teams years of dedicated work to complete. This paper introduces **FormalFlow**, a system that coordinates AI proving agents under human supervision to overcome key challenges in long-horizon formalization, such as statement drift and proof composition. Inspired by software engineering principles, FormalFlow utilizes a shared blueprint to steer nested planning, proving, and review loops, with agents continuously reinforcing verification. 
+
+借助该系统，作者团队成功完成了经典低单变量度数测试 (classical low individual-degree test) 量子可靠性 (quantum soundness) 在 Lean 4 中的机器检验形式化证明——该定理正是著名的量子计算里程碑成果 $\text{MIP}^* = \text{RE}$ 的底层基石。整个形式化开发历时 63 天完成 (若引入更大规模的并行机制，这一周期还可进一步大幅压缩) ，最终产出的代码库包含 126,367 行完全由智能体自主生成的 Lean 代码。在严苛的机器检验过程中，系统成功识别并修正了原手写论文中存在的附加约束条件漏洞与中间推演谬误，同时在修正后的假设前提下依然完好保持了已发表论文中的最终误差界。这项突破不仅为量子复杂性理论 (quantum complexity theory) 奠定了经计算机完全验证的坚实基石，更展示出了一条极具扩展潜力的全新路径，使小规模科研团队也有能力以极高的性价比对重大前沿研究证明开展严格的形式化验证。
+
+&gt; Using this system, the authors completed a machine-checked Lean 4 proof for the quantum soundness of the classical low individual-degree test—a foundational theorem underlying the celebrated $\text{MIP}^* = \text{RE}$ result. Developed over 63 days (a timeline that could be further compressed through parallelism), the resulting library contains 126,367 lines of entirely agent-generated Lean code. The formalization process successfully identified and corrected side conditions and intermediate errors while maintaining the published final error bound. This achievement establishes a verified foundation for quantum complexity theory and demonstrates a scalable path toward the affordable verification of major research proofs by small teams.
+
+---
+
+## 文档元数据
+
+&gt; ## Document Metadata
+
+* **arXiv 编号：** [arXiv:2609.19814](https://arxiv.org/abs/2609.19814)
+* **主学科分类：** 量子物理 (Quantum Physics, `quant-ph`) 
+* **次学科分类：** 人工智能 (Artificial Intelligence, `cs.AI`) 、计算机科学中的逻辑 (Logic in Computer Science, `cs.LO`) 
+* **MSC 数学分类：** 68V20, 68V15, 81P68, 68Q15
+* **提交日期：** 2026 年 9 月 17 日
+* **论文作者：** Sirui Lu, Ruixuan Deng, Yanqiao Zhu, Zhengfeng Ji
+
+&gt; * **arXiv ID:** [arXiv:2609.19814](https://arxiv.org/abs/2609.19814)
+&gt; * **Primary Subject:** Quantum Physics (`quant-ph`)
+&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Logic in Computer Science (`cs.LO`)
+&gt; * **MSC Classes:** 68V20, 68V15, 81P68, 68Q15
+&gt; * **Submission Date:** September 17, 2026
+&gt; * **Authors:** Sirui Lu, Ruixuan Deng, Yanqiao Zhu, Zhengfeng Ji
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+以往，完成里程碑式的数学形式化验证往往需要顶尖专家团队耗费数年时间。我们提出了 FormalFlow 系统，在人类专家的监督下协同多个 AI 证明智能体 (AI proving agents) ，有效解决长程形式化过程中面临的命题漂移与证明拼接两大核心难题。该系统借鉴现代软件工程的原理与实践，利用一份全局共享的蓝图指导规划、证明与评审的嵌套闭环；智能体在整个形式化生命周期中持续强化形式验证与严格审查。基于该系统，我们成功完成了经典低单变量度数测试量子可靠性的机器检验 Lean 4 形式化证明，该定理正是支撑著名成果 $\text{MIP}^* = \text{RE}$ 的核心基石之一。整个证明开发历时 63 天；若借助更高并发度的并行机制，研发周期有望进一步缩短。最终生成的证明代码库包含 126,367 行 Lean 代码，且全部由智能体自主生成。在严格的形式化过程中，系统成功修正了原论文中的附加约束条件与中间推演谬误，同时在修正后的假设下依然完好保持了此前已发表的最终误差界。本项工作不仅为量子复杂性理论建立了经机器全面验证的严谨基石，更展示出了一条切实可行的技术路径，使小规模研究团队也能以低成本实现重大前沿科研证明的形式化验证。
+
+&gt; Landmark mathematical formalizations have taken specialist teams years to complete. We present FormalFlow, a system that coordinates AI proving agents under human supervision to address statement drift and proof composition in long-horizon formalization. Drawing on software engineering principles and practices, it uses a shared blueprint to guide nested planning, proving and review loops. Agents strengthen verification and review throughout formalization. We completed a machine-checked Lean 4 proof of the quantum soundness of the classical low individual-degree test, a core theorem underlying $\text{MIP}^* = \text{RE}$. Developing the proof took 63 days; greater parallelism could further reduce this time. The final library contains 126,367 lines of Lean code, all generated by agents. The formalization corrects side conditions and intermediate errors while preserving the published final error bound under corrected assumptions. This work provides a verified foundation for quantum complexity and demonstrates a route to affordable verification of major research proofs by small teams.
+
+---
+
+## 补充信息与资源
+
+&gt; ## Supplementary Information &amp; Resources
+
+* **论文篇幅：** 全文共 72 页 (正文共 13 页，包含 4 幅图和 1 张表；补充附录共 57 页，包含 9 幅图和 17 张表；以及参考文献) 。
+* **Lean 4 代码仓库：** [GitHub - LionSR/MIPStarRE](https://github.com/LionSR/MIPStarRE)
+* **获取全文：** 
+  * [查看 PDF](https://arxiv.org/pdf/2609.19814)
+  * [HTML 在线版本 (实验性) ](https://arxiv.org/html/2609.19814v1)
+  * [TeX 源码](https://arxiv.org/src/2609.19814)
+
+&gt; * **Paper Length:** 72 pages total (13-page main text featuring 4 figures and 1 table; 57-page supplementary appendices featuring 9 figures and 17 tables; references).
+&gt; * **Lean 4 Code Repository:** [GitHub - LionSR/MIPStarRE](https://github.com/LionSR/MIPStarRE)
+&gt; * **Access Full-Text:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2609.19814)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.19814v1)
+&gt;   * [TeX Source](https://arxiv.org/src/2609.19814)</description>
+    </item>
+    <item>
+      <title>AI 智能体真的懂计算机体系结构吗？</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-19/AI-智能体真的懂计算机体系结构吗-AutoTuring-基准测试揭示底层思考本质/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-19/AI-智能体真的懂计算机体系结构吗-AutoTuring-基准测试揭示底层思考本质/</guid>
+      <pubDate>Sat, 19 Sep 2026 00:00:00 GMT</pubDate>
+      <description>随着人工智能技术深入底层硬件领域，AI 智能体 (AI Agent) 越来越多地被委以设计和优化硬件加速器的重任，并展现出令人瞩目的性能提升，但学界一直存在一个根本性疑问：AI 究竟是在真正理解并推理计算机体系结构，还是仅仅在多维参数空间中进行高效的盲目黑盒搜索？为了拨开这一迷雾，研究团队推出了全新的 AutoTuring 基准测试 (Benchmark) 框架，让同一个 AI 智能体在面对完全相同的 15 维硬件设计空间时，分别在赋予明确物理语义的“知情架构师”和抹去所有物理含义的“盲盒搜索者”两种不同设定下执行优化任务。评测结果揭示，掌握体系结构物理知识能让知情智能体在 FP16 GEMM 算子优化中相比盲盒智能体平均取得 12.3% 的性能提升，并大幅节省 70.1% 的底层硬件仿真器调用开销；然而，引入结构化的审校反思回路 (Critic Loop) 却能帮助盲盒智能体抹平绝大部分差距，表明体系结构先验认知与结构化反思机制在优化效能上表现出奇妙的相互替代特性。这项工作首次在保持问题本质与解空间完全一致的前提下，量化了“理解物理意义”对 AI 硬件设计的真实价值，为未来芯片自动化设计以及专用大语言模型 (Large Language Model, LLM) 智能体的协同演化提供了兼具洞察力与方法论意义的重要参考。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+随着 AI 智能体越来越多地参与硬件加速器的设计与优化，并在实践中屡获佳绩，一个根本性的疑问始终悬而未决：**AI 智能体究竟是在真正理解并推理计算机体系结构，还是仅仅在庞大的参数空间中进行盲目的黑盒搜索？**
+
+&gt; As AI agents are increasingly used—and praised—for designing and optimizing hardware accelerators, a fundamental question remains: **Are they truly reasoning about computer architecture, or are they just blindly searching over parameter spaces?** 
+
+为了探寻真相，研究人员打造了名为 **AutoTuring** 的评估框架，让同一个 AI 智能体在两种截然不同的表述设定下，探索完全相同的 15 维硬件加速器设计空间：
+
+&gt; To find out, researchers introduced **AutoTuring**, an evaluation framework that tests AI agents using the exact same 15-dimensional accelerator space under two different framings:
+
+1. **知情设定 (Informed Framing)**：向智能体清晰展示具有明确物理含义的具名硬件架构旋钮，并配备详尽的硬件仿真器性能计数器反馈。
+2. **盲盒设定 (Blind Framing)**：抹去所有物理背景与硬件语义，仅将参数作为被约束在 $[0,1]$ 区间内的匿名抽象变量呈现给智能体。
+
+&gt; 1. **Informed Framing:** Presented as named architectural knobs equipped with simulator counters.
+&gt; 2. **Blind Framing:** Presented as anonymous variables constrained to $[0,1]$.
+
+通过将评估器、合法参数空间以及理论可达的最优解完全锁定为同一标准，实验中唯一的变量就是这些配置参数对智能体而言是否具备实际的“物理与业务含义”。研究结果揭示，计算机体系结构的专业知识确实能带来显著回报——知情智能体的优化结果平均超越了模拟的 H200 基线 5.4%，相比盲盒状态下的智能体更是大幅领先 12.3%，同时所需的底层仿真器调用次数锐减了 70.1%。然而，这种优势并非不可替代：为盲盒智能体引入一套结构化的审校反思回路，能够帮助其追平绝大部分的性能差距；但同样的审校回路却几乎无法为知情智能体带来额外提升。这一现象生动地表明，体系结构领域知识与结构化反思机制在硬件优化中更多地表现为相互替代的关系，而非相互叠加的互补关系。
+
+&gt; By keeping the evaluator, legal space, and reachable optima identical, the only variable is whether the problem "means" anything to the agent. The findings reveal that architectural knowledge pays off—the informed agent beats a modeled H200 baseline by 5.4% and the blind agent by 12.3% on average, while requiring 70.1% fewer simulator calls. However, this advantage isn't exclusive: a structured critic loop helps the blind agent recover most of that performance gap while offering little benefit to the informed agent, suggesting that architectural knowledge and structured critique function as substitutes rather than complements.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 标识符：** [arXiv:2609.19387](https://arxiv.org/abs/2609.19387) [cs.AI]
+* **学科领域：** 人工智能 (`cs.AI`) ；硬件架构 (`cs.AR`)
+* **ACM 分类：** C.1.3；I.2.8；B.8.2
+* **提交时间：** 2026 年 9 月 16 日
+* **论文作者：** Ambika Sharan, Grigory Chirkov, Soheil Abbasloo
+
+&gt; * **arXiv Identifier:** [arXiv:2609.19387](https://arxiv.org/abs/2609.19387) [cs.AI]
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Hardware Architecture (`cs.AR`)
+&gt; * **ACM Classes:** C.1.3; I.2.8; B.8.2
+&gt; * **Submitted on:** September 16, 2026
+&gt; * **Authors:** Ambika Sharan, Grigory Chirkov, Soheil Abbasloo
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+如今，AI 智能体越来越多地被委以芯片硬件设计的重任，且不断有报告指出它们取得了优异的优化成果。然而，这些报告固然证明了硬件设计得到了实质性改进，却始终无法解释改进背后的深层原因。一个成功优化了加速器的智能体，究竟是在深入理解并推理底层硬件机器的运行机理，还是仅仅在完全不理解参数实际物理意义的前提下展现了出色的数值搜索能力？唯有前者所代表的深度认知能力，才能够真正迁移到未来的下一代全新硬件架构中。现有的基准测试往往只更换不同的智能体，却保持问题的呈现形式固定不变，因此根本无法将这两种能力区分开来。本研究采取了截然相反的评估范式：AutoTuring 将同一个 15 维加速器设计空间分两次交给同一个智能体——一次呈现为附带仿真器计数器的具名硬件架构旋钮，另一次则呈现为限制在 $[0,1]$ 区间内的纯匿名数学变量；在此过程中，性能评估器、合法搜索空间以及可达的最优点完全保持一致，唯一的差异就是这道设计难题对智能体而言是否具备真实的“物理含义”。两种设定下的性能差距，正是衡量其体系结构理解力的标尺。在包含 9 个核心算子的半精度通用矩阵乘法 (FP16 GEMM) 任务组评测中，理解物理意义带来了实打实的回报：知情架构师智能体相比模拟的 H200 基准提升了 5.4%，相比盲盒状态下的自己平均领先 12.3%，同时仿真器调用次数大幅减少了 70.1%。然而，这种回报并非不可替代：引入结构化审校回路能够帮助盲盒智能体追平绝大部分性能差距，却无法给知情架构师带来任何额外收益；这表明硬件体系结构知识与结构化反思回路在优化中更多充当了相互替代的角色，而非锦上添花的互补关系。我们在此汇报这些在单款模拟加速器上经每种条件 5 至 6 次运行所得出的初步发现，并强调本研究的核心贡献在于这一创新性的对比评估方法本身，而非具体的某款加速器硬件设计。
+
+&gt; Agents are increasingly asked to design hardware, and increasingly reported to succeed. Such reports establish that a design improved; they cannot establish why. An agent that improves an accelerator may be reasoning about the machine, or may be searching competently over knobs whose meaning it never recovers -- and only the first transfers to the next architecture. Existing evaluations cannot tell the two apart, because they vary the agent while holding the framing of the problem fixed. We do the opposite. AutoTuring hands the same agent the same 15-dimensional accelerator space twice: once as named architectural knobs with simulator counters, once as anonymous variables on [0,1], with the evaluator, the legal space and the reachable optima held identical, so that the only thing that varies is whether the problem means anything. The gap between the two is the measurement. On a nine-kernel FP16 GEMM basket, meaning pays: the architect beats a modeled H200 by 5.4% and its blind counterpart by 12.3% on average, with 70.1% fewer simulator calls. It does not pay uniquely: a critic loop recovers most of that gap for the blind agent and buys the architect nothing, so architectural knowledge and structured critique behave as substitutes rather than as complements. We report these as preliminary findings -- five to six runs per condition on a single modeled accelerator -- and take the comparison itself, not the accelerator, to be the contribution.
+
+---
+
+## 相关链接与资源
+
+&gt; ## Links &amp; Resources
+
+* **全文访问：** [查看 PDF](https://arxiv.org/pdf/2609.19387) | [HTML 版本](https://arxiv.org/html/2609.19387v1) | [TeX 源码](https://arxiv.org/src/2609.19387)
+* **引用与指标：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.19387) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.19387) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.19387)
+
+&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2609.19387) | [HTML Version](https://arxiv.org/html/2609.19387v1) | [TeX Source](https://arxiv.org/src/2609.19387)
+&gt; * **Citations &amp; Metrics:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.19387) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.19387) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.19387)</description>
+    </item>
+    <item>
       <title>重构 Packfile：在对象存储上直接运行 Git 的架构实践</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-18/重构-Packfile-在对象存储上直接运行-Git-的架构实践/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-18/重构-Packfile-在对象存储上直接运行-Git-的架构实践/</guid>
@@ -4010,232 +4326,6 @@ $$\mathcal{E}_p(\lambda) = \sup_R [\Phi_p(R) - \lambda\,\mathrm{CoI}_p(R)]$$
 &gt; * **PDF Download:** [Direct PDF Link](https://arxiv.org/pdf/2609.11347)
 &gt; * **TeX Source:** [arXiv Source Files](https://arxiv.org/src/2609.11347)
 &gt; * **DOI:** [10.48550/arXiv.2609.11347](https://doi.org/10.48550/arXiv.2609.11347)</description>
-    </item>
-    <item>
-      <title>从 MCP 注册表中随机抽取究竟能抽到什么？工具调用基准测试真相剖析</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着模型上下文协议 (Model Context Protocol, MCP) 成为大模型与外部工具交互的开放事实标准，关于 MCP 生态可靠性的研究层出不穷，但多数研究均存在严重的“样本挑选偏差”——往往只测试人工精选的高分列表或经过自动修补的明星服务。本项研究从全网 24,135 个 MCP 服务普查总库中，使用公开随机数种子无偏抽样了 400 个真实的 npm/stdio 协议服务，并直接通过线路探测其真实表现。研究揭示了一个耐人寻味的现实：真实世界中仅有 48.8% 的 MCP 服务能成功完成初始化握手（主要症结在于 37.5% 的服务根本无法启动，而非缺少凭据）；同时与 BFCL v4 和 UltraTool 等主流工具评测基准对比发现，主流评测基准存在高达 68%–85% 的数据粗暴重复，实质上在严重衡量重复词句而非真实多样的工具生态。
-
----
-
-## 📌 核心概要
-
-&gt; ## Executive Summary
-
-当前许多针对模型上下文协议 (Model Context Protocol, MCP) 服务器生态的研究往往受到严重的“选择偏差 (Selection Bias)”困扰——研究人员往往在潜意识中倾向于选择那些已经通过官方参考集、人工精选榜单或自动化修复流水线验证过的“已知可用”服务器。
-
-&gt; Studies examining the Model Context Protocol (MCP) server ecosystem frequently suffer from selection bias, quietly opting for servers that are already known to work through reference sets, curated lists, or automated repair pipelines.
-
-本篇论文深入调查了一个**未经任何人工修补、基于严格概率抽样**的真实 MCP 生态到底包含了什么。研究人员从全网普查出的 24,135 个注册表条目中，使用公开的随机种子随机抽取了 400 个基于 npm/stdio 的服务器，并通过真实网络线路对其进行实测探查。研究揭示了关于真实服务器可靠性、模式契合度 (Schema Conformance) 的关键洞察，并指出了真实工具与 BFCL v4 和 UltraTool 等主流标准工具调用基准测试之间的巨大结构性差异。
-
-&gt; This paper investigates what an **unrepaired, probability-based sample** of the MCP ecosystem actually contains. By drawing 400 npm/stdio servers from a census of 24,135 registry entries using a published seed and probing them over the wire, the research reveals critical insights into real-world server reliability, schema conformance, and structural disparities when compared against standard tool-use benchmarks like BFCL v4 and UltraTool.
-
----
-
-## 🔍 核心研究发现
-
-&gt; ## Key Findings</description>
-    </item>
-    <item>
-      <title>terms.txt：面向智能体网络访问的知情同意与补偿协议</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/terms-txt-面向智能体网络访问的知情同意与补偿协议/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/terms-txt-面向智能体网络访问的知情同意与补偿协议/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>开放互联网长期依赖一项不成文的默契：网站向网络爬虫开放抓取权限，搜索引擎则以回流访客流量作为回馈。然而，随着 AI 爬虫和自动化智能体 (AI Agent) 的爆发式增长，这一共生生态正迅速瓦解——AI 平台抓取海量网页用于模型训练，却几乎不再返还任何实际访问流量。传统的 `robots.txt` 既无法表达客户端身份与访问意图，更不支持声明使用条款或计费标准。为了重建内容提供方与 AI 智能体之间的信任纽带，本文提出了 `terms.txt` 协议。该协议借鉴了 `robots.txt` 的简洁语法，结合源站端加密签名、意图声明、HTTP 402 付费协商以及数字收据，构建了一套端到端的机器访问知情同意与付费补偿标准，为 AI 时代的网络经济秩序奠定了技术基石。
-
----
-
-# terms.txt：面向智能体网络访问的知情同意与补偿协议
-
-&gt; # terms.txt: A Consent and Compensation Protocol for Agentic Web Access
-
-## 概要
-
-&gt; ## Summary
-
-开放互联网长期以来维系着一项不成文的默契：网站允许爬虫抓取内容，而搜索引擎则通过搜索结果向网站引流访客。然而，公开的测量数据表明，随着 AI 爬虫和自动化智能体 (AI Agent) 的迅猛发展，这种默契正在迅速瓦解。诸如 `robots.txt` 这样的传统控制机制缺乏表达客户端身份、意图、访问条款或定价的能力，并且极易被绕过。
-
-&gt; The traditional unwritten bargain of the open web—where websites welcomed crawlers in exchange for referral traffic—is breaking down due to the rapid growth of AI crawlers and automated agents. Traditional control mechanisms like `robots.txt` lack the ability to express identity, intent, terms, or pricing, and are easily bypassed. 
-
-本文提出了 **`terms.txt`**，这是一种类似于 `robots.txt` 风格的协议，专门用于定义基于特定路径与访问目的的机器访问条款。通过结合利用 Web Bot Auth 签名、签名意图、委托令牌、HTTP 402 付费协商以及签名收据的源站强制交互机制，该协议建立了一套强健的知情同意与付费补偿框架。一个轻量级、零依赖的参考实现展现了极高的运行效率，在单核 vCPU 上为每个请求仅增加了 0.20 至 0.65 毫秒的处理开销。
-
-&gt; This paper introduces **`terms.txt`**, a `robots.txt`-style protocol designed for per-path and per-purpose machine-access terms. Combined with an origin-enforced exchange utilizing Web Bot Auth signatures, signed intent, delegation tokens, HTTP 402 negotiation, and signed receipts, the protocol establishes a robust framework for consent and compensation. A lightweight, dependency-free implementation demonstrates high efficiency, adding only 0.20 to 0.65 ms of overhead per request on a single vCPU.
-
----
-
-## 文档元数据
-
-&gt; ## Document Metadata
-
-| 元数据字段 | 详细信息 |
-| :--- | :--- |
-| **arXiv 编号** | [arXiv:2609.11152](https://arxiv.org/abs/2609.11152) [cs.NI] |
-| **论文标题** | terms.txt: A Consent and Compensation Protocol for Agentic Web Access |
-| **作者** | Rajarshi Chowdhury |
-| **提交日期** | 2026年9月10日 |
-| **主要领域** | 网络与互联网架构 (`cs.NI`) |
-| **次要领域** | 人工智能 (`cs.AI`)，密码学与安全 (`cs.CR`)，计算机与社会 (`cs.CY`) |
-| **ACM 分类** | C.2.2; H.3.5; K.4.4 |
-| **拟发表刊物** | 投稿至 *IEEE Internet Computing* 专刊《Future Internet Systems with LLMs and Agents》 |
-| **资源与代码** | [Zenodo DOI (10.5281/zenodo.22647915)](https://doi.org/10.5281/zenodo.22647915) |
-
-&gt; | Metadata Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv Identifier** | [arXiv:2609.11152](https://arxiv.org/abs/2609.11152) [cs.NI] |
-&gt; | **Title** | terms.txt: A Consent and Compensation Protocol for Agentic Web Access |
-&gt; | **Author** | Rajarshi Chowdhury |
-&gt; | **Submitted On** | 10 September 2026 |
-&gt; | **Primary Subject** | Networking and Internet Architecture (`cs.NI`) |
-&gt; | **Secondary Subjects** | Artificial Intelligence (`cs.AI`), Cryptography and Security (`cs.CR`), Computers and Society (`cs.CY`) |
-&gt; | **ACM Classes** | C.2.2; H.3.5; K.4.4 |
-&gt; | **Target Publication** | Submitted to *IEEE Internet Computing*, Special Issue on Future Internet Systems with LLMs and Agents |
-&gt; | **Resources &amp; Code** | [Zenodo DOI (10.5281/zenodo.22647915)](https://doi.org/10.5281/zenodo.22647915) |
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-开放互联网过去依赖于一项不成文的默契运转：网站向爬虫开放访问，而搜索引擎向网站回流访客。然而公开测量表明，在 AI 爬虫与智能体席卷而来的当下，这一默契已然破裂。目前自动化客户端已经占据了绝大多数的网络请求，模型训练抓取在 Cloudflare 分类的爬虫流量中占据主导，而最大的 AI 平台每向网站回流一名访客，就需要先抓取数千个页面。网络上通用的控制标准 `robots.txt` 既无法表达访问者身份、抓取目的、使用条款或价格，又极易被规避绕过，而较新的替代方案大多是某些 CDN 厂商私有的专有功能。为此，我们规范制定了 `terms.txt`——一种采用 `robots.txt` 风格的文件格式，用于定义按路径、按目的的机器访问条款；同时搭配由源站强制执行的交互协议，综合运用 Web Bot Auth 签名、签名意图、委托令牌、HTTP 402 协商以及签名收据。我们明确界定了该交互机制可以强制执行、审计核查以及留待合同约定的范围。一个零依赖的参考实现表明，在单核 vCPU 上每个请求仅增加 0.20 到 0.65 毫秒的开销。
-
-&gt; &gt; The open web ran on an unwritten bargain: sites admitted crawlers, and search engines sent visitors back. Public measurements show that bargain breaking under AI crawlers and agents. Automated clients now make up most requests, training dominates Cloudflare-classified crawling, and the largest AI platforms fetch thousands of pages for each visitor they return. The web's common control, `robots.txt`, cannot express identity, purpose, terms, or price, can be circumvented, and newer alternatives are largely proprietary CDN features. We specify `terms.txt`, a `robots.txt`-style file for per-path, per-purpose machine-access terms, plus an origin-enforced exchange using Web Bot Auth signatures, signed intent, delegation tokens, HTTP 402 negotiation, and signed receipts. We define what the exchange can enforce, audit, and leave to contract. A dependency-free implementation adds 0.20 to 0.65 ms per request on one vCPU.
-
----
-
-## 获取与全文链接
-
-&gt; ## Access &amp; Full-Text Links
-
-* [查看 PDF](https://arxiv.org/pdf/2609.11152)
-* [HTML 版本 (实验性)](https://arxiv.org/html/2609.11152v1)
-* [TeX 源码](https://arxiv.org/src/2609.11152)
-* [数字对象唯一标识符 (DOI)](https://doi.org/10.48550/arXiv.2609.11152)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2609.11152)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.11152v1)
-&gt; * [TeX Source](https://arxiv.org/src/2609.11152)
-&gt; * [Digital Object Identifier (DOI)](https://doi.org/10.48550/arXiv.2609.11152)</description>
-    </item>
-    <item>
-      <title>VikingRAG：面向结构化文档的高精度与高 Token 效率检索增强生成</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/VikingRAG-面向结构化文档的高精度与高-Token-效率检索增强生成/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/VikingRAG-面向结构化文档的高精度与高-Token-效率检索增强生成/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>检索增强生成 (Retrieval-Augmented Generation, RAG) 是大语言模型获取外部知识、抑制事实幻觉的核心技术。在处理具有层级目录等复杂结构的文档时，传统 RAG 往往需要输入大量的结构上下文以定位充足证据，这导致了极其昂贵的 Token 开销。针对这一痛点，本文提出了目录感知的语义数据管理系统 VikingRAG。该系统深度融合了语义检索与结构化路径访问，创新性地将智能体多轮检索轨迹物化为可复用的“经验边”，并引入自适应升级机制：在证据充足时仅执行单轮经验增强检索，仅在必要时才升级至多轮深度探索。实验表明，VikingRAG 在保持顶级精度的同时，将 Token 消耗大幅压缩至传统方法的 5.1%–32.5%，为企业级知识库的高效落地提供了关键范式。
-
----
-
-# VikingRAG：面向结构化文档的高精度与高 Token 效率检索增强生成
-
-&gt; # VikingRAG: Accurate and Token-efficient Retrieval-augmented Generation over Structured Documents
-
-## 概要
-
-&gt; ## Summary
-
-**VikingRAG** 是一个新颖的目录感知语义数据管理系统，旨在增强面向结构化文档的检索增强生成 (Retrieval-Augmented Generation, RAG) 表现。尽管现代 RAG 方法能够利用文档结构来获取充足的证据，但它们通常会产生海量的 Token 成本。VikingRAG 通过紧密整合语义检索与结构访问，实现了结构上下文高效、证据缺口驱动的多轮检索，有效攻克了这一难题。为了进一步最小化多轮交互的系统开销，该系统将智能体检索轨迹物化为“经验边” (experience edges)，以便在遇到相似查询时直接复用。此外，系统还引入了自适应升级策略：默认优先采用低成本的单轮经验增强检索，仅在证据不足时才触发多轮探索。实验证明，VikingRAG 在达到行业顶尖准确率的同时，将 Token 消耗大幅降至传统方法的极小一部分。
-
-&gt; **VikingRAG** is a novel directory-aware semantic data management system designed to enhance retrieval-augmented generation (RAG) over structured documents. While modern RAG methods leverage document structures to gather evidence, they typically incur massive token costs. VikingRAG addresses this by integrating semantic and structural access to drive structural-context-efficient, evidence-gap-driven multi-round retrieval. To minimize the overhead of multi-round interactions, the system materializes agentic retrieval traces as "experience edges" that can be reused for similar queries. Furthermore, it introduces an adaptive escalation strategy that defaults to cost-effective, one-round experience-augmented retrieval, invoking multi-round exploration only when evidence is insufficient. Experiments demonstrate that VikingRAG achieves state-of-the-art accuracy while slashing token consumption to a fraction of traditional methods.
-
----
-
-## 文档元数据
-
-&gt; ## Document Metadata
-
-* **arXiv ID：** [arXiv:2609.11390](https://arxiv.org/abs/2609.11390) [cs.IR]
-* **主要领域：** 信息检索 (`cs.IR`)
-* **其他领域：** 人工智能 (`cs.AI`)，计算与语言 (`cs.CL`)，数据库 (`cs.DB`)，机器学习 (`cs.LG`)
-* **提交日期：** 2026年9月10日
-* **DOI：** [10.48550/arXiv.2609.11390](https://doi.org/10.48550/arXiv.2609.11390)
-
-&gt; * **arXiv ID:** [arXiv:2609.11390](https://arxiv.org/abs/2609.11390) [cs.IR]
-&gt; * **Primary Subject:** Information Retrieval (`cs.IR`)
-&gt; * **Other Subjects:** Artificial Intelligence (`cs.AI`), Computation and Language (`cs.CL`), Databases (`cs.DB`), Machine Learning (`cs.LG`)
-&gt; * **Submission Date:** September 10, 2026
-&gt; * **DOI:** [10.48550/arXiv.2609.11390](https://doi.org/10.48550/arXiv.2609.11390)
-
----
-
-## 作者
-
-&gt; ## Authors
-
-* Peiyuan Gao
-* Gaoyuan Zhang
-* Haojie Qin
-* Yahui Sun
-* Qianyi Zhang
-* Yunhao Zhang
-* Zeyu Wang
-* Wei Lu
-
-&gt; * Peiyuan Gao
-&gt; * Gaoyuan Zhang
-&gt; * Haojie Qin
-&gt; * Yahui Sun
-&gt; * Qianyi Zhang
-&gt; * Yunhao Zhang
-&gt; * Zeyu Wang
-&gt; * Wei Lu
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-当前顶尖的检索增强生成 (RAG) 方法通常利用文档的层次结构来获取充足的上下文证据，但往往伴随着巨大的 Token 消耗。为了在不牺牲高精度 RAG 表现的前提下缩减结构上下文所消耗的 Token，我们提出了 **VikingRAG**——一个目录感知的语义数据管理系统，它将语义访问与结构访问深度整合，支持高结构上下文效率、由证据缺口驱动的多轮检索。
-
-&gt; State-of-the-art retrieval-augmented generation (RAG) methods exploit document structures to acquire sufficient evidence, but often incur substantial token costs. To reduce structural-context tokens without compromising high RAG accuracy, we present **VikingRAG**, a directory-aware semantic data management system that tightly integrates semantic and structural access to support structural-context-efficient, evidence-gap-driven multi-round retrieval. 
-
-为了进一步降低多轮交互的 Token 开销，我们将智能体多轮检索轨迹物化为经验边，并在遇到相似查询时复用这些经验边，从而避免了重复的多轮检索探索。此外，为了在无需复杂多轮检索的场景下进一步节省成本，我们设计了自适应升级策略：在证据充分时仅通过单轮经验增强检索即可直接生成答案，仅在证据不足时才调用智能体多轮检索。
-
-&gt; To further reduce token overhead of multi-round interaction, we materialize agentic multi-round retrieval traces as experience edges, and reuse these edges for similar queries, avoiding repeated multi-round exploration. To additionally reduce token costs when agentic multi-round retrieval is unnecessary, we introduce an adaptive escalation strategy that answers from one-round experience-augmented retrieval when the evidence is sufficient, and invokes agentic multi-round retrieval only otherwise. 
-
-在真实数据集上的实验表明，基础版 **VikingRAG** 系统不仅达到了与顶尖方法相当的高精度，而且仅消耗其 **11.6%–51.9%** 的 Token。当启用检索轨迹复用与自适应升级策略后，Token 成本进一步下降至 **5.1%–32.5%**，同时依然保持了极具竞争力的准确率与实用的文档存储性能，充分展现了该成果在构建新一代 AI 知识库中的实用价值。
-
-&gt; Experiments on real datasets show that the base system **VikingRAG** matches high accuracy of state-of-the-art methods while consuming only **11.6%–51.9%** of their tokens. With retrieval-trace reuse and adaptive escalation, token costs drop to **5.1%–32.5%** while maintaining competitive accuracy and practical document-storage performance, showing the utility of this work for emerging AI knowledge bases.
-
----
-
-## 全文与资源链接
-
-&gt; ## Full-Text &amp; Resource Links
-
-* [查看 PDF](https://arxiv.org/pdf/2609.11390)
-* [HTML 版本 (实验性)](https://arxiv.org/html/2609.11390v1)
-* [TeX 源码](https://arxiv.org/src/2609.11390)
-* [音频摘要](https://arxiv.org/audio/2609.11390)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2609.11390)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2609.11390v1)
-&gt; * [TeX Source](https://arxiv.org/src/2609.11390)
-&gt; * [Audio Summary](https://arxiv.org/audio/2609.11390)</description>
-    </item>
-    <item>
-      <title>VAE 与扩散模型的泛化能力：统一的信息论分析框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/VAE-与扩散模型的泛化能力-统一的信息论分析框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/VAE-与扩散模型的泛化能力-统一的信息论分析框架/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>变分自编码器 (Variational Autoencoder, VAE) 与扩散模型 (Diffusion Model, DM) 在现代图像生成与多模态表征中取得了巨大成功，但两者在理论层面的泛化表现——尤其是基于共享的“编码器-生成器”架构下的泛化机理，长期以来缺乏统一且深入的数学刻画。本文提出了一套建立在现代信息论工具之上的统一分析框架，通过将编码器与生成器均视为随机映射，为生成模型的泛化性能提供了严格的理论保证。该框架不仅弥补了过去 VAE 理论分析中忽略生成器泛化能力的缺陷，还明确推导出了扩散模型泛化界与扩散时间步 $T$ 之间的平衡权衡，并提供了完全由训练数据驱动的可计算理论界，可直接融入训练损失以进一步提升生成质量。该工作已被 ICLR 2025 接收。
-
----
-
-## 📌 内容概要
-
-&gt; ## 📌 Summary
-
-尽管扩散模型 (Diffusion Models, DMs) 与变分自编码器 (Variational Autoencoders, VAEs) 在实际应用中取得了惊人的实证成功，但它们的理论泛化性能仍未得到深入探究，尤其是对于它们共有的“编码器-生成器”架构在泛化机制上的分析严重不足。
-
-&gt; Despite the immense empirical success of Diffusion Models (DMs) and Variational Autoencoders (VAEs), their theoretical generalization performance has remained largely underexplored—particularly concerning their shared encoder-generator architectures. 
-
-本文提出了一个**统一的信息论分析框架**，将编码器与生成器均建模为随机映射 (Randomized Mappings) ，为两者的泛化表现提供了严格的理论保证。
-
-&gt; This paper introduces a **unified information-theoretic framework** that treats both encoders and generators as randomized mappings to provide rigorous generalization guarantees.</description>
     </item>
   </channel>
 </rss>
