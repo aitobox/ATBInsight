@@ -2699,6 +2699,7 @@ title: 标签浏览
 ## ModernBERT
 
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
+- [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 
 ## Multi-Agent Systems
 
@@ -3183,6 +3184,10 @@ title: 标签浏览
 
 - [推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失](blog/posts/2026-09-01-推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失.md)
 
+## PrismML
+
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
+
 ## Profiler
 
 - [PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP](blog/posts/2026-08-07-PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP.md)
@@ -3312,6 +3317,10 @@ title: 标签浏览
 ## Qwen3-27B
 
 - [微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程](blog/posts/2026-08-18-微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程.md)
+
+## Qwen3.8
+
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 
 ## Qwen3.8-Flash-Next
 
@@ -3681,6 +3690,10 @@ title: 标签浏览
 ## SOC
 
 - [使用 GraphRAG 将网络威胁情报投入实战](blog/posts/2026-08-16-使用 GraphRAG 将网络威胁情报投入实战.md)
+
+## SPARSEUP
+
+- [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 
 ## SPD流形
 
@@ -4647,6 +4660,7 @@ title: 标签浏览
 ## 三值量化
 
 - [QTEA：基于稀疏残差显著权重与按列优化的三值大语言模型](blog/posts/2026-09-03-QTEA：基于稀疏残差显著权重与按列优化的三值大语言模型.md)
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 
 ## 三维重建
 
@@ -8268,6 +8282,7 @@ title: 标签浏览
 - [语义压缩树：通过分层语义残差实现多分辨率知识检索](blog/posts/2026-08-26-语义压缩树：通过分层语义残差实现多分辨率知识检索.md)
 - [长运行 AI 智能体内存中的“压缩悬崖”现象](blog/posts/2026-08-26-长运行 AI 智能体内存中的“压缩悬崖”现象.md)
 - [超级智能检索代理：Agentic 检索的下一个前沿](blog/posts/2026-08-27-超级智能检索代理：Agentic 检索的下一个前沿.md)
+- [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 
 ## 向量索引
 
@@ -11924,6 +11939,7 @@ title: 标签浏览
 - [DFM Mimir v1：仅使用合规后训练数据、在10亿参数规模下实现前沿性能的开源HRM模型](blog/posts/2026-08-25-DFM Mimir v1：仅使用合规后训练数据、在10亿参数规模下实现前沿性能的开源HRM模型.md)
 - [OpenStamp：面向开源语言模型的水印技术](blog/posts/2026-09-01-OpenStamp：面向开源语言模型的水印技术.md)
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
+- [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 
 ## 开源治理
 
@@ -16205,6 +16221,7 @@ title: 标签浏览
 - [超全训练，紧凑部署：扩展结构化大语言模型剪枝的恢复能力](blog/posts/2026-09-10-超全训练，紧凑部署：扩展结构化大语言模型剪枝的恢复能力.md)
 - [REAL-Q：基于动态梯度下降的端到端大语言模型量化](blog/posts/2026-09-13-REAL-Q-基于动态梯度下降的端到端大语言模型量化.md)
 - [突破 1.58 比特极限：三值大语言模型的极致压缩与加速](blog/posts/2026-09-18-突破-1.58-比特极限-三值大语言模型的极致压缩与加速.md)
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 
 ## 模型去偏
 
@@ -19658,6 +19675,10 @@ title: 标签浏览
 - [提示、评委与教师：视觉语言数学推理中稀疏奖励强化学习的先验注入](blog/posts/2026-08-26-提示、评委与教师：视觉语言数学推理中稀疏奖励强化学习的先验注入.md)
 - [F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解](blog/posts/2026-09-05-F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解.md)
 
+## 稀疏嵌入
+
+- [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
+
 ## 稀疏性
 
 - [压缩三位一体：探索大语言模型压缩的稀疏性、量化与低秩近似](blog/posts/2026-08-27-压缩三位一体：探索大语言模型压缩的稀疏性、量化与低秩近似.md)
@@ -19861,6 +19882,10 @@ title: 标签浏览
 ## 端侧AI
 
 - [自信且错，悄无声息：端侧部署语言模型未遂故障审计](blog/posts/2026-08-27-自信且错，悄无声息：端侧部署语言模型未遂故障审计.md)
+
+## 端侧大模型
+
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 
 ## 端侧模型
 

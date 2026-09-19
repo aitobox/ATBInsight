@@ -1998,3 +1998,4 @@ title: arXiv论文
 - [FormalFlow：面向 MIP* = RE 核心定理的长程自动化形式化证明](../posts/2026-09-19-FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明.md)
 - [AI 智能体真的懂计算机体系结构吗？AutoTuring 基准测试揭示底层思考本质](../posts/2026-09-19-AI-智能体真的懂计算机体系结构吗-AutoTuring-基准测试揭示底层思考本质.md)
 - [当智能体执行提交：认知可串行化保障复杂系统一致性](../posts/2026-09-19-当智能体执行提交-认知可串行化保障复杂系统一致性.md)
+- [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](../posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)

@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-20**: [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 - **2026-09-19**: [我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录](blog/posts/2026-09-19-我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录.md)
 - **2026-09-18**: [4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术](blog/posts/2026-09-18-4-bit-旋转量化技术深度剖析-消除离群值的极致压缩艺术.md)
 - **2026-09-17**: [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
