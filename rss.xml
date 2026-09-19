@@ -5,6 +5,252 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-20/PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-20/PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能/</guid>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+      <description>近年来，如何在保持前沿大语言模型 (Large Language Model, LLM) 强大能力的同时，将其体积极致压缩以便在消费级设备上流畅运行，始终是 AI 领域的核心技术挑战之一。PrismML 团队近期正式开源了基于 Qwen3.8 27B 深度优化的三值大模型——**Ternary Bonsai 2 27B**。该模型采用宽松友好的 Apache 2.0 协议，创新性地将权重限制为仅包含 -1、0、+1 的三值离散表示，成功把原本高达 53.80 GB 的庞大模型压缩至惊人的 5.93 GB (平均每个权重仅占 1.72 比特) ，并在 20 项涵盖推理、数学与代码的基准测试中平均保留了原模型 98.2% 的顶尖性能。凭借对文本与图像的多模态理解能力以及 262K 的超长上下文窗口支持，该模型不仅可以在普通 16 GB 笔记本或单张 24 GB 消费级显卡上高吞吐流畅运行，更标志着百亿级端侧大模型向极致能效与平民化部署迈出了里程碑式的一步。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+[PrismML](https://prismml.com/) 正式推出了 [Ternary Bonsai 2 27B](https://prismml.com/news/bonsai-2-27b)，这是基于 [Qwen3.8 27B](https://huggingface.co/Qwen/Qwen3.8-27B) 打造的高能效三值权重衍生模型。该模型采用 Apache 2.0 开源协议，将原本高达 53.80 GB 的半精度 (FP16) 原始模型彻底瘦身至仅 5.93 GB，并在 20 项基准测试中令人惊叹地保留了父模型 98.2% 的平均性能。Ternary Bonsai 2 27B 不仅支持文本与图像理解，还具备 262K Token 的超长上下文窗口；借助 PrismML 提供的定制化运行时，它能够在普通的 16 GB 笔记本电脑或单张 24 GB 显存显卡上轻松完成本地部署。
+
+&gt; [PrismML](https://prismml.com/) has introduced [Ternary Bonsai 2 27B](https://prismml.com/news/bonsai-2-27b), a highly efficient ternary-weight derivative of [Qwen3.8 27B](https://huggingface.co/Qwen/Qwen3.8-27B). Compressing the original 53.80 GB (FP16) model down to a mere 5.93 GB, this Apache 2.0-licensed model preserves an impressive 98.2% of its parent model's average performance across 20 benchmarks. Supporting text, images, and a 262K-token context window, Ternary Bonsai 2 27B can be deployed on a standard 16 GB laptop or a single 24 GB GPU using PrismML’s custom runtimes.
+
+---
+
+## 什么是 Ternary Bonsai 2 27B？
+
+&gt; ## What is Ternary Bonsai 2 27B?
+
+该模型完整继承了 Qwen3.8 27B 的基础架构，总参数量达 273.6 亿 (27.36B) ，具体分布如下：
+
+&gt; The model preserves the foundational architecture of the Qwen3.8 27B with its 27.36 billion parameters, distributed as follows:
+
+* **语言主干网络 (Language Backbone) ：** 243.5 亿 (24.35B) 参数 (采用混合注意力机制：约 75% 线性注意力层和 25% 全注意力层) ；
+* **嵌入层与语言模型头 (Embeddings &amp; LM Head) ：** 25.4 亿 (2.54B) 参数；
+* **视觉塔 (Vision Tower) ：** 4.7 亿 (0.47B) 参数 (以独立的 0.63 GB GGUF 文件分发，仅在处理图像时载入) 。
+
+&gt; * **Language Backbone:** 24.35B parameters (utilizing hybrid attention: ~75% linear-attention and 25% full-attention layers).
+&gt; * **Embeddings &amp; LM Head:** 2.54B parameters.
+&gt; * **Vision Tower:** 0.47B parameters (shipped as a separate 0.63 GB GGUF file, loaded only when processing images).
+
+三值权重广泛应用于嵌入层、注意力投影矩阵、MLP 投影层以及语言模型头 (LM Head) 。全模型仅有 2620 万 (26.2M) 参数 (占比仅 0.0976%) 依然保留在较高精度，这些高精度参数主要集中在循环状态路径与归一化权重上。
+
+&gt; Ternary weights are applied across embeddings, attention projections, MLP projections, and the LM head. Only 26.2M parameters (0.0976%)—specifically the recurrent state path and normalization weights—remain in higher precision.
+
+## 三值量化格式是如何工作的？
+
+&gt; ## How Does the Ternary Format Work?
+
+该模型的权重被严格限制在三个离散值之间：**-1、0 或 +1**。
+
+&gt; The model utilizes weights restricted to three values: **-1, 0, or +1**.
+
+* **比特分配 (Bit Allocation) ：** 每 128 个权重组成一组，共享一个 FP16 缩放因子 (Scale) 。单个三进制数值携带 $\log_2(3)$ (约 1.585) 比特的信息量。结合缩放因子开销与保留的高精度张量，模型的实际运行开销为**每个权重 1.72 比特 (1.72 bits per weight)**。
+* **打包方案 (Packings) ：** 为了在实际算子内核上获得极致性能，[技术白皮书](https://github.com/PrismML-Eng/Bonsai-demo/blob/main/bonsai-2-27b-whitepaper.pdf) 详述了两种 GGUF 打包格式：
+  * `PTQ1_0`：以每个权重 1.76 比特的密度紧凑打包三进制位 (Trit) (模型总大小 5.93 GB) ；
+  * `PQ2_0`：将每个三进制位存入一个 2 比特的槽位中 (模型总大小 7.25 GB) ，能够实现更迅速的解包速度。
+* **基底旋转 (Rotated Basis) ：** 遵循 [SpinQuant](https://arxiv.org/abs/2405.16406) 的技术方案，PrismML 在三值分配前引入了分块阿达马旋转 (Hadamard Rotation，分块大小为 1,024) ，并在运行时对激活值应用相应的数学变换。
+
+&gt; * **Bit Allocation:** Every group of 128 weights shares a single FP16 scale. A ternary value carries $\log_2(3)$ (approx. 1.585) bits. Combined with the scale overhead and high-precision tensors, the model operates at **1.72 bits per weight**.
+&gt; * **Packings:** To optimize performance on real kernels, the [whitepaper](https://github.com/PrismML-Eng/Bonsai-demo/blob/main/bonsai-2-27b-whitepaper.pdf) details two GGUF packings:
+&gt;   * `PTQ1_0`: Packs trits densely at 1.76 bits per weight (5.93 GB total size).
+&gt;   * `PQ2_0`: Stores each trit in a 2-bit slot (7.25 GB total size), offering faster unpacking.
+&gt; * **Rotated Basis:** Following [SpinQuant](https://arxiv.org/abs/2405.16406) methodology, PrismML applies a blockwise Hadamard rotation (block size 1,024) before ternary assignment, with corresponding transformations applied to activations during runtime.
+
+## 与 Qwen3.8 27B 的基准测试对比如何？
+
+&gt; ## How Does It Score Against Qwen3.8 27B?
+
+评估测试由 PrismML 在思考模式下开展，测试环境基于 NVIDIA H100 GPU，并结合了 EvalScope 与 vLLM 推理框架：
+
+&gt; Evaluations were conducted by PrismML in thinking mode using EvalScope and vLLM on H100 GPUs:
+
+| 能力维度 | Qwen3.6 27B | Qwen3.8 27B | Ternary Bonsai 2 27B | 性能保持率 |
+| :--- | :---: | :---: | :---: | :---: |
+| 知识与推理能力 | 84.71 | 86.66 | 83.95 | 96.9% |
+| 数学计算能力 | 94.64 | 97.06 | 96.57 | 99.5% |
+| 代码编写能力 | 82.57 | 82.17 | 81.58 | 99.3% |
+| 智能体与工具调用能力 | 80.05 | 79.74 | 77.57 | 97.3% |
+| 指令遵循能力 | 74.53 | 81.25 | 82.66 | 101.7% |
+| 视觉多模态能力 | 79.82 | 81.64 | 78.59 | 96.3% |
+| **综合评分 (20 项基准测试) ** | **83.6** | **85.4** | **83.9** | **98.2%** |
+
+&gt; | Capability | Qwen3.6 27B | Qwen3.8 27B | Ternary Bonsai 2 27B | Retention |
+&gt; | :--- | :---: | :---: | :---: | :---: |
+&gt; | Knowledge and reasoning | 84.71 | 86.66 | 83.95 | 96.9% |
+&gt; | Math | 94.64 | 97.06 | 96.57 | 99.5% |
+&gt; | Coding | 82.57 | 82.17 | 81.58 | 99.3% |
+&gt; | Agentic and tool calling | 80.05 | 79.74 | 77.57 | 97.3% |
+&gt; | Instruction following | 74.53 | 81.25 | 82.66 | 101.7% |
+&gt; | Vision | 79.82 | 81.64 | 78.59 | 96.3% |
+&gt; | **Overall (20 benchmarks)** | **83.6** | **85.4** | **83.9** | **98.2%** |
+
+相较于体积为 7.3 GB 的传统量化构建版本 (例如平均得分仅 75.2 的 `IQ2_XXS`) ，Bonsai 2 展现出了飞跃式的提升——在 AIME26 数学竞赛测试中取得 95.83 分 (对比后者的 78.6 分) ，在 LiveCodeBench v6 编程基准测试中取得 90.07 分 (对比后者的 70.05 分) 。
+
+&gt; Compared to conventional quantization builds like `IQ2_XXS` (averaging 75.2 at 7.3 GB), Bonsai 2 demonstrates dramatic improvements—scoring 95.83 on AIME26 (vs. 78.6) and 90.07 on LiveCodeBench v6 (vs. 70.05).
+
+## 哪些能力依然存在质量损耗？
+
+&gt; ## Where Does It Still Lose Quality?
+
+尽管 98.2% 的综合平均保留率非常优异，但在特定的长流程复杂任务中，模型性能的下滑依然相对明显：
+
+&gt; While the 98.2% overall average is robust, quality drops are more pronounced in specific long-horizon workflows:
+
+* **智能体工作负载 (Agentic Workloads) ：** 在 [Terminal-Bench 2.1](https://www.tbench.ai/news/terminal-bench-2-1) 终端基准测试中，Bonsai 2 得分为 52.8 分 (Qwen3.8 原型为 69.7 分) ；在 [SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/) 软件工程智能体基准测试中，其得分为 60.8 分 (对比全精度的 80.6 分，性能保持率约为 75%) 。
+* **推理算力投入 (Reasoning Effort) ：** 中等思考预算 (Medium-effort) 下的平均得分为 79.3 分 (对比 FP16 基准的 82.6 分) ，且当前版本暂不支持低思考预算 (Low-effort) 执行。*(注：所有评估数据均源自 PrismML 官方公布，尚待第三方独立复现与验证。)*
+
+&gt; * **Agentic Workloads:** On [Terminal-Bench 2.1](https://www.tbench.ai/news/terminal-bench-2-1), Bonsai 2 scores 52.8 compared to Qwen3.8's 69.7. On [SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/), it scores 60.8 against 80.6 (~75% retention).
+&gt; * **Reasoning Effort:** Medium-effort execution averages 79.3 (compared to 82.6 for the FP16 baseline), and low-effort execution is unsupported. *(Note: All evaluation data stems from PrismML and awaits independent verification.)*
+
+## 在真实硬件上的运行速度如何？
+
+&gt; ## How Fast Is It on Real Hardware?
+
+基于 PrismML 自研算子内核在批大小为 1 (Batch Size 1) 解码时的实测性能 (2026 年 9 月测试数据) ：
+
+&gt; Benchmarked at batch size 1 decode on custom PrismML kernels (September 2026):
+
+* **硬件实测速度：**
+  * **RTX 5090：** 142.5 Token/秒 (每生成一个 Token 仅耗电 0.582 毫瓦时/mWh) ；
+  * **RTX 4090：** 96.7 Token/秒 (采用 `PTQ1_0` 格式) ；
+  * **NVIDIA L4 (72W) ：** 32.1 Token/秒；
+  * **Apple M5 Max：** 46.8 Token/秒；
+  * **Apple M5 Pro：** 27.7 Token/秒。
+* **打包格式效率对比：** `PTQ1_0` 在 Ada 架构显卡与 L4 上表现最佳；而在 Blackwell、Hopper、Ampere 以及 Apple 芯片架构上，`PQ2_0` 的运行速度更快。PrismML 同时表示，相较于全精度 8B 模型，该模型的整体能效比提升了 40%。
+
+&gt; * **Hardware Speeds:**
+&gt;   * **RTX 5090:** 142.5 tokens/sec (0.582 mWh per token).
+&gt;   * **RTX 4090:** 96.7 tokens/sec (using `PTQ1_0`).
+&gt;   * **NVIDIA L4 (72W):** 32.1 tokens/sec.
+&gt;   * **Apple M5 Max:** 46.8 tokens/sec.
+&gt;   * **Apple M5 Pro:** 27.7 tokens/sec.
+&gt; * **Packing Efficiency:** `PTQ1_0` excels on Ada-generation cards and the L4, whereas `PQ2_0` is faster on Blackwell, Hopper, Ampere, and Apple silicon architectures. PrismML also claims a 40% improvement in energy efficiency over full-precision 8B models.
+
+## 如何在本地运行？
+
+&gt; ## How Do You Run It?
+
+* **GGUF 格式运行：** 需要使用 PrismML 专门优化的 [llama.cpp 分支仓库](https://github.com/PrismML-Eng/llama.cpp) (原生 llama.cpp 目前无法识别 `PTQ1_0` 与 `PQ2_0` 格式) 。参照 [Bonsai-demo 代码仓库](https://github.com/PrismML-Eng/Bonsai-demo/) 的使用说明，运行 `./setup.sh` 脚本，随后执行 `./scripts/start_llama_server.sh`，即可在本地 `localhost:8080` 启动推理服务。
+* **Apple Silicon 平台：** 可直接选用针对 Mac 优化的 [MLX 整合包](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) 及其附带的模型加载器。
+* **浏览器端体验：** 可以访问 [WebGPU 在线演示](https://huggingface.co/spaces/webml-community/ternary-bonsai-2-webgpu-kernels) ，在现代网络浏览器中直接体验端侧免安装运行。
+
+&gt; * **GGUF Format:** Requires PrismML’s [llama.cpp fork](https://github.com/PrismML-Eng/llama.cpp) (stock llama.cpp rejects `PTQ1_0` and `PQ2_0` formats). Follow instructions in the [Bonsai-demo repo](https://github.com/PrismML-Eng/Bonsai-demo/) by running `./setup.sh` followed by `./scripts/start_llama_server.sh` to launch a local server at `localhost:8080`.
+&gt; * **Apple Silicon:** Use the [MLX pack](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) with its bundled loader.
+&gt; * **Browser:** Explore the [WebGPU demo](https://huggingface.co/spaces/webml-community/ternary-bonsai-2-webgpu-kernels) to run the model directly inside a web browser.
+
+## 核心要点速览
+
+&gt; ## Key Takeaways
+
+* **极致压缩：** 模型最终体积仅为 5.93 GB，比 53.80 GB 的 FP16 全精度基准缩小了约 9.1 倍；
+* **极高保留率：** 在 20 项基准测试中平均得分达到 83.9 分，保留了原版 Qwen3.8 27B 模型 98.2% 的顶尖性能；
+* **极速推理：** 在 RTX 5090 显卡上能够达到每秒 142.5 Token，在 Apple M5 Max 芯片上可达到每秒 46.8 Token；
+* **长流程智能体局限：** 在 SWE-bench 等长跨度复杂任务中，性能保持率下降至全精度的约 75%；
+* **需专属运行时：** 当前运行必须依赖 PrismML 定制适配的 llama.cpp 分支或 MLX 运行时。
+
+&gt; * **Massive Reduction:** 5.93 GB model size, operating ~9.1x smaller than the 53.80 GB FP16 baseline.
+&gt; * **High Retention:** Achieves an 83.9 average across 20 benchmarks, retaining 98.2% of the parent Qwen3.8 27B model's performance.
+&gt; * **Blazing Fast:** Delivers 142.5 tokens per second on an RTX 5090 and 46.8 tokens per second on an M5 Max.
+&gt; * **Agentic Limitations:** Long-horizon tasks like SWE-bench drop to roughly 75% retention compared to full precision.
+&gt; * **Custom Runtimes Required:** Requires PrismML's specialized llama.cpp fork or MLX runtime to execute.
+
+---</description>
+    </item>
+    <item>
+      <title>Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-20/Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-20/Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型/</guid>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在信息检索与检索增强生成 (RAG) 领域，稠密向量模型虽然应用广泛，但在生僻专有名词匹配和可解释性上存在天然局限，而传统的稀疏模型又往往面临词表膨胀和高计算开销的挑战。为此，Linkup Research 正式发布了开源稀疏嵌入模型 (Sparse Embedding Model) —— **SPARSEUP**。该模型基于 149M 参数的 ModernBERT 架构打造，采用 Apache 2.0 许可证完全开源，在 BEIR-13 基准测试中斩获 56.4 的平均 nDCG@10 得分，成为目前 150M 参数以下公开可用的最强词表稀疏编码器。通过 Logit 平移、单位置 Top-k 截断和大小写折叠等三项精巧架构优化，SPARSEUP 巧妙破解了传统 SPLADE 模型停用词泛滥的难题，并结合 Seismic 倒排索引实现了约 380 微秒的单线程极速检索。这一成果不仅补齐了现代信息检索中轻量级稀疏范式的技术拼图，更为开发者构建高效率、强可解释性的混合检索系统提供了全新利器。
+
+---
+
+## 核心概述
+
+&gt; ## Executive Summary
+
+Linkup Research 正式开源了基于机器学习的稀疏嵌入模型 (Sparse Embedding Model) —— **SPARSEUP**。该模型基于 149M 参数的 ModernBERT 骨干网络构建，并以宽松的 Apache 2.0 许可证公开发布。SPARSEUP 在知名的 BEIR-13 基准测试 (Benchmark) 中取得了 56.4 的平均 nDCG@10 得分，被 Linkup 定位为当前 150M 参数量级以下公开可用的最强基于词表的稀疏编码器。开发者可以通过 Hugging Face，借助 Transformers 或 Sentence Transformers 库轻松部署 SPARSEUP。该模型恰好补齐了此前 LightOn 模型套件的技术拼图，在保持极高检索效率与人类直观可读权重的特性的同时，为稠密检索 (Dense Retrieval) 和晚期交互检索 (Late-Interaction Retrieval) 提供了极具竞争力的稀疏检索替代方案。
+
+&gt; Linkup Research has released **SPARSEUP**, an open-source learned sparse embedding model built on a 149M-parameter ModernBERT backbone and distributed under the Apache 2.0 license. Achieving a 56.4 average nDCG@10 on BEIR-13, Linkup positions SPARSEUP as the strongest public vocabulary-based sparse encoder under 150M parameters. Deployable via Hugging Face using Transformers or Sentence Transformers, SPARSEUP bridges the gap in LightOn's recent model suite, offering a viable sparse alternative to dense and late-interaction retrieval styles while maintaining high efficiency and human-readable weights.
+
+---
+
+## 为什么需要稀疏模型？为什么是现在？
+
+&gt; ## Why a Sparse Model, and Why Now?
+
+目前绝大多数开源检索模型都依赖于稠密表征 (Dense Representations)，即为每段文本生成一个固定维度的稠密向量。与此不同的是，稀疏模型直接在预定义的整个词表上输出权重分布，其中的每一个维度都精确对应一个真实的 Token。这种设计的精妙之处在于，生成的稀疏向量能够无缝对接到传统的倒排索引 (Inverted Indexes) 搜索引擎中；同时，由于每个激活维度都对应具体词汇，权重具备天然的人类可读性，并且在命中冷门、罕见的生僻词与专有名词时表现尤为强悍。
+
+&gt; Most open retrieval models rely on dense representations (one vector per text). In contrast, sparse models output weights over a vocabulary, where each dimension maps to a real token. This design allows vectors to integrate smoothly into inverted indexes while remaining human-readable and highly effective at matching rare words.
+
+SPARSEUP 的研发直接受到了 LightOn 近期发布 [DenseOn and LateOn](https://huggingface.co/papers/2607.27178) 的启发。LightOn 当时开源了全套训练数据、训练秘方 (Recipe)、一个稠密模型以及一个晚期交互模型。而 SPARSEUP 采用相同的骨干网络家族与微调 (Fine-Tuning) 数据，恰好补全了缺失的“稀疏模型”版块，从而让开发者能够站在完全平等的基准线上，横向对比这三种主流的信息检索范式。
+
+&gt; The development of SPARSEUP was motivated by LightOn’s release of [DenseOn and LateOn](https://huggingface.co/papers/2607.27178), which provided open data, a training recipe, a dense model, and a late-interaction model. SPARSEUP fills the missing sparse slot by utilizing the same backbone family and fine-tuning data, allowing developers to compare all three retrieval paradigms side by side.
+
+---
+
+## SPARSEUP 是如何构建的
+
+&gt; ## How SPARSEUP is Built
+
+SPARSEUP 的训练起点是 [LateOn-unsupervised](https://huggingface.co/lightonai/LateOn-unsupervised) 检查点，但该检查点并未包含掩码语言模型 (Masked Language Modeling, MLM) 头。Linkup 团队将 ModernBERT 原生的 MLM 预测头重新“嫁接”回模型中，并纯粹采用对比学习 (Contrastive Learning) 方法，基于 [LightOn 的微调混合数据集 (LightOn’s fine-tuning mixture)](https://huggingface.co/datasets/lightonai/embeddings-fine-tuning) 展开微调。
+
+&gt; Training begins from the [LateOn-unsupervised](https://huggingface.co/lightonai/LateOn-unsupervised) checkpoint, which lacked an MLM head. The Linkup team grafted ModernBERT’s original MLM head back onto the model and performed fine-tuning using [LightOn’s fine-tuning mixture](https://huggingface.co/datasets/lightonai/embeddings-fine-tuning) with contrastive learning exclusively.
+
+* **训练策略：** 每个查询 (Query) 都从 50 个候选池中采样配对 7 个难负例 (Hard Negatives)，同时结合批次内负例 (In-batch Negatives) 共同训练。整个训练流程摒弃了复杂的交叉编码器蒸馏 (Cross-Encoder Distillation)，单张 H100 GPU 即可高效完成训练。
+* **突破原生 SPLADE 的局限：** 若在该骨干网络上直接应用标准的 SPLADE 方案，会导致输出表征过于稠密，充斥着大量无意义的停用词 (Stopwords)。Linkup 通过三项核心架构调整完美化解了这一难题：
+  1. **Logit 平移 (Logit shifting)：** 编码器通过计算 `log(1 + ReLU(x - 15))`，巧妙抵消了 ModernBERT MLM 原始 Logit 在初始化阶段过大从而导致对数函数饱和的问题。
+  2. **逐位置 Top-k 截断 (Per-position top-k)：** 每个输入的 Token 在进入最大池化 (Max Pooling) 之前，仅保留权重最高的前 12 个词表维度。这种设计限制了每个 Token 的词汇扩展幅度，而非死板地限制最终向量的总长度。
+  3. **大小写折叠 (Case folding)：** 将字节级 BPE (Byte-level BPE) 中形如 `heat`、`Heat`、`Ġheat` 和 `ĠHeat` 等同义变体统一折叠归并到单一 ID 下，并保留其中的最大权重，从而将词表输出维度从约 50k 显著压缩至约 34k。
+
+&gt; * **Training Strategy:** Each query is paired with 7 hard negatives sampled from a pool of 50, alongside in-batch negatives. The process excludes cross-encoder distillation and fits efficiently on a single H100 GPU.
+&gt; * **Overcoming Vanilla SPLADE Limitations:** A standard SPLADE implementation on this backbone resulted in overly dense token bags saturated with stopwords. Linkup resolved this with three core architectural adjustments:
+&gt;   1. **Logit shifting:** The encoder computes `log(1 + ReLU(x - 15))` to counteract ModernBERT MLM logits that otherwise saturate the log function at initialization.
+&gt;   2. **Per-position top-k:** Each input token retains only its 12 strongest vocabulary dimensions prior to max pooling, capping expansion per token rather than total vector size.
+&gt;   3. **Case folding:** Byte-level BPE variants like `heat`, `Heat`, `Ġheat`, and `ĠHeat` are folded onto a single ID while preserving the largest weight, reducing output dimensions from ~50k to ~34k.
+
+在输入格式上，查询和文档分别添加 `[Q]` 与 `[D]` 前缀作为标识，检索得分通过点积 (Dot Product) 计算。在评估基准中，查询的最大长度设为 128 个 Token，文档的最大长度设为 512 个 Token。
+
+&gt; Queries and documents use `[Q]` and `[D]` prefixes respectively, scored via dot product. Evaluation max lengths are set to 128 tokens for queries and 512 for documents.
+
+---
+
+## 基准测试结果
+
+&gt; ## Benchmark Results
+
+根据官方 [模型卡片 (Model Card)](https://huggingface.co/Linkup-Platform/linkup-sparseup-embed-v1) 披露的数据，在 BEIR-13 基准测试 (采用 nDCG@10 指标，且不包含 MS MARCO) 中，SPARSEUP 与其他主流稀疏编码器的对比表现如下：
+
+&gt; Evaluated against other sparse encoders on BEIR-13 (nDCG@10, excluding MS MARCO) per the [model card](https://huggingface.co/Linkup-Platform/linkup-sparseup-embed-v1):
+
+| 模型 | BEIR-13 平均得分 |
+| :--- | :--- |
+| **SPARSEUP** | **56.4** |
+| [opensearch-neural-sparse-encoding-doc-v3-gte](https://huggingface.co/opensearch-project/opensearch-neural-sparse-encoding-doc-v3-gte) | 54.6 |
+| opensearch-neural-sparse-encoding-v1 | 52.44 |
+| ModernBERT-VT | 52.4 |
+| splade-v3 | 51.7 |
+| [granite-embedding-30m-sparse](https://huggingface.co/ibm-granite/granite-embedding-30m-sparse) | 50.6 |
+| LACONIC-1B *(10 亿参数，属于不同规模量级)* | 58.7 |
+
+&gt; | Model | BEIR-13 avg |
+&gt; | :--- | :--- |
+&gt; | **SPARSEUP** | **56.4** |
+&gt; | [opensearch-neural-sparse-encoding-doc-v3-gte](https://huggingface.co/opensearch-project/opensearch-neural-sparse-encoding-doc-v3-gte) | 54.6 |
+&gt; | opensearch-neural-sparse-encoding-v1 | 52.44 |
+&gt; | ModernBERT-VT | 52.4 |
+&gt; | splade-v3 | 51.7 |
+&gt; | [granite-embedding-30m-sparse](https://huggingface.co/ibm-granite/granite-embedding-30m-sparse) | 50.6 |
+&gt; | LACONIC-1B *(1B parameters, different size class)* | 58.7 |</description>
+    </item>
+    <item>
       <title>我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-19/我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-19/我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录/</guid>
@@ -4183,149 +4429,6 @@ $$\mathcal{E}_p(\lambda) = \sup_R [\Phi_p(R) - \lambda\,\mathrm{CoI}_p(R)]$$
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11801)
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11801)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11801)</description>
-    </item>
-    <item>
-      <title>在模型动摇处分叉：面向树状结构强化学习的信念转移分支策略</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/在模型动摇处分叉-面向树状结构强化学习的信念转移分支策略/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/在模型动摇处分叉-面向树状结构强化学习的信念转移分支策略/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在无评论家 (Critic-Free) 且具备可验证奖励的强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR) 中，通过在生成链的中间步骤进行分叉展开树状结构采样，可以通过比对兄弟轨迹的胜负差异来精准估算单步价值分配。然而，受限于实际采样算力预算，每条生成链只能进行极少数分叉；若分叉点选在胜负已定的平淡步骤，衍生出的分支将得出完全一致的结果，无法提供任何有效的信用分配信号。为此，本研究将分叉点选择形式化为寻找价值曲线转折“枢轴点 (Pivots)”的数学问题，创造性地提出了 **信念转移分支策略 (Belief-Shift Branching)**。该方法通过监测模型在候选边界处的底层答案信念，在信念发生剧烈漂移的前夕精准触发分叉，且无需任何步骤级的人工监督。实验表明，该策略在极低计算开销下（数学任务中仅占单步算力的 1%，代码任务中低于 5%），全面超越了基于结构划分、Token 熵及大模型裁判的传统基准，在 OLMo-3-7B 等模型上的数学和编程推理任务中均取得了显著的性能跃升。
-
----
-
-## 核心执行概要
-
-&gt; ## Executive Summary
-
-在具备可验证奖励且无评论家 (Critic-Free) 的强化学习 (RLVR) 中，树状结构的展开轨迹通过在生成链的中间节点进行分叉、并评估兄弟分支输出之间的差异，为大语言模型提供了步骤级别的信用分配 (Step-Level Credit)。然而，受限于现实中的采样计算预算，每条生成链允许的分叉数量非常有限。如果分叉位置选择不当——例如选在最终结果已经尘埃落定的阶段——就会生成高度同质化的冗余分支，几乎无法提供任何有效的学习信号。
-
-&gt; Tree-structured rollouts in critic-free reinforcement learning with verifiable rewards (RLVR) offer step-level credit by forking generation chains at intermediate points and evaluating the differences in sibling outcomes. However, realistic sampling budgets limit the number of available forks per chain. Poorly placed forks—such as those where the final outcome is already determined—yield redundant siblings that provide virtually no credit signal. 
-
-为了解决这一难题，作者团队将分叉位置的选择形式化为定位生成链价值曲线中的**关键枢轴点 (Pivots)**，并提出了一种名为**信念转移分支 (Belief-Shift Branching)** 的全新策略。该方法在候选步骤边界监测模型底层的答案信念变化，并在连续信念发生最剧烈分歧的关键步骤前夕果断分叉。该方案完全不需要步骤级的外部监督，并且可以通过三种不同的模型访问层级（黑盒探针、Logit-Lens 深度分析剖面以及学习得到的激活方向）高效运行。实证评估表明，信念转移分支在多种模型家族与垂直领域（数学推理和代码生成）中，均持续优于基于固定结构、Token 熵以及大模型裁判的基准方案，带来了显著的性能飞跃。
-
-&gt; To solve this, the authors formalize fork placement as identifying the **pivots** of a chain's value curve, introducing a novel strategy called **belief-shift branching**. This approach monitors the model's underlying answer belief at candidate boundaries and forks right before consecutive beliefs diverge most. Requiring zero step-level supervision, the method operates efficiently via three distinct access levels (a black-box probe, a logit-lens depth profile, and a learned activation direction). Empirical evaluations demonstrate that belief-shift branching consistently outperforms structural, entropy-based, and LLM-judge baselines, yielding substantial performance gains across multiple model families and domains (mathematics and code).
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; Tree-structured rollouts give critic-free reinforcement learning with verifiable rewards (RLVR) step-level credit: fork a chain at an intermediate point, and sibling outcome differences estimate step value. Each fork adds sampling cost, so realistic budgets typically allow only a few forks per chain. A fork placed where the outcome is already largely settled yields siblings that mostly agree and provide almost no credit signal; hence, for a given tree size, where forks are placed largely determines how much step-level RL can gain. Most existing mainstream methods place forks by structure, such as fixed lengths, midpoints, and delimiters, or by next-token entropy. We formalize fork placement as locating the **pivots** of the chain's value curve, where the expected outcome turns. We propose **belief-shift branching**: read the model's answer belief at candidate boundaries and fork just before the step where consecutive beliefs diverge most. Three instantiations, none needing step-level supervision, span access levels: a black-box probe, a logit-lens depth profile, and a learned activation direction, which is fit offline and therefore used only in the validation before RL training. The signal only **places** forks, and the probe costs about $1\%$ of step compute on mathematics and under $5\%$ on code when it runs inside the rollout engine. In that validation, against Monte-Carlo value curves, a belief-shift signal ranks first in each of the eight model$\times$benchmark panels, ahead of entropy, structural, and LLM-judge baselines. In RL across three model families and two domains, belief-shift forking leads every mathematics aggregate, on OLMo-3-7B by $+2.6$ aggregate and $+2.9$ on AIME 2026 over the strongest baseline, and sweeps every OLMo code column, by $+6.5$ on LiveCodeBench-medium.
-
-树状结构采样为具备可验证奖励的免评论家强化学习 (RLVR) 赋予了步骤级信用：在中间某个节点分叉展开一条链，利用兄弟分支的最终结果差异即可估计该步骤的价值。每一次分叉都会增加采样开销，因此在实际算力预算下，通常每条生成链仅允许极少数的分叉。如果在最终结局已基本确定的位置进行分叉，所生成的兄弟分支将高度趋同，几乎无法提供任何信用分配信号；因此，在固定的树规模下，分叉位置的选择在很大程度上决定了步骤级强化学习能获得多大的收益。目前主流方法大多依据结构（如固定长度、中点和分隔符）或下一个 Token 的熵来放置分叉。我们将分叉点选择形式化为定位生成链价值曲线的**关键枢轴点 (Pivots)**，即预期结果发生转折的时刻。我们提出了**信念转移分支 (Belief-Shift Branching)**：在候选边界处读取模型对最终答案的信念，并在前后连续信念分歧最大的步骤前夕进行分叉。我们设计了三种均无需步骤级监督的具体实现，覆盖不同的系统访问权限：黑盒探针、Logit-Lens 深度分析剖面，以及离线拟合并仅用于强化学习训练前验证的习得激活方向。该信号仅用于**定位**分叉点；当在展开引擎内部运行时，探针在数学任务上仅耗费约 $1\%$ 的单步计算量，在代码任务上低于 $5\%$。在基于蒙特卡洛价值曲线的验证中，信念转移信号在全部八个“模型$\times$基准”评估组中均名列第一，领先于熵基线、结构基线和大模型裁判基线。在横跨三个模型家族与两个领域的强化学习实测中，信念转移分叉在所有数学综合指标上均保持领先，在 OLMo-3-7B 上相较于最强基线提升了 $+2.6$ 的综合得分以及在 AIME 2026 上提升了 $+2.9$；并在 OLMo 的全部代码测试项中拔得头筹，在 LiveCodeBench-medium 上取得了 $+6.5$ 的显著优势。
-
----
-
-## 核心亮点与特性
-
-&gt; ## Key Highlights &amp; Features
-
-- **解决的痛点问题：** 大语言模型 (LLM) 树状结构强化学习中的低效分叉放置问题；无效的分叉位置白白浪费有限的算力预算，却无法提供富有价值的信用分配信号。
-- **提出的解决方案：** **信念转移分支 (Belief-Shift Branching)**，通过评估前后连续答案信念分歧最大的关键点，精准定位模型价值曲线的转折枢轴。
-- **极高的执行效率：** 探针机制引入的额外开销极低，在数学任务中仅消耗约 1% 的单步算力，在代码任务中低于 5%。
-- **卓越的实证表现：** 
-  - 在所有“模型-基准测试”验证组中，全面超越所有基于结构规则、Token 熵和大语言模型裁判的基线方案。
-  - 在跨越多种模型架构与领域的强化学习训练中取得显著性能提升（例如在 OLMo-3-7B 模型的 AIME 2026 基准上提升 $+2.9$，在 OLMo 代码任务的 LiveCodeBench-medium 上提升 $+6.5$）。
-
-&gt; - **Problem Addressed:** Inefficient fork placement in tree-structured reinforcement learning for LLMs, where ineffective fork locations waste limited compute budgets without providing meaningful credit signals.
-&gt; - **Proposed Solution:** **Belief-Shift Branching**, which locates the pivots of a model's value curve by evaluating where consecutive answer beliefs diverge most.
-&gt; - **Efficiency:** The probe mechanism introduces minimal overhead, consuming only ~1% of step compute for mathematics tasks and under 5% for code tasks.
-&gt; - **Empirical Superiority:** 
-&gt;   - Outperforms all structural, entropy, and LLM-judge baselines across model-benchmark validation panels.
-&gt;   - Achieves significant performance lifts in RL across multiple model families and domains (e.g., $+2.9$ on AIME 2026 for OLMo-3-7B; $+6.5$ on LiveCodeBench-medium for OLMo code tasks).
-
----
-
-## 文章元数据
-
-&gt; ## Article Metadata
-
-| 属性 | 详情 |
-| :--- | :--- |
-| **主要学科领域** | 人工智能 (`cs.AI`) |
-| **DOI** | [10.48550/arXiv.2609.11061](https://doi.org/10.48550/arXiv.2609.11061) |
-| **全文链接** | [查看 PDF](https://arxiv.org/pdf/2609.11061) \| [网页版 (实验性)](https://arxiv.org/html/2609.11061v1) \| [TeX 源码](https://arxiv.org/src/2609.11061) |
-| **授权协议** | [知识共享署名 4.0 国际许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="16" /&gt; |
-
-&gt; | Property | Details |
-&gt; | :--- | :--- |
-&gt; | **Primary Subject** | Artificial Intelligence (`cs.AI`) |
-&gt; | **DOI** | [10.48550/arXiv.2609.11061](https://doi.org/10.48550/arXiv.2609.11061) |
-&gt; | **Full-Text Links** | [View PDF](https://arxiv.org/pdf/2609.11061) \| [HTML (Experimental)](https://arxiv.org/html/2609.11061v1) \| [TeX Source](https://arxiv.org/src/2609.11061) |
-&gt; | **License** | [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="16" /&gt; |</description>
-    </item>
-    <item>
-      <title>以具现化作为可迁移词表：使用原生图神经网络实现零样本链接预测</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/以具现化作为可迁移词表-使用原生图神经网络实现零样本链接预测/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/以具现化作为可迁移词表-使用原生图神经网络实现零样本链接预测/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在知识图谱的归纳式链接预测任务中，以往的专用基础模型（如 ULTRA）通常需要设计高度复杂、专门硬编码迁移机制的神经网络架构。本文提出了一种颠覆性的逆向思路：将跨图迁移能力从复杂的模型架构转移至数据表示本身。作者通过对输入图进行“具现化” (Reification) 处理，将每一条事实三元组转化为图节点，并借助由六种元关系构成的固定词表，将关系类型转换为匿名的共享节点而非模型参数。令人惊叹的是，仅仅使用教科书式的原生图神经网络 (GNN)，在一张仅含 4,245 个三元组的小型图上单卡训练 30 分钟，就能在 40 个归纳式基准测试中实现强劲的零样本跨图迁移，性能完全媲美专门预训练的大型基础模型。
-
----
-
-# 以具现化作为可迁移词表：使用原生图神经网络实现零样本链接预测
-
-&gt; # Reification as a Transferable Vocabulary: Zero-Shot Link Prediction with Vanilla GNNs
-
-**作者：** Camille Pradel  
-**发表日期：** 2026年9月10日  
-**主要领域：** 机器学习 (`cs.LG`)  
-**arXiv ID：** [arXiv:2609.11347 [cs.LG]](https://arxiv.org/abs/2609.11347)  
-
-&gt; **Authors:** Camille Pradel  
-&gt; **Published:** September 10, 2026  
-&gt; **Primary Subject:** Machine Learning (`cs.LG`)  
-&gt; **arXiv ID:** [arXiv:2609.11347 [cs.LG]](https://arxiv.org/abs/2609.11347)  
-
----
-
-## 📌 概要
-
-&gt; ## 📌 Summary
-
-本文提出了一种全新的知识图谱零样本 (Zero-shot) 链接预测方法，核心思想是将迁移机制**从模型架构转移到数据表示本身**。
-
-&gt; This paper introduces a novel approach to zero-shot link prediction in knowledge graphs by shifting the transfer mechanism **from the model architecture into the data representation**. 
-
-作者并没有依赖复杂且专用的模型架构（如专属基础模型 *ULTRA*），而是提出了对输入图进行**具现化** (reifying) 的方案：
-* 每一个事实三元组都被转化为一个节点，分别连接到其主体、客体以及关系类型。
-* 该方法利用由**六个元关系**构成的固定词表，将关系类型视作匿名的共享节点，而非硬编码在模型中的固定参数。
-
-&gt; Instead of relying on complex, specialized architectures (like the dedicated foundation model *ULTRA*), the author proposes *reifying* the input graph:
-&gt; * Every fact becomes a node connected to its subject, object, and relation type.
-&gt; * This utilizes a fixed vocabulary of **six meta-relations**, treating relation types as anonymous shared nodes instead of hard-coded model parameters.
-
-借助这种具现化策略，哪怕是标准、现成的“教科书级”图神经网络 (Graph Neural Networks, GNN)——例如 GAT、GraphSAGE、R-GCN 以及 GINE 变体——仅需在一块 NVIDIA A100 GPU 上对一个包含 4,245 个三元组的小型知识图谱训练 30 分钟即可。尽管训练过程如此轻量，这些模型却能在 40 个归纳式链接预测基准测试中实现强大的**零样本**跨图迁移，其中原生的 GAT 模型在 ULTRA 自身的评估测试集上甚至达到了与该专用基础模型相当的优异性能。此外，该方法还能自然拓展至关系型数据库，并在未见数据库的零样本外键目标排序任务中取得了初步的显著成功。
-
-&gt; When using this reification strategy, standard, off-the-shelf "textbook" Graph Neural Networks (GNNs)—such as GAT, GraphSAGE, R-GCN, and GINE variants—can be trained on a single modest knowledge graph (4,245 triples) for just 30 minutes on a single NVIDIA A100. Despite this lightweight training, these models transfer **zero-shot** across 40 inductive link-prediction benchmarks, with the vanilla GAT matching the performance of dedicated foundation models like ULTRA. Furthermore, the approach extends naturally to relational databases, demonstrating preliminary success in zero-shot foreign-key target ranking.
-
----
-
-## 📑 摘要
-
-&gt; ## 📑 Abstract
-
-知识图谱基础模型（例如 ULTRA）通过硬编码迁移机制的专用架构，实现了在未见图上的零样本链接预测。在这项工作中，我们通过对输入图进行具现化处理，将这一机制从网络架构中剥离并融入到数据表示之中：每一个事实都被表示为一个节点，通过包含六种元关系的固定词表与其主体、客体和关系类型相连，将关系类型作为匿名的共享节点而非模型参数。在这一表示方法下，五种教科书级别的图神经网络 (GNN)（GAT、带有求和以及均值+最大聚合的 GINE、GraphSAGE、R-GCN），各自仅在一块 NVIDIA A100 上对一个包含 4,245 个三元组的单一知识图谱训练 30 分钟，便能零样本迁移至 40 个归纳式链接预测基准测试。其中表现最佳的现成 GAT 模型在 ULTRA 自带的评估套件中，性能媲美在三个图谱上预训练的专用基础模型 ULTRA。相同的固定词表还能够延伸至关系型数据库——将一行数据视作实体，将外键列视作关系类型；在两个完全未见且不包含单元格数值、模式文本或上下文标签的数据库上进行的初步探查表明，基于三个知识图谱预训练的该模型家族对外键目标的排序能力远超随机初始化和基于度数的对照基线。我们开源了针对全部 40 个基准测试的代码、模型权重检查点以及评测流水线。
-
-&gt; &gt; Knowledge graph foundation models such as ULTRA achieve zero-shot link prediction on unseen graphs through dedicated architectures that hard-code a transfer mechanism. In this work we move that mechanism out of the architecture and into the representation, by reifying the input graph: every fact becomes a node, connected to its subject, object, and relation type through a fixed vocabulary of six meta-relations, with relation types as anonymous shared nodes rather than model parameters. On this representation, five textbook GNNs (GAT, GINE with sum and with mean+max aggregation, GraphSAGE, R-GCN), each trained on a single knowledge graph of 4,245 triples for 30 minutes on one NVIDIA A100, transfer zero-shot to 40 inductive link-prediction benchmarks. The best of them, an off-the-shelf GAT, matches ULTRA, a dedicated foundation model pretrained on three graphs, across ULTRA's own evaluation suite. The same fixed vocabulary extends to relational databases, a row becoming an entity and a foreign-key column a relation type; a preliminary probe on two unseen databases, with no cell values, schema text or in-context labels, shows a model of this family pretrained on three knowledge graphs ranking foreign-key targets far above random-initialization and degree controls. We release the code, the checkpoints, and the evaluation pipeline for all 40 benchmarks.
-
----
-
-## 🔗 链接与资源
-
-&gt; ## 🔗 Links &amp; Resources
-
-* **arXiv 摘要：** [arXiv:2609.11347](https://arxiv.org/abs/2609.11347)
-* **PDF 下载：** [PDF 直链](https://arxiv.org/pdf/2609.11347)
-* **TeX 源码：** [arXiv 源码包](https://arxiv.org/src/2609.11347)
-* **DOI：** [10.48550/arXiv.2609.11347](https://doi.org/10.48550/arXiv.2609.11347)
-
-&gt; * **arXiv Abstract:** [arXiv:2609.11347](https://arxiv.org/abs/2609.11347)
-&gt; * **PDF Download:** [Direct PDF Link](https://arxiv.org/pdf/2609.11347)
-&gt; * **TeX Source:** [arXiv Source Files](https://arxiv.org/src/2609.11347)
-&gt; * **DOI:** [10.48550/arXiv.2609.11347](https://doi.org/10.48550/arXiv.2609.11347)</description>
     </item>
   </channel>
 </rss>
