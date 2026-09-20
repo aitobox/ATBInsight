@@ -4,6 +4,7 @@
 
 ## 2026-09
 
+- **2026-09-21**: [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
 - **2026-09-20**: [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 - **2026-09-20**: [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 - **2026-09-19**: [FormalFlow：面向 MIP* = RE 核心定理的长程自动化形式化证明](blog/posts/2026-09-19-FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明.md)
