@@ -5,6 +5,323 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-21/如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-21/如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战/</guid>
+      <pubDate>Mon, 21 Sep 2026 00:00:00 GMT</pubDate>
+      <description>在复杂系统与底层基础库的开发中，传统的单元测试往往只能覆盖开发者预想到的常规路径，极易漏掉隐蔽的边界状态与特征交互缺陷。本文源自知名技术讨论社区 Lobste.rs 上关于“测试有效性”的探讨，作者以 Rust 生态核心的 `regex` 正则引擎历史真实 Bug 为例，展示了如何脱离臃肿庞杂的外部测试框架，仅凭一个轻量级的伪随机数生成器 (PRNG) 与群集测试 (Swarm Testing) 策略，高效生成极短却极具杀伤力的边缘用例。通过将待测引擎与标准实现 (Oracle) 交叉比对，这种轻巧敏捷的方法不仅执行速度极快，还能在极短时间内精准揪出传统测试难以触及的深层逻辑漏洞。这种实战经验表明，高质效的测试并不依赖海量算力与庞大测试数据，而是取决于精巧的测试架构设计与特征组合策略。
+
+---
+
+* **发布日期：** 2026 年 9 月 19 日
+* **原文出处：** [Lobste.rs 讨论区](https://lobste.rs/s/mkv2pl/unit_tests_mark_territory_more_than#c_5nimhl)
+
+&gt; * **Published on:** Sep 19, 2026
+&gt; * **Source:** [Lobste.rs Discussion](https://lobste.rs/s/mkv2pl/unit_tests_mark_territory_more_than#c_5nimhl)
+
+---
+
+## 📌 核心概述
+
+&gt; ## 📌 Summary
+
+本文通过为 Rust 语言的核心正则库 `regex` 量身打造一个轻量级模糊测试器 (Fuzzer) ，深入探讨了生成式随机测试 (Generative Testing) 相比于传统单元测试的强大优势。作者并未依赖笨重庞大的测试框架，而是展示了如何仅凭一个极简的伪随机数生成器 (PRNG) ，搭配权威比对基准 (Oracle) ——直接将 `regex` 与轻量版 `regex_lite` 的运行结果进行交叉比对——就能精准揪出那些隐藏极深的代码缺陷。
+
+&gt; This article explores the effectiveness of generative (randomized) testing compared to traditional unit tests by building a custom fuzzer for the Rust `regex` crate. Rather than relying on complex frameworks, the author demonstrates how a lightweight, pseudo-random number generator (PRNG) coupled with an oracle (comparing `regex` against `regex_lite`) can successfully uncover hidden bugs. 
+
+文中所阐述的核心原则包括：采用 **群集测试 (Swarm Testing)** 策略 (随机分配特性分布与字符集) 、专注于挖掘 **短小而刁钻的边界极端用例** 而非盲目堆砌海量数据负载，以及将漏掉的 Bug 视作测试框架本身的设计不足并不断反哺完善。
+
+&gt; Key principles covered include **swarm testing** (randomizing feature distributions and alphabets), targeting **small and tricky edge cases** rather than massive payloads, and treating missed bugs as failures in the testing harness itself.
+
+---
+
+## 缺陷溯源：一个真实的正则表达式 Bug
+
+&gt; ## The Bug
+
+对于正则表达式 `".abb|b"` 和输入字符串 `"zabb"`，旧版本的 `regex` crate 出现了一个离奇的错误：它返回的第一个匹配项居然是 `"b"`，而不是理应匹配的完整字符串 `"zabb"`：
+
+&gt; For the `".abb|b"` regex and `"zabb"` input, an older version of the `regex` crate incorrectly returned `b` as the first match instead of the entire `zabb` string:
+
+```rust
+use regex;
+
+fn main() {
+    let r = regex::Regex::new(".abb|b").unwrap();
+
+    let m = r.find("zabb").unwrap();
+
+    // Fails with regex-automata=0.4.15:
+    assert_eq!(m.as_str(), "zabb")
+}
+```
+
+我们该如何主动发现这类诡异的缺陷呢？正则表达式引擎属于纯粹的算法实现，这使它们成为了应用生成式测试的绝佳温床。而在算法测试领域，最强大、最直接的手段莫过于将待测系统的输出与已知正确的权威答案 (即测试预言机 Oracle) 进行比对。虽然原始评论中提到其测试工具当时缺乏可用的 Oracle，但在构建稳健系统时，我们在架构设计之初就应当把 Oracle 纳入考量。幸运的是，在针对 `regex` 库的案例中，我们完全可以直接拉来 `regex_lite` 库作为权威参考，将两者的输出进行全自动交叉验证。
+
+&gt; How do we find bugs like this? Regular expression engines are pure algorithms, making them prime candidates for generative testing. The most powerful technique for testing algorithms is to compare them against a known correct answer (an oracle). While the original comment noted their fuzzer lacked an oracle, robust systems should be designed with oracles in mind. Fortunately, for our `regex` case study, we can simply cross-check outputs against the `regex_lite` crate.
+
+---
+
+## 生成测试字符串
+
+&gt; ## Generating a String
+
+我们可以借助一个极简的伪随机数生成器 (PRNG) ，搭建一个纯粹的随机字符串生成工具：
+
+&gt; We can build a simple random string generator using a pseudo-random number generator:
+
+```rust
+use fastrand::Rng;
+```
+
+在进行随机化测试时，人们往往有一种下意识的直觉：疯狂生成海量的数据载荷 (例如动辄 5 GiB 的超大输入) 。然而在现实中，软件缺陷通常孕育自各种特性之间微妙而精细的小规模交互，而非单纯因为数据量巨大。
+
+&gt; When performing randomized testing, the instinct is often to generate massive payloads (e.g., 5 GiBs of input). However, bugs usually stem from small, intricate interactions between features. 
+
+我们的生成策略遵循两步走方案：
+
+&gt; Our strategy follows a two-step approach:
+
+1. **确立基准字符集**：从现有的单元测试中提取并固定基础字符表；
+2. **动态子集抽样**：在每一次迭代中，随机挑选该字符表的一个 **子集** (即群集测试 Swarm Testing 的精髓) ，随后仅使用这些被挑中的字符生成随机长度的测试字符串。
+
+&gt; 1. Fix a base alphabet derived from unit tests.
+&gt; 2. For each iteration, pick a random *subset* of that alphabet (**swarm testing**), then generate a string of random length using only those characters. 
+
+为了把运行性能压榨到极致，我们在各轮迭代之间通过预分配策略循环复用内存缓冲区，彻底避免频繁的动态内存申请：
+
+&gt; To maximize performance, we reuse memory across iterations via static allocation:
+
+```rust
+use fastrand::Rng;
+
+fn main() {
+    let mut rng = Rng::new();
+
+    // Re-use the same memory for all tests.
+    let mut text_alphabet: Vec&lt;u8&gt; = vec![];
+    let mut text: Vec&lt;u8&gt; = vec![];
+
+    for _ in 0..1_000_000 {
+        // It's unlikely that a counter example with
+        // 7 different letters exists, while there
+        // isn't one with just 6.
+        alphabet_swarm(&amp;mut rng, b"abcdef", &amp;mut text_alphabet);
+        let text =
+            gen_string(&amp;mut rng, &amp;text_alphabet, &amp;mut text);
+    }
+}
+
+fn alphabet_swarm&lt;'a&gt;(
+    rng: &amp;mut Rng,
+    all: &amp;[u8],
+    pick: &amp;'a mut Vec&lt;u8&gt;,
+) {
+    pick.clear();
+    pick.extend(all);
+    rng.shuffle(pick);
+    let count = rng.usize(1..=pick.len());
+    pick.truncate(count);
+}
+
+fn gen_string&lt;'a&gt;(
+    rng: &amp;mut Rng,
+    alphabet: &amp;[u8],
+    result: &amp;'a mut Vec&lt;u8&gt;,
+) -&gt; &amp;'a str {
+    result.clear();
+    // Again, this is a short string.
+    // Longer failures are not likely.
+    let count = rng.usize(0..8);
+    for _ in 0..count {
+        result.push(alphabet[rng.usize(0..alphabet.len())]);
+    }
+    str::from_utf8(result).unwrap()
+}
+```
+
+---
+
+## 设定正则语法特性的分布权重
+
+&gt; ## Generating a Regex Distribution
+
+在生成正则表达式时，我们同样贯彻这种群集测试思路：
+
+&gt; We apply the same swarm-testing strategy to generate regular expressions:
+
+* 随机激活正则语法语义特性的某一个子集；
+* 随机决定生成表达式的长度规模；
+* 全程复用内存缓冲区。
+
+&gt; * Pick a subset of active regex features.
+&gt; * Pick sizes at random.
+&gt; * Re-use memory buffers.
+
+首先，我们为不同的正则表达式语法特性定义离散权重，而不是非开即关的布尔开关：
+
+&gt; First, we define weights for different regex features rather than using binary toggles:
+
+```rust
+#[derive(Default, Debug)]
+struct ReOptions {
+    alt: u16, // |
+    rep: u16, // *
+    any: u16, // .
+    lit: u16, // 'a'
+    sum: u16,
+    alphabet: Vec&lt;u8&gt;,
+}
+```
+
+接下来，我们实现群集抽样逻辑，在运行期间动态随机配置各项语法特性的权重与字符集：
+
+&gt; Next, we implement the swarm logic to dynamically configure weights and alphabets:
+
+```rust
+impl ReOptions {
+    fn swarm(&amp;mut self, rng: &amp;mut Rng, alphabet_full: &amp;[u8]) {
+        // We _still_ want to enable a few features at a time.
+        self.alt = if rng.bool() { 0 } else { rng.u16(0..100) };
+        self.rep = if rng.bool() { 0 } else { rng.u16(0..100) };
+        self.any = if rng.bool() { 0 } else { rng.u16(0..100) };
+        self.lit = rng.u16(1..100);
+        self.sum = self.alt + self.rep + self.any + self.lit;
+        assert!(self.sum &gt; 0);
+        alphabet_swarm(rng, alphabet_full, &amp;mut self.alphabet);
+    }
+}
+```
+
+---
+
+## 递归生成正则表达式
+
+&gt; ## Generating a Regex
+
+我们采用递归方式构造复杂的正则表达式语法树，通过向下传递输出缓冲区以及一个控制表达式规模的 `size` 参数来精确约束生成深度：
+
+&gt; We construct regular expressions recursively, passing down output buffers and a `size` parameter to control expression length:
+
+```rust
+fn gen_re(
+    rng: &amp;mut Rng,
+    options: &amp;ReOptions,
+    result: &amp;mut Vec&lt;u8&gt;,
+) {
+    result.clear();
+    let size = rng.u8(0..8);
+    gen_re_rec(rng, options, result, size);
+}
+
+fn gen_re_rec(
+    rng: &amp;mut Rng,
+    options: &amp;ReOptions,
+    result: &amp;mut Vec&lt;u8&gt;,
+    size: u8,
+) {
+    if size == 0 {
+        return; // Base case, empty regex.
+    }
+
+    // Pick one of the features, according to weights.
+    let mut p = rng.u16(0..options.sum);
+    if p &lt; options.alt {
+        // Alternation distributes the size
+        // among the two children.
+        let size_left = rng.u8(0..=size - 1);
+        let size_right = size - size_left - 1;
+        assert!(size == size_left + 1 + size_right);
+
+        result.push(b'(');
+        gen_re_rec(rng, options, result, size_left);
+        result.extend(b")|(");
+        gen_re_rec(rng, options, result, size_right);
+        result.push(b')');
+        return;
+    }
+    p -= options.alt;
+
+    if p &lt; options.rep {
+        result.push(b'(');
+        gen_re_rec(rng, options, result, size - 1);
+        result.extend(b")*");
+        return;
+    }
+    p -= options.rep;
+
+    if p &lt; options.any {
+        gen_re_rec(rng, options, result, size - 1);
+        result.push(b'.');
+        return;
+    }
+    p -= options.any;
+
+    if p &lt; options.lit {
+        gen_re_rec(rng, options, result, size - 1);
+        let index = rng.usize(0..options.alphabet.len());
+        let lit = options.alphabet[index];
+        result.push(lit);
+        return;
+    }
+    unreachable!();
+}
+```
+
+---
+
+## 缺陷搜索主循环
+
+&gt; ## Search Loop
+
+考虑到编译正则表达式本身涉及状态机构建，属于计算密集型操作，我们可以将每次编译出的一对正则对象保留下来，复用于数千个随机输入字符串的匹配验证：
+
+&gt; Because compiling regular expressions is computationally expensive, we can test multiple input strings against a single compiled regex pair:
+
+```rust
+fn main() {
+    let mut rng = Rng::new();
+
+    let mut options = ReOptions::default();
+    let mut text_alphabet: Vec&lt;u8&gt; = vec![];
+    let mut text: Vec&lt;u8&gt; = vec![];
+    let mut re: Vec&lt;u8&gt; = vec![];
+
+    let mut test_count: u32 = 0;
+    for _ in 0..1_000_000 {
+        options.swarm(&amp;mut rng, b"abcdef");
+        alphabet_swarm(&amp;mut rng, b"abcdefx", &amp;mut text_alphabet);
+
+        gen_re(&amp;mut rng, &amp;options, &amp;mut re);
+
+        let re = str::from_utf8(&amp;re).unwrap();
+        let r1 = regex::Regex::new(re).unwrap();
+        let r2 = regex_lite::Regex::new(re).unwrap();
+
+        for _ in 0..1000 {
+            test_count += 1;
+            let text =
+                gen_string(&amp;mut rng, &amp;text_alphabet, &amp;mut text);
+
+            let m1 = r1.find(text)
+                .map_or("not found", |it| it.as_str());
+            let m2 = r2.find(text)
+                .map_or("not found", |it| it.as_str());
+
+            if m1 != m2 {
+                eprintln!("err re={re} text={text} m1={m1} m2={m2}");
+                return;
+            }
+
+            if test_count % 500_000 == 0 {
+                eprintln!("ok  re={re} text={text}");
+            }
+        }
+    }
+}
+```</description>
+    </item>
+    <item>
       <title>PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-20/PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-20/PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能/</guid>
@@ -4338,97 +4655,6 @@ $$\mathcal{E}_p(\lambda) = \sup_R [\Phi_p(R) - \lambda\,\mathrm{CoI}_p(R)]$$
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2602.22787)
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2602.22787)
 &gt;   * [Hugging Face](https://huggingface.co/huggingface)</description>
-    </item>
-    <item>
-      <title>基于循环流的思考：通过动态计算分配提升深度推理能力</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/基于循环流的思考-通过动态计算分配提升深度推理能力/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/基于循环流的思考-通过动态计算分配提升深度推理能力/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>无论是人类还是机器，在应对更复杂的难题时，最直观的策略往往是投入更多的计算与思考时间。在深度学习领域，传统的循环模型试图通过在推理阶段不断循环更新隐藏状态来实现这一目标，但其训练过程常受限于反向传播算法的有效步数，导致早期的循环计算无法有效为后续推理步骤铺路。针对这一瓶颈，本文提出了名为“循环流” (Looped Flows) 的全新方法，通过局部去噪目标与递减噪声水平巧妙引导循环状态的演进。在推理时，模型将计算过程转化为对概率流速度的积分，能够通过更精细的时间网格投入额外算力，并在 ARC-AGI-1 上取得了 58.8% 的高准确率，为深度模型在测试期自适应扩展推理算力提供了全新思路。
-
----
-
-# 基于循环流的思考：通过动态计算分配提升深度推理能力
-
-&gt; # Thinking with Looped Flows
-
-## 概要
-
-&gt; ## Summary
-
-《基于循环流的思考》 (Thinking with Looped Flows) 提出了一种新颖的机器学习方法，旨在通过动态分配计算时间来增强深度学习模型处理复杂推理任务的能力。传统的循环模型在训练时往往面临严重瓶颈，因为其反向传播通常仅能覆盖极少数的循环更新步骤，这导致模型在早期阶段难以学习到有利于后续计算的特征表示。
-
-&gt; **"Thinking with Looped Flows"** introduces a novel machine learning approach to improve how deep learning models handle complex reasoning tasks by dynamically allocating computation time. Traditional looped models suffer during training because backpropagation is typically restricted to only a few recurrent updates, making it difficult for early steps to learn representations that benefit future computations. 
-
-作者提出了**循环流** (looped flows) 方法，该方法利用带有共享噪声且噪声水平逐步降低的局部去噪目标，在时间维度上无缝训练循环状态。通过将这种训练策略与概率流速度积分相结合，模型不仅能够借助更精细的时间网格扩展其推理能力，还能基于不同的初始噪声样本生成多样化的预测结果。实验结果表明，循环流在六个推理基准测试中全面超越了以往的最优循环模型，在 ARC-AGI-1 上斩获了 **58.8%** 的准确率，在 ARC-AGI-2 上取得了 **12.2%** 的优异成绩。
-
-&gt; The authors propose **looped flows**, which utilize local denoising objectives with shared noise and progressively decreasing noise levels to seamlessly train recurrent states over time. By combining this training strategy with probability flow velocity integration, the model can scale its reasoning capacity through finer temporal grids and generate diverse predictions from initial noise samples. Demonstrating exceptional performance, looped flows outperform previous state-of-the-art looped models across six reasoning benchmarks, achieving **58.8%** accuracy on ARC-AGI-1 and **12.2%** on ARC-AGI-2.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv ID：** [arXiv:2609.11801](https://arxiv.org/abs/2609.11801) [cs.LG]
-* **研究领域：** 机器学习 (`cs.LG`)，人工智能 (`cs.AI`)
-* **提交日期：** 2026年9月10日
-* **作者：** 
-  * Ayhan Suleymanzade
-  * Chanhyuk Lee
-  * Floor Eijkelboom
-  * Nicholas M. Boffi
-  * İsmail İlkan Ceylan
-  * Jinwoo Kim
-
-&gt; * **arXiv ID:** [arXiv:2609.11801](https://arxiv.org/abs/2609.11801) [cs.LG]
-&gt; * **Subject Areas:** Machine Learning (`cs.LG`), Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Date:** September 10, 2026
-&gt; * **Authors:** 
-&gt;   * Ayhan Suleymanzade
-&gt;   * Chanhyuk Lee
-&gt;   * Floor Eijkelboom
-&gt;   * Nicholas M. Boffi
-&gt;   * İsmail İlkan Ceylan
-&gt;   * Jinwoo Kim
-
----
-
-## 摘要
-
-&gt; ## Abstract
-
-面对更具挑战性的问题，人类和机器通常都会选择在计算上投入更多时间。在深度学习中，循环模型在推理阶段通过反复更新隐藏状态来实现这一理念。然而在实际训练中，反向传播往往只能贯穿一次或极少数几次更新，这使得早期的更新步骤难以被充分训练以有效支撑后续计算。为此，我们提出了循环流 (looped flows) 方法，通过利用局部去噪目标来训练循环结构，巧妙地避开了这一难题。我们通过逐步递减的噪声水平和共享噪声，在去噪目标之间施加了时间关联性，从而促使模型学会传递随时间累积有益计算的循环状态，即便梯度的回传仅覆盖少数更新步骤亦是如此。随后，我们将推理过程形式化为对由学得去噪器与循环状态耦合参数化的概率流速度进行积分。这种机制允许模型通过设定更精细的时间网格投入更多计算来解决复杂难题，并支持从不同的初始噪声样本中生成多个有效预测。在涵盖两个多解基准在内的六个推理基准测试中，循环流全面超越了以往的最优循环模型，在 ARC-AGI-1 测试集上达到了 58.8% 的准确率，在 ARC-AGI-2 测试集上达到了 12.2%。
-
-&gt; &gt; Humans and machines often solve harder problems by spending more time on computation. In deep learning, looped models implement this idea during inference by recurrently updating a hidden state. In practice, however, their training backpropagates through only one or a few updates, making it hard to train early updates to support future ones. We propose looped flows, an approach that sidesteps this issue by training the recurrence with local denoising objectives. By imposing temporal association across denoising objectives through progressively decreasing noise levels and shared noise, the model is incentivized to learn recurrent states that transfer useful computation over time, even when gradients cover only a few updates. We then formulate inference as integrating the velocity of a probability flow parameterized by the learned denoiser, coupled with recurrent states. This allows solving harder problems by spending more computation through a finer temporal grid and enables multiple valid predictions from different initial noise samples. Across six reasoning benchmarks including two multi-solution benchmarks, looped flows outperform prior state-of-the-art looped models overall, achieving 58.8% test accuracy on ARC-AGI-1 and 12.2% on ARC-AGI-2.
-
----
-
-## 获取与资源
-
-&gt; ## Access and Resources
-
-* **全文选项：**
-  * [查看 PDF](https://arxiv.org/pdf/2609.11801)
-  * [HTML 版本 (实验性)](https://arxiv.org/html/2609.11801v1)
-  * [TeX 源码](https://arxiv.org/src/2609.11801)
-* **授权协议：** [知识共享署名 4.0 国际许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-* **外部引用与工具：**
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11801)
-  * [Google 学术](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11801)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11801)
-
-&gt; * **Full-Text Options:**
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.11801)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.11801v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.11801)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-&gt; 
-&gt; * **External References &amp; Tools:**
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.11801)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.11801)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.11801)</description>
     </item>
   </channel>
 </rss>
