@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-22**: [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - **2026-09-21**: [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
 - **2026-09-20**: [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
 - **2026-09-19**: [我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录](blog/posts/2026-09-19-我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录.md)

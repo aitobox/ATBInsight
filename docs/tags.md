@@ -206,10 +206,12 @@ title: 标签浏览
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
 - [AI 智能体真的懂计算机体系结构吗？AutoTuring 基准测试揭示底层思考本质](blog/posts/2026-09-19-AI-智能体真的懂计算机体系结构吗-AutoTuring-基准测试揭示底层思考本质.md)
 - [当智能体执行提交：认知可串行化保障复杂系统一致性](blog/posts/2026-09-19-当智能体执行提交-认知可串行化保障复杂系统一致性.md)
+- [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
 
 ## AI 编程
 
 - [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
+- [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 
 ## AI 证明智能体
 
@@ -784,6 +786,10 @@ title: 标签浏览
 - [HarnessSafe：评估智能体外壳中持久化载体的安全性](blog/posts/2026-08-11-HarnessSafe：评估智能体外壳中持久化载体的安全性.md)
 - [信念而无行动：评估视觉语言模型中心理理论向协同社会行为的转化](blog/posts/2026-08-25-信念而无行动：评估视觉语言模型中心理理论向协同社会行为的转化.md)
 
+## Benchmaxxing
+
+- [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
+
 ## BiCache
 
 - [为扩散语言模型启用共享前缀的 KV 缓存](blog/posts/2026-09-03-为扩散语言模型启用共享前缀的 KV 缓存.md)
@@ -1063,6 +1069,10 @@ title: 标签浏览
 
 - [通过置信度动态实现大型推理模型的提前停止](blog/posts/2026-08-18-通过置信度动态实现大型推理模型的提前停止.md)
 
+## CodeMidas
+
+- [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
+
 ## CodeQL
 
 - [ARQ：用于C/C++漏洞检测的智能体CodeQL查询优化框架](blog/posts/2026-08-25-ARQ：用于C-C++漏洞检测的智能体CodeQL查询优化框架.md)
@@ -1239,6 +1249,7 @@ title: 标签浏览
 ## DiT
 
 - [Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-$k$ 选择方法](blog/posts/2026-09-04-Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-k- 选择方法.md)
+- [阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型](blog/posts/2026-09-22-阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型.md)
 
 ## Diffusers
 
@@ -1548,6 +1559,10 @@ title: 标签浏览
 
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 
+## GPU 算子
+
+- [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
+
 ## GPU优化
 
 - [在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上](blog/posts/2026-08-07-在连续批处理中解锁异步性：将大模型推理速度提升 20% 以上.md)
@@ -1600,6 +1615,7 @@ title: 标签浏览
 - [多套具现强化学习学到了什么？编码智能体中的归因与可迁移性](blog/posts/2026-09-08-多套具现强化学习学到了什么？编码智能体中的归因与可迁移性.md)
 - [SQL-Zero：自我进化的 Text-to-SQL](blog/posts/2026-09-08-SQL-Zero：自我进化的 Text-to-SQL.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
+- [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
 
 ## GSM-Symbolic
 
@@ -1842,6 +1858,7 @@ title: 标签浏览
 - [介绍 @huggingface/kernels：面向本地 AI 的 200 多个 WebGPU 核函数](blog/posts/2026-09-02-介绍 @huggingface-kernels：面向本地 AI 的 200 多个 WebGPU 核函数.md)
 - [为你的编码智能体赋予属于你自己的记忆](blog/posts/2026-09-04-为你的编码智能体赋予属于你自己的记忆.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
+- [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 
 ## HybridProver
 
@@ -2092,6 +2109,10 @@ title: 标签浏览
 ## KV缓存量化
 
 - [WitCert：KV缓存量化的可靠运行时风险可观测性与控制门控](blog/posts/2026-08-07-WitCert：KV缓存量化的可靠运行时风险可观测性与控制门控.md)
+
+## KernelBench
+
+- [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
 
 ## Kimi 2.6
 
@@ -3289,6 +3310,10 @@ title: 标签浏览
 
 - [利用强化学习激发多模态推理代理的自我验证能力](blog/posts/2026-09-10-利用强化学习激发多模态推理代理的自我验证能力.md)
 
+## Qwen-Image-2.1
+
+- [阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型](blog/posts/2026-09-22-阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型.md)
+
 ## Qwen-VL
 
 - [小型视觉语言模型在定性力学问题上的评估](blog/posts/2026-08-26-小型视觉语言模型在定性力学问题上的评估.md)
@@ -3588,6 +3613,8 @@ title: 标签浏览
 - [Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎](blog/posts/2026-09-04-Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎.md)
 - [耗时一年：WebAssembly 终于登陆 Anubis](blog/posts/2026-09-08-耗时一年：WebAssembly 终于登陆 Anubis.md)
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
+- [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
+- [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 
 ## R语言
 
@@ -3662,6 +3689,10 @@ title: 标签浏览
 ## SIGNBALANCE
 
 - [GRPO中隐藏的虚假优势](blog/posts/2026-09-05-GRPO中隐藏的虚假优势.md)
+
+## SIMD
+
+- [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 
 ## SKILL.md
 
@@ -4064,6 +4095,10 @@ title: 标签浏览
 ## Tokenization
 
 - [嵌套字节级词表部署成本低但共享代价高：一项预注册的否定性结果](blog/posts/2026-09-01-嵌套字节级词表部署成本低但共享代价高：一项预注册的否定性结果.md)
+
+## Tokenizers
+
+- [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 
 ## Token优化
 
@@ -8558,6 +8593,11 @@ title: 标签浏览
 - [RL原生蒸馏：利用评分轨迹实现少步图像生成](blog/posts/2026-08-12-RL原生蒸馏：利用评分轨迹实现少步图像生成.md)
 - [从语料库到协同进化能力：面向通用图像生成的以能力为中心的数据设计](blog/posts/2026-08-27-从语料库到协同进化能力：面向通用图像生成的以能力为中心的数据设计.md)
 - [使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型](blog/posts/2026-09-04-使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型.md)
+- [阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型](blog/posts/2026-09-22-阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型.md)
+
+## 图像编辑
+
+- [阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型](blog/posts/2026-09-22-阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型.md)
 
 ## 图像美学评分
 
@@ -9611,6 +9651,10 @@ title: 标签浏览
 ## 大模型Agent
 
 - [SiriusDeliver：腾讯数仓交付自动化技术实践](blog/posts/2026-08-12-SiriusDeliver：腾讯数仓交付自动化技术实践.md)
+
+## 大模型代码生成
+
+- [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
 
 ## 大模型优化
 
@@ -12011,6 +12055,10 @@ title: 标签浏览
 
 - [连续交互扩散：面向异步工具增强推理的扩散原生运行时](blog/posts/2026-08-14-连续交互扩散：面向异步工具增强推理的扩散原生运行时.md)
 
+## 异步执行
+
+- [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
+
 ## 异步流式传输
 
 - [为 Postgres 外部数据包装器（FDW）添加异步流式传输支持](blog/posts/2026-08-13-为 Postgres 外部数据包装器（FDW）添加异步流式传输支持.md)
@@ -12299,6 +12347,10 @@ title: 标签浏览
 ## 强化学习与SFT
 
 - [OpenResearcher：用于长程深度研究智能体轨迹合成的完全开源框架](blog/posts/2026-09-13-OpenResearcher-用于长程深度研究智能体轨迹合成的完全开源框架.md)
+
+## 强化学习环境
+
+- [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
 
 ## 归一化Transformer
 
@@ -12680,6 +12732,15 @@ title: 标签浏览
 ## 性能压测
 
 - [我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！](blog/posts/2026-08-07-我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！.md)
+
+## 性能基准
+
+- [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
+
+## 性能工程
+
+- [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
+- [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
 
 ## 性能建模
 
@@ -13489,6 +13550,7 @@ title: 标签浏览
 - [AutoLR：实现工业级推荐系统中从研究到上线评审的自动化](blog/posts/2026-09-08-AutoLR：实现工业级推荐系统中从研究到上线评审的自动化.md)
 - [超越同购关系：Allegro互补推荐系统的演进](blog/posts/2026-09-08-超越同购关系：Allegro互补推荐系统的演进.md)
 - [DeepAffinity：利用小型语言模型预测电子商务中的长期商品属性偏好](blog/posts/2026-09-08-DeepAffinity：利用小型语言模型预测电子商务中的长期商品属性偏好.md)
+- [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
 
 ## 描述逻辑
 
@@ -14724,9 +14786,14 @@ title: 标签浏览
 
 - [当故障发生扩散：智能体检索增强生成中的因果故障归因](blog/posts/2026-08-25-当故障发生扩散：智能体检索增强生成中的因果故障归因.md)
 
+## 智能体代码生成
+
+- [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
+
 ## 智能体优化
 
 - [MEGA：基于智慧图谱的自进化智能体优化基础设施](blog/posts/2026-08-14-MEGA：基于智慧图谱的自进化智能体优化基础设施.md)
+- [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 
 ## 智能体决策
 
@@ -15582,6 +15649,10 @@ title: 标签浏览
 - [上下文不等于权限：金融市场智能体的结构化运行时治理](blog/posts/2026-08-12-上下文不等于权限：金融市场智能体的结构化运行时治理.md)
 - [思考模型：授权与能力](blog/posts/2026-09-09-思考模型：授权与能力.md)
 
+## 权限撤销
+
+- [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
+
 ## 权限管理
 
 - [在没有超级用户权限的情况下使用 PostgreSQL 事件触发器](blog/posts/2026-08-13-在没有超级用户权限的情况下使用 PostgreSQL 事件触发器.md)
@@ -15821,6 +15892,10 @@ title: 标签浏览
 ## 根因分析
 
 - [GALA：微服务根因分析与事件响应的图增强大模型智能体](blog/posts/2026-08-12-GALA：微服务根因分析与事件响应的图增强大模型智能体.md)
+
+## 根域静默
+
+- [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
 
 ## 根本原因分析
 
@@ -20289,6 +20364,7 @@ title: 标签浏览
 - [自动驾驶中的边缘案例检测：方法、挑战与未来方向](blog/posts/2026-08-18-自动驾驶中的边缘案例检测：方法、挑战与未来方向.md)
 - [SimVerity：模拟智能体成功何时能在物理部署中转化为现实？](blog/posts/2026-08-29-SimVerity：模拟智能体成功何时能在物理部署中转化为现实？.md)
 - [多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究](blog/posts/2026-09-10-多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究.md)
+- [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
 
 ## 系统工程
 
@@ -21411,6 +21487,7 @@ title: 标签浏览
 
 - [编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？](blog/posts/2026-08-29-编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？.md)
 - [Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器](blog/posts/2026-09-01-Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器.md)
+- [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
 
 ## 自动学习
 
@@ -24616,6 +24693,10 @@ title: 标签浏览
 ## 递归训练
 
 - [递归语言模型训练中的脆弱性图谱](blog/posts/2026-09-13-递归语言模型训练中的脆弱性图谱.md)
+
+## 通义千问
+
+- [阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型](blog/posts/2026-09-22-阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型.md)
 
 ## 通信优化
 
