@@ -1,0 +1,936 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-22-Hugging-Face-%E5%8F%91%E5%B8%83-Tokenizers-v1-%E9%87%8D%E6%9E%84-SIMD-%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E9%9B%B6%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E5%B8%A6%E6%9D%A53-30%E5%80%8D%E5%8A%A0%E9%80%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hugging-face-tokenizers-v1-simd-330" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="hugging-face-tokenizers-v1-simd-330">Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速</h1>
+<blockquote>
+<h1 id="tokenizers-v1-encode-decode-and-scaling-measured">Tokenizers v1: Encode, Decode and Scaling, Measured</h1>
+</blockquote>
+<p><strong>发布时间：</strong> 2026 年 9 月 21 日<br />
+<strong>作者：</strong> Arthur Zucker, Simon Brandeis, Luc Georges, Lysandre  </p>
+<blockquote>
+<p><strong>Published:</strong> September 21, 2026<br />
+<strong>Authors:</strong> Arthur Zucker, Simon Brandeis, Luc Georges, Lysandre  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型 (Large Language Model, LLM) 的推理与训练过程中，分词 (Tokenization) 环节以往常被视作微不足道的开销。然而随着模型吞吐量的飞速攀升，原本不起眼的分词流程已逐渐演变成让昂贵 GPU 陷入空闲等待的关键数据瓶颈。为了彻底攻克这一难题，Hugging Face 对其基石级开源库 Tokenizers 进行了底层的全方位架构重构，正式推出即将发布的 Tokenizers v1。该版本在严格保证输出 Token ID 与原有模型完全兼容的前提下，通过引入基于 SIMD 的 Bitcannon 文本切分技术、无堆内存分配的合并循环以及线程级词缓存等前沿工程手段，实现了相比 v0.23 版本 3 到 30 倍的惊人性能飞跃，为高并发服务与海量数据预处理扫清了吞吐障碍。</p>
+<hr />
+<h2 id="_2">概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>随着机器学习模型运行越来越快、处理的工作负载越来越大，系统的数据瓶颈也在悄然发生转移。分词 (Tokenization) ——这一传统上被视作轻量级的前置步骤，在海量数据集训练、应对高并发请求或处理超长上下文输入时，很容易迅速沦为整条流水线的性能瓶颈，最终导致昂贵的 GPU 算力白白处于闲置等待状态。</p>
+<blockquote>
+<p>As machine learning models grow faster and handle larger workloads, data bottlenecks shift. Tokenization—traditionally a lightweight step—can quickly become a bottleneck when training on massive datasets, serving concurrent requests, or processing lengthy inputs, ultimately leaving expensive GPUs sitting idle. </p>
+</blockquote>
+<p>为了解决这一痛点，Hugging Face 团队针对即将发布的 <strong>Tokenizers v1</strong> 展开了极致的性能攻坚。新版本在完全保留输出兼容性、API 接口、词表以及合并优先权重 (Merge Ranks) 的同时，实现了大幅性能跃升 (比 v0.23 版本提速高达 3 至 30 倍) 。版本 1 带来了一场彻底的底层架构重构：</p>
+<blockquote>
+<p>To solve this, the Hugging Face team has heavily focused on performance for the upcoming <strong>Tokenizers v1</strong>. Built to be significantly faster (up to 3 to 30x faster than v0.23) while preserving output compatibility, APIs, vocabularies, and merge ranks, version 1 introduces a complete architectural refactor:</p>
+</blockquote>
+<ul>
+<li><strong>工作空间拆分 (Workspace Split) ：</strong> 将核心运行时 (<code>tk-encode</code>) 与模型训练、序列化以及转换工具解耦模块化。</li>
+<li><strong>Bitcannon：</strong> 用基于单指令多数据流 (SIMD) 驱动的位流运算取代了通用正则表达式引擎来进行文本切分。</li>
+<li><strong>零内存分配模型与合并循环重写 (No-Alloc Model &amp; Merge-Loop Rewrite) ：</strong> 通过由调用方持有的临时暂存缓冲区 (Scratch Buffers) 与侵入式链表 (Intrusive Linked Lists) ，彻底消除了分词过程中的堆内存分配开销。</li>
+<li><strong>词缓存 (The Word Cache) ：</strong> 缓存先前已处理过的预分词片段 (Pre-tokens) ，以此加速重复文本段的处理。</li>
+<li><strong>原生并发 (Native Parallelism) ：</strong> 支持跨多线程共享且线程安全的高并发编码，消除了互斥锁竞争。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Workspace Split:</strong> Modularizes the core runtime (<code>tk-encode</code>) from training, serialization, and conversion tools.</li>
+<li><strong>Bitcannon:</strong> Replaces general-purpose regex engines with SIMD-powered bitstream operations for text splitting.</li>
+<li><strong>No-Alloc Model &amp; Merge-Loop Rewrite:</strong> Eliminates heap allocations during tokenization using caller-owned scratch buffers and intrusive linked lists.</li>
+<li><strong>The Word Cache:</strong> Caches previously processed pre-tokens to speed up repeated text segments.</li>
+<li><strong>Native Parallelism:</strong> Enables shared, thread-safe encoding without lock contention.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="v1">V1 版本究竟是什么</h2>
+<blockquote>
+<h2 id="what-v1-is">What V1 Is</h2>
+</blockquote>
+<p>版本 1 在生成与 v0.23 完全相同的 Token ID 的同时，全面榨干了所有受支持分词器家族 (包括 BPE、WordPiece 和 Unigram) 的性能极限。</p>
+<blockquote>
+<p>Version 1 produces the exact same token IDs as v0.23 while maximizing performance across all supported tokenizer families (including BPE, WordPiece, and Unigram). </p>
+</blockquote>
+<p>一条标准的分词处理流水线通常由四个阶段组成：</p>
+<blockquote>
+<p>A standard tokenization pipeline runs in four stages:</p>
+</blockquote>
+<ol>
+<li><strong>规范化 (Normalization) ：</strong> 对原始文本执行小写转换或应用 Unicode 规范化处理。</li>
+<li><strong>预分词 (Pre-tokenization) ：</strong> 将连续文本初步拆分为更小的切片 (“预分词片段/pre-tokens”) 。</li>
+<li><strong>核心模型 (Model) ：</strong> 将预分词片段转化为具体的 Token 并将其映射到词表中的 ID (这正是 v1 重点攻克的核心性能瓶颈) 。</li>
+<li><strong>后处理 (Post-processing) ：</strong> 添加特定模型所需的特殊 Token (如起始、结束标记等) 。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Normalization:</strong> Lowercasing or applying Unicode normalization to raw text.</li>
+<li><strong>Pre-tokenization:</strong> Splitting text into smaller chunks ("pre-tokens").</li>
+<li><strong>Model:</strong> Converting pre-tokens into tokens and mapping them to vocabulary IDs (the primary performance bottleneck addressed in v1).</li>
+<li><strong>Post-processing:</strong> Adding model-specific special tokens.</li>
+</ol>
+</blockquote>
+<h3 id="_3">核心架构改进</h3>
+<blockquote>
+<h3 id="key-architectural-improvements">Key Architectural Improvements</h3>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">改进项</th>
+<th style="text-align: left;">功能机制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">**工作空间拆分 (Workspace split) **</td>
+<td style="text-align: left;">单一 crate 拆分为工作空间：<code>tk-encode</code> 是核心必选运行时，而 <code>tk-serialize</code>、<code>tk-convert</code> 与 <code>tk-train</code> 仅在应用需要时按需链接</td>
+</tr>
+<tr>
+<td style="text-align: left;">**零内存分配模型 (No-alloc model) **</td>
+<td style="text-align: left;">合并工作集常驻于调用方自持的暂存缓冲区中，执行循环全程无需调用内存分配器</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Bitcannon</strong></td>
+<td style="text-align: left;">将文本切分规则转化为位流上的布尔运算，利用 SIMD 指令直接定位切分边界，而非依靠昂贵的正则引擎</td>
+</tr>
+<tr>
+<td style="text-align: left;">**重写合并循环 (Merge-loop rewrite) **</td>
+<td style="text-align: left;">待合并的片段在单块预分配缓冲区内组织为侵入式双向链表，执行合并只需更新两个索引指针，无需移动数据</td>
+</tr>
+<tr>
+<td style="text-align: left;">**词缓存 (Word cache) **</td>
+<td style="text-align: left;">建立从预分词字节到最终 ID 的线程本地备忘录，重复出现的单词仅需合并一次</td>
+</tr>
+<tr>
+<td style="text-align: left;">**原生并发 (Native parallelism) **</td>
+<td style="text-align: left;">单个共享分词器可同时为多个线程提供编码服务；每个线程从专属子池中获取独立的暂存缓冲区与词缓存，线程之间不再竞争单一互斥锁 (<a href="https://github.com/huggingface/tokenizers/pull/2365">#2365</a>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Change</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Workspace split</strong></td>
+<td style="text-align: left;">One crate became a workspace: <code>tk-encode</code> is the required runtime, and <code>tk-serialize</code>, <code>tk-convert</code> and <code>tk-train</code> are linked only when an application needs them</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>No-alloc model</strong></td>
+<td style="text-align: left;">The merge working set lives in a caller-owned scratch buffer; the loop never touches the allocator</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Bitcannon</strong></td>
+<td style="text-align: left;">The split pattern becomes Boolean operations over bitstreams, using SIMD instructions to find splits instead of a regex engine</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Merge-loop rewrite</strong></td>
+<td style="text-align: left;">The pieces being merged form an intrusive doubly-linked list inside one preallocated buffer, so a merge updates two indices instead of moving data</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Word cache</strong></td>
+<td style="text-align: left;">A thread-local memo from pre-token bytes to finished ids, so a repeated word is merged once</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Native parallelism</strong></td>
+<td style="text-align: left;">One shared tokenizer encodes from many threads at once; each thread draws its scratch buffer and word cache from its own sub-pool, so threads no longer queue on a single lock (<a href="https://github.com/huggingface/tokenizers/pull/2365">#2365</a>)</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h3 id="_4">文本切分：用位流取代正则表达式</h3>
+<blockquote>
+<h3 id="the-split-bitstreams-instead-of-a-regex">The Split: Bitstreams Instead Of A Regex</h3>
+</blockquote>
+<p>BPE 模型传统上依赖固定的正则表达式将输入文本切分为预分词片段。不同于以往每次编码都要执行通用正则引擎，<code>bitcannon</code> 直接利用 SIMD (单指令多数据流，Single Instruction, Multiple Data) CPU 指令来编译并执行切分规则。通过并行位流处理 (类似于 <em>Parabix</em> 和 <em>simdjson</em>) ，单个寄存器操作即可并发处理 64 字节的数据，无需逐字符顺序扫描即可瞬间定位切分边界。</p>
+<blockquote>
+<p>BPE models traditionally use a fixed regular expression to split input text into pre-tokens. Instead of running a general-purpose regex engine on every encode, <code>bitcannon</code> compiles the splitting pattern directly using SIMD (Single Instruction, Multiple Data) CPU instructions. By processing 64 bytes per register operation through parallel bitstreams (similar to <em>Parabix</em> and <em>simdjson</em>), boundaries are found instantly without sequential character scanning.</p>
+</blockquote>
+<h3 id="_5">词缓存机制</h3>
+<blockquote>
+<h3 id="the-word-cache">The Word Cache</h3>
+</blockquote>
+<p>在真实世界的文本中，相同的词汇往往会反复高频出现。由于 BPE 算法具有确定性，v1 引入了线程本地缓存 (Thread-Local Cache) ，将预分词片段的字节序列直接映射到对应的 Token ID。这样一来，后续重复出现的相同词汇就能彻底跳过耗时的合并计算。</p>
+<blockquote>
+<p>Real-world text often contains repeated words. Because BPE is deterministic, v1 introduces a thread-local cache that maps pre-token bytes directly to their token IDs, allowing subsequent occurrences to bypass the merge process entirely.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>tokbench<span class="w"> </span>measure<span class="w"> </span>prefix-sharing<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--engine<span class="w"> </span>pipeline<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--engine<span class="w"> </span>hf-tokenizers<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--compare-to<span class="w"> </span>pipeline-no-cache<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--corpus<span class="w"> </span>agentic_swe
+</code></pre></div>
+<h3 id="_6">重塑合并循环</h3>
+<blockquote>
+<h3 id="the-merge-loop">The Merge Loop</h3>
+</blockquote>
+<p>BPE 的核心合并循环迎来了彻底的重构，一举消除了运行时的动态内存分配。v1 不再为每个预分词片段临时构建优先队列并频繁申请内存，而是反复复用调用方持有的暂存缓冲区，将所有符号扁平化存储在通过索引偏移量相连的数组中，并将候选字符对紧凑打包为 64 位数值，从而实现极速且无分支预测惩罚的查表操作。</p>
+<blockquote>
+<p>The BPE merge loop has been overhauled to eliminate runtime memory allocations. Instead of constructing new priority queues and allocating memory for every pre-token, v1 reuses caller-owned scratch buffers, stores symbols in a flat array linked by index offsets, and packs candidate pairs into 64-bit values for fast, branchless lookups.</p>
+</blockquote>
+<hr />
+<h2 id="_7">测试方法</h2>
+<blockquote>
+<h2 id="method">Method</h2>
+</blockquote>
+<p>为了确保各大引擎之间的基准测试结果真实、可靠且具备严格的可比性，测试过程遵循了以下准则：</p>
+<blockquote>
+<p>To ensure reliable benchmarks across engines, the following rules were enforced:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">评估规则</th>
+<th style="text-align: left;">制定原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">**单一计时循环 (One timing loop) **</td>
+<td style="text-align: left;">所有引擎均运行完全相同的循环逻辑，严禁针对特定引擎开放专用快速通道</td>
+</tr>
+<tr>
+<td style="text-align: left;">**排除词表加载耗时 (Load excluded) **</td>
+<td style="text-align: left;">词表的加载时间单独计算，绝对不计入文本编码阶段</td>
+</tr>
+<tr>
+<td style="text-align: left;">**校验 ID 哈希一致性 (Id-hash verified) **</td>
+<td style="text-align: left;">对输出 Token ID 计算 FNV-1a 哈希值，必须与基准结果完全一致</td>
+</tr>
+<tr>
+<td style="text-align: left;">**仅采纳共有测试单元 (Common cells only) **</td>
+<td style="text-align: left;">中位数统计仅针对所有引擎都已成功运行并验证通过的测试单元</td>
+</tr>
+<tr>
+<td style="text-align: left;">**每个进程执行完整遍历 (Complete sweep per process) **</td>
+<td style="text-align: left;">每次重复测试均启动全新的独立进程，并保留所有测试单元的数据</td>
+</tr>
+<tr>
+<td style="text-align: left;">**物理核心绑定 (Physical-core pinning) **</td>
+<td style="text-align: left;">工作线程严格绑定到 8 个独立的物理 CPU 核心上，绝不使用同核的 SMT 超线程</td>
+</tr>
+<tr>
+<td style="text-align: left;">**独立作业运行 (Independent Jobs) **</td>
+<td style="text-align: left;">通过独立的计算作业来衡量不同宿主机之间的性能波动差异</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Rule</th>
+<th style="text-align: left;">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>One timing loop</strong></td>
+<td style="text-align: left;">Every engine runs the identical loop; no per-engine fast path</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Load excluded</strong></td>
+<td style="text-align: left;">Vocabulary load is timed separately, never inside encode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Id-hash verified</strong></td>
+<td style="text-align: left;">FNV-1a over the output ids must match the baseline exactly</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Common cells only</strong></td>
+<td style="text-align: left;">Medians are over cells every engine ran and verified</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Complete sweep per process</strong></td>
+<td style="text-align: left;">Each repeat starts in a new process and retains every cell</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Physical-core pinning</strong></td>
+<td style="text-align: left;">Workers are pinned to eight distinct physical cores, never sibling SMT threads</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Independent Jobs</strong></td>
+<td style="text-align: left;">Separate Jobs measure host-to-host variation</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_8">测试结果与综合成效</h2>
+<blockquote>
+<h2 id="results-what-this-adds-up-to">Results &amp; What This Adds Up To</h2>
+</blockquote>
+<p>在 v1 覆盖的十个模型家族中，在配备 Apple M4 Max 芯片的设备上进行文本编码时，其速度比 v0.23 版本提升了 <strong>3 至 30 倍</strong> (从 <code>t5-base</code> 相对温和的加速，到 <code>gpt2</code> 上的惊人飞跃) ；在 8 个并发工作线程下，扩展效率达到了线性扩展的 <strong>76%</strong>。</p>
+<blockquote>
+<p>Across the ten model families covered by v1, text encoding on an Apple M4 Max is <strong>3 to 30 times faster</strong> than v0.23 (ranging from conservative gains on <code>t5-base</code> to massive speedups on <code>gpt2</code>), scaling at <strong>76% of linear</strong> across eight workers.</p>
+</blockquote>
+<hr />
+<h2 id="_9">如何获取与安装</h2>
+<blockquote>
+<h2 id="getting-it">Getting It</h2>
+</blockquote>
+<p>你可以直接从 <code>crates.io</code> 安装该候选发布版本 (Release Candidate) ：</p>
+<blockquote>
+<p>You can install the release candidate directly from <code>crates.io</code>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span>add<span class="w"> </span>tokenizers<span class="w"> </span>--pre
+</code></pre></div>
+<p>如果你只需要文本编码功能，希望剔除会引入 C++ 依赖项的训练实现模块，可以使用如下命令：</p>
+<blockquote>
+<p>If you only need encoding capabilities and want to exclude the training implementation (which pulls in C++ dependencies), use:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>cargo<span class="w"> </span>add<span class="w"> </span>tokenizers<span class="w"> </span>--pre<span class="w"> </span>--no-default-features<span class="w"> </span>--features<span class="w"> </span>http
+</code></pre></div>
+<h3 id="rust">Rust 使用示例</h3>
+<blockquote>
+<h3 id="rust-usage-example">Rust Usage Example</h3>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">tokenizers</span><span class="p">::</span><span class="n">tokenizer</span><span class="p">::{</span><span class="nb">Result</span><span class="p">,</span><span class="w"> </span><span class="n">Tokenizer</span><span class="p">};</span>
+
+<span class="k">fn</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">tokenizer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Tokenizer</span><span class="p">::</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s">&quot;deepseek-ai/DeepSeek-V4-Flash&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">encoding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tokenizer</span><span class="p">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&quot;The tokenizer is no longer the bottleneck.&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span><span class="o">?</span><span class="p">;</span><span class="w"> </span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;{:?}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">encoding</span><span class="p">.</span><span class="n">get_ids</span><span class="p">());</span><span class="w"> </span>
+<span class="w">    </span><span class="c1">// [671, 17840, 9160, 344, 1119, 5827, 270, 111127, 16] </span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;{:?}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">encoding</span><span class="p">.</span><span class="n">get_tokens</span><span class="p">());</span><span class="w"> </span>
+<span class="w">    </span><span class="c1">// [&quot;The&quot;, &quot;Ġtoken&quot;, &quot;izer&quot;, &quot;Ġis&quot;, &quot;Ġno&quot;, &quot;Ġlonger&quot;, &quot;Ġthe&quot;, &quot;Ġbottleneck&quot;, &quot;.&quot;]</span>
+
+<span class="w">    </span><span class="nb">Ok</span><span class="p">(())</span><span class="w"> </span>
+<span class="p">}</span>
+</code></pre></div>
+<p>针对批量数据处理场景，可以使用 <code>encode_batch</code>：</p>
+<blockquote>
+<p>For batch processing, use <code>encode_batch</code>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">encodings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tokenizer</span><span class="p">.</span><span class="n">encode_batch</span><span class="p">(</span><span class="n">documents</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span><span class="o">?</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="v1_1">迈向 V1 的研发演进与路线图</h2>
+<blockquote>
+<h2 id="progress-towards-v1">Progress Towards V1</h2>
+</blockquote>
+<h3 id="cratesio">候选发布版本：已实现特性 (已在 crates.io 提供)</h3>
+<blockquote>
+<h3 id="release-candidate-implemented-available-on-cratesio">Release Candidate: Implemented (Available on crates.io)</h3>
+</blockquote>
+<ul>
+<li><strong>工作空间拆分 (Workspace split) ：</strong> 拆分为 <code>tk-encode</code>、<code>tk-serialize</code>、<code>tk-convert</code> 和 <code>tk-train</code> 四个独立模块。</li>
+<li><strong>Bitcannon：</strong> 为 GPT-2、cl100k、o200k、Tekken 以及 DeepSeek 引入 SIMD 加速的正则表达式替代实现 (<a href="https://github.com/huggingface/tokenizers/pull/2201">#2201</a>, <a href="https://github.com/huggingface/tokenizers/pull/2317">#2317</a>)。</li>
+<li><strong>WordCache 词缓存：</strong> 复用已处理预分词片段的 Token ID (<a href="https://github.com/huggingface/tokenizers/pull/2262">#2262</a>)。</li>
+<li><strong>极速查表与合并：</strong> 实现了 FlatCache、MPHF RankStore、增量合并以及 BucketVocabStore (<a href="https://github.com/huggingface/tokenizers/pull/2190">#2190</a>, <a href="https://github.com/huggingface/tokenizers/pull/2188">#2188</a>)。</li>
+<li><strong>可复用模型内存：</strong> 利用暂存缓冲区消除了每次调用时的堆内存分配 (<a href="https://github.com/huggingface/tokenizers/pull/2175">#2175</a>, <a href="https://github.com/huggingface/tokenizers/pull/2183">#2183</a>)。</li>
+<li><strong>流水线后处理：</strong> 作为 <code>STAGE_POST</code> 流水线阶段独立暴露 (<a href="https://github.com/huggingface/tokenizers/pull/2182">#2182</a>)。</li>
+<li><strong>批处理模型调用：</strong> 支持同时并行处理多个预分词跨度区间 (<a href="https://github.com/huggingface/tokenizers/pull/2304">#2304</a>)。</li>
+<li><strong>更高效的解码：</strong> 直接向可复用缓冲区写入结果，避免生成中间临时字符串拷贝。</li>
+<li><strong>Node.js 语言绑定</strong> (<a href="https://github.com/huggingface/tokenizers/pull/2281">#2281</a>)。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Workspace split:</strong> Divided into <code>tk-encode</code>, <code>tk-serialize</code>, <code>tk-convert</code>, and <code>tk-train</code>.</li>
+<li><strong>Bitcannon:</strong> SIMD-accelerated regex replacement for GPT-2, cl100k, o200k, Tekken, and DeepSeek (<a href="https://github.com/huggingface/tokenizers/pull/2201">#2201</a>, <a href="https://github.com/huggingface/tokenizers/pull/2317">#2317</a>).</li>
+<li><strong>WordCache:</strong> Reuses token IDs of previously processed pre-tokens (<a href="https://github.com/huggingface/tokenizers/pull/2262">#2262</a>).</li>
+<li><strong>Faster lookup &amp; merging:</strong> Implemented FlatCache, MPHF RankStore, incremental merging, and BucketVocabStore (<a href="https://github.com/huggingface/tokenizers/pull/2190">#2190</a>, <a href="https://github.com/huggingface/tokenizers/pull/2188">#2188</a>).</li>
+<li><strong>Reusable model memory:</strong> Scratch buffers eliminate per-call heap allocations (<a href="https://github.com/huggingface/tokenizers/pull/2175">#2175</a>, <a href="https://github.com/huggingface/tokenizers/pull/2183">#2183</a>).</li>
+<li><strong>Pipeline post-processing:</strong> Exposed as the <code>STAGE_POST</code> pipeline stage (<a href="https://github.com/huggingface/tokenizers/pull/2182">#2182</a>).</li>
+<li><strong>Batched model calls:</strong> Processes multiple pre-token spans simultaneously (<a href="https://github.com/huggingface/tokenizers/pull/2304">#2304</a>).</li>
+<li><strong>Faster decoding:</strong> Direct writes to reusable buffers without intermediate string copies.</li>
+<li><strong>Node.js bindings</strong> (<a href="https://github.com/huggingface/tokenizers/pull/2281">#2281</a>).</li>
+</ul>
+</blockquote>
+<h3 id="100">1.0.0 正式版近期规划</h3>
+<blockquote>
+<h3 id="upcoming-for-100">Upcoming for 1.0.0</h3>
+</blockquote>
+<ul>
+<li>使用 <code>tk-encode</code> 统一训练阶段的校验逻辑。</li>
+<li>支持可选的字符偏移量 (Offsets) 与注意力掩码 (Masks) (仅在显式请求时按需计算) 。</li>
+<li>规范化器 (Normalizer) 架构重构。</li>
+<li>提供更精简、支持无全局解释器锁 (free-threaded CPython) 的 Python 绑定。</li>
+<li>针对 ExecuTorch 与 <code>llama.cpp</code> 提供仅支持推理的轻量级 C 与 C++ 绑定。</li>
+</ul>
+<blockquote>
+<ul>
+<li>Unifying training validation using <code>tk-encode</code>.</li>
+<li>Optional offsets and masks (computed only when explicitly requested).</li>
+<li>Normalizer refactoring.</li>
+<li>Simpler Python bindings supporting free-threaded CPython.</li>
+<li>Inference-only C and C++ bindings for ExecuTorch and <code>llama.cpp</code>.</li>
+</ul>
+</blockquote>
+<h3 id="100_1">1.0.0 之后的未来展望</h3>
+<blockquote>
+<h3 id="after-100">After 1.0.0</h3>
+</blockquote>
+<ul>
+<li><strong>Tok-devices 专用设备加速：</strong> 探索基于 GPU 加速的编码与批量解码技术，让文本与 Token ID 全程驻留在计算设备端。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Tok-devices:</strong> Exploring GPU-accelerated encoding and batch decoding to keep texts and token IDs entirely on-device.</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Hugging Face</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Tokenizers</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">SIMD</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能工程</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

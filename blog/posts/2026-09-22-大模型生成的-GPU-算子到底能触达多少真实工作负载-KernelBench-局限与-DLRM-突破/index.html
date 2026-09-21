@@ -1,0 +1,890 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-22-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%94%9F%E6%88%90%E7%9A%84-GPU-%E7%AE%97%E5%AD%90%E5%88%B0%E5%BA%95%E8%83%BD%E8%A7%A6%E8%BE%BE%E5%A4%9A%E5%B0%91%E7%9C%9F%E5%AE%9E%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD-KernelBench-%E5%B1%80%E9%99%90%E4%B8%8E-DLRM-%E7%AA%81%E7%A0%B4/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-kernelbench-dlrm" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-much-of-a-real-workload-can-llm-generated-gpu-kernels-actually-reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How Much of a Real Workload Can LLM-Generated GPU Kernels Actually Reach?
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Much of a Real Workload Can LLM-Generated GPU Kernels Actually Reach?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        核心发现
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Findings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-kernelbench-level-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 大模型在 KernelBench Level 1 上的表现
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-llm-performance-on-kernelbench-level-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. LLM Performance on KernelBench Level 1
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 真实负载中的时间触达上限
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-workload-wall-clock-reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Workload Wall-Clock Reach
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-dlrm-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. DLRM-Bench 与推荐系统评测结果
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-dlrm-bench-and-recommender-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. DLRM-Bench and Recommender Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 基准测试的评测缺陷与漏洞
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-benchmark-evaluation-flaws" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Benchmark Evaluation Flaws
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        相关链接与研究资源
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#associated-links-artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Associated Links &amp; Artifacts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着大语言模型 (LLM) 代码生成能力的突飞猛进，利用 AI 自动编写高性能 GPU 算子已成为性能工程领域的前沿热点，不少测试基准也显示大模型生成的算子速度超越了原生 PyTorch。然而，这项研究提出了一个关键却长期被忽视的问题：在真实深度学习模型的端到端整机耗时中，这些大模型生成的算子究竟能触达多大比例？实验表明，在主流的 Transformer 架构中，由于 80% 至 86% 的耗时都被工业界经过极致优化的基础算子 (如 <code>cuBLAS GEMM</code> 和 <code>FlashAttention</code>) 牢牢占据，大模型优化带来的端到端整体加速被锁死在 1% 左右；而在包含大量长尾算子的推荐系统 (DLRM) 中，可优化的耗时占比高达 58.2%，大模型算子成功实现了 8.63% 的端到端加速。此外，研究还敏锐地发现了权威基准 KernelBench 的严重评测漏洞——由于数值容差过宽，全零张量竟然也能通过正确性测试，为此作者团队提出了更稳健的无量纲尺度不变量评估方法。</p>
+<hr />
+<h1 id="gpu-kernelbench-dlrm">大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破</h1>
+<blockquote>
+<h1 id="how-much-of-a-real-workload-can-llm-generated-gpu-kernels-actually-reach">How Much of a Real Workload Can LLM-Generated GPU Kernels Actually Reach?</h1>
+</blockquote>
+<p><strong>作者：</strong> Gaurav Agarwal, Ashish Garg, Isha Singhal<br />
+<strong>发布时间：</strong> 2026 年 9 月 17 日<br />
+<strong>arXiv：</strong> <a href="https://arxiv.org/abs/2609.21058">2609.21058 [cs.DC]</a> | <strong>DOI：</strong> <a href="https://doi.org/10.48550/arXiv.2609.21058">10.48550/arXiv.2609.21058</a><br />
+<strong>相关资源：</strong> <a href="https://github.com/gauravapiscean/kernel-headroom">GitHub 仓库 (代码、数据与评测)</a></p>
+<blockquote>
+<p><strong>Authors:</strong> Gaurav Agarwal, Ashish Garg, Isha Singhal<br />
+<strong>Published:</strong> 17 September 2026<br />
+<strong>arXiv:</strong> <a href="https://arxiv.org/abs/2609.21058">2609.21058 [cs.DC]</a> | <strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2609.21058">10.48550/arXiv.2609.21058</a><br />
+<strong>Resources:</strong> <a href="https://github.com/gauravapiscean/kernel-headroom">GitHub Repository (Code, Data, and Evaluations)</a></p>
+</blockquote>
+<hr />
+<h2 id="_2">概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>随着大语言模型 (Large Language Model, LLM) 技术的飞速演进，AI 编写定制 GPU 算子 (GPU Kernels) 的能力日益增强，甚至在不少任务上超越了标准 PyTorch 代码的执行效率。然而，这篇论文深入探讨了一个极其关键却长期被行业忽视的核心问题：<strong>在真实深度学习模型的实际运行总耗时 (Wall-Clock Runtime) 中，这些由大模型自动生成的 GPU 算子到底能管辖、覆盖多大的比例？</strong></p>
+<blockquote>
+<p>Recent advancements allow language models to write custom GPU kernels that can outperform standard PyTorch code. However, this paper investigates a crucial, overlooked question: <strong>What fraction of a real model's wall-clock runtime do such LLM-generated kernels actually govern?</strong> </p>
+</blockquote>
+<p>作者团队在知名算子基准测试 KernelBench 上对前沿大模型进行了系统评估。结果表明，尽管前沿大模型编写正确算子的成功率高达 91.1% (相比之下开源权重模型仅为 30.4%)，但它们在真实业务负载中带来的端到端性能增益却非常有限。原因在于，对于主流的 Transformer 架构模型而言，高达 80% 至 86% 的运行时间都被工业界千锤百炼的基础算子 (如 <code>cuBLAS GEMM</code> 和 <code>FlashAttention</code>) 牢牢占据，这使得大模型能优化的长尾空间极其微小，最终折算到整机的现实端到端加速幅度被死死限制在 1% 左右。相反，推荐系统展现出了显著更高的可优化耗时比例 (58.2%)，为此作者构建并推出了全新的基准测试套件 <strong>DLRM-Bench</strong>，在该套件中大模型生成的算子取得了切实可衡量的加速突破。最后，该研究还曝光了 KernelBench 正确性验证机制中的一个严重漏洞——由于绝对容差设定过宽，全零张量竟然也能蒙混过关判定为正确；针对这一问题，作者提出了无量纲的尺度不变量验证指标作为更稳健的替代方案。</p>
+<blockquote>
+<p>Evaluating frontier models on benchmarks like KernelBench, the authors discover that while frontier models generate correct kernels for 91.1% of problems (compared to just 30.4% for open-weights alternatives), end-to-end performance gains on real workloads are severely limited. For transformer models, 80–86% of runtime is spent inside optimized primitives like <code>cuBLAS GEMM</code> and <code>FlashAttention</code>, capping realistic end-to-end improvements at roughly 1%. Conversely, recommender systems show higher addressable fractions (58.2%), leading the authors to introduce <strong>DLRM-Bench</strong>, a new benchmark suite where LLM-generated kernels achieve measurable speedups. Finally, the study exposes a flaw in KernelBench's correctness validation—where a tensor of zeros can pass tests due to loose tolerances—and proposes scale-invariant replacements.</p>
+</blockquote>
+<hr />
+<h2 id="_3">核心发现</h2>
+<blockquote>
+<h2 id="key-findings">Key Findings</h2>
+</blockquote>
+<h3 id="1-kernelbench-level-1">1. 大模型在 KernelBench Level 1 上的表现</h3>
+<blockquote>
+<h3 id="1-llm-performance-on-kernelbench-level-1">1. LLM Performance on KernelBench Level 1</h3>
+</blockquote>
+<ul>
+<li><strong>前沿闭源大模型 (Frontier Models)：</strong> 在 <strong>91.1%</strong> 的问题中成功生成了逻辑正确的算子；在 56 个测试问题中有 22 个实现了经独立验证的实质加速 (包括 3 个卷积算子)，加速比中位数达到 <strong>1.235 倍 (1.235x)</strong>。</li>
+<li><strong>开源权重模型 (Open-Weights Models)：</strong> 表现则大幅落后，代码正确率仅有 <strong>30.4%</strong>，仅在 3 个问题上实现有效加速，而在卷积算子上更是完全挂零 (0 个解决)。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Frontier Models:</strong> Produce correct kernels for <strong>91.1%</strong> of problems, with independently verified speedups on 22 of 56 problems (including three convolutions) at a median speedup of <strong>1.235x</strong>.</li>
+<li><strong>Open-Weights Models:</strong> Lag significantly behind, reaching only <strong>30.4%</strong> correctness, 3 verified speedups, and 0 solved convolutions.</li>
+</ul>
+</blockquote>
+<h3 id="2">2. 真实负载中的时间触达上限</h3>
+<blockquote>
+<h3 id="2-workload-wall-clock-reach">2. Workload Wall-Clock Reach</h3>
+</blockquote>
+<p>通过对横跨三大领域的 7 种典型工作负载进行深度性能剖析 (Profiling)，作者发现大模型能够触达和优化的运行时间占比在 <strong>8.9% 到 58.2%</strong> 之间：</p>
+<blockquote>
+<p>By profiling seven workloads across three domains, the authors found that the addressable fraction of runtime ranges from <strong>8.9% to 58.2%</strong>:</p>
+</blockquote>
+<ul>
+<li><strong>Transformer 架构：</strong> 高达 80% 至 86% 的运行耗时都被 <code>cuBLAS GEMM</code> 和 <code>FlashAttention</code> 牢牢占据。这一硬件特性将现实中的端到端整机加速收益锁定在 <strong>1%</strong> 左右，且随着模型参数规模的扩大，这一收益比例还会进一步下降。</li>
+<li><strong>推荐系统 (Recommender Systems)：</strong> 具备高达 <strong>58.2%</strong> 的可触达耗时占比，这些耗时主要集中在大量相对孤立的嵌入表算子 (Embedding Kernels) 中。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Transformers:</strong> 80–86% of runtime is consumed by <code>cuBLAS GEMM</code> and <code>FlashAttention</code>. This bounds realistic end-to-end acceleration at around <strong>1%</strong>, a fraction that further decreases as model scale increases.</li>
+<li><strong>Recommender Systems:</strong> Feature a much higher addressable runtime fraction of <strong>58.2%</strong>, primarily concentrated in isolated embedding kernels.</li>
+</ul>
+</blockquote>
+<h3 id="3-dlrm-bench">3. DLRM-Bench 与推荐系统评测结果</h3>
+<blockquote>
+<h3 id="3-dlrm-bench-and-recommender-results">3. DLRM-Bench and Recommender Results</h3>
+</blockquote>
+<p>为了更科学地评估推荐系统工作负载，作者推出了 <strong>DLRM-Bench</strong> (包含 12 个按照 KernelBench 规范格式化的推荐系统算子问题)：</p>
+<blockquote>
+<p>To better evaluate recommender workloads, the authors introduce <strong>DLRM-Bench</strong> (12 recommender kernel problems formatted for KernelBench):</p>
+</blockquote>
+<ul>
+<li>测得 <strong>41.7% 的胜率 (Win Rate)</strong>，加速比中位数达到 <strong>1.552 倍 (1.552x)</strong>。</li>
+<li>经测算可转化为整体 <strong>8.63% 的端到端</strong>整机运行时间缩减。</li>
+</ul>
+<blockquote>
+<ul>
+<li>Measured a <strong>41.7% win rate</strong> at a <strong>1.552x median speedup</strong>.</li>
+<li>Projects to an overall <strong>8.63% end-to-end</strong> runtime improvement.</li>
+</ul>
+</blockquote>
+<h3 id="4">4. 基准测试的评测缺陷与漏洞</h3>
+<blockquote>
+<h3 id="4-benchmark-evaluation-flaws">4. Benchmark Evaluation Flaws</h3>
+</blockquote>
+<p>该研究特别指出了 KernelBench 中一个极其致命的正确性验证漏洞：</p>
+<blockquote>
+<p>The study highlights a critical verification vulnerability in KernelBench:</p>
+</blockquote>
+<ul>
+<li>评测所采用的正确性检验机制 (带有绝对容差设定的 <code>torch.allclose</code>)，在 60 个 Level-1 测试问题中，竟然有 4 个题目能够被一个全零张量 (Tensor of Zeros) 错误地满足并判定为正确。</li>
+<li>在该漏洞被排查出来之前，已有两个大模型生成的算子利用了这一漏洞——其中一个算子实际上仅仅向其输出缓冲区写入了 0.3% 的数据，却被错误地打出了高达 <strong>283 倍 (283x)</strong> 的虚假加速比。</li>
+<li>针对该漏洞，作者团队提出了更具鲁棒性的尺度不变量 (Scale-Invariant) 验证指标作为替代方案。</li>
+</ul>
+<blockquote>
+<ul>
+<li>The correctness check (<code>torch.allclose</code> with an absolute tolerance) is falsely satisfied by a tensor of zeros in 4 out of 60 level-1 problems.</li>
+<li>Two generated kernels exploited this flaw prior to detection—including one incorrectly scored at a <strong>283x speedup</strong> that only wrote 0.3% of its output buffer. </li>
+<li>The authors propose scale-invariant validation metrics as a robust alternative.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">相关链接与研究资源</h2>
+<blockquote>
+<h2 id="associated-links-artifacts">Associated Links &amp; Artifacts</h2>
+</blockquote>
+<ul>
+<li><strong>论文全文获取：</strong> <a href="https://arxiv.org/pdf/2609.21058">阅读 PDF (View PDF)</a> | <a href="https://arxiv.org/html/2609.21058v1">HTML 版本 (HTML Version)</a></li>
+<li><strong>开源代码与数据：</strong> <a href="https://github.com/gauravapiscean/kernel-headroom">GitHub 仓库 (代码、数据与评测)</a> (包含全部 879 项评测数据)</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text Access:</strong> <a href="https://arxiv.org/pdf/2609.21058">View PDF</a> | <a href="https://arxiv.org/html/2609.21058v1">HTML Version</a></li>
+<li><strong>Code &amp; Data:</strong> <a href="https://github.com/gauravapiscean/kernel-headroom">GitHub - gauravapiscean/kernel-headroom</a> (Includes all 879 evaluations)</li>
+</ul>
+</blockquote>
+<p><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png" /></p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">GPU 算子</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大模型代码生成</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">KernelBench</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推荐系统</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能工程</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
