@@ -5,6 +5,246 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-09-23/Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-09-23/Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生/</guid>
+      <pubDate>Wed, 23 Sep 2026 00:00:00 GMT</pubDate>
+      <description>长期以来，以 llama.cpp 为代表的轻量化 C/C++ 运行时凭借紧凑的 GGUF 量化格式和极高的端侧执行效率，成为了开发者在个人电脑 (尤其是 Apple Silicon Mac) 上运行大语言模型 (Large Language Model, LLM) 的首选方案；而 Hugging Face 的 Transformers 虽是学术研究、微调实验与模型定义的事实标准，但在本地量化推理方面却因 Python 运行开销和缺乏专属低比特算子支持而略显吃力。为了打破两大主流生态之间的壁垒，Transformers 官方宣布通过接入高性能算子库原生支持 GGUF 格式。该方案直接复用了针对 Apple Silicon Metal 优化的 ggml 底层计算内核，并对 Python 生成循环中的同步瓶颈进行了深度重构与优化。基准测试表明，Transformers 在运行 Qwen3.5 等前沿模型时吞吐量已极其逼近原生 llama.cpp。这一突破让开发者既能保留 PyTorch 和 Transformers 灵活易用的开发生态 (如直接挂载钩子、动态调试与全流程评估) ，又能零性能损耗地畅享轻量级 GGUF 带来的端侧推理红利。
+
+---
+
+**核心摘要**：Hugging Face 旗下的 `transformers` 库现已原生支持在本地高效运行 `llama.cpp` (GGUF) 量化模型。通过复用底层的 `ggml` 算子内核 (首发通过 Metal 针对 Apple Silicon 进行深度优化) ，并大幅削减 Python 生成循环中的调度开销，开发者现在无需牺牲本地推理性能，即可直接借助熟悉的 `transformers` API 无缝加载、评估、微调以及对外提供 GGUF 权重检查点服务。
+
+&gt; **Summary:** Hugging Face `transformers` now natively supports running efficient `llama.cpp` (GGUF) quantized models locally. By reusing underlying `ggml` kernels (initially optimized for Apple Silicon via Metal) and reducing overhead in Python's generation loops, developers can now seamlessly load, evaluate, fine-tune, and serve GGUF checkpoints using familiar `transformers` APIs without sacrificing local inference performance.
+
+---
+
+## 目录
+
+&gt; ## Table of Contents
+
+- [项目概述](#overview)
+- [什么是 GGUF 文件格式？](#what-is-the-gguf-file-format)
+- [在 Transformers 中加载 GGUF 模型](#load-gguf-with-transformers)
+- [通过常用接口部署 GGUF 服务](#serve-gguf-with-your-preferred-interface)
+- [对比 llama.cpp 的性能基准测试](#benchmarking-against-llamacpp)
+- [Transformers 与 llama.cpp：优势互补的两大生态](#transformers-and-llamacpp-complementary-roles)
+- [超越 GGUF：为更多架构注入 ggml 算子加速](#beyond-gguf-ggml-kernels-for-more-models)
+- [基于 Python 与 PyTorch 的本地高速推理实现](#fast-local-inference-with-python-and-pytorch)
+  - [复用 ggml 的 Metal 硬件内核](#reusing-ggmls-metal-kernels)
+  - [消除瓶颈：让 CPU 与 GPU 高效协同](#keeping-the-cpu-and-gpu-working-together)
+- [当前局限与未来规划](#current-limitations-and-next-steps)
+- [致谢](#acknowledgments)
+
+&gt; - [Overview](#overview)
+&gt; - [What is the GGUF File Format?](#what-is-the-gguf-file-format)
+&gt; - [Load GGUF with Transformers](#load-gguf-with-transformers)
+&gt; - [Serve GGUF with Your Preferred Interface](#serve-gguf-with-your-preferred-interface)
+&gt; - [Benchmarking Against llama.cpp](#benchmarking-against-llamacpp)
+&gt; - [Transformers and llama.cpp: Complementary Roles](#transformers-and-llamacpp-complementary-roles)
+&gt; - [Beyond GGUF: ggml Kernels for More Models](#beyond-gguf-ggml-kernels-for-more-models)
+&gt; - [Fast Local Inference with Python and PyTorch](#fast-local-inference-with-python-and-pytorch)
+&gt;   - [Reusing ggml's Metal Kernels](#reusing-ggmls-metal-kernels)
+&gt;   - [Keeping the CPU and GPU Working Together](#keeping-the-cpu-and-gpu-working-together)
+&gt; - [Current Limitations and Next Steps](#current-limitations-and-next-steps)
+&gt; - [Acknowledgments](#acknowledgments)
+
+---
+
+## 项目概述
+
+&gt; ## Overview
+
+我们在 **transformers** 中正式加入了对 GGUF 模型的高效运行支持。现在，开发者只需借助早已烂熟于心的 transformers 常用 API，即可直接加载和运行适配个人笔记本电脑显存容量的模型检查点 (Checkpoint) 。从 Hugging Face Hub 上挑选心仪的 GGUF 模型，一行 `from_pretrained` 即可载入内存，在本地机器上立即开启模型推理与内容生成。
+
+&gt; We're adding support for running GGUF models efficiently in **transformers**, so you can use checkpoints sized for your laptop's memory through the familiar transformers APIs. Pick a GGUF from the Hub, load it with `from_pretrained`, and start generating on your own machine.
+
+如今在个人笔记本电脑上流畅运行 AI 模型已经不再是奢望，而 [llama.cpp](https://github.com/ggml-org/llama.cpp) 在这场本地化浪潮中功不可没。其轻量高效的推理引擎正是诸如 Ollama、LM Studio 和 Jan 等主流桌面端 AI 客户端背后的核心驱动力。与苹果生态的 [MLX](https://github.com/ml-explore/mlx) 等项目齐头并进，它让本地离线推理真正走入了大众的日常工作流，成为了极具实用价值的生产力工具。
+
+&gt; Running AI models on your laptop has become much easier, and [llama.cpp](https://github.com/ggml-org/llama.cpp) has been a big part of that. Its inference engine powers local AI tools such as Ollama, LM Studio, and Jan. Alongside projects like [MLX](https://github.com/ml-explore/mlx), it has helped make local inference a practical option for everyday use.
+
+由 llama.cpp 团队倾力打造的 **GGUF** 格式，早已成为本地端侧推理领域事实上的通用标准。该团队不仅在 Hugging Face Hub 的 [ggml-org 主页](https://huggingface.co/ggml-org) 下维护发布了海量量化模型检查点，同时诸如 [Unsloth](https://huggingface.co/unsloth)、[LM Studio Community](https://huggingface.co/lmstudio-community) 以及开源量化先锋 [bartowski](https://huggingface.co/bartowski) 等著名发布者，也提供了覆盖各种精度规格、开箱即用的 GGUF 检查点，方便用户根据自身设备的硬件配置按需取用。迄今为止，各类 GGUF 模型在社区中的累计下载量已达数百万次之多。
+
+&gt; **GGUF**, developed by the llama.cpp team, is a widely used format for local inference. The team also shares quantized checkpoints under [ggml-org on the Hub](https://huggingface.co/ggml-org). Publishers such as [Unsloth](https://huggingface.co/unsloth), [LM Studio Community](https://huggingface.co/lmstudio-community), and [bartowski](https://huggingface.co/bartowski) also provide ready-to-use GGUF checkpoints in a range of quantizations, so users can pick the version that fits their machine. GGUF models have been downloaded millions of times.
+
+为了将 Transformers 的运行速度提升至足以与 `llama.cpp` 原生性能平起平坐的水平，我们通过 [`kernels`](https://huggingface.co/docs/kernels/index) 算子库直接复用了 `ggml` 底层的核心计算算子，同时深度精简了 `generate` 生成循环中的调度与同步开销。在推进的第一阶段，我们重点攻关基于 Apple Silicon 平台的本地推理加速，并首批全面适配了 Qwen3.5 架构。
+
+&gt; To bring performance close to `llama.cpp`, we're reusing its underlying `ggml` kernels through the [`kernels`](https://huggingface.co/docs/kernels/index) library and reducing overhead in `generate`. Our initial focus is local inference on Apple Silicon, starting with the Qwen3.5 architecture.
+
+---
+
+## 什么是 GGUF 文件格式？
+
+&gt; ## What is the GGUF File Format?
+
+[GGUF](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) 是一种将模型权重与其全部元数据 (包括分词器 Tokenizer 信息以及可选的对话模板 Chat Template) 打包在单个独立文件中的轻量封装格式。它原生支持多种不同粒度的量化级别，允许开发者以极微小的精度折损为代价，大幅降低模型的显存占用。以 `Q4_K_M` 这一经典变体为例，它巧妙采用了混合张量精度的策略：核心权重主要压缩为 4-bit 表示，而在关键敏感层张量上则维持更高的计算精度。
+
+&gt; [GGUF](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) packages model weights and metadata, including tokenizer information and an optional chat template, into a single file. It supports different quantization levels, letting you trade some precision for a smaller memory footprint. Variants such as `Q4_K_M` mix tensor precisions, using mostly 4-bit weights while keeping sensitive tensors at higher precision.
+
+以下是以 [Unsloth 维护的 Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main) 为例，不同量化规格对模型体积的具体影响对比：
+
+&gt; Here's how quantization changes the file size of [Unsloth's Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main):
+
+| GGUF 变体规格 | 文件大小 | 特性权衡 (Tradeoff) |
+| :--- | ---: | :--- |
+| `BF16` | 8.42 GB | 未量化的基准参考版本 |
+| `Q6_K` | 3.53 GB | 相比更小变体保留了更高的精度 |
+| `Q5_K_M` | 3.14 GB | 体积与精度兼得的折中优选方案 |
+| `Q4_K_M` | 2.74 GB | 本地推理最实用的黄金起点 |
+
+我们建议大多数用户可以先从 `Q4_K_M` 开始上手体验；若设备的可用内存或显存较为充裕，则可以进一步尝试 `Q5_K_M` 或 `Q6_K`。如果想深入探究不同量化类型背后的技术差异，可以参阅 [Hugging Face Hub 的 GGUF 官方文档](https://huggingface.co/docs/hub/gguf#quantization-types)。
+
+&gt; We suggest starting with `Q4_K_M`, then trying `Q5_K_M` or `Q6_K` if you have more memory available. The [Hub's GGUF documentation](https://huggingface.co/docs/hub/gguf#quantization-types) describes the available quantization types in detail.
+
+---
+
+## 在 Transformers 中加载 GGUF 模型
+
+&gt; ## Load GGUF with Transformers
+
+开始上手前，你的环境需要满足以下基本要求：
+* **一台搭载 Apple Silicon 芯片的 Mac 电脑**；
+* **与官方发布的 [ggml-quantization 算子编译版本](https://huggingface.co/kernels/ggml-org/ggml-quantization) 相兼容的 PyTorch 版本** (通常涵盖最新的两个 PyTorch 正式版本) ；
+* **最新版本的 transformers 库** (当前推荐使用 main 分支代码) 以及相匹配的 `kernels` 算子库。
+
+&gt; To get started, you need:
+&gt; * **An Apple Silicon Mac**.
+&gt; * **A PyTorch version supported by the published [ggml-quantization kernel builds](https://huggingface.co/kernels/ggml-org/ggml-quantization)** (usually the two latest PyTorch releases).
+&gt; * **The latest version of transformers** (main branch for now) and a compatible version of `kernels`.
+
+```bash
+pip install -U "git+https://github.com/huggingface/transformers.git" kernels
+```
+
+加载 GGUF 模型非常简单，只需在调用 `from_pretrained` 时，将模型在 Hub 上的 `model_id` 以及目标文件名传入 `gguf_file` 参数即可：
+
+&gt; To load a GGUF model, pass its Hub `model_id` and filename as `gguf_file` to `from_pretrained`:
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model_id = "unsloth/Qwen3.5-4B-GGUF"
+filename = "Qwen3.5-4B-Q4_K_M.gguf"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, gguf_file=filename)
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    gguf_file=filename
+)
+```
+
+模型加载完成后，后续的所有推理与调用代码均完全沿用标准的 transformers API 接口：
+
+&gt; Everything after loading uses the standard transformers API:
+
+```python
+messages = [{"role": "user", "content": "Explain why the sky is blue in a few sentences."}]
+inputs = tokenizer.apply_chat_template(
+    messages,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_dict=True,
+    return_tensors="pt",
+).to(model.device)
+
+with torch.inference_mode():
+    outputs = model.generate(**inputs, max_new_tokens=256)
+
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; **警告**：如果没有安装兼容的量化算子内核，加载器将回退到对模型进行反量化 (Dequantization) 处理，这将显著增加内存消耗。
+&gt; 
+&gt; **Warning:** Without a compatible quantization kernel, the loader falls back to dequantizing the model and uses significantly more memory.
+
+---
+
+## 通过常用接口部署 GGUF 服务
+
+&gt; ## Serve GGUF with Your Preferred Interface
+
+你可以使用 [`transformers serve`](https://huggingface.co/docs/transformers/main/en/serve-cli/serving) 命令行工具，快速对外暴露一个与 OpenAI 规范完全兼容的 API 接口服务：
+
+&gt; You can expose an OpenAI-compatible API using [`transformers serve`](https://huggingface.co/docs/transformers/main/en/serve-cli/serving):
+
+```bash
+pip install -U "transformers[serving] @ git+https://github.com/huggingface/transformers.git" kernels
+
+transformers serve "unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf"
+```
+
+随后，你可以在诸如 [Jan](https://www.jan.ai/docs/desktop/remote-models/custom-endpoint) 或 [Pi](https://pi.dev) 等第三方客户端中配置如下自定义连接参数，轻松接入并使用该本地模型：
+
+&gt; You can connect clients like [Jan](https://www.jan.ai/docs/desktop/remote-models/custom-endpoint) or [Pi](https://pi.dev) via these custom settings:
+
+| 配置项 (Setting) | 配置值 (Value) |
+| :--- | :--- |
+| Base URL | `http://localhost:8000/v1` |
+| Model ID | `unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf` |
+
+---
+
+## 对比 llama.cpp 的性能基准测试
+
+&gt; ## Benchmarking against llama.cpp
+
+在本地端侧推理性能方面，我们的核心参照基准是 `llama.cpp`。在配备 **32 GB 统一内存的 MacBook Pro M2 Max** 设备上进行的实测结果显示，Transformers 所实现的生成吞吐量已极其逼近原生 `llama.cpp` 的表现。
+
+&gt; Our reference for local inference performance is `llama.cpp`. Measured on a **MacBook Pro M2 Max, 32 GB unified memory**, transformers achieves throughput remarkably close to native `llama.cpp`.
+
+[![GGUF generation throughput compared with llama.cpp](./images/cb3f00fa2c44.svg)](./images/cb3f00fa2c44.svg)
+
+---
+
+## Transformers 与 llama.cpp：优势互补的两大生态
+
+&gt; ## Transformers and llama.cpp
+
+在 [GGML 与 llama.cpp 正式加入 Hugging Face 大家庭](https://huggingface.co/blog/ggml-joins-hf) 之际，我们曾阐述过二者之间优势互补的分工定位：`llama.cpp` 为本地高效推理筑牢了坚实基石，而 `transformers` 则为大模型的结构定义与生态拓展提供了核心底座。
+
+&gt; When [GGML and llama.cpp joined Hugging Face](https://huggingface.co/blog/ggml-joins-hf), we described their complementary roles: `llama.cpp` provides a foundation for local inference, while `transformers` provides a foundation for model definition. 
+
+在 PyTorch 中原生支持 GGUF，彻底解锁了许多极具生产力的高阶工作流：
+* **畅享 Python 灵活实验环境**：利用熟悉的 PyTorch 工具链，通过挂载钩子 (Hooks) 检查中间层激活值、自由定制修改前向传播 (Forward Pass) 逻辑，或是快速构建自定义网络层的原型；
+* **便捷评估 GGUF 模型质量**：直接复用现有的评估测试流水线，精准衡量量化检查点的输出质量；
+* **基于 GGUF 权重进行微调**：只需传入 `GgufConfig(dequantize=True)` 将量化权重反量化为浮点，即可无缝衔接标准的模型训练与微调 (Fine-Tuning) 工作流：
+
+&gt; GGUF support unlocks powerful workflows in PyTorch:
+&gt; * **Experiment in Python:** Inspect intermediate activations with hooks, modify forward passes, or prototype custom layers using familiar PyTorch tools.
+&gt; * **Evaluate GGUF Models:** Use your existing evaluation pipelines to measure quantized checkpoint quality.
+&gt; * **Fine-tune from GGUF:** Dequantize weights and continue with standard training workflows using `GgufConfig(dequantize=True)`:
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, GgufConfig
+
+model = AutoModelForCausalLM.from_pretrained(
+    "unsloth/Qwen3.5-4B-GGUF",
+    gguf_file="Qwen3.5-4B-Q4_K_M.gguf",
+    quantization_config=GgufConfig(dequantize=True),
+    dtype=torch.bfloat16,
+)
+```
+
+---
+
+## 超越 GGUF：为更多架构注入 ggml 算子加速
+
+&gt; ## Beyond GGUF: ggml Kernels for More Models
+
+更为诱人的技术前景，在于将 `ggml` 的极致性能推广到目前 `llama.cpp` 尚未官方支持的更广阔模型天地中。通过在 PyTorch 中直接调用 `ggml` 算子内核与量化方案，我们可以直接为计算机视觉、音频处理以及多模态 (Multimodal) 流水线中的各类前沿研究模型、全新网络架构及自定义变体提供显著的计算加速，再也无需苦苦等待专用独立运行时的繁琐适配。
+
+&gt; The bigger opportunity is bringing `ggml`'s performance to models that `llama.cpp` does not support. By utilizing `ggml` kernels and quantization schemes directly in PyTorch, we can accelerate operations for research models, new architectures, and custom variants across computer vision, audio, and multimodal pipelines without waiting for dedicated runtime implementations.
+
+---
+
+## 基于 Python 与 PyTorch 的本地高速推理实现
+
+&gt; ## Fast Local Inference with Python and PyTorch</description>
+    </item>
+    <item>
       <title>阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-22/阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-22/阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型/</guid>
@@ -4540,70 +4780,6 @@ $$\mathcal{E}_p(\lambda) = \sup_R [\Phi_p(R) - \lambda\,\mathrm{CoI}_p(R)]$$
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.10854)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.10854)
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.10854)</description>
-    </item>
-    <item>
-      <title>斩获 IMO 金牌的开源秘籍：面向奥林匹克数学的 Nemotron 训练实践</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-13/斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-13/斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践/</guid>
-      <pubDate>Sun, 13 Sep 2026 00:00:00 GMT</pubDate>
-      <description>国际数学奥林匹克竞赛 (IMO) 一直被视为检验人工智能最高阶复杂逻辑推理能力的试金石，而以往取得顶尖成绩的方案往往依赖闭源专有模型或形式化定理证明器。本文探索了如何通过模型后训练 (Post-Training) 与测试时计算 (Test-Time Compute) 设计，仅凭自然语言生成严密的奥数证明。以 **Nemotron 3 Ultra** 为基座，研究团队通过监督微调 (Supervised Fine-Tuning, SFT) 与强化学习 (Reinforcement Learning, RL) 训练了两个专家模型，并构建出一套无需任何形式化证明器、外部代码工具或互联网连接的全开源推理流水线。该系统在 **IMO 2026 中斩获 30 分（满分 42 分），成功达到金牌门槛**。为了推动开源社区发展，团队完整开源了两个专家权重、全部训练与推理代码、解题答卷以及包含 200 道原创奥数题的全新评测基准 Nemotron-IMO-Bench。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-本文深入探讨了模型后训练 (Post-Training) 与测试时推理架构设计如何显著增强复杂奥林匹克数学竞赛中的自然语言证明生成能力。研究人员以 **Nemotron 3 Ultra** 为起点，利用监督微调 (Supervised Fine-Tuning, SFT) 和强化学习 (Reinforcement Learning, RL) 训练了两个专家模型检查点。
-
-&gt; This paper investigates how model post-training and test-time inference design enhance natural-language proof generation for complex Olympiad-level mathematics. Starting with **Nemotron 3 Ultra**, the researchers trained two specialist checkpoints utilizing supervised fine-tuning and reinforcement learning. 
-
-他们提出了一套完全基于开源模型的测试时计算流水线，该流程全程以自然语言运作，完全无需形式化证明器、外部代码工具或互联网访问。利用三个 Nemotron 3 Ultra 检查点（通用模型与两个后训练专家模型），该系统通过迭代搜索来生成、验证并提炼候选证明，随后进入独立的高算力筛选阶段敲定最终解答。
-
-&gt; They present a fully open-model test-time-compute pipeline operating entirely in natural language—requiring no formal provers, external tools, or internet access. Using three Nemotron 3 Ultra checkpoints (the general model and two post-trained specialists), the system executes an iterative search to generate, verify, and refine candidate proofs, followed by a separate high-compute selection stage. 
-
-**核心里程碑：** 该系统在 **IMO 2026 中斩获 42 分中的 30 分**，成功突破了**金牌分数线**。
-
-&gt; **Key Achievement:** The system achieved a score of **30 out of 42 points at IMO 2026**, successfully hitting the **gold-medal threshold**. 
-
-作者团队已将以下成果全部公开发布：
-* 两个后训练专家检查点权重
-* 训练数据集与训练代码
-* 推理部署代码
-* 参赛提交的完整解题答案
-* **Nemotron-IMO-Bench**，一个包含 200 道全新奥数级题目的评测基准
-
-&gt; The authors have publicly released:
-&gt; * The two post-trained checkpoints
-&gt; * Training data and code
-&gt; * Inference code
-&gt; * Submitted solutions
-&gt; * **Nemotron-IMO-Bench**, a novel benchmark consisting of 200 olympiad-level problems.
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; We study how model post-training and test-time inference design affect natural-language proof generation for hard olympiad mathematics. Starting from Nemotron 3 Ultra, we train two specialist checkpoints using supervised fine-tuning and reinforcement learning, and evaluate checkpoint choice, verification, and refinement. Based on these findings, we present an open-model test-time-compute pipeline. The system operates entirely in natural language, with no formal prover, external tools, or internet access. Three Nemotron 3 Ultra checkpoints - the general-availability model and two post-trained specialists - power an iterative search that generates, verifies, and refines candidate proofs; a separate high-compute stage then selects each final submission. The system scored 30 out of 42 points at IMO 2026, reaching the gold-medal threshold. We release the two post-trained checkpoints as well as the training data, the training and inference code, the submitted solutions, and Nemotron-IMO-Bench, a new benchmark of 200 novel olympiad-level problems.
-
-我们研究了模型后训练与测试时推理设计如何影响高难度奥林匹克数学中的自然语言证明生成。从 Nemotron 3 Ultra 出发，我们利用监督微调和强化学习训练了两个专用检查点，并系统评估了模型检查点选取、核验机制以及逐步提炼策略。基于这些发现，我们提出了一套开源模型的测试时计算流水线。该系统完全在自然语言环境中运作，既不需要形式化定理证明器，也不需要外部工具或互联网访问。三个 Nemotron 3 Ultra 检查点——通用公开模型与两个后训练专家模型——共同驱动迭代搜索，负责生成、核查并完善候选证明；随后通过独立的高算力评估阶段选定最终提交的解答。该系统在 IMO 2026 中获得 30 分（满分 42 分），成功跻身金牌门槛。我们公开发布了这两个后训练检查点权重，以及训练数据、训练与推理代码、提交的官方解答，并发布了包含 200 道原创奥数题目的全新基准测试 Nemotron-IMO-Bench。
-
----
-
-## 相关资源与导航
-
-&gt; ## Associated Resources &amp; Navigation
-
-* **代码、数据与媒体资源：** 可通过 Hugging Face、DagsHub 以及 GitHub 集成平台获取。
-* **文献与引用工具：** 可通过 NASA ADS、Google 学术、Semantic Scholar 和 BibTeX 访问。
-
-&gt; * **Code, Data &amp; Media:** Available via Hugging Face, DagsHub, and GitHub integrations.
-&gt; * **Bibliographic Tools:** Accessible via NASA ADS, Google Scholar, Semantic Scholar, and BibTeX.
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" style="display:none;" /&gt;</description>
     </item>
   </channel>
 </rss>

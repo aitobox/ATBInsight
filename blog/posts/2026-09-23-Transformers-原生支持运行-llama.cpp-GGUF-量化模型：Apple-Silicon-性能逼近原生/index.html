@@ -1,0 +1,912 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-23-Transformers-%E5%8E%9F%E7%94%9F%E6%94%AF%E6%8C%81%E8%BF%90%E8%A1%8C-llama.cpp-GGUF-%E9%87%8F%E5%8C%96%E6%A8%A1%E5%9E%8B%EF%BC%9AApple-Silicon-%E6%80%A7%E8%83%BD%E9%80%BC%E8%BF%91%E5%8E%9F%E7%94%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#transformers-llamacpp-gguf-apple-silicon" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="transformers-llamacpp-gguf-apple-silicon">Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生</h1>
+<blockquote>
+<h1 id="transformers-now-runs-llamacpp-quants">Transformers Now Runs llama.cpp Quants</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>长期以来，以 llama.cpp 为代表的轻量化 C/C++ 运行时凭借紧凑的 GGUF 量化格式和极高的端侧执行效率，成为了开发者在个人电脑 (尤其是 Apple Silicon Mac) 上运行大语言模型 (Large Language Model, LLM) 的首选方案；而 Hugging Face 的 Transformers 虽是学术研究、微调实验与模型定义的事实标准，但在本地量化推理方面却因 Python 运行开销和缺乏专属低比特算子支持而略显吃力。为了打破两大主流生态之间的壁垒，Transformers 官方宣布通过接入高性能算子库原生支持 GGUF 格式。该方案直接复用了针对 Apple Silicon Metal 优化的 ggml 底层计算内核，并对 Python 生成循环中的同步瓶颈进行了深度重构与优化。基准测试表明，Transformers 在运行 Qwen3.5 等前沿模型时吞吐量已极其逼近原生 llama.cpp。这一突破让开发者既能保留 PyTorch 和 Transformers 灵活易用的开发生态 (如直接挂载钩子、动态调试与全流程评估) ，又能零性能损耗地畅享轻量级 GGUF 带来的端侧推理红利。</p>
+<hr />
+<p><strong>核心摘要</strong>：Hugging Face 旗下的 <code>transformers</code> 库现已原生支持在本地高效运行 <code>llama.cpp</code> (GGUF) 量化模型。通过复用底层的 <code>ggml</code> 算子内核 (首发通过 Metal 针对 Apple Silicon 进行深度优化) ，并大幅削减 Python 生成循环中的调度开销，开发者现在无需牺牲本地推理性能，即可直接借助熟悉的 <code>transformers</code> API 无缝加载、评估、微调以及对外提供 GGUF 权重检查点服务。</p>
+<blockquote>
+<p><strong>Summary:</strong> Hugging Face <code>transformers</code> now natively supports running efficient <code>llama.cpp</code> (GGUF) quantized models locally. By reusing underlying <code>ggml</code> kernels (initially optimized for Apple Silicon via Metal) and reducing overhead in Python's generation loops, developers can now seamlessly load, evaluate, fine-tune, and serve GGUF checkpoints using familiar <code>transformers</code> APIs without sacrificing local inference performance.</p>
+</blockquote>
+<hr />
+<h2 id="_2">目录</h2>
+<blockquote>
+<h2 id="table-of-contents">Table of Contents</h2>
+</blockquote>
+<ul>
+<li><a href="#overview">项目概述</a></li>
+<li><a href="#what-is-the-gguf-file-format">什么是 GGUF 文件格式？</a></li>
+<li><a href="#load-gguf-with-transformers">在 Transformers 中加载 GGUF 模型</a></li>
+<li><a href="#serve-gguf-with-your-preferred-interface">通过常用接口部署 GGUF 服务</a></li>
+<li><a href="#benchmarking-against-llamacpp">对比 llama.cpp 的性能基准测试</a></li>
+<li><a href="#transformers-and-llamacpp-complementary-roles">Transformers 与 llama.cpp：优势互补的两大生态</a></li>
+<li><a href="#beyond-gguf-ggml-kernels-for-more-models">超越 GGUF：为更多架构注入 ggml 算子加速</a></li>
+<li><a href="#fast-local-inference-with-python-and-pytorch">基于 Python 与 PyTorch 的本地高速推理实现</a></li>
+<li><a href="#reusing-ggmls-metal-kernels">复用 ggml 的 Metal 硬件内核</a></li>
+<li><a href="#keeping-the-cpu-and-gpu-working-together">消除瓶颈：让 CPU 与 GPU 高效协同</a></li>
+<li><a href="#current-limitations-and-next-steps">当前局限与未来规划</a></li>
+<li><a href="#acknowledgments">致谢</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#what-is-the-gguf-file-format">What is the GGUF File Format?</a></li>
+<li><a href="#load-gguf-with-transformers">Load GGUF with Transformers</a></li>
+<li><a href="#serve-gguf-with-your-preferred-interface">Serve GGUF with Your Preferred Interface</a></li>
+<li><a href="#benchmarking-against-llamacpp">Benchmarking Against llama.cpp</a></li>
+<li><a href="#transformers-and-llamacpp-complementary-roles">Transformers and llama.cpp: Complementary Roles</a></li>
+<li><a href="#beyond-gguf-ggml-kernels-for-more-models">Beyond GGUF: ggml Kernels for More Models</a></li>
+<li><a href="#fast-local-inference-with-python-and-pytorch">Fast Local Inference with Python and PyTorch</a></li>
+<li><a href="#reusing-ggmls-metal-kernels">Reusing ggml's Metal Kernels</a></li>
+<li><a href="#keeping-the-cpu-and-gpu-working-together">Keeping the CPU and GPU Working Together</a></li>
+<li><a href="#current-limitations-and-next-steps">Current Limitations and Next Steps</a></li>
+<li><a href="#acknowledgments">Acknowledgments</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">项目概述</h2>
+<blockquote>
+<h2 id="overview">Overview</h2>
+</blockquote>
+<p>我们在 <strong>transformers</strong> 中正式加入了对 GGUF 模型的高效运行支持。现在，开发者只需借助早已烂熟于心的 transformers 常用 API，即可直接加载和运行适配个人笔记本电脑显存容量的模型检查点 (Checkpoint) 。从 Hugging Face Hub 上挑选心仪的 GGUF 模型，一行 <code>from_pretrained</code> 即可载入内存，在本地机器上立即开启模型推理与内容生成。</p>
+<blockquote>
+<p>We're adding support for running GGUF models efficiently in <strong>transformers</strong>, so you can use checkpoints sized for your laptop's memory through the familiar transformers APIs. Pick a GGUF from the Hub, load it with <code>from_pretrained</code>, and start generating on your own machine.</p>
+</blockquote>
+<p>如今在个人笔记本电脑上流畅运行 AI 模型已经不再是奢望，而 <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a> 在这场本地化浪潮中功不可没。其轻量高效的推理引擎正是诸如 Ollama、LM Studio 和 Jan 等主流桌面端 AI 客户端背后的核心驱动力。与苹果生态的 <a href="https://github.com/ml-explore/mlx">MLX</a> 等项目齐头并进，它让本地离线推理真正走入了大众的日常工作流，成为了极具实用价值的生产力工具。</p>
+<blockquote>
+<p>Running AI models on your laptop has become much easier, and <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a> has been a big part of that. Its inference engine powers local AI tools such as Ollama, LM Studio, and Jan. Alongside projects like <a href="https://github.com/ml-explore/mlx">MLX</a>, it has helped make local inference a practical option for everyday use.</p>
+</blockquote>
+<p>由 llama.cpp 团队倾力打造的 <strong>GGUF</strong> 格式，早已成为本地端侧推理领域事实上的通用标准。该团队不仅在 Hugging Face Hub 的 <a href="https://huggingface.co/ggml-org">ggml-org 主页</a> 下维护发布了海量量化模型检查点，同时诸如 <a href="https://huggingface.co/unsloth">Unsloth</a>、<a href="https://huggingface.co/lmstudio-community">LM Studio Community</a> 以及开源量化先锋 <a href="https://huggingface.co/bartowski">bartowski</a> 等著名发布者，也提供了覆盖各种精度规格、开箱即用的 GGUF 检查点，方便用户根据自身设备的硬件配置按需取用。迄今为止，各类 GGUF 模型在社区中的累计下载量已达数百万次之多。</p>
+<blockquote>
+<p><strong>GGUF</strong>, developed by the llama.cpp team, is a widely used format for local inference. The team also shares quantized checkpoints under <a href="https://huggingface.co/ggml-org">ggml-org on the Hub</a>. Publishers such as <a href="https://huggingface.co/unsloth">Unsloth</a>, <a href="https://huggingface.co/lmstudio-community">LM Studio Community</a>, and <a href="https://huggingface.co/bartowski">bartowski</a> also provide ready-to-use GGUF checkpoints in a range of quantizations, so users can pick the version that fits their machine. GGUF models have been downloaded millions of times.</p>
+</blockquote>
+<p>为了将 Transformers 的运行速度提升至足以与 <code>llama.cpp</code> 原生性能平起平坐的水平，我们通过 <a href="https://huggingface.co/docs/kernels/index"><code>kernels</code></a> 算子库直接复用了 <code>ggml</code> 底层的核心计算算子，同时深度精简了 <code>generate</code> 生成循环中的调度与同步开销。在推进的第一阶段，我们重点攻关基于 Apple Silicon 平台的本地推理加速，并首批全面适配了 Qwen3.5 架构。</p>
+<blockquote>
+<p>To bring performance close to <code>llama.cpp</code>, we're reusing its underlying <code>ggml</code> kernels through the <a href="https://huggingface.co/docs/kernels/index"><code>kernels</code></a> library and reducing overhead in <code>generate</code>. Our initial focus is local inference on Apple Silicon, starting with the Qwen3.5 architecture.</p>
+</blockquote>
+<hr />
+<h2 id="gguf">什么是 GGUF 文件格式？</h2>
+<blockquote>
+<h2 id="what-is-the-gguf-file-format">What is the GGUF File Format?</h2>
+</blockquote>
+<p><a href="https://github.com/ggml-org/ggml/blob/master/docs/gguf.md">GGUF</a> 是一种将模型权重与其全部元数据 (包括分词器 Tokenizer 信息以及可选的对话模板 Chat Template) 打包在单个独立文件中的轻量封装格式。它原生支持多种不同粒度的量化级别，允许开发者以极微小的精度折损为代价，大幅降低模型的显存占用。以 <code>Q4_K_M</code> 这一经典变体为例，它巧妙采用了混合张量精度的策略：核心权重主要压缩为 4-bit 表示，而在关键敏感层张量上则维持更高的计算精度。</p>
+<blockquote>
+<p><a href="https://github.com/ggml-org/ggml/blob/master/docs/gguf.md">GGUF</a> packages model weights and metadata, including tokenizer information and an optional chat template, into a single file. It supports different quantization levels, letting you trade some precision for a smaller memory footprint. Variants such as <code>Q4_K_M</code> mix tensor precisions, using mostly 4-bit weights while keeping sensitive tensors at higher precision.</p>
+</blockquote>
+<p>以下是以 <a href="https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main">Unsloth 维护的 Qwen3.5-4B</a> 为例，不同量化规格对模型体积的具体影响对比：</p>
+<blockquote>
+<p>Here's how quantization changes the file size of <a href="https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main">Unsloth's Qwen3.5-4B</a>:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">GGUF 变体规格</th>
+<th style="text-align: right;">文件大小</th>
+<th style="text-align: left;">特性权衡 (Tradeoff)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>BF16</code></td>
+<td style="text-align: right;">8.42 GB</td>
+<td style="text-align: left;">未量化的基准参考版本</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Q6_K</code></td>
+<td style="text-align: right;">3.53 GB</td>
+<td style="text-align: left;">相比更小变体保留了更高的精度</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Q5_K_M</code></td>
+<td style="text-align: right;">3.14 GB</td>
+<td style="text-align: left;">体积与精度兼得的折中优选方案</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Q4_K_M</code></td>
+<td style="text-align: right;">2.74 GB</td>
+<td style="text-align: left;">本地推理最实用的黄金起点</td>
+</tr>
+</tbody>
+</table>
+<p>我们建议大多数用户可以先从 <code>Q4_K_M</code> 开始上手体验；若设备的可用内存或显存较为充裕，则可以进一步尝试 <code>Q5_K_M</code> 或 <code>Q6_K</code>。如果想深入探究不同量化类型背后的技术差异，可以参阅 <a href="https://huggingface.co/docs/hub/gguf#quantization-types">Hugging Face Hub 的 GGUF 官方文档</a>。</p>
+<blockquote>
+<p>We suggest starting with <code>Q4_K_M</code>, then trying <code>Q5_K_M</code> or <code>Q6_K</code> if you have more memory available. The <a href="https://huggingface.co/docs/hub/gguf#quantization-types">Hub's GGUF documentation</a> describes the available quantization types in detail.</p>
+</blockquote>
+<hr />
+<h2 id="transformers-gguf">在 Transformers 中加载 GGUF 模型</h2>
+<blockquote>
+<h2 id="load-gguf-with-transformers">Load GGUF with Transformers</h2>
+</blockquote>
+<p>开始上手前，你的环境需要满足以下基本要求：
+* <strong>一台搭载 Apple Silicon 芯片的 Mac 电脑</strong>；
+* <strong>与官方发布的 <a href="https://huggingface.co/kernels/ggml-org/ggml-quantization">ggml-quantization 算子编译版本</a> 相兼容的 PyTorch 版本</strong> (通常涵盖最新的两个 PyTorch 正式版本) ；
+* <strong>最新版本的 transformers 库</strong> (当前推荐使用 main 分支代码) 以及相匹配的 <code>kernels</code> 算子库。</p>
+<blockquote>
+<p>To get started, you need:
+* <strong>An Apple Silicon Mac</strong>.
+* <strong>A PyTorch version supported by the published <a href="https://huggingface.co/kernels/ggml-org/ggml-quantization">ggml-quantization kernel builds</a></strong> (usually the two latest PyTorch releases).
+* <strong>The latest version of transformers</strong> (main branch for now) and a compatible version of <code>kernels</code>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s2">&quot;git+https://github.com/huggingface/transformers.git&quot;</span><span class="w"> </span>kernels
+</code></pre></div>
+<p>加载 GGUF 模型非常简单，只需在调用 <code>from_pretrained</code> 时，将模型在 Hub 上的 <code>model_id</code> 以及目标文件名传入 <code>gguf_file</code> 参数即可：</p>
+<blockquote>
+<p>To load a GGUF model, pass its Hub <code>model_id</code> and filename as <code>gguf_file</code> to <code>from_pretrained</code>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForCausalLM</span><span class="p">,</span> <span class="n">AutoTokenizer</span>
+
+<span class="n">model_id</span> <span class="o">=</span> <span class="s2">&quot;unsloth/Qwen3.5-4B-GGUF&quot;</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;Qwen3.5-4B-Q4_K_M.gguf&quot;</span>
+
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="n">gguf_file</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="n">model_id</span><span class="p">,</span>
+    <span class="n">gguf_file</span><span class="o">=</span><span class="n">filename</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>模型加载完成后，后续的所有推理与调用代码均完全沿用标准的 transformers API 接口：</p>
+<blockquote>
+<p>Everything after loading uses the standard transformers API:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">messages</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Explain why the sky is blue in a few sentences.&quot;</span><span class="p">}]</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">apply_chat_template</span><span class="p">(</span>
+    <span class="n">messages</span><span class="p">,</span>
+    <span class="n">tokenize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">add_generation_prompt</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">return_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">inference_mode</span><span class="p">():</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</code></pre></div>
+<blockquote>
+<p>💬 [原文引用 / Original Quote]:
+<strong>警告</strong>：如果没有安装兼容的量化算子内核，加载器将回退到对模型进行反量化 (Dequantization) 处理，这将显著增加内存消耗。</p>
+<p><strong>Warning:</strong> Without a compatible quantization kernel, the loader falls back to dequantizing the model and uses significantly more memory.</p>
+</blockquote>
+<hr />
+<h2 id="gguf_1">通过常用接口部署 GGUF 服务</h2>
+<blockquote>
+<h2 id="serve-gguf-with-your-preferred-interface">Serve GGUF with Your Preferred Interface</h2>
+</blockquote>
+<p>你可以使用 <a href="https://huggingface.co/docs/transformers/main/en/serve-cli/serving"><code>transformers serve</code></a> 命令行工具，快速对外暴露一个与 OpenAI 规范完全兼容的 API 接口服务：</p>
+<blockquote>
+<p>You can expose an OpenAI-compatible API using <a href="https://huggingface.co/docs/transformers/main/en/serve-cli/serving"><code>transformers serve</code></a>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s2">&quot;transformers[serving] @ git+https://github.com/huggingface/transformers.git&quot;</span><span class="w"> </span>kernels
+
+transformers<span class="w"> </span>serve<span class="w"> </span><span class="s2">&quot;unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf&quot;</span>
+</code></pre></div>
+<p>随后，你可以在诸如 <a href="https://www.jan.ai/docs/desktop/remote-models/custom-endpoint">Jan</a> 或 <a href="https://pi.dev">Pi</a> 等第三方客户端中配置如下自定义连接参数，轻松接入并使用该本地模型：</p>
+<blockquote>
+<p>You can connect clients like <a href="https://www.jan.ai/docs/desktop/remote-models/custom-endpoint">Jan</a> or <a href="https://pi.dev">Pi</a> via these custom settings:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">配置项 (Setting)</th>
+<th style="text-align: left;">配置值 (Value)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Base URL</td>
+<td style="text-align: left;"><code>http://localhost:8000/v1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Model ID</td>
+<td style="text-align: left;"><code>unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="llamacpp">对比 llama.cpp 的性能基准测试</h2>
+<blockquote>
+<h2 id="benchmarking-against-llamacpp">Benchmarking against llama.cpp</h2>
+</blockquote>
+<p>在本地端侧推理性能方面，我们的核心参照基准是 <code>llama.cpp</code>。在配备 <strong>32 GB 统一内存的 MacBook Pro M2 Max</strong> 设备上进行的实测结果显示，Transformers 所实现的生成吞吐量已极其逼近原生 <code>llama.cpp</code> 的表现。</p>
+<blockquote>
+<p>Our reference for local inference performance is <code>llama.cpp</code>. Measured on a <strong>MacBook Pro M2 Max, 32 GB unified memory</strong>, transformers achieves throughput remarkably close to native <code>llama.cpp</code>.</p>
+</blockquote>
+<p><a href=".././images/cb3f00fa2c44.svg"><img alt="GGUF generation throughput compared with llama.cpp" src=".././images/cb3f00fa2c44.svg" /></a></p>
+<hr />
+<h2 id="transformers-llamacpp">Transformers 与 llama.cpp：优势互补的两大生态</h2>
+<blockquote>
+<h2 id="transformers-and-llamacpp">Transformers and llama.cpp</h2>
+</blockquote>
+<p>在 <a href="https://huggingface.co/blog/ggml-joins-hf">GGML 与 llama.cpp 正式加入 Hugging Face 大家庭</a> 之际，我们曾阐述过二者之间优势互补的分工定位：<code>llama.cpp</code> 为本地高效推理筑牢了坚实基石，而 <code>transformers</code> 则为大模型的结构定义与生态拓展提供了核心底座。</p>
+<blockquote>
+<p>When <a href="https://huggingface.co/blog/ggml-joins-hf">GGML and llama.cpp joined Hugging Face</a>, we described their complementary roles: <code>llama.cpp</code> provides a foundation for local inference, while <code>transformers</code> provides a foundation for model definition. </p>
+</blockquote>
+<p>在 PyTorch 中原生支持 GGUF，彻底解锁了许多极具生产力的高阶工作流：
+* <strong>畅享 Python 灵活实验环境</strong>：利用熟悉的 PyTorch 工具链，通过挂载钩子 (Hooks) 检查中间层激活值、自由定制修改前向传播 (Forward Pass) 逻辑，或是快速构建自定义网络层的原型；
+* <strong>便捷评估 GGUF 模型质量</strong>：直接复用现有的评估测试流水线，精准衡量量化检查点的输出质量；
+* <strong>基于 GGUF 权重进行微调</strong>：只需传入 <code>GgufConfig(dequantize=True)</code> 将量化权重反量化为浮点，即可无缝衔接标准的模型训练与微调 (Fine-Tuning) 工作流：</p>
+<blockquote>
+<p>GGUF support unlocks powerful workflows in PyTorch:
+* <strong>Experiment in Python:</strong> Inspect intermediate activations with hooks, modify forward passes, or prototype custom layers using familiar PyTorch tools.
+* <strong>Evaluate GGUF Models:</strong> Use your existing evaluation pipelines to measure quantized checkpoint quality.
+* <strong>Fine-tune from GGUF:</strong> Dequantize weights and continue with standard training workflows using <code>GgufConfig(dequantize=True)</code>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForCausalLM</span><span class="p">,</span> <span class="n">GgufConfig</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="s2">&quot;unsloth/Qwen3.5-4B-GGUF&quot;</span><span class="p">,</span>
+    <span class="n">gguf_file</span><span class="o">=</span><span class="s2">&quot;Qwen3.5-4B-Q4_K_M.gguf&quot;</span><span class="p">,</span>
+    <span class="n">quantization_config</span><span class="o">=</span><span class="n">GgufConfig</span><span class="p">(</span><span class="n">dequantize</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="gguf-ggml">超越 GGUF：为更多架构注入 ggml 算子加速</h2>
+<blockquote>
+<h2 id="beyond-gguf-ggml-kernels-for-more-models">Beyond GGUF: ggml Kernels for More Models</h2>
+</blockquote>
+<p>更为诱人的技术前景，在于将 <code>ggml</code> 的极致性能推广到目前 <code>llama.cpp</code> 尚未官方支持的更广阔模型天地中。通过在 PyTorch 中直接调用 <code>ggml</code> 算子内核与量化方案，我们可以直接为计算机视觉、音频处理以及多模态 (Multimodal) 流水线中的各类前沿研究模型、全新网络架构及自定义变体提供显著的计算加速，再也无需苦苦等待专用独立运行时的繁琐适配。</p>
+<blockquote>
+<p>The bigger opportunity is bringing <code>ggml</code>'s performance to models that <code>llama.cpp</code> does not support. By utilizing <code>ggml</code> kernels and quantization schemes directly in PyTorch, we can accelerate operations for research models, new architectures, and custom variants across computer vision, audio, and multimodal pipelines without waiting for dedicated runtime implementations.</p>
+</blockquote>
+<hr />
+<h2 id="python-pytorch">基于 Python 与 PyTorch 的本地高速推理实现</h2>
+<blockquote>
+<h2 id="fast-local-inference-with-python-and-pytorch">Fast Local Inference with Python and PyTorch</h2>
+</blockquote>
+<h3 id="ggml-metal">复用 ggml 的 Metal 硬件内核</h3>
+<blockquote>
+<h3 id="reusing-ggmls-metal-kernels">Reusing ggml's Metal Kernels</h3>
+</blockquote>
+<p><a href="https://huggingface.co/docs/kernels/index"><code>kernels</code></a> 算子库通过 Hub 分发预编译兼容的 <code>ggml</code> Metal 计算内核，直接将硬件级的深度优化算子注入 PyTorch 模型之中：</p>
+<blockquote>
+<p>The <code>kernels</code> library distributes compatible builds of <code>ggml</code>'s Metal kernels on the Hub, injecting optimized operations straight into PyTorch models:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">算子内核 (Kernel)</th>
+<th style="text-align: left;">核心功能与作用 (What it does)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/kernels/ggml-org/ggml-quantization"><code>ggml-quantization</code></a></td>
+<td style="text-align: left;">直接读取紧凑打包的量化权重执行矩阵运算 (支持专家混合模型 MoE 中的各个专家层) 。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/kernels/ggml-org/ggml-norm"><code>ggml-norm</code></a></td>
+<td style="text-align: left;">算子融合归一化计算，原生支持以零为中心的 RMSNorm。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/kernels/ggml-org/ggml-attn"><code>ggml-attn</code></a></td>
+<td style="text-align: left;">提供 <code>ggml</code> 的 Metal 版 Flash Attention，大幅加速提示词编码与自回归解码。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/kernels/ggml-org/ggml-gated-delta-net"><code>ggml-gated-delta-net</code></a></td>
+<td style="text-align: left;">为混合架构中的线性注意力 (Linear Attention) 网络层提供专项加速。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/kernels/transformers-community/topk"><code>topk</code></a></td>
+<td style="text-align: left;">将 Softmax 与 Top-k 路由决策合二为一，专为 MoE 模型定制优化的 Metal 实现。</td>
+</tr>
+</tbody>
+</table>
+<p><a href=".././images/19d84c34056b.svg"><img alt="Throughput improvement from the layer kernels" src=".././images/19d84c34056b.svg" /></a></p>
+<h3 id="cpu-gpu">消除瓶颈：让 CPU 与 GPU 高效协同</h3>
+<blockquote>
+<h3 id="keeping-the-cpu-and-gpu-working-together">Keeping the CPU and GPU Working Together</h3>
+</blockquote>
+<p>针对 <code>generate</code> 文本生成循环引入的两项重大底层升级，彻底消除了困扰已久的同步等待瓶颈：
+1. <strong>提前剔除不必要的注意力掩码 (<a href="https://github.com/huggingface/transformers/pull/48814">#48814</a>)</strong>：对于未经填充 (Unpadded) 的解码器输入，立即丢弃填充掩码 (Padding Mask) ，避免后续重复进行无意义的条件检查；
+2. <strong>延迟停止判定检查 (<a href="https://github.com/huggingface/transformers/pull/47975">#47975</a>)</strong>：以异步非阻塞方式复制终止判定信号，使 CPU 能够在 GPU 全速执行当前计算任务的同时，提前调度下一轮工作流水线。</p>
+<blockquote>
+<p>Two main updates to <code>generate</code> eliminate synchronization bottlenecks:
+1. <strong>Drop an unnecessary attention mask early (<a href="https://github.com/huggingface/transformers/pull/48814">#48814</a>):</strong> Unpadded decoder inputs drop padding masks instantly to prevent redundant checks.
+2. <strong>Defer the stopping check (<a href="https://github.com/huggingface/transformers/pull/47975">#47975</a>):</strong> Copies stopping decisions asynchronously so the CPU can schedule work while the GPU runs.</p>
+</blockquote>
+<p><a href=".././images/58eabd20a6d4.svg"><img alt="Throughput improvement from the generation loop changes" src=".././images/58eabd20a6d4.svg" /></a></p>
+<hr />
+<h2 id="_4">当前局限与未来规划</h2>
+<blockquote>
+<h2 id="current-limitations-and-next-steps">Current Limitations and Next Steps</h2>
+</blockquote>
+<ul>
+<li><strong>紧凑量化推理暂仅限 MPS</strong>：目前打包压缩的 GGUF 格式执行主要针对 Apple Silicon 芯片 (基于 Metal 图形 API) 进行了深度优化；</li>
+<li><strong>批处理性能尚待深挖</strong>：相比单样本或未填充输入，带有填充标记的批处理 (Padded Batches) 推理仍有进一步调优的空间；</li>
+<li><strong>架构覆盖范围循序推进</strong>：首发已全面支持 Qwen3.5 密集 (Dense) 架构与专家混合 (MoE) 架构 (包括 Qwen3.8) 。官方团队将以渐进迭代的方式陆续拓展支持更多主流架构。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>MPS-only for Packed Inference:</strong> Packed GGUF execution is currently optimized for Apple Silicon (Metal).</li>
+<li><strong>Batching:</strong> Padded batches require further optimization compared to unpadded inputs.</li>
+<li><strong>Architecture Coverage:</strong> Currently covers Qwen3.5 dense and MoE architectures (including Qwen3.8). More architectures will be added incrementally.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">致谢</h2>
+<blockquote>
+<h2 id="acknowledgments">Acknowledgments</h2>
+</blockquote>
+<p>我们衷心感谢 <a href="https://huggingface.co/ArthurZ">Arthur Zucker</a> 发起该项目并对各项 PR 进行细致审查，感谢 <a href="https://huggingface.co/cyrilvallez">Cyril Vallez</a> 对 <code>generate</code> 生成循环做出的关键性能优化，同时向 <a href="https://huggingface.co/sayakpaul">Sayak Paul</a>、<a href="https://github.com/ggml-org/llama.cpp">llama.cpp 团队</a>、Bertrand Chevalier、<a href="https://huggingface.co/ariG23498">Aritra Roy Gosthipaty</a>、<a href="https://huggingface.co/pcuenq">Pedro Cuenca</a> 以及统筹把控整个项目的 <a href="https://huggingface.co/lysandre">Lysandre Debut</a> 致以诚挚谢意。</p>
+<blockquote>
+<p>We thank <a href="https://huggingface.co/ArthurZ">Arthur Zucker</a> for initiating this work and reviewing PRs, <a href="https://huggingface.co/cyrilvallez">Cyril Vallez</a> for the <code>generate</code> improvements, <a href="https://huggingface.co/sayakpaul">Sayak Paul</a>, the <a href="https://github.com/ggml-org/llama.cpp">llama.cpp team</a>, Bertrand Chevalier, <a href="https://huggingface.co/ariG23498">Aritra Roy Gosthipaty</a>, <a href="https://huggingface.co/pcuenq">Pedro Cuenca</a>, and <a href="https://huggingface.co/lysandre">Lysandre Debut</a> for overseeing the project.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Hugging Face</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformers</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">llama.cpp</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GGUF</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">量化模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">本地推理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Metal</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
