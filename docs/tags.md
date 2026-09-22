@@ -1515,6 +1515,7 @@ title: 标签浏览
 ## GGUF
 
 - [基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布](blog/posts/2026-08-20-基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布.md)
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## GHarchive
 
@@ -1859,6 +1860,7 @@ title: 标签浏览
 - [为你的编码智能体赋予属于你自己的记忆](blog/posts/2026-09-04-为你的编码智能体赋予属于你自己的记忆.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## HybridProver
 
@@ -2664,6 +2666,7 @@ title: 标签浏览
 ## Metal
 
 - [Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎](blog/posts/2026-09-04-Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎.md)
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## Microsoft Foundry
 
@@ -4235,6 +4238,7 @@ title: 标签浏览
 - [您自己本来也想提的 Pull Request：用代码智能体加速 MLX 语言模型移植](blog/posts/2026-08-07-您自己本来也想提的 Pull Request：用代码智能体加速 MLX 语言模型移植.md)
 - [Transformer 难以利用其涌现的世界模型：重探河内塔与思考的错觉](blog/posts/2026-08-11-Transformer 难以利用其涌现的世界模型：重探河内塔与思考的错觉.md)
 - [句法与语义：Transformer如何学习深层依赖](blog/posts/2026-08-29-句法与语义：Transformer如何学习深层依赖.md)
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## Transformers.js
 
@@ -4566,6 +4570,7 @@ title: 标签浏览
 ## llama.cpp
 
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## loginctl
 
@@ -15174,6 +15179,10 @@ title: 标签浏览
 - [增强本地大语言模型智能体的 Linux 提权攻击能力](blog/posts/2026-08-14-增强本地大语言模型智能体的 Linux 提权攻击能力.md)
 - [Distribird：基于文献信息的贝叶斯模型校准先验分布设计](blog/posts/2026-08-20-Distribird：基于文献信息的贝叶斯模型校准先验分布设计.md)
 
+## 本地推理
+
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
+
 ## 本地模型
 
 - [我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！](blog/posts/2026-08-07-我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！.md)
@@ -24915,6 +24924,10 @@ title: 标签浏览
 
 - [AudioTQ：一种基于随机哈达玛变换与Lloyd-Max量化的6位CPU音频编解码器](blog/posts/2026-08-19-AudioTQ：一种基于随机哈达玛变换与Lloyd-Max量化的6位CPU音频编解码器.md)
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](blog/posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
+
+## 量化模型
+
+- [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 
 ## 量化金融
 

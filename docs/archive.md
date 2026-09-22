@@ -4,6 +4,7 @@
 
 ## 2026-09
 
+- **2026-09-23**: [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - **2026-09-22**: [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - **2026-09-22**: [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 - **2026-09-22**: [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
