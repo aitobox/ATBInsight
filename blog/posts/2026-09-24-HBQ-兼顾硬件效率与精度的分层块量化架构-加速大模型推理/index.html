@@ -1,0 +1,628 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-09-24-HBQ-%E5%85%BC%E9%A1%BE%E7%A1%AC%E4%BB%B6%E6%95%88%E7%8E%87%E4%B8%8E%E7%B2%BE%E5%BA%A6%E7%9A%84%E5%88%86%E5%B1%82%E5%9D%97%E9%87%8F%E5%8C%96%E6%9E%B6%E6%9E%84-%E5%8A%A0%E9%80%9F%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>HBQ：兼顾硬件效率与精度的分层块量化架构，加速大模型推理 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hbq" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HBQ：兼顾硬件效率与精度的分层块量化架构，加速大模型推理
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<hr />
+<p>authors:
+  - aitoboxrobot
+categories:
+  - arXiv论文
+date: 2026-09-24
+hide:
+  - navigation
+tags:
+  - HBQ
+  - 大语言模型
+  - 模型量化
+  - 硬件加速
+  - MICRO 2026
+title: "HBQ：兼顾硬件效率与精度的分层块量化架构，加速大模型推理"</p>
+<h1 id="hbq">HBQ：兼顾硬件效率与精度的分层块量化架构，加速大模型推理</h1>
+<blockquote>
+<h1 id="hbq-hierarchical-scaling-block-quantization-with-hardware-efficiency-aware-design-for-accurate-llm-inference">HBQ: Hierarchical Scaling Block Quantization with Hardware-Efficiency-Aware Design for Accurate LLM Inference</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着大语言模型 (Large Language Model, LLM) 规模的不断激增，海量参数给端侧与数据中心推理带来了巨大的内存带宽与能耗负担，量化压缩技术因而成为突破这一算力瓶颈的关键钥匙。然而，传统块量化 (Block Quantization, BQ) 架构在硬件执行效率与模型输出精度之间存在着显著的矛盾：采用大分块能通过充分摊薄反量化和累加成本来大幅提升芯片吞吐，却因数值动态范围受限而导致精度严重劣化；小分块虽能保留精度，却带来了沉重的硬件开销。针对这一两难困局，入选微体系结构顶级学术会议 MICRO 2026 的学术研究提出了 <strong>HBQ (Hierarchical Block Quantization)</strong> 架构。该方法将大尺寸分块与超低开销的有效数 (Significand, SIG) 缩放相结合，在第二层分级中精准补偿了大分块带来的量化误差，同时完美适配了权重与激活值迥异的统计分布特性。在 28nm ASIC 专用加速芯片上的实测表明，HBQ 实现了对权重、激活值与 KV Cache 的端到端量化支持；在保持甚至超越更高位宽精度的前提下，相较于当前最先进的仅权重量化技术实现了 <strong>2.3 倍的面积效率与 4.6 倍的能效提升</strong>，相比经典块量化方案系统能耗降低最高达 3.3 倍，为大语言模型的高效硬件落地提供了突破性的新路径。</p>
+<hr />
+<h2 id="_2">📌 内容总结</h2>
+<blockquote>
+<h2 id="summary">📌 Summary</h2>
+</blockquote>
+<p><strong>HBQ (Hierarchical Block Quantization)</strong> 是一套兼顾硬件执行效率感知、专为大语言模型 (Large Language Model, LLM) 高精度推理打造的创新量化框架。通过深入探索 Block Quantization (BQ) 中硬件效率与计算精度之间的权衡关系，研究人员发现：采用较大的数据分块虽然能够通过摊薄反量化与数据累加的硬件开销来提升芯片效率，但往往会造成严重的模型精度下降。为破解这一两难困境，HBQ 提出了创新的分层量化策略——以大分块作为第一层基础，并引入硬件开销极低的有效数 (Significand, SIG) 缩放作为第二层量化。这种分层设计既能契合权重与激活值截然不同的数值分布特性，又能高精度地弥补大分块带来的量化误差。在 28nm ASIC 专用加速器上的实测表明，HBQ 在模型精度与硬件效率两个核心维度上，均大幅超越了当前业内最先进的 Block Quantization 方案以及仅权重量化方法。</p>
+<blockquote>
+<p><strong>HBQ (Hierarchical Block Quantization)</strong> is a hardware-efficiency-aware quantization framework designed for accurate Large Language Model (LLM) inference. By exploring the trade-offs in Block Quantization (BQ), the authors identify that larger blocks improve hardware efficiency (by amortizing dequantization and accumulation costs) but hurt accuracy. HBQ resolves this dilemma by pairing large blocks with low-overhead significand (SIG) scaling for second-level quantization, effectively compensating for errors while accommodating distinct weight and activation distributions. Implemented on a 28nm ASIC accelerator, HBQ significantly outperforms state-of-the-art BQ and weight-only quantization methods in both accuracy and hardware efficiency.</p>
+</blockquote>
+<hr />
+<h2 id="_3">📋 论文元数据</h2>
+<blockquote>
+<h2 id="metadata">📋 Metadata</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv 编号：</strong> <a href="https://arxiv.org/abs/2609.00450">arXiv:2609.00450</a> [cs.LG] <em>(v2)</em></li>
+<li><strong>研究领域：</strong> 机器学习 (<code>cs.LG</code>)；人工智能 (<code>cs.AI</code>)；硬件架构 (<code>cs.AR</code>)</li>
+<li><strong>录用会议：</strong> 第 59 届 IEEE/ACM 国际微体系结构研讨会 (<strong>MICRO 2026</strong>)</li>
+<li><strong>提交日期：</strong> 2026 年 8 月 31 日 (最后修订：2026 年 9 月 21 日)</li>
+<li><strong>论文作者：</strong> </li>
+<li>Chun-Ting Chen</li>
+<li>Dongmin Han</li>
+<li>Hangyeol Mun</li>
+<li>Jake Hyun</li>
+<li>Arnab Raha</li>
+<li>Amit Agarwal</li>
+<li>Mark Anders</li>
+<li>Mohamed Abdelfattah</li>
+<li>Jae-sun Seo</li>
+<li><strong>代码仓库：</strong> <a href="https://github.com/SeoLabCornell/HBQ.git">GitHub - SeoLabCornell/HBQ</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2609.00450">arXiv:2609.00450</a> [cs.LG] <em>(v2)</em></li>
+<li><strong>Subjects:</strong> Machine Learning (<code>cs.LG</code>); Artificial Intelligence (<code>cs.AI</code>); Hardware Architecture (<code>cs.AR</code>)</li>
+<li><strong>Conference Acceptance:</strong> Accepted to the 59th IEEE/ACM International Symposium on Microarchitecture (<strong>MICRO 2026</strong>)</li>
+<li><strong>Submission Date:</strong> August 31, 2026 (Last revised: September 21, 2026)</li>
+<li><strong>Authors:</strong> </li>
+<li>Chun-Ting Chen</li>
+<li>Dongmin Han</li>
+<li>Hangyeol Mun</li>
+<li>Jake Hyun</li>
+<li>Arnab Raha</li>
+<li>Amit Agarwal</li>
+<li>Mark Anders</li>
+<li>Mohamed Abdelfattah</li>
+<li>Jae-sun Seo</li>
+<li><strong>Code Repository:</strong> <a href="https://github.com/SeoLabCornell/HBQ.git">GitHub - SeoLabCornell/HBQ</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">🔍 论文摘要</h2>
+<blockquote>
+<h2 id="abstract">🔍 Abstract</h2>
+</blockquote>
+<p>Block Quantization (BQ) 技术通过同时对神经网络的权重与激活值进行低比特压缩，能够显著降低大模型的计算与存储开销，是加速大模型推理的强力手段。然而，该技术底层的架构设计空间至今仍未被充分挖掘。通过在硬件能耗与模型精度之间进行深入的系统性探索，我们发现分块尺寸 (Block Size) 是决定整体性能最为核心的权衡要素：分块越大，反量化计算与数据累加所耗费的硬件成本被摊薄得越彻底，芯片运行效率也就越高；然而，过大的分块会导致量化误差急剧积累，从而显著损害模型输出的准确率。</p>
+<blockquote>
+<p>Block Quantization (BQ) enables efficient LLM inference by quantizing both weights and activations, but its design space remains underexplored. Through hardware-accuracy design space exploration, we identify block size as a key trade-off: larger blocks improve hardware efficiency by amortizing dequantization and accumulation costs, but degrade accuracy. </p>
+</blockquote>
+<p>正是基于这一深刻洞察，我们提出了分层块量化架构 <strong>HBQ (Hierarchical Block Quantization)</strong>。该架构创造性地将粗粒度的大尺寸分块与开销极低的有效数 (Significand, SIG) 缩放机制深度融合，构建起精巧的第二级量化体系。通过 SIG 缩放微调，不仅能够精确补偿大分块粗放量化所带来的精度损失，还能自适应地契合权重与激活值各自独特的统计分布模式，实现精度与算力成本的双赢。</p>
+<blockquote>
+<p>Motivated by this insight, we propose <strong>Hierarchical Block Quantization (HBQ)</strong>, which combines large blocks with low-overhead significand (SIG) scaling for second-level quantization. SIG scaling effectively compensates for large-block quantization errors while accounting for distinct weight and activation distributions. </p>
+</blockquote>
+<ul>
+<li><strong>HBQ-A</strong> 仅采用超紧凑的 W4A5 配置，便成功达到了 W4A16 级别的模型精度，且硬件占用面积比 NVFP4 更加精简。</li>
+<li><strong>HBQ-E</strong> 在精度上全面超越现有 Block Quantization 方法的同时，将硬件成本进一步大幅削减了 17%。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>HBQ-A</strong> achieves W4A16-level accuracy with W4A5 and lower area than NVFP4.</li>
+<li><strong>HBQ-E</strong> further reduces hardware cost by 17% while outperforming existing BQ methods in accuracy.</li>
+</ul>
+</blockquote>
+<p>我们在 28nm ASIC 专用加速器上，全面实现了针对权重、激活值以及 KV Cache 的端到端 HBQ 硬件支持，并创新性地引入了部分和 (Partial-Sum) BQ 技术以大幅削减累加过程中的能耗开销。实测数据表明：在保持相当精度的前提下，HBQ 相比当前顶尖的仅权重量化方案，实现了 <strong>2.3 倍的面积效率与 4.6 倍的能效提升</strong>；相比先前的各路 Block Quantization 方案，更是实现了 <strong>1.6 至 3.3 倍的系统能耗削减与 1.5 至 3 倍的推理提速</strong>。</p>
+<blockquote>
+<p>We implement HBQ for weights, activations, and KV cache in a 28nm ASIC accelerator and introduce partial-sum BQ to reduce EMA energy. At comparable accuracy, HBQ achieves <strong>2.3×/4.6× higher area/energy efficiency</strong> than state-of-the-art weight-only quantization and <strong>1.6–3.3× lower system energy with 1.5–3× speedup</strong> over prior BQ methods.</p>
+</blockquote>
+<hr />
+<h2 id="links-resources">🔗 链接与资源 (Links &amp; Resources)</h2>
+<blockquote>
+<h2 id="links-resources_1">🔗 Links &amp; Resources</h2>
+</blockquote>
+<ul>
+<li><strong>论文全文：</strong> <a href="https://arxiv.org/pdf/2609.00450">查看 PDF</a> | <a href="https://arxiv.org/html/2609.00450v2">HTML 版本</a></li>
+<li><strong>开源代码：</strong> <a href="https://github.com/SeoLabCornell/HBQ.git">GitHub 仓库</a></li>
+<li><strong>许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>引用与索引：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.00450">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2609.00450">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.00450">NASA ADS</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text Access:</strong> <a href="https://arxiv.org/pdf/2609.00450">View PDF</a> | <a href="https://arxiv.org/html/2609.00450v2">HTML Version</a></li>
+<li><strong>Source Code:</strong> <a href="https://github.com/SeoLabCornell/HBQ.git">GitHub Repository</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>Citations &amp; Metrics:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2609.00450">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2609.00450">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2609.00450">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
