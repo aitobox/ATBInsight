@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-24**: [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)
 - **2026-09-23**: [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - **2026-09-22**: [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - **2026-09-21**: [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
