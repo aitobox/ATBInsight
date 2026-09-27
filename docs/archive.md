@@ -4,6 +4,13 @@
 
 ## 2026-09
 
+- **2026-09-25**: [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+- **2026-09-25**: [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
+- **2026-09-25**: [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
+- **2026-09-25**: [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
+- **2026-09-25**: [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
+- **2026-09-25**: [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
+- **2026-09-25**: [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
 - **2026-09-24**: [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
 - **2026-09-24**: [诺基亚开源 AnyJev：零训练让任何开源大模型转变为精准校准的结构化决策模型](blog/posts/2026-09-24-诺基亚开源-AnyJev-零训练让任何开源大模型转变为精准校准的结构化决策模型.md)
 - **2026-09-24**: [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)

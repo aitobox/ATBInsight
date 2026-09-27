@@ -209,6 +209,13 @@ title: 标签浏览
 - [长生命周期 AI 智能体的权限撤销机制：根域静默协议与异步执行安全](blog/posts/2026-09-22-长生命周期-AI-智能体的权限撤销机制-根域静默协议与异步执行安全.md)
 - [Lean Pool：由 AI 智能体自主维护与持续扩充的形式化数学知识库](blog/posts/2026-09-24-Lean-Pool-由-AI-智能体自主维护与持续扩充的形式化数学知识库.md)
 - [超越自然语言：专为自主科学研究打造的智能体原生形式化语言 Lara](blog/posts/2026-09-24-超越自然语言-专为自主科学研究打造的智能体原生形式化语言-Lara.md)
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
+
+## AI 智能体安全
+
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 
 ## AI 编程
 
@@ -898,6 +905,10 @@ title: 标签浏览
 
 - [更大的文本编码器可能会损害 CLIP 的零样本性能](blog/posts/2026-09-10-更大的文本编码器可能会损害 CLIP 的零样本性能.md)
 
+## CLM-8B
+
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
+
 ## CM5
 
 - [上手树莓派 CM5 编程夹具：工厂级批量烧录利器](blog/posts/2026-08-20-上手树莓派 CM5 编程夹具：工厂级批量烧录利器.md)
@@ -1112,6 +1123,10 @@ title: 标签浏览
 
 - [CAS：通过自适应检索与策略加权的保形智能体搜索](blog/posts/2026-08-25-CAS：通过自适应检索与策略加权的保形智能体搜索.md)
 
+## Contrastive-LM
+
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
+
 ## Conway99图
 
 - [Conway 99-图问题的强制结构归约与可验证界限](blog/posts/2026-08-14-Conway 99-图问题的强制结构归约与可验证界限.md)
@@ -1147,6 +1162,7 @@ title: 标签浏览
 ## Cursor
 
 - [大规模 Git 架构演进：Cursor 的 Continuity 架构解析](blog/posts/2026-08-23-大规模 Git 架构演进：Cursor 的 Continuity 架构解析.md)
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
 
 ## C语言
 
@@ -1835,6 +1851,10 @@ title: 标签浏览
 
 - [HarmProfile：刻画前沿大语言模型中的有害分布](blog/posts/2026-08-19-HarmProfile：刻画前沿大语言模型中的有害分布.md)
 
+## Harness 架构
+
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
+
 ## HarnessLens
 
 - [更智能的验证，更深度的进化：通过行为感知验证实现高效的智能体框架演进](blog/posts/2026-08-29-更智能的验证，更深度的进化：通过行为感知验证实现高效的智能体框架演进.md)
@@ -2066,6 +2086,10 @@ title: 标签浏览
 - [ECOKV：通过互补多样性度量实现几何感知的 KV 缓存淘汰](blog/posts/2026-09-10-ECOKV：通过互补多样性度量实现几何感知的 KV 缓存淘汰.md)
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](blog/posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
+
+## KV Cache 量化
+
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
 
 ## KV Cache压缩
 
@@ -2332,6 +2356,10 @@ title: 标签浏览
 
 - [使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道](blog/posts/2026-08-09-使用 NVIDIA NeMo Retriever、托管 NIM、LanceDB、重排及基础生成构建多模态 RAG 管道.md)
 
+## Landlock
+
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
+
 ## LangChain
 
 - [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
@@ -2420,6 +2448,7 @@ title: 标签浏览
 - [我们不再使用 Linux 的严格内存超售模式](blog/posts/2026-09-03-我们不再使用 Linux 的严格内存超售模式.md)
 - [你应该使用无根容器（Rootless Containers）](blog/posts/2026-09-04-你应该使用无根容器（Rootless Containers）.md)
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
 
 ## Linux 系统安全
 
@@ -3254,6 +3283,10 @@ title: 标签浏览
 
 - [问两次，看两次：提示词回显解决了视觉语言模型中的“问题前置悖论”](blog/posts/2026-09-05-问两次，看两次：提示词回显解决了视觉语言模型中的“问题前置悖论”.md)
 
+## Prompt 缓存
+
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
+
 ## Pufibara
 
 - [超越可执行模型：用于物理系统建模的 Pufibara 智能体框架与 Modelica 智能体工作流基准](blog/posts/2026-08-27-超越可执行模型：用于物理系统建模的 Pufibara 智能体框架与 Modelica 智能体工作流基准.md)
@@ -3332,6 +3365,10 @@ title: 标签浏览
 ## Qiskit
 
 - [Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手](blog/posts/2026-09-08-Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手.md)
+
+## QuantWM
+
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
 
 ## Quantization-Aware Training
 
@@ -3859,6 +3896,7 @@ title: 标签浏览
 - [LEGO-RL：面向代码智能体的原生基架强化学习](blog/posts/2026-08-20-LEGO-RL：面向代码智能体的原生基架强化学习.md)
 - [编码代理的工作集：代码库规模任务中的一致性债务](blog/posts/2026-08-20-编码代理的工作集：代码库规模任务中的一致性债务.md)
 - [RealSWE：真实用户请求下编码智能体的组合式评估](blog/posts/2026-09-01-RealSWE：真实用户请求下编码智能体的组合式评估.md)
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
 
 ## SWRL
 
@@ -3880,6 +3918,10 @@ title: 标签浏览
 ## SearchTome
 
 - [STAIR (结构感知信息检索器)：用于文档结构增强的新型数据集与大模型检索器](blog/posts/2026-09-05-STAIR -结构感知信息检索器-：用于文档结构增强的新型数据集与大模型检索器.md)
+
+## Seatbelt
+
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 
 ## Sentence Transformers
 
@@ -4036,6 +4078,10 @@ title: 标签浏览
 
 - [Claude 如何为 AI 生成的文本添加水印](blog/posts/2026-08-23-Claude 如何为 AI 生成的文本添加水印.md)
 
+## System One 模型
+
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
+
 ## Systemd
 
 - [当文件系统卸载时如何停止 Systemd 服务](blog/posts/2026-08-18-当文件系统卸载时如何停止 Systemd 服务.md)
@@ -4080,6 +4126,10 @@ title: 标签浏览
 ## Task-Adaptive
 
 - [面向GUI奖励建模的任务自适应评分标准](blog/posts/2026-08-27-面向GUI奖励建模的任务自适应评分标准.md)
+
+## Taste-Bench
+
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
 
 ## TensorCore
 
@@ -4127,6 +4177,10 @@ title: 标签浏览
 ## Token Pruning
 
 - [RoRA：面向多模态大语言模型视觉token剪枝的面向角色区域分配方法](blog/posts/2026-08-11-RoRA：面向多模态大语言模型视觉token剪枝的面向角色区域分配方法.md)
+
+## Token 优化
+
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
 
 ## Tokenization
 
@@ -4261,6 +4315,10 @@ title: 标签浏览
 - [面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术](blog/posts/2026-09-10-面向视觉与语言Transformer的感知损伤多臂老虎机剪枝技术.md)
 - [早期编码、后期调用：Transformer在何时开始依据推断出的伙伴专业性采取行动](blog/posts/2026-09-10-早期编码、后期调用：Transformer在何时开始依据推断出的伙伴专业性采取行动.md)
 - [几乎零开销的状态-预测解耦架构](blog/posts/2026-09-15-几乎零开销的状态-预测解耦架构.md)
+
+## Transformer 电路
+
+- [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
 
 ## Transformers
 
@@ -4564,6 +4622,11 @@ title: 标签浏览
 - [负载均衡走向极端：过度离散混合专家模型中的专家剪枝专家洞察](blog/posts/2026-09-08-负载均衡走向极端：过度离散混合专家模型中的专家剪枝专家洞察.md)
 - [GPTNT：基于《保持通话和炸弹不炸》的多模态智能体实时协作基准](blog/posts/2026-09-08-GPTNT：基于《保持通话和炸弹不炸》的多模态智能体实时协作基准.md)
 
+## arXiv论文
+
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
+
 ## cgroups
 
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
@@ -4673,6 +4736,10 @@ title: 标签浏览
 - [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
 - [post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎](blog/posts/2026-08-29-post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎.md)
 
+## proc 文件系统
+
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+
 ## pyAgrum
 
 - [分层结构因果模型的的可扩展与通用识别：重新审视 STAR 项目](blog/posts/2026-08-27-分层结构因果模型的的可扩展与通用识别：重新审视 STAR 项目.md)
@@ -4691,6 +4758,7 @@ title: 标签浏览
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
 - [使用 Polkit 阻止用户运行 `loginctl enable-linger`](blog/posts/2026-09-02-使用 Polkit 阻止用户运行 `loginctl enable-linger`.md)
 - [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
 
 ## terms.txt
 
@@ -4797,6 +4865,7 @@ title: 标签浏览
 - [考虑使用 ACE？我们能用更少的 Token 实现它](blog/posts/2026-08-12-考虑使用 ACE？我们能用更少的 Token 实现它.md)
 - [相同事实，不同更新：推理设置如何塑造大模型在医疗资源分配中的行为](blog/posts/2026-08-21-相同事实，不同更新：推理设置如何塑造大模型在医疗资源分配中的行为.md)
 - [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
+- [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
 
 ## 上下文强化学习
 
@@ -4979,6 +5048,7 @@ title: 标签浏览
 - [在Atari Pong中改进强大智能体背后的弱世界模型](blog/posts/2026-09-08-在Atari Pong中改进强大智能体背后的弱世界模型.md)
 - [ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序](blog/posts/2026-09-10-ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序.md)
 - [学习用于部分可观测性下具身推理的反事实世界模型](blog/posts/2026-09-10-学习用于部分可观测性下具身推理的反事实世界模型.md)
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
 
 ## 世界行动模型
 
@@ -6193,6 +6263,7 @@ title: 标签浏览
 - [相比于谁？大语言模型生成基础设施即代码（IaC）的人类锚定安全基准](blog/posts/2026-09-01-相比于谁？大语言模型生成基础设施即代码（IaC）的人类锚定安全基准.md)
 - [CONTINUITY：面向可组合大模型智能体控制的安全上下文契约](blog/posts/2026-09-08-CONTINUITY：面向可组合大模型智能体控制的安全上下文契约.md)
 - [AI编程助手在安装前会进行安全检查吗？针对研究软件供应链中信任信号的预注册需求侧审计](blog/posts/2026-09-10-AI编程助手在安装前会进行安全检查吗？针对研究软件供应链中信任信号的预注册需求侧审计.md)
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 
 ## 供应链攻击
 
@@ -6939,6 +7010,7 @@ title: 标签浏览
 ## 决策优化
 
 - [调用还是不调用：评估与优化大语言模型工具调用的框架](blog/posts/2026-08-07-调用还是不调用：评估与优化大语言模型工具调用的框架.md)
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
 
 ## 决策偏见
 
@@ -7345,6 +7417,7 @@ title: 标签浏览
 ## 动作评估
 
 - [大模型引导的工业过程操作决策上下文动作评估](blog/posts/2026-08-27-大模型引导的工业过程操作决策上下文动作评估.md)
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
 
 ## 动作边界
 
@@ -7475,6 +7548,7 @@ title: 标签浏览
 
 - [包管理器之间的代码共享](blog/posts/2026-08-12-包管理器之间的代码共享.md)
 - [Git 子模块作为包管理器](blog/posts/2026-09-02-Git 子模块作为包管理器.md)
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 
 ## 匈牙利算法
 
@@ -11141,6 +11215,10 @@ title: 标签浏览
 
 - [Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手](blog/posts/2026-09-08-Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手.md)
 
+## 审计子系统
+
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+
 ## 审计日志
 
 - [确认点即系统：面向AI审计证据的持久化策略决策回执](blog/posts/2026-08-20-确认点即系统：面向AI审计证据的持久化策略决策回执.md)
@@ -12038,6 +12116,7 @@ title: 标签浏览
 - [OpenStamp：面向开源语言模型的水印技术](blog/posts/2026-09-01-OpenStamp：面向开源语言模型的水印技术.md)
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
+- [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
 
 ## 开源治理
 
@@ -14574,6 +14653,10 @@ title: 标签浏览
 
 - [SABER：基于对抗分支探测的大语言模型推理稳定性感知早退机制](blog/posts/2026-09-01-SABER：基于对抗分支探测的大语言模型推理稳定性感知早退机制.md)
 
+## 时序一致性
+
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
+
 ## 时序图网络
 
 - [KONTOGRAPH：在 200 毫秒决策预算下实现实时反洗钱的验证点时间特征一致性与摊销解释](blog/posts/2026-08-26-KONTOGRAPH：在 200 毫秒决策预算下实现实时反洗钱的验证点时间特征一致性与摊销解释.md)
@@ -15660,6 +15743,7 @@ title: 标签浏览
 - [ObserverBench：测试用于干预和控制的机械解释估计器](blog/posts/2026-09-05-ObserverBench：测试用于干预和控制的机械解释估计器.md)
 - [早期编码、后期调用：Transformer在何时开始依据推断出的伙伴专业性采取行动](blog/posts/2026-09-10-早期编码、后期调用：Transformer在何时开始依据推断出的伙伴专业性采取行动.md)
 - [真相从未泯灭：顺从上下文真实性探针中的完全混叠现象](blog/posts/2026-09-13-真相从未泯灭-顺从上下文真实性探针中的完全混叠现象.md)
+- [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
 
 ## 机械键盘
 
@@ -15738,6 +15822,10 @@ title: 标签浏览
 ## 条件互信息
 
 - [CMI-Mem：通过CMI增强强化学习实现具备泛化能力的长期记忆管理](blog/posts/2026-08-26-CMI-Mem：通过CMI增强强化学习实现具备泛化能力的长期记忆管理.md)
+
+## 条件协同消融
+
+- [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
 
 ## 条件合作
 
@@ -17130,6 +17218,10 @@ title: 标签浏览
 ## 汽车诊断
 
 - [在高维事件序列中学习预测、发现与推理](blog/posts/2026-08-29-在高维事件序列中学习预测、发现与推理.md)
+
+## 沙盒机制
+
+- [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 
 ## 沙盒限制
 
@@ -20487,6 +20579,10 @@ title: 标签浏览
 
 - [服务掩码扩散大语言模型：来自真实硬件的特征分析与设计原则](blog/posts/2026-08-27-服务掩码扩散大语言模型：来自真实硬件的特征分析与设计原则.md)
 
+## 系统调用
+
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+
 ## 纠偏机制
 
 - [编程智能体的在线监控与纠偏导向](blog/posts/2026-08-11-编程智能体的在线监控与纠偏导向.md)
@@ -21695,6 +21791,10 @@ title: 标签浏览
 
 - [自对弈中近似价值迭代的惊人有效性](blog/posts/2026-09-10-自对弈中近似价值迭代的惊人有效性.md)
 
+## 自愈机制
+
+- [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
+
 ## 自我修改系统
 
 - [语义提升算子与保持性下不可判定类的闭包性](blog/posts/2026-09-13-语义提升算子与保持性下不可判定类的闭包性.md)
@@ -22613,6 +22713,7 @@ title: 标签浏览
 - [划分支撑集，重建残差：面向视频生成与世界模型的免训练稀疏注意力机制](blog/posts/2026-08-21-划分支撑集，重建残差：面向视频生成与世界模型的免训练稀疏注意力机制.md)
 - [从生成到模拟：世界模型距离真正的模拟器还有多远？](blog/posts/2026-08-26-从生成到模拟：世界模型距离真正的模拟器还有多远？.md)
 - [GraphVid：交互式图可控视频生成](blog/posts/2026-08-27-GraphVid：交互式图可控视频生成.md)
+- [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
 
 ## 视频虚拟试穿
 
@@ -23150,6 +23251,7 @@ title: 标签浏览
 - [语义叠加层：超越词元与引导向量的提示词注入防御新范式](blog/posts/2026-09-01-语义叠加层：超越词元与引导向量的提示词注入防御新范式.md)
 - [AI 数学家：迈向完全自动化的前沿数学研究](blog/posts/2026-09-04-AI 数学家：迈向完全自动化的前沿数学研究.md)
 - [基于 SMT 的 HTN-SAT 编码实现数值型完全有序 HTN 规划](blog/posts/2026-09-05-基于 SMT 的 HTN-SAT 编码实现数值型完全有序 HTN 规划.md)
+- [条件协同消融 CoAx：揭示 Transformer 电路中的自愈备份组件](blog/posts/2026-09-25-条件协同消融-CoAx-揭示-Transformer-电路中的自愈备份组件.md)
 
 ## 论证分析
 
@@ -24515,6 +24617,7 @@ title: 标签浏览
 ## 运维工程
 
 - [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
+- [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
 
 ## 运行壳演化
 
@@ -25308,6 +25411,10 @@ title: 标签浏览
 ## 长程科研
 
 - [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
+
+## 长程规划
+
+- [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
 
 ## 长视界任务
 
