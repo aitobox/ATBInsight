@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-09-30**: [谷歌开源 RRSI 框架：让 AI 智能体自主优化 Harness 架构且避免过拟合](blog/posts/2026-09-30-谷歌开源-RRSI-框架-让-AI-智能体自主优化-Harness-架构且避免过拟合.md)
 - **2026-09-25**: [Cursor 智能体工程实践：长程任务 Token 效率与系统 Harness 深度优化指南](blog/posts/2026-09-25-Cursor-智能体工程实践-长程任务-Token-效率与系统-Harness-深度优化指南.md)
 - **2026-09-24**: [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)
 - **2026-09-23**: [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
