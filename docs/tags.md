@@ -218,11 +218,16 @@ title: 标签浏览
 ## AI 智能体安全
 
 - [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
 
 ## AI 编程
 
 - [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
 - [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
+
+## AI 编译器
+
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## AI 证明智能体
 
@@ -537,6 +542,10 @@ title: 标签浏览
 
 - [Meta$^n$：通过涌现深度实现递归自我提升](blog/posts/2026-08-27-Meta-^n-：通过涌现深度实现递归自我提升.md)
 
+## ARC-KV
+
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
+
 ## ARCTIC系统
 
 - [从代码评审到代码批判：大规模 AI 生成差异的意图、偏移与聚光灯机制](blog/posts/2026-08-18-从代码评审到代码批判：大规模 AI 生成差异的意图、偏移与聚光灯机制.md)
@@ -722,6 +731,10 @@ title: 标签浏览
 
 - [直接语料库交互中的证据盲区：使用 AtlasNav 进行持久导航](blog/posts/2026-08-27-直接语料库交互中的证据盲区：使用 AtlasNav 进行持久导航.md)
 
+## Attention Matching
+
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
+
 ## AudioTQ
 
 - [AudioTQ：一种基于随机哈达玛变换与Lloyd-Max量化的6位CPU音频编解码器](blog/posts/2026-08-19-AudioTQ：一种基于随机哈达玛变换与Lloyd-Max量化的6位CPU音频编解码器.md)
@@ -825,6 +838,10 @@ title: 标签浏览
 ## BixBench
 
 - [Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统](blog/posts/2026-09-05-Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统.md)
+
+## Blackwell
+
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## BlueLM
 
@@ -1075,6 +1092,7 @@ title: 标签浏览
 - [PrimeAgentOrchestrator：面向个人 AI 基础设施的记忆预加载智能体衍生系统](blog/posts/2026-08-25-PrimeAgentOrchestrator：面向个人 AI 基础设施的记忆预加载智能体衍生系统.md)
 - [智能体插件的维护与共演化：Claude Code 插件市场的实证研究](blog/posts/2026-09-01-智能体插件的维护与共演化：Claude Code 插件市场的实证研究.md)
 - [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 
 ## ClickHouse
 
@@ -1152,6 +1170,10 @@ title: 标签浏览
 ## Counter-Strike 2
 
 - [基于游戏轨迹的账号一致性：《反恐精英2》中的同名玩家验证](blog/posts/2026-08-29-基于游戏轨迹的账号一致性：《反恐精英2》中的同名玩家验证.md)
+
+## CounterSteer
+
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
 
 ## CrabOS
 
@@ -1595,6 +1617,10 @@ title: 标签浏览
 ## GPU 算子
 
 - [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
+
+## GPU 算子优化
+
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## GPU优化
 
@@ -2094,6 +2120,10 @@ title: 标签浏览
 - [ECOKV：通过互补多样性度量实现几何感知的 KV 缓存淘汰](blog/posts/2026-09-10-ECOKV：通过互补多样性度量实现几何感知的 KV 缓存淘汰.md)
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](blog/posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
+
+## KV Cache 压缩
+
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
 
 ## KV Cache 量化
 
@@ -2696,6 +2726,10 @@ title: 标签浏览
 
 - [面向可分叉计算的证据感知 MapReduce](blog/posts/2026-08-26-面向可分叉计算的证据感知 MapReduce.md)
 
+## Mark Russinovich
+
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
+
 ## Markdown
 
 - [String：一个让每个应用皆为 Markdown 文件的智能体操作系统](blog/posts/2026-09-01-String：一个让每个应用皆为 Markdown 文件的智能体操作系统.md)
@@ -3176,6 +3210,7 @@ title: 标签浏览
 ## PTX
 
 - [手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究](blog/posts/2026-08-14-手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究.md)
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## PTXBench
 
@@ -3214,6 +3249,11 @@ title: 标签浏览
 
 - [Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎](blog/posts/2026-09-04-Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎.md)
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
+
+## Photon
+
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
 ## PhysElite
 
@@ -3713,6 +3753,7 @@ title: 标签浏览
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
 ## R语言
 
@@ -4130,6 +4171,10 @@ title: 标签浏览
 
 - [TEPA：为抗冲突语言智能体撤销陈旧记忆](blog/posts/2026-08-11-TEPA：为抗冲突语言智能体撤销陈旧记忆.md)
 
+## TLA+
+
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
+
 ## TOP-Align
 
 - [Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略](blog/posts/2026-09-04-Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略.md)
@@ -4375,6 +4420,7 @@ title: 标签浏览
 
 - [PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP](blog/posts/2026-08-07-PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP.md)
 - [RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准](blog/posts/2026-08-14-RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准.md)
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## Triton优化
 
@@ -4655,6 +4701,9 @@ title: 标签浏览
 - [任务的算力天花板：Transformer 究竟何时能脱离思维链取得成功？](blog/posts/2026-09-30-任务的算力天花板-Transformer-究竟何时能脱离思维链取得成功.md)
 - [ProofLoom：基于证明义务驱动的随机优化理论形式化构建系统](blog/posts/2026-09-30-ProofLoom-基于证明义务驱动的随机优化理论形式化构建系统.md)
 - [CoWindow 注意力：基于协同覆盖机制的高效长上下文注意力架构](blog/posts/2026-09-30-CoWindow-注意力-基于协同覆盖机制的高效长上下文注意力架构.md)
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 
 ## cgroups
 
@@ -4699,6 +4748,10 @@ title: 标签浏览
 ## iOS开发
 
 - [Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的](blog/posts/2026-08-22-Bluesky 和 Threads 是如何在 iOS 截图里偷偷塞入自家 Logo 的.md)
+
+## io_uring
+
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
 ## llama.cpp
 
@@ -10739,6 +10792,7 @@ title: 标签浏览
 - [诺基亚开源 AnyJev：零训练让任何开源大模型转变为精准校准的结构化决策模型](blog/posts/2026-09-24-诺基亚开源-AnyJev-零训练让任何开源大模型转变为精准校准的结构化决策模型.md)
 - [任务的算力天花板：Transformer 究竟何时能脱离思维链取得成功？](blog/posts/2026-09-30-任务的算力天花板-Transformer-究竟何时能脱离思维链取得成功.md)
 - [CoWindow 注意力：基于协同覆盖机制的高效长上下文注意力架构](blog/posts/2026-09-30-CoWindow-注意力-基于协同覆盖机制的高效长上下文注意力架构.md)
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
 
 ## 大语言模型代理
 
@@ -11801,6 +11855,10 @@ title: 标签浏览
 - [权重中被遗忘，工具中被找回：大模型智能体的工具去学习](blog/posts/2026-08-26-权重中被遗忘，工具中被找回：大模型智能体的工具去学习.md)
 - [智能体何时应当停止？面向工具使用型大语言模型的证据携带式终止机制](blog/posts/2026-08-27-智能体何时应当停止？面向工具使用型大语言模型的证据携带式终止机制.md)
 
+## 工具教程
+
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
+
 ## 工具编排
 
 - [Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略](blog/posts/2026-09-04-Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略.md)
@@ -11906,6 +11964,10 @@ title: 标签浏览
 ## 并发服务器
 
 - [并发服务器：第 7 部分 - Rust 语言实现](blog/posts/2026-08-16-并发服务器：第 7 部分 - Rust 语言实现.md)
+
+## 并发系统
+
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 
 ## 并发编程
 
@@ -12643,6 +12705,7 @@ title: 标签浏览
 - [引入非基项子句学习拓展 SMT 求解能力](blog/posts/2026-09-13-引入非基项子句学习拓展-SMT-求解能力.md)
 - [FormalFlow：面向 MIP* = RE 核心定理的长程自动化形式化证明](blog/posts/2026-09-19-FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明.md)
 - [超越自然语言：专为自主科学研究打造的智能体原生形式化语言 Lara](blog/posts/2026-09-24-超越自然语言-专为自主科学研究打造的智能体原生形式化语言-Lara.md)
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 
 ## 形式语言学
 
@@ -12922,6 +12985,7 @@ title: 标签浏览
 
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - [大模型生成的 GPU 算子到底能触达多少真实工作负载？KernelBench 局限与 DLRM 突破](blog/posts/2026-09-22-大模型生成的-GPU-算子到底能触达多少真实工作负载-KernelBench-局限与-DLRM-突破.md)
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
 ## 性能建模
 
@@ -13864,6 +13928,10 @@ title: 标签浏览
 ## 搜索增强语言模型
 
 - [Search-G1：基于表征内在奖励的扎根搜索智能体](blog/posts/2026-08-20-Search-G1：基于表征内在奖励的扎根搜索智能体.md)
+
+## 搜索引擎架构
+
+- [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
 ## 搜索智能体
 
@@ -18144,6 +18212,10 @@ title: 标签浏览
 ## 激活图表征
 
 - [ActMap：基于生成期激活特征图的单次推理不确定性量化](blog/posts/2026-09-13-ActMap-基于生成期激活特征图的单次推理不确定性量化.md)
+
+## 激活导向
+
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
 
 ## 激活工程
 
@@ -24500,6 +24572,7 @@ title: 标签浏览
 - [CodeTD：注意力拓扑结构检测代码大语言模型中的幻觉](blog/posts/2026-09-10-CodeTD：注意力拓扑结构检测代码大语言模型中的幻觉.md)
 - [Ecdysis：面向大模型智能体运行时脚手架的高效进化训练](blog/posts/2026-09-13-Ecdysis-面向大模型智能体运行时脚手架的高效进化训练.md)
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
+- [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 
 ## 软件工程智能体
 
@@ -25362,6 +25435,10 @@ title: 标签浏览
 - [HeadWiseKV：混合长上下文语言模型的按头预算化缓存驻留机制](blog/posts/2026-09-04-HeadWiseKV：混合长上下文语言模型的按头预算化缓存驻留机制.md)
 - [HISA：面向细粒度稀疏注意力的高效分层索引机制](blog/posts/2026-09-13-HISA-面向细粒度稀疏注意力的高效分层索引机制.md)
 
+## 长上下文推理
+
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
+
 ## 长上下文注意力
 
 - [CoWindow 注意力：基于协同覆盖机制的高效长上下文注意力架构](blog/posts/2026-09-30-CoWindow-注意力-基于协同覆盖机制的高效长上下文注意力架构.md)
@@ -25541,6 +25618,7 @@ title: 标签浏览
 ## 间接提示词注入
 
 - [无盒漏洞分析：仅凭元数据检测 MCP 服务器的间接提示词注入漏洞](blog/posts/2026-09-13-无盒漏洞分析-仅凭元数据检测-MCP-服务器的间接提示词注入漏洞.md)
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
 
 ## 间谍神话
 

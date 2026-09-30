@@ -2013,3 +2013,6 @@ title: arXiv论文
 - [谷歌开源 RRSI 框架：让 AI 智能体自主优化 Harness 架构且避免过拟合](../posts/2026-09-30-谷歌开源-RRSI-框架-让-AI-智能体自主优化-Harness-架构且避免过拟合.md)
 - [CoWindow 注意力：基于协同覆盖机制的高效长上下文注意力架构](../posts/2026-09-30-CoWindow-注意力-基于协同覆盖机制的高效长上下文注意力架构.md)
 - [阿里通义发布 Qwen-Audio-3.1-Realtime：具备自主思考、工具调用与话轮决策的全双工语音大模型](../posts/2026-09-30-阿里通义发布-Qwen-Audio-3.1-Realtime-具备自主思考-工具调用与话轮决策的全双工语音大模型.md)
+- [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](../posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
+- [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](../posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
+- [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](../posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
