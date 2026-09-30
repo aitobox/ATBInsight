@@ -5,6 +5,407 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-01/TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-01/TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界/</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <description>近期，Claude Code 创造者 Boris Cherny 透露 Opus 成功运用形式化规范语言 TLA+ 发现了代码中的并发竞态条件，引发了技术社区对形式化验证与 AI 智能体编程结合的热烈探讨。著名 TLA+ 布道者与教育家 Hillel Wayne 撰文指出，尽管 TLA+ 在设计复杂并发系统、杜绝逻辑缺陷方面威力惊人，但它绝非能够一劳永逸解决 AI 软件开发难题的“银弹”。本文系统梳理了 TLA+ 原生支持验证的状态不变量与时序活性属性，深入剖析了它无法原生表达多步动作、可达性及超属性等关键盲区，并探讨了工程师采用的精巧变通方案与其局限。这一辨析清晰划定了形式化方法与自动化编码的能力边界，为理性看待 AI 辅助工程系统设计提供了极为清醒深刻的技术视角。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+最近，随着利用 AI 智能体 (AI Agent，例如 Claude Code 和 Opus) 借助 TLA+ 排查竞态条件 (Race Condition) 的演示引爆技术圈，形式化验证 (Formal Verification) 再次掀起了全网热议。诚然，TLA+ 是设计复杂并发系统 (Concurrent Systems) 、验证系统安全性 (Safety) 与活性 (Liveness) 属性时近乎无往不利的神兵利器，但它绝非万能的“银弹”。本文将深入探讨 TLA+ 原生能够表达与检验的逻辑边界、它**无法**直接表达的关键盲区 (例如可达性、超属性以及跨多步动作) ，并揭示工程师为了拓展其能力上限所采用的各种精妙 (却略显繁杂) 的变通技巧。
+
+&gt; Following recent excitement around using AI agents (like Claude Code and Opus) to find race conditions via TLA+, formal verification has sparked widespread internet discussion. While TLA+ is an exceptionally powerful tool for designing complex concurrent systems and verifying safety and liveness properties, it is not a silver bullet. This article explores what TLA+ can express and check natively, the notable limitations regarding what it *cannot* express (such as reachability, hyperproperties, and multi-step actions), and the clever (yet messy) workarounds engineers use to stretch its capabilities.
+
+---
+
+## 引言
+
+&gt; ## Introduction
+
+上周，Claude Code 的创造者 Boris Cherny 透露，Opus 能够借助 TLA+ [^tla] 成功定位代码中的竞态条件。
+
+&gt; Last week Boris Cherny, the inventor of Claude Code, mentioned that Opus was able to use TLA+[^tla] to find race conditions in code.
+
+一时间，整个互联网都在热烈探讨形式化验证。
+
+&gt; And now everybody on the internet is talking about formal verification. 
+
+作为一名长年深耕 TLA+ 教学 ( [1](https://link.springer.com/book/10.1007/978-1-4842-3829-5) [2](https://learntla.com/) ) 与积极 [倡导者](https://newsletter.pragmaticengineer.com/p/formal-methods-with-hillel-wayne) 的同行者，看到这种现象我确实感到振奋！TLA+ 在设计复杂并发系统并确保其免受逻辑 Bug 困扰方面表现极其出色。 [^antithesis] 但与此同时，作为一名始终主张理性思考的技术人，这种近乎盲目的狂热又令我深感担忧。我看到许多人断言：形式化方法 (Formal Methods) 将一劳永逸地彻底解决智能体驱动软件开发中的可靠性问题——而这完全是无稽之谈。
+
+&gt; As a long-time educator ([1](https://link.springer.com/book/10.1007/978-1-4842-3829-5) [2](https://learntla.com/)) and [advocate](https://newsletter.pragmaticengineer.com/p/formal-methods-with-hillel-wayne) of TLA+, this is really exciting! TLA+ is great at designing complex concurrent systems and making sure they're bug-free.[^antithesis] As a long-time advocate of level-headedness, this new euphoria worries me. I read a lot of people saying that formal methods will solve the problem of agentic software development once and for all, and that's nonsense.
+
+关于 TLA+ 在实际保证能力上的局限性，业界已经有过汗牛充栋的讨论，例如 [正确的设计并不会自动转化为正确的代码实现](https://buttondown.com/hillelwayne/archive/what-if-the-spec-doesnt-match-the-code/) 。因此，在本次通讯中我想探讨一个截然不同的局限维度：要验证一个属性，前提是你必须能够把它描述出来！那么，到底有哪些属性是 TLA+ 根本连表达都无法表达的？
+
+&gt; Enough words have been spilled about the weaknesses of TLA+ in terms of what it can guarantee, like how [correct designs don't automatically translate into correct code](https://buttondown.com/hillelwayne/archive/what-if-the-spec-doesnt-match-the-code/). So I'd like to focus on a different limitation for this newsletter: to verify a property, we need to have a property to verify! So what are the properties that TLA+ can't even express?
+
+*(本文假设读者具备一些 TLA+ 的基础知识。如果你完全是初学者，建议先阅读上文提到的 [1] [2] 两处资料，或者 [阅读这篇入门文章](https://buttondown.com/hillelwayne/archive/tla-from-first-principles/) 。)*
+
+&gt; *(This assumes some basic knowledge of TLA+. If you're a total beginner, check out those [1] [2] things above or [read here](https://buttondown.com/hillelwayne/archive/tla-from-first-principles/).)*
+
+---
+
+## TLA+ 能够验证什么
+
+&gt; ## What TLA+ Can Check
+
+TLA+ 将整个系统的运行过程划分为一组**行为** (Behavior) 。每个行为都是一条状态序列，好比“一号红绿灯是绿灯，接着变黄灯，最后变红灯”。在每个状态中，我们可以用常规的布尔表达式来描述现状，比如“四号灯为绿灯”或“所有灯都是红灯”。此外，我们还可以借助三个“时序”逻辑运算符来扩展表达式的表达能力：
+
+&gt; TLA+ divides the system into a set of behaviors. Each behavior is a sequence of states, like "light one is green, then yellow, then red". In each state we can express a regular boolean expressions like "Light four is green" or "All lights are red." We can also modify expressions with three "temporal" logical operators:
+
+* `[]P` (即“始终为 P”) ：如果 P 在当前状态*以及后续每一个*未来状态中均成立，则该式为真。例如：`[](at_most_one_green)` 表示从当前开始的每一个状态中，绿灯的数量绝不会超过一盏。
+* `P'` (即“P 的后继状态 / P prime”) ：如果 P 在紧邻的下一个状态中为真，则该式为真。例如：`light="green" &amp;&amp; light'="red"` 表示信号灯从绿灯变为红灯。
+* `&lt;&gt;P` (即“最终为 P / eventually P”) ：如果 P 在当前状态*或未来至少某一个*状态中为真，则该式为真。例如：`&lt;&gt;(light4 = "yellow")` 表示四号灯当前是黄灯，或者在未来的某个状态中必定会变为黄灯。
+
+&gt; * `[]P` ("always P") is true if P is true in the current state *and every* future state. Example: `[](at_most_one_green)` is true if every state going forward has no more than one green light.
+&gt; * `P'` ("P prime") is true if P is true in the next state. Example: `light="green" &amp;&amp; light'="red"` is true if the light changes from green to red.
+&gt; * `&lt;&gt;P` ("eventually P") is true if P is true in the current state *or in at least one* future state. Example: `&lt;&gt;(light4 = "yellow")` is true if light4 is yellow or is yellow in a future state. 
+
+当我们说 P 是系统的一项属性时，意味着它在系统每条行为的初始状态下都为真。因此，如果我们检查属性 `[]P`，就代表 `[]P` 在每个初始状态中都成立；而根据“始终” (Always) 的逻辑定义，这意味着从该初始状态出发的每一个未来状态中 P 均成立，即 P 在所有行为的每一个状态中都为真。我们将此称为**不变量** (Invariant) ，它是我们在 TLA+ 中验证的最核心、最基础的属性之一。
+
+&gt; When we say that P is a property of the system, we mean it is true in the initial state of every behavior. So if we check the property `[]P`, that means that `[]P` is true in every initial state, and then by the definition of "always" means that P is true in every future state from that initial state, meaning it is true in every state of every behavior. We call this an **invariant**, and is one of the most foundational properties we check in TLA+.
+
+我们还可以将 `[]` 与带撇的后继状态标记 `'` 结合，构建出**动作属性** (Action Properties) ，或者说状态跃迁的变式。例如 `[](x' &gt;= x)` 表示 x 的新值始终大于或等于其旧值。另一个有趣的例子是 `[](P =&gt; P')`：一旦 P 为真，它就永远不可能再次变为假。实际的 TLA+ 规范由于引入了一种名为“停滞不变性” (Stutter-Invariance) 的机制而略微复杂一些，不过那属于更深层的实现细节。动作属性与不变量同属于**安全性** (Safety) 属性，用通俗的语言来说就是“坏事永远不会发生”。 [我曾专门写过一篇文章探讨安全性与活性](https://www.hillelwayne.com/post/safety-and-liveness/) 。
+
+&gt; We can also compose `[]` with primes to get **action properties**, or change variants. `[](x' &gt;= x)` is true if the new value of x is always greater than equal to the old value of x. Another fun one is `[](P =&gt; P')`: once P is true, it can never become false again. The actual TLA+ is a little more complicated because of a thing called "stutter-invariance", but that's extra details. Action properties and invariants are both **safety** properties, which roughly means "something bad never happens". [I wrote an article on safety and liveness here](https://www.hillelwayne.com/post/safety-and-liveness/).
+
+顺便提一下，**活性** (Liveness) 指的是“好事最终总会发生”。所有的活性属性都是基于 `&lt;&gt;` 构建的。单纯的 `&lt;&gt;P` 仅表示“在每条行为中，P 至少在某一个状态下成立”，对于系统规范而言，这种约束通常太弱了。但通过逻辑复合，我们可以构建出更丰富、更有价值的活性属性：
+
+&gt; Liveness, btw, is "something good always happens". All liveness properties are based off of `&lt;&gt;`. By itself, `&lt;&gt;P` just means "P is true in at least one state of every behavior", which is usually too weak to be a good system property. But with composition, we can make more interesting liveness properties:
+
+* `[]&lt;&gt;P` ：如果从任意状态出发，P 在未来的至少一个状态中必定为真，则该式为真。这通常用来建模故障恢复机制，比如“只要节点发起新的主节点选举，它们最终总能达成共识选出主节点”。
+* `&lt;&gt;[]P` ：如果在某个时间点之后，P 变为真且此后永远保持为真，则该式为真。这非常适合用来证明算法能够正确终止并收敛到正确结果。
+* `[](P =&gt; &lt;&gt;Q)` ：如果在 P 成立的每一个状态之后，总存在一个使 Q 成立的未来状态，则该式为真。这可以证明因果关系，比如证明 P 最终必定触发 Q，或者“投递到队列中的所有消息最终都会出现在读者的读取历史中”。由于该公式的逻辑书写较为冗长，TLA+ 提供了语法糖 `P ~&gt; Q` (即 P leads to Q，P 最终导致 Q) 。
+
+&gt; * `[]&lt;&gt;P` is true if, in every state, P is true in at least one future state. This can represent recovery mechanisms like "If the nodes have a new leader election, they will eventually agree on a leader."
+&gt; * `&lt;&gt;[]P` is true if, at some point in time, P becomes true and remains true forever. This is great for showing that algorithms terminate with the correct results.
+&gt; * `[](P =&gt; &lt;&gt;Q)` is true if, for every state where P is true, there is a future state where Q is true. This can do things like show that P eventually causes Q, or that "all messages put on the queue are eventually in a reader's history." Parsing the formula is a little confusing, so we have the sugar `P ~&gt; Q` (P leads to Q).
+
+虽然 TLA+ 还提供了像 `ENABLED` 和 `&lt;&lt;A&gt;&gt;_v` 这样能玩出更多花样的运算符，但我们在实际工程中检验的大多数属性依然是不变量、动作属性与活性属性。此外还有 [精炼](https://buttondown.com/hillelwayne/archive/refinement-without-specification/) (Refinement) ，精炼是安全性和活性的综合体，本身就是一个值得专门立题深聊的庞大概念。
+
+&gt; There's a couple of other operators, like `ENABLED` and `&lt;&lt;A&gt;&gt;_v`, which open up other tricks, but the majority of the stuff we check are invariants, action properties, and liveness. And [refinement](https://buttondown.com/hillelwayne/archive/refinement-without-specification/), which is a combination of safety and liveness and a topic unto itself. 
+
+---
+
+## TLA+ 无法做到的事
+
+&gt; ## What TLA+ Can't Do
+
+让我们从最显而易见的一点谈起：如果你根本不知道如何把系统的某项属性抽象表达为一个精确的逻辑公式，那么 TLA+ 对你没有任何帮助——实际上，任何形式化方法都无能为力。如果你无法用严格的数学或逻辑语言去形式化人类对“鸟”的认知概念，你就绝不可能证明你的应用程序一定能够识别鸟类。遗憾的是，现实工程中我们所关心的许多极其关键的系统特性，恰恰都属于这一类无法被简单数学化的概念。
+
+&gt; Let's start with the obvious one: if you don't know how to represent your property as a logical formula, then TLA+ can't help you. Nor can any formal method. If you can't formalize the human notion of a bird, you can't prove your app recognizes birds. And, unfortunately, a lot of important properties we care about fall into this category.
+
+其次是一些过于具体的细节限制。TLA+ 的安全性属性要么作用于单个独立状态 (如不变量) ，要么作用于单步跃迁 (如动作属性) 。你无法原生定义一个跨越两步或更多步骤的属性，比如“按下 `delete` 键紧接着按下 `undo` 撤销键，系统将完全恢复到初始状态”，或者“按下 `power` 电源键后，计算机必须在十步之内成功开机”。此外，我们既无法直接对浮点数运算定义属性，也无法对 [物理真实时间进行定义，TLA+ 只能处理逻辑时间](https://buttondown.com/hillelwayne/archive/physical-vs-logical-time/) 。
+
+&gt; Next, the overly specific things. TLA+ safety properties work on the level of either individual states (invariants) or single step (action properties). You can't natively define a property over two or more steps, like "pressing `delete` and then `undo` gives you back the original state", or "once `power` is pressed, the computer turns on within ten steps". We also can't define properties on floating point operations or over [real time, just logical time](https://buttondown.com/hillelwayne/archive/physical-vs-logical-time/).
+
+现在谈谈最令我着迷的一项根本性局限。TLA+ 的属性在语义上默认隐含了针对“所有行为”的全称量词量化。我刚才提到检查 `[]P` 意味着“P 在每一个状态下都为真”，但其实质含义是：“对于系统可能产生的所有行为，`[]P` 在该行为的初始状态上均成立”。换言之，TLA+ 能够检验的任何系统属性，都必须在**每一个单独的行为路径**上各自成立。
+
+&gt; Now for limit that most interests me. TLA+ properties are implicitly quantified over all behaviors. I said that checking `[]P` means "P is true in every state," but what it actually means is "for all behaviors, `[]P` is true of that behavior's initial state." Any property TLA+ can check of the system must be a property that is true for every individual behavior.
+
+这意味着什么被排除在外了呢？答案是：被漏掉的内容远超你的想象！
+
+&gt; What does that leave out? A lot more than you'd expect!
+
+其一，我们无法表达“**存在**至少一条行为使得 P 为真”。也就是说，我们无法直接断言某种状态 P 是可能发生的，哪怕我们在某次执行中并未真正触发它。一个典型的例子是证明“一款游戏是存在通关可能的”。我们把这类属性称为 [可达性属性](https://buttondown.com/hillelwayne/archive/proving-whats-possible) (Reachability Properties) 。更高级的可达性属性还包括“从任意初始状态出发 P 都是可达的”，或者“从任何满足 Q 的状态出发 P 都是可达的”。
+
+&gt; For one, we can't do "there *exists* a behavior where P is true". So we can't say that P is possible, even if we don't actually reach it. One example of this would be proving that a game is winnable. We call these [reachability properties](https://buttondown.com/hillelwayne/archive/proving-whats-possible). More advanced reachability properties would be things like "P is reachable from every initial state" or "P is reachable from any state where Q is true".
+
+其二，我们无法跨越**一组行为集合**来定义属性。在形式化理论中，这被称为**超属性** (Hyperproperty) 。假设我们正在对手机硬件进行建模，希望验证“省电模式消耗的能量始终低于普通模式”。这一属性表述为：“在执行任意相同的动作序列时，省电模式下的功耗绝不高于普通模式”。如果要推翻这个结论，你必须同时给出两条行为路径进行对照：这两条路径除了一个始于省电模式、另一个始于普通模式外完全一致，且普通模式的功耗更低。仅凭单一的行为轨迹根本无法完成这种跨轨迹对比，因此这在 TLA+ 中是无法自然原生检验的。
+
+&gt; We also can't define properties over a *set* of behaviors. This is called a **hyperproperty**. Say we we're modeling phone hardware and want to verify that energy saving mode always uses less energy than normal mode. The property is "any sequence of actions uses no more power in energy saving mode than in regular mode." To refute this, you'd need to give me two behaviors that were identical *except* one starts in energy saving mode and the other does not, and the regular mode uses less power. One single behavior isn't enough to cut it, so this is impossible to naturally check in TLA+. 
+
+超属性听起来可能有些小众，但它实际上涵盖了 [海量的安全属性](https://en.wikipedia.org/wiki/Non-interference_(security)) (例如信息流的非干涉性) 以及所有统计学意义上的属性 (比如“95% 的响应时间必须在 5 毫秒以内”) 。
+
+&gt; Hyperproperties might seem niche but they cover a [ton of security properties](https://en.wikipedia.org/wiki/Non-interference_(security)) and all statistical properties ("the 95%ile response time is 5ms").
+
+最后一点稍偏学术化：我们无法将属性定义在全局的状态空间 (State Space) 之上。例如，我们无法断言“从状态 X 到状态 Y 之间存在且仅存在一条路径”。我不太确定这种约束在工程实践中具体有多大用处。大多数这类“元属性” (Metaproperties) 似乎都有潜在的理论价值，但我目前还无法举出十分具体的现实应用场景。
+
+&gt; Finally, and this one's a little more academic, we can't define properties over the state space as a whole. We can't say, for example, that there's only one path from state X to Y. I don't know how useful this would be in practice. Most of these kinds of "metaproperties" seem like they have potential to be meaningful, I just don't know what specifically.</description>
+    </item>
+    <item>
+      <title>Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800 ms 降至 65 ms</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-01/Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-01/Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms/</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着索引规模与知识库的飞速膨胀，传统开源检索引擎在面对严苛的高并发请求时，常常深陷长尾延迟高企与磁盘索引合并卡顿的泥潭。为了从根本上破除这一瓶颈，知名 AI 搜索产品 Perplexity 放弃了对原有开源分支修修补补的做法，完全采用 Rust 语言从零自研了全新的分布式检索与重排引擎 Photon。Photon 巧妙结合了自适应倒排列表、带算力预算的剪枝遍历，以及基于 Linux 顶尖内核特性 `io_uring` 的异步批量磁盘读取，成功将生产环境的 p99 检索延迟从约 800 ms 极限压缩至仅 65 ms，同时减少了 20% 的服务器基建资源需求。依托 Photon 打造的 Fast Search API 为 AI 智能体 (AI Agent) 工作流提供了兼具毫秒级极速响应与超高性价比的检索底座，为下一代 AI 搜索架构的性能演进树立了行业标杆。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+AI 搜索领头羊 Perplexity 正式推出了自研的高性能检索与排序引擎 **Photon**，该系统完全采用 **Rust** 语言编写。在此之前，Perplexity 依赖的开源魔改引擎长期受困于尾部高延迟与磁盘索引合并卡顿；而全新登场的 Photon 不仅全面承接了 Perplexity 生产环境的所有线上流量，还驱动了全新推出的 **Fast Search** API 模式。通过巧妙运用自适应倒排列表 (Adaptive Posting Lists) 、带算力预算的遍历算法，以及基于 `io_uring` 的异步磁盘读取技术，Photon 将线上检索的 p99 延迟从约 800 ms 断崖式压降至约 65 ms，不仅节省了 20% 的服务器计算资源，更让 AI 智能体 (AI Agent) 工作流的运行成本直降 68%。
+
+&gt; Perplexity has introduced **Photon**, a high-performance, in-house retrieval and ranking engine written in **Rust**. Built to replace an open-source forked engine that struggled with tail latency and disk index fusion spikes, Photon powers all of Perplexity's production traffic as well as the new **Fast Search** API mode. By leveraging adaptive posting lists, budgeted traversal, and `io_uring` asynchronous reads, Photon dramatically reduces p99 retrieval latency from ~800 ms down to ~65 ms while saving 20% on serving infrastructure and enabling a 68% cost reduction for AI agent workflows.
+
+---
+
+## 为何 Perplexity 要替换旧引擎？
+
+&gt; ## Why Perplexity Replaced Its Old Engine
+
+随着 Perplexity 索引数据量的不断膨胀，原先基于开源修改的旧版检索引擎遭遇了三大致命瓶颈：
+
+&gt; As Perplexity's index grew, the legacy open-source retrieval engine hit three major bottlenecks:
+
+* **尾部延迟高企 (Tail Latency)**：生产环境的 p99 延迟一直徘徊在 800 ms 左右。由于索引数据总量远远超出了物理内存 (RAM) 的承载上限，无法使用 `mlock` 将数据全部常驻内存，导致冷读取时频繁触发严重缺页异常 (page faults) ，进而造成查询严重卡顿。
+* **合并尖峰卡顿 (Merge Spikes)**：后台执行磁盘索引融合 (fusion) 操作时，会导致 p99 延迟猛增至约 1.2 秒，并且这种糟糕的卡顿每次会长达 10 到 15 分钟。
+* **灾备恢复缓慢 (Slow Recovery)**：部署并同步备用集群需要耗费一周以上的时间，在此期间部分响应失败的比率也显著攀升。
+
+&gt; * **Tail Latency:** Production p99 latency hovered around 800 ms. Because the dataset exceeded available RAM, `mlock` was unviable, leading to major page faults and query stalls during cold reads.
+&gt; * **Merge Spikes:** Disk index fusion operations caused p99 latency to spike to ~1.2 seconds for durations of 10 to 15 minutes.
+&gt; * **Slow Recovery:** Deploying and syncing auxiliary clusters took over a week, simultaneously increasing the rate of partial responses.
+
+面对这些难以逾越的技术障碍，Perplexity 团队清醒地意识到：与其在缝缝补补的旧开源分支上继续耗费精力，不如从零自研一套专属引擎。这不仅架构更纯粹、性能更强劲，综合维护成本也远比守着老系统更低廉。
+
+&gt; To overcome these hurdles, the Perplexity team determined that building a custom engine from scratch was cleaner, more performant, and cheaper than maintaining their fork.
+
+---
+
+## Photon 的技术实现原理
+
+&gt; ## How Photon Works
+
+Photon 采用了由负载均衡器、代理 Broker 节点以及专属分片组 (shard groups) 协同编排的分布式架构：
+
+&gt; Photon utilizes a distributed architecture orchestrated by a load balancer, broker nodes, and dedicated shard groups:
+
+* **自适应倒排列表 (Adaptive Posting Lists)**：针对短列表，将其直接内联保存在单个内存页中；长列表则被切分为固定文档 ID 的数据块。其中，稀疏块采用有序偏移数组搭配跳跃搜索 (galloping search) ；稠密块则使用位图 (bitmaps) 实现极速的单比特成员资格判定。
+* **带预算的剪枝遍历 (Budgeted Traversal)**：借鉴类 WAND 算法的思想，系统将倒排列表划分为主导列表 (driving lists) 与探测列表 (probe lists) ，在无需逐个读取精确词频的情况下，以极低的计算代价快速评估候选文档的分数上下界。
+* **Docblob 紧凑记录 (Docblob Records)**：每个文档都存储为一份紧凑格式的记录，对词项采用 Elias-Fano 编码压缩，使得重排阶段每个文档仅需进行一次查询即可搞定。
+* **异步批量读取 (Batched Async Reads)**：各记录的偏移量均提前计算就绪，从而能够通过 Linux 内核的 `io_uring` 特性实施批量的异步磁盘读取。在缓存设计上，系统放弃了存在锁竞争的全局共享 LRU 列表，转而采用无锁友好的 CLOCK 淘汰策略。
+* **构建与服务解耦 (Separate Build and Serve)**：由独立的构建节点直接从 YTsaurus 表中生成带版本号的分片索引，这让控制中心能够平滑无缝地轮转线上服务节点，并利用历史查询日志提前完成缓存预热。
+
+&gt; * **Adaptive Posting Lists:** Short lists are stored inline within a single page, while longer lists are split into fixed-document ID blocks. Sparse blocks rely on sorted offset arrays with galloping search, and dense blocks use bitmaps for single-bit membership lookups.
+&gt; * **Budgeted Traversal:** Utilizing a WAND-like algorithm, lists are separated into driving and probe lists to check candidate score bounds cheaply before reading exact term frequencies.
+&gt; * **Docblob Records:** Each document contains a compact record utilizing Elias-Fano encoding for terms, requiring only a single lookup per document during ranking.
+&gt; * **Batched Async Reads:** Record offsets are predetermined, enabling batch disk reads via `io_uring`. Caching bypasses locks by employing a CLOCK eviction policy instead of a shared LRU list.
+&gt; * **Separate Build and Serve:** Dedicated nodes build versioned shard indexes from YTsaurus tables, allowing a controller to rotate serving groups smoothly while pre-warming caches with historical query logs.
+
+---
+
+## 生产落地效果
+
+&gt; ## Production Results
+
+全量迁移至 Photon 为 Perplexity 带来了基础设施与系统性能的双重飞跃：
+
+&gt; Migrating to Photon delivered massive infrastructure and performance gains:
+
+* **p99 延迟断崖式下降**：检索与排序阶段的延迟从约 800 ms 直降至约 65 ms (仅涵盖 Photon 负责的处理阶段) 。
+* **资源利用率大幅提升**：与先前的旧节点相比，Photon 运行所需的**在线服务机器数量减少了 20%**。
+* **单文档数据密度更高**：单个文档所能存储的数据量提升了约 **2.5 倍**，显著增强了全局排序的准确性与质量。
+* **极致内存优化**：如果采用传统方案通过 `mlock` 将同等规模的数据集强行锁在内存中，所需的常驻内存容量将达到 Photon 实际消耗的约 4.6 倍。
+* **集群发布稳定可靠**：索引版本更新与切换时，再也不会出现因合并而引发的延迟飙升。
+
+&gt; * **p99 Latency Reduction:** Retrieval and ranking latency dropped from ~800 ms to ~65 ms (covering Photon's stages only).
+&gt; * **Resource Efficiency:** Photon operates on **20% fewer serving machines** than the legacy nodes.
+&gt; * **Higher Data Density:** It stores roughly **2.5x more data per document**, improving overall ranking quality.
+&gt; * **Memory Optimization:** Pinning the equivalent dataset via `mlock` would have required ~4.6x the resident memory Photon consumes.
+&gt; * **Stable Deployments:** Index version switches no longer cause latency spikes.
+
+---
+
+## Fast Search：为智能体量身定制的速度与成本优势
+
+&gt; ## Fast Search: Speed and Cost for Agents
+
+借助 Photon 的强劲能力，Perplexity 搜索 API 推出了一种全新的 **Fast Search** (快速搜索) 模式 (请求参数为 `search_type: "fast"`，定价仅为每 1,000 次请求 1 美元) ，专为 AI 智能体的高频自动化调用而设计。
+
+&gt; Photon enables a new **Fast Search** mode via the Perplexity Search API (`search_type: "fast"` at `$1 per 1,000 requests`), tailored specifically for agentic workflows.</description>
+    </item>
+    <item>
+      <title>CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-01/CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-01/CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击/</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 深度融入各类 AI 智能体 (AI Agent) 场景，自动化处理外部网页、邮件和工具输出已成为常态，但外部不受信任内容中潜藏的“间接提示词注入攻击”却成为了巨大的安全隐患。Mark Russinovich 提出的 CounterSteer 带来了一种全新且高效的推理阶段防御方案：无需对模型进行二次微调，也不依赖额外的辅助防护模型，而是直接在预填阶段从模型残差流中识别并剔除与恶意指令相关的激活方向。这一常开型机制让攻击者无法察觉并绕过检测，在五款主流开源架构模型上将攻击成功率压制至接近于零，为智能体生态系统的安全落地提供了一套开箱即用且近乎无损的全新防御范式。
+
+---
+
+## 核心执行摘要
+
+&gt; ## Executive Summary
+
+**CounterSteer** 是一种创新的推理阶段防御机制，专门用于化解大语言模型 (LLM) 智能体中的间接提示词注入漏洞。在模型处理输入的预填 (Prefill) 阶段，CounterSteer 能够精准锁定与“遵从恶意指令”相关的残差流 (Residual Stream) 激活方向并直接将其减去；这种做法既不需要重新微调模型、也无需部署额外的辅助审查模型或引入额外的 Token ，便能干净利落地瓦解恶意指令对智能体执行流程的劫持。
+
+&gt; **CounterSteer** is an innovative inference-time defense mechanism designed to mitigate indirect prompt injection vulnerabilities in Large Language Model (LLM) agents. By identifying and subtracting residual-stream directions associated with malicious instruction-following during the prefill phase, CounterSteer effectively neutralizes instructional takeovers without requiring model fine-tuning, auxiliary models, or added tokens.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+* **论文标题：** CounterSteer: Suppressing Indirect Prompt Injection with Activation Steering
+* **作者：** Mark Russinovich
+* **主要学科领域：** 密码学与安全 (`cs.CR`) 
+* **次要学科领域：** 人工智能 (`cs.AI`) 
+* **arXiv 编号：** [arXiv:2609.36570 [cs.CR]](https://arxiv.org/abs/2609.36570)
+* **提交时间：** 2026 年 9 月 29 日
+
+&gt; * **Title:** CounterSteer: Suppressing Indirect Prompt Injection with Activation Steering
+&gt; * **Author:** Mark Russinovich
+&gt; * **Primary Subject:** Cryptography and Security (`cs.CR`)
+&gt; * **Secondary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **arXiv Identifier:** [arXiv:2609.36570 [cs.CR]](https://arxiv.org/abs/2609.36570)
+&gt; * **Submitted:** September 29, 2026
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+间接提示词注入就像是给 AI 智能体设下的“特洛伊木马”陷阱：当智能体检索外部网页、文档或数据时，潜藏在其中的不受信任文本会诱导智能体将其误判为正当指令。为此，CounterSteer 提出了一套简洁明了的五步配方流程：通过构建成对的对照测试场景（两组场景唯一的差异仅在于是否听从了嵌入的指令），为每个大语言模型精准拟合出一个对应的残差流向量方向。只有当该方向成功通过预先设立的因果验证与通用能力门控检验时，才会被保留并投入使用。
+
+&gt; Indirect prompt injection tricks LLM agents into treating untrusted retrieved text as legitimate instructions. CounterSteer presents a streamlined, five-step recipe to fit a residual-stream direction per model using paired episodes (differing only in whether an embedded instruction is followed). This direction is retained only if it successfully passes pre-specified causal and capability gates.
+
+在实际部署运行中，只要智能体调用工具并接收返回结果，系统就会在预填计算阶段从每一个工具结果 Token 中直接减去这一学习到的方向。由于这种神经层面的干预始终处于常开生效状态，系统中完全不存在任何可供攻击者探测或绕过的“防火墙规则”与检测开关。
+
+&gt; During deployment, the learned direction is subtracted from every tool-result token during the prefill phase. Because the edit is always active, there is no detection mechanism for attackers to evade.
+
+---
+
+## 核心发现与性能表现
+
+&gt; ## Key Findings &amp; Performance
+
+* **攻击成功率大幅降低：** 在涵盖五大厂商血统、参数量跨越 80 亿 (8B) 到 1060 亿 (106B) 的五款开源权重模型上，面对预留的测试集攻击，未防御时的攻击成功率高达 **0.21–1.00** （最高可达 100%），而开启 CounterSteer 防护后断崖式骤降至 **0.00–0.17** 。
+* **AgentDojo 沦陷率大幅压制：** 在权威智能体基准测试 AgentDojo 中，智能体的沦陷率从原先的 **0.10–0.49** 锐减至 **0.006–0.079** （最低降至千分之六）。
+* **出色保留正常任务效用：** 在排版归一化的良性任务效用测试中保持了 **93–100%** 的原有性能；尽管在针对经过导向干预的内容进行复杂推理时会产生一定程度的任务相关性能开销，但日常通用能力几乎毫无损伤。
+* **极其坚固的防御鲁棒性：** 
+  * **白盒梯度攻击抵御：** 即便攻击者完全获知已部署的干预向量并通过白盒梯度发起攻击，在 52 个测试场景中至多也仅能攻破 2 个；
+  * **人类红队实战攻击免疫：** 在回放的 2,052 次人类安全红队实战攻击样本中，攻击成功率彻底归零 (0/2052) ；
+  * **黑盒语义重构绕过困难：** 黑盒语义重构搜索 (Framing Searches) 在 18 个开发集测试样本中仅能侥幸绕过 3 个。
+
+&gt; * **Attack Success Reduction:** Across five open-weights models (ranging from 8B to 106B parameters across five vendor lineages), held-out attack success rates plummeted from an undefended **0.21–1.00** down to **0.00–0.17** when defended.
+&gt; * **AgentDojo Compromise Rate:** Decreased from **0.10–0.49** down to **0.006–0.079**.
+&gt; * **Utility Retention:** Retains **93–100%** typography-normalized benign utility, though some task-dependent costs arise when reasoning over steered content.
+&gt; * **Robustness:** 
+&gt;   * White-box gradient attacks through the deployed vector successfully compromised at most 2 out of 52 episodes.
+&gt;   * Zero out of 2,052 replayed human red-team attacks succeeded.
+&gt;   * Black-box framing searches successfully bypassed the defense in only 3 out of 18 development samples.
+
+---
+
+## 局限性与未来展望
+
+&gt; ## Limitations &amp; Future Work
+
+虽然 CounterSteer 几乎彻底瓦解了针对执行流程的恶意指令劫持，但在**参数操纵** (Parameter Manipulation) ——即攻击者在原本合法的工具调用中夹带自选恶意参数（例如正常调用转账功能，却篡改了转账接收人账号）——方面仅能实现部分抵御（在 18 个测试样本中成功防御了 13 个）。究其内在原因，这类决策往往是在模型真正生成并输出参数的那一瞬间才呈现出线性可读的内部表征，而非在生成前的预填检查位点即可捕获；因此，未来还需要结合额外的**参数来源溯源控制** (Argument-Provenance Controls) 机制，才能将这一安全通路彻底封堵。
+
+&gt; While CounterSteer largely neutralizes instructional takeovers, **parameter manipulation** (attacker-chosen arguments embedded in otherwise legitimate calls) is only partially resisted (13 out of 18). Because the decision becomes linearly readable at argument emission rather than at pre-generation inspection sites, additional **argument-provenance controls** are required to fully secure these pathways.</description>
+    </item>
+    <item>
+      <title>ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-01/ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-01/ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术/</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在长上下文大语言模型 (LLM) 推理场景中，键值缓存 (KV Cache) 的显存占用随输入长度线性暴涨，在长系统提示词或长文档频繁复用的任务中构成了严峻的内存瓶颈。现有的重构式压缩方案 (如基于正交匹配追踪 OMP 的 Attention Matching) 虽然压缩性能出众，但依赖耗时的逐次迭代搜索锚点，导致前期压缩计算开销极其沉重。为此，研究团队提出了基于“选择性摊薄 (Selective Amortization) ”理念的 **ARC-KV** 技术：通过训练轻量级的价值感知索引器单次打分筛选真实 Key 锚点，将昂贵的搜索成本跨查询彻底均摊。实验表明，在 Llama-3.1-8B-Instruct 模型及 QuALITY、RULER 和 LongBench 等权威长文本基准上，ARC-KV 即使仅保留 10% 的 KV Cache 也能超越基线精度，同时将压缩耗时从 959.8 秒大幅缩减至 37.3 秒 (加速达 25.73 倍) ，实现了速度与精度的双重突破。
+
+---
+
+# ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术
+
+&gt; # ARC-KV: Amortizing Anchor Search for Reconstruction-Based KV Cache Compaction
+
+## 核心内容综述
+
+&gt; ## Summary
+
+在长上下文大语言模型 (Large Language Model, LLM) 的推理过程中，显存开销居高不下一直是业界痛点。这主要是因为键-值缓存 (Key-Value Cache, KV Cache) 的体积会随着序列长度呈线性暴涨——尤其在面对需要多次响应不同查询的超长可复用前缀 (Context Prefixes) 时，这一负担更显沉重。虽然像 Attention Matching 这样基于数学重构的压缩方法能够凭借紧凑精炼的 KV Cache 取得优异的任务性能，但它们严重依赖通过正交匹配追踪 (Orthogonal Matching Pursuit, OMP) 进行反复迭代的锚点搜索，这直接造成了巨大的计算性能瓶颈。
+
+&gt; Long-context large language model (LLM) inference often struggles with high memory overhead because Key-Value (KV) caches grow linearly with sequence length—a problem that is especially burdensome for long, reusable context prefixes. While reconstruction-based methods like Attention Matching offer strong performance using compact KV caches, their reliance on iterative anchor search via OMP (Orthogonal Matching Pursuit) creates a massive computational bottleneck.
+
+为了解决这一难题，作者团队推出了 **ARC-KV**——一种基于“选择性摊薄 (Selective Amortization) ”理念的全新 KV Cache 压缩方法。ARC-KV 能够在不同上下文之间学习一套通用的可复用锚点选择策略，同时保留针对各个具体上下文的专属重构，从而彻底摆脱了反复繁琐搜索的算力泥潭。
+
+&gt; To solve this, the authors introduce **ARC-KV**, a novel KV cache compaction method based on the principle of *selective amortization*. ARC-KV learns a reusable anchor-selection policy across contexts while retaining context-specific reconstruction.</description>
+    </item>
+    <item>
+      <title>AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-01/AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-01/AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码/</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着深度学习模型结构与新型 GPU 硬件加速器的快速演进，为新硬件手工构建与维护传统的编译器后端正变得极其昂贵且耗时。本研究提出了创新的 AI 降级直译 (AI lowering) 范式，直接借助大语言模型 (Large Language Model, LLM) 智能体取代繁琐的传统编译器优化与降级流水线，将高级的 Triton 算子端到端直译为底层的 NVIDIA PTX (Parallel Thread Execution) 汇编代码。在跨越 Ada、Hopper 以及最新的 Blackwell 架构 GPU 上对 22 个核心算子的全面实测中，AI 直译算子的性能达到了官方自动调优 (Auto-tuned) Triton 编译器的 0.83 倍至 3.34 倍。这一突破表明，AI 编译器能够有效加速新型计算芯片的基础软件栈落地，并在硬件微架构的极致优化中发挥超越传统编译器的关键作用。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+随着编程模型、计算工作负载以及底层硬件加速器的快速迭代演进，为每一种新芯片开发并维护传统的编译器后端已经变得代价高昂且难以维系。本篇研究论文深入探讨了 **AI 降级直译 (AI lowering)** ——一种彻底颠覆传统的技术范式：由大语言模型完全取代传统编译器中层层递进的代码优化与底层代码降级流水线。
+
+&gt; As programming models, workloads, and hardware accelerators rapidly evolve, building and maintaining conventional compiler backends becomes prohibitively expensive. This research paper investigates **"AI lowering"**—a novel paradigm where large language models (LLMs) entirely replace the traditional optimizing and lowering pipeline. 
+
+具体而言，研究团队构建了一套专用的智能体框架 (Agentic Harness) ，驱动大语言模型智能体将高级的 Triton 算子直接直译为 NVIDIA 底层的 PTX (Parallel Thread Execution) 指令代码，完全绕开了官方的 Triton 编译器。在涵盖 12 个通用核心算子 (在 Ada、Hopper 以及 Blackwell GPU 上完成测试) 以及来自近期前沿机器学习文献的 10 个算子的全面基准评测中，经由 AI 直译生成的算子取得了官方自动调优 (Auto-tuned) Triton 性能的 **0.83 倍至 3.34 倍**。
+
+&gt; Specifically, the authors build an agentic harness utilizing an LLM agent to translate Triton kernels directly into NVIDIA PTX (Parallel Thread Execution) code, bypassing the Triton compiler altogether. Evaluated across twelve common kernels (tested on Ada, Hopper, and Blackwell GPUs) and ten kernels from recent machine learning literature, the AI-lowered kernels achieved **0.83x to 3.34x the performance** of autotuned Triton. 
+
+---
+
+## 核心发现与性能亮点
+
+&gt; ## Key Findings &amp; Performance Highlights
+
+AI 降级直译之所以能实现显著的性能加速，核心在于它能够自主发掘并应用一系列传统编译器流水线往往会遗漏的高级深度优化策略：
+
+&gt; The performance gains achieved through AI lowering stem from advanced optimizations that standard compiler pipelines typically miss:
+
+* **BitDelta (实现 3.34 倍加速) ：** 直接将紧密打包的二进制权重在线解码为 Tensor Core 的计算操作数；
+* **FlashAttention (实现 1.37 倍加速) ：** 在 Tensor 内存中为每个线程分配一整行完整的 Softmax 数据；
+* **卷积窗口 (Convolution Windows，实现高达 2.23 倍加速) ：** 高效复用相互重叠的卷积窗口，大幅削减冗余访存开销。
+
+&gt; * **BitDelta (3.34x speedup):** Decoding packed binary weights directly into Tensor Core operands.
+&gt; * **FlashAttention (1.37x speedup):** Assigning each thread a complete softmax row in tensor memory.
+&gt; * **Convolution Windows (up to 2.23x speedup):** Reusing overlapping convolution windows efficiently.
+
+---
+
+## 正确性验证与新一代 GPU 架构支持
+
+&gt; ## Verification &amp; Modern GPU Architecture Support
+
+为了从根本上确保生成代码的正确性，研究团队构建了一套稳健的评估测试套件，集成了端到端的全方位验证能力。他们扩展了现有的 PTX 静态验证工具 **Volta** (一款已有的 PTX 验证器) 以支持现代 GPU 架构，并专门针对 **Blackwell** 架构中的 `tcgen05` Tensor Core 硬件接口引入了针对性建模支持。
+
+&gt; To ensure correctness, the authors built a robust evaluation harness featuring comprehensive verification support. They expanded **Volta** (an existing PTX verifier) to support modern GPU architectures, introducing specific capabilities for the **Blackwell** `tcgen05` Tensor Core interface. 
+
+这需要在验证工具中精确模拟并建模三项极其复杂的现代硬件微架构特性：
+
+&gt; This required modeling three intricate architectural features:
+
+1. **统一托管的 Tensor 内存 (Managed Tensor Memory)**；
+2. **基于描述符的操作数内存布局 (Descriptor-based Operand Layouts)**；
+3. **由提交 (Commits)、等待 (Waits)、内存屏障 (Memory Barriers) 以及代理栅栏 (Proxy Fences) 严密协同的硬件级异步执行流**。
+
+&gt; 1. Managed tensor memory
+&gt; 2. Descriptor-based operand layouts
+&gt; 3. Asynchronous execution coordinated through commits, waits, memory barriers, and proxy fences
+
+---
+
+## 总结与未来展望
+
+&gt; ## Conclusion &amp; Future Outlook
+
+上述研究成果清晰地预示着一个全新技术范式的到来：AI 编译器正在逐步取代人工专门编写的中间表示 (Intermediate Representation, IR) 以及静态检查器。通过这种端到端直译的方式，开发者能够大幅减少为新型通用 GPU 以及定制专用硬件加速器构建全套底层软件栈所需的时间与工程精力。
+
+&gt; These results point toward an emerging paradigm where AI compilers replace custom-written intermediate representations (IRs) and static checkers. By doing so, they drastically reduce the time and engineering effort required to bring up software stacks for new general-purpose and custom hardware accelerators.
+
+---
+
+*[View PDF](https://arxiv.org/pdf/2609.36800) | [TeX Source](https://arxiv.org/src/2609.36800)*
+
+&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
+    </item>
+    <item>
       <title>阿里通义发布 Qwen-Audio-3.1-Realtime：具备自主思考、工具调用与话轮决策的全双工语音大模型</title>
       <link>https://insight.aitobox.com/blog/posts/2026-09-30/阿里通义发布-Qwen-Audio-3.1-Realtime-具备自主思考-工具调用与话轮决策的全双工语音大模型/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-09-30/阿里通义发布-Qwen-Audio-3.1-Realtime-具备自主思考-工具调用与话轮决策的全双工语音大模型/</guid>
@@ -4395,241 +4796,6 @@ Perl 5.26 的发行说明中曾将这一风险清晰定义为：脚本在“当�
 *注：本文档包含衍生自仓库构建流水线的许可证图标 (例如：`&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;` )。*
 
 &gt; *Note: This document incorporates license graphics derived from the repository pipeline (e.g., `&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;`).*</description>
-    </item>
-    <item>
-      <title>mKernel：面向多 GPU 与多节点的高性能融合算子库</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-16/mKernel-面向多-GPU-与多节点的高性能融合算子库/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/mKernel-面向多-GPU-与多节点的高性能融合算子库/</guid>
-      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型与前沿 AI 架构的参数规模不断攀升，单张显卡早已不堪重负，分布式训练与多卡推理已成为现代深度学习系统的基石。然而，跨 GPU 以及跨服务器节点之间的数据通信，往往是制约整体运行速度的严重瓶颈。传统方案通常在算子级别通过独立流来实现计算与通信重叠，带来的性能增益十分有限；而此前更高效的融合算子又普遍局限于单台机器内部的 NVLink 互联范围。为此，研究团队推出了 **mKernel** 算子库，首次在分块 (Tile) 粒度上实现了计算、节点内 NVLink 通信与跨节点 RDMA 网络传输的无缝流水线重叠。在 16 卡 H200 集群上的测试表明，mKernel 在 GEMM+AllReduce 和 Ring Attention 等核心算子上分别取得了高达 1.72 倍和 1.88 倍的显著加速，为大规模分布式 AI 系统的性能调优开辟了全新路径。
-
----
-
-## 📌 概述
-
-&gt; ## 📌 Summary
-
-在训练和部署庞大的机器学习模型时，多卡之间的数据通信开销往往是拖慢整体运行速度的头号瓶颈。传统的系统级优化方法通常是在粗粒度的算子级别尝试重叠通信与计算 (例如分配不同的 CUDA 流) ，但这种方式能够挤出的性能提升十分有限。相比之下，融合算子 (Fused Kernel) 的表现更为亮眼——它能在 GPU 刚算完一小块数据 (Tile) 时就立刻将其发走，从而极大掩盖通信延迟；然而，此前的融合算子技术基本都被局限在单台服务器内部的 NVLink 高速互联范围内，无法直接扩展到多机集群的广阔天地。
-
-&gt; Communication bottlenecks significantly hinder the distributed training and inference of large machine learning models. Traditional approaches that overlap communication with computation at the kernel granularity (using separate streams) yield only limited performance improvements. While fused kernels perform better by transmitting output tiles immediately upon production, their adoption has largely been restricted to a single NVLink domain.
-
-为了打破这一限制，本文推出了全新的多 GPU、多节点融合算子库 **mKernel**。它专为大规模分布式集群环境打造，首次在细粒度的“数据分块 (Tile) ”层面上，将核心计算任务、单机节点内的 NVLink 互联通信以及节点间的跨机 RDMA 网络传输无缝重叠在一起。
-
-&gt; This paper introduces **mKernel**, a novel library of multi-GPU, multi-node fused kernels designed to seamlessly overlap computation, intra-node NVLink communication, and inter-node RDMA at tile granularity.</description>
-    </item>
-    <item>
-      <title>OpWeave：面向异构大模型推理服务的灵活算子级解耦框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-16/OpWeave-面向异构大模型推理服务的灵活算子级解耦框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/OpWeave-面向异构大模型推理服务的灵活算子级解耦框架/</guid>
-      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在当今大语言模型 (Large Language Model, LLM) 的云端推理部署中，传统架构习惯将注意力机制 (Attention) 与前馈神经网络 (FFN/MoE) 等不同算子捆绑在同规格芯片上同机运行。然而，这两类核心算子在计算特征上存在天然分化：注意力机制重度受限于显存带宽，而前馈网络则极度消耗计算算力，导致高昂的 GPU 资源往往无法被充分利用。针对这一工业落地瓶颈，研究团队推出了端到端算子级解耦推理服务框架 OpWeave，首次实现了跨异构算力环境的灵活解耦调度。OpWeave 创新性地结合了严谨的理论成本模型、可高效应对混合注意力架构的规律感知规划器，以及基于 vLLM 的高性能执行运行时，打破了以往系统僵化的算子切分边界。在严格满足端到端延迟服务等级目标 (Service Level Objective, SLO) 的前提下，OpWeave 在同构与异构 GPU 集群上分别实现了高达 1.78 倍与 1.89 倍的服务成本削减，为大模型时代构建高性价比的基础设施开辟了全新路径。
-
----
-
-## 核心概述
-
-&gt; ## Summary
-
-**OpWeave** 是一套专为大语言模型 (Large Language Model, LLM) 基础设施打造的端到端框架，专门用于实现异构环境下的**算子级解耦服务 (Operator-Level Disaggregated Serving, ODS)**。
-
-&gt; **OpWeave** is an end-to-end framework designed for heterogeneous **Operator-Level Disaggregated Serving (ODS)** in Large Language Model (LLM) infrastructures. 
-
-传统的 LLM 推理服务系统习惯将所有计算算子集中部署在同一类芯片上同机运行；而前沿的系统优化方案正逐步将推理流水线拆解为更细粒度的阶段——例如在 Token 生成的解码 (Decode) 阶段，将注意力机制 (Attention) 与前馈网络 (Feed-Forward Network, FFN) 或混合专家网络 (Mixture of Experts, MoE) 的计算彻底分离开来，以此更好地契合不同硬件的性能特长，并支持各算子模块的独立弹性扩缩容。然而，现有的工业实现方案大多受制于固化僵硬的算子切分边界，且缺乏一套统一的分析框架来量化评估“何时进行解耦才真正划算与最具性价比”。
-
-&gt; While traditional LLM serving systems colocate all operations, modern optimizations increasingly disaggregate inference into finer-grained stages (such as separating attention from FFN or MoE execution during the decode phase) to improve hardware matching and enable independent scaling. However, existing implementations suffer from rigid operator boundaries and lack unified frameworks to determine when disaggregation is cost-effective.
-
-针对上述核心挑战，OpWeave 依托三大核心组件给出了系统性解决方案：
-
-&gt; OpWeave addresses these challenges through three main components:
-
-1. **理论分析成本模型 (Analytical Cost Model)**：从数学原理上严格推导并界定了同构与异构 ODS 相比传统同机部署服务的效率收益理论边界。
-2. **规律感知规划器 (Regularity-Aware Planner)**：联合协同优化算子切分策略与底层集群部署配置，即便面对架构复杂的混合注意力 (Hybrid-Attention) 模型，也能确保庞大的解空间保持高效可解。
-3. **基于 vLLM 的执行运行时 (vLLM-Based Runtime)**：能够在各类异构设备资源池中平滑无缝地调度并执行带有动态算子阶段的自动化编排计划。
-
-&gt; 1. **Analytical Cost Model:** Mathematically bounds the efficiency gains of both homogeneous and heterogeneous ODS over traditional colocated serving.
-&gt; 2. **Regularity-Aware Planner:** Jointly optimizes operator partitioning and deployment configuration, ensuring the search space remains tractable even for complex hybrid-attention architectures.
-&gt; 3. **vLLM-Based Runtime:** Executes synthesized plans seamlessly across diverse device groups with dynamic operator stages.</description>
-    </item>
-    <item>
-      <title>Meta 推出 ZGateway：统一 ZippyDB 流量、每秒处理超 10 亿次请求的无状态代理层</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-16/Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层/</guid>
-      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在超大规模分布式架构中，客户端直连底层数据库集群极易导致连接数呈爆炸式膨胀。在 Meta 内部，支撑全系产品元数据、计数器与配置系统的分布式键值存储 ZippyDB，曾面临着上百万台客户端主机直连带来的严重连接蔓延 (Connection Sprawl) 与重连风暴危机。为了从根本上化解这一工程瓶颈，Meta 研发并上线了无状态代理层 ZGateway。它不仅解耦了客户端与底层存储节点，将单机连接数大幅缩减 97% 以上，更逐步演进为一个集动态请求合流、自适应负载分流、内存读缓存与跨地域容灾于一体的综合流量底座。如今，ZGateway 以仅约 6% 的极低计算开销，稳定承载着 ZippyDB 全网约 40% 的数据流量，每秒处理操作数突破 10 亿大关，为超大规模基础设施的代理层设计树立了全新标杆。
-
----
-
-## 📌 执行摘要
-
-&gt; ## 📌 Executive Summary
-
-Meta 正式发布了 **ZGateway**——这是一个架设在客户端应用程序与 [ZippyDB](https://engineering.fb.com/2021/08/06/core-infra/zippydb/) 之间的强大无状态代理层 (Stateless Proxy Tier)。ZippyDB 作为 Meta 内部广泛使用的分布式键值存储 (Key-Value Store)，承载着全系产品的核心元数据、计数器和配置系统。ZGateway 最初的诞生，是为了彻底解决上百万台客户端主机直连数据库所带来的严重连接蔓延 (Connection Sprawl) 难题；而如今，它已进化为一个功能完备的综合性流量平台，全面接管了请求批处理 (Batching)、准入控制 (Admission Control)、内存缓存 (Caching) 以及故障转移 (Failover) 等核心能力。目前，ZGateway 每秒处理的操作数已突破 **10 亿次**，在仅产生约 6% 极低计算开销的前提下，承载了整个 ZippyDB 全网约 40% 的流量。
-
-&gt; Meta has introduced **ZGateway**, a powerful stateless proxy tier positioned between client applications and [ZippyDB](https://engineering.fb.com/2021/08/06/core-infra/zippydb/), Meta's widely used key-value store powering product metadata, counters, and configurations. Originally designed to resolve severe connection sprawl across more than a million client hosts, ZGateway has evolved into a comprehensive platform handling batching, admission control, caching, and failover. Today, it processes over **1 billion operations per second** and carries roughly 40% of all ZippyDB traffic at a minimal computational overhead of about 6%.
-
----
-
-## 为什么 ZippyDB 急需引入代理层
-
-&gt; ## Why ZippyDB Needed a Proxy
-
-在传统的客户端直连架构 (Direct-Access Architecture) 下，每一个 ZippyDB 客户端都必须与它需要访问的所有数据库主机直接建立连接。由于单个客户端在业务周期内可能需要触达分散在数十万台主机上的数万个分片 (Shards)，导致客户端与数据库节点双方都背负了极其沉重的包袱——单机往往需要维系成千上万条持久的 TLS 连接。
-
-&gt; Under a direct-access architecture, every ZippyDB client directly connected to every database host it needed to reach. Because a single client could touch tens of thousands of shards across hundreds of thousands of hosts, both clients and database hosts carried massive burdens of tens of thousands of TLS connections. 
-
-* **资源严重枯竭 (Resource Exhaustion)：** 哪怕只是空闲的静默连接，在链路两端也会持续霸占宝贵的内存、CPU 周期以及文件描述符 (File Descriptors)。
-* **重连风暴频发 (Reconnection Storms)：** 随着客户端实例集群规模的膨胀，数据库端的入站连接数呈指数级蹿升，多次因文件描述符耗尽和内存溢出 (Out-Of-Memory, OOM) 导致服务进程直接崩溃。
-* **灾难性的无限重启循环 (The Reboot Loop Incident)：** 在一次著名的系统事故中，一个路由 Bug 导致全网所有客户端对每一个分片都强行建立了一条独立连接，瞬时爆发的连接洪峰直接将整个数据库集群拖入了灾难性的死循环重启。
-* **客户端治理寸步难行 (Client-Side Hurdles)：** 企图在客户端侧解决此问题完全不可行，因为全公司有数百个相互独立的业务团队各自维护着不同技术栈的客户端代码，推动统一改造犹如天方夜谭。
-
-&gt; * **Resource Exhaustion:** Each idle connection consumed valuable memory, CPU, and file descriptors on both ends.
-&gt; * **Reconnection Storms:** Inbound connection counts grew with every client cohort, leading to crashes from file descriptor exhaustion and out-of-memory (OOM) errors. 
-&gt; * **The Reboot Loop Incident:** During one notable incident, a routing bug caused every client to open a connection per shard, throwing the entire database fleet into a catastrophic reboot loop.
-&gt; * **Client-Side Hurdles:** Fixing this on the client side was completely impractical because hundreds of independent teams owned various parts of the client fleet.
-
----
-
-## 什么是 ZGateway？
-
-&gt; ## What is ZGateway?
-
-[ZGateway](https://engineering.fb.com/2026/09/03/core-infra/zgateway-proxy-zippydb-meta/) 是部署在 ZippyDB 客户端与底层 ZServer 数据库集群之间的一个无状态代理层。它作为区域服务层运行，通过 Meta 的自研服务网格 (Service Mesh) [ServiceRouter](https://atscaleconference.com/servicerouter-hyperscale-service-mesh-at-meta/) 实现服务发现与路由，主要提供两种工作形态：**纯透明代理 (Pure Proxy)** 与**直读缓存 (Read-Through Cache)**。
-
-&gt; [ZGateway](https://engineering.fb.com/2026/09/03/core-infra/zgateway-proxy-zippydb-meta/) is a stateless proxy tier deployed between ZippyDB clients and the ZServer database fleet. Running as regional tiers discovered via Meta’s service mesh, [ServiceRouter](https://atscaleconference.com/servicerouter-hyperscale-service-mesh-at-meta/), it operates in two primary flavors: **a pure proxy** and **a read-through cache**. 
-
-在底层实现上，ZGateway 直接复用了 Meta 高度优化的厚客户端 (Thick Client) C++ ZippyDB 库，本质上相当于将一个功能强大的 ZippyDB 客户端封装成了一项云原生托管服务。
-
-&gt; Under the hood, ZGateway utilizes Meta's thick C++ ZippyDB client, effectively operating as a ZippyDB client run as a managed service.</description>
-    </item>
-    <item>
-      <title>基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践/</guid>
-      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型推理能力对齐与强化学习 (Reinforcement Learning, RL) 探索中，群体相对策略优化 (Group Relative Policy Optimization, GRPO) 已成为提升模型复杂推理能力的关键方法，但传统的分布式多节点训练往往严重依赖昂贵且配置繁琐的 NCCL 高速互联网络与跨节点共享文件系统。针对这一工程痛点，本文介绍了一种轻量优雅的分布式解耦训练方案：结合 TRL 库最新支持的 AsyncGRPOTrainer 与低秩适应 (Low-Rank Adaptation, LoRA) 技术，在相互网络隔离的 Hugging Face Jobs 容器环境中开展异步强化学习。利用仅数兆字节大小的 Rank-1 权重只需通过挂载的云端对象存储桶 (Storage Bucket) 进行同步，配合定制的反向代理服务器实现基于 KV 缓存前缀的智能路由与状态广播，彻底摆脱了复杂的跨节点 NCCL 通信依赖。通过进一步优化微批次打包、禁用梯度检查点并增大并发在飞请求上限，训练耗时从 3 小时 27 分钟大幅缩短至 53 分钟，获得了高达 3.9 倍的速度提升。
-
----
-
-# 基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践
-
-&gt; # Async GRPO with LoRA across HF Jobs: A Bucket, a Proxy, and No NCCL
-
-## 核心概要
-
-&gt; ## Summary
-
-本文探讨了如何借助 **AsyncGRPOTrainer** 与 **LoRA** (Low-Rank Adaptation) 低秩适应技术，在分布式 **Hugging Face Jobs** 之间运行异步强化学习 (Reinforcement Learning, RL) 训练，且全程无需依赖跨节点的共享网络文件系统或复杂的 NCCL 集群通信。
-
-&gt; This article explores how to run asynchronous Reinforcement Learning (RL) training via **AsyncGRPOTrainer** using **LoRA** (Low-Rank Adaptation) across distributed **Hugging Face Jobs** without relying on a shared network file system or NCCL. 
-
-本文的核心亮点包括：
-- **轻量级权重同步**：由于 Rank-1 的 LoRA 适配器仅有区区几兆字节大小，我们可以轻松通过各个独立 Job 间挂载的**对象存储桶 (Storage Bucket)** 进行文件同步，从而完全避开繁重的多节点网络直接通信。
-- **代理路由与状态广播**：通过一个定制的代理服务器统一处理认证请求头，将生成采样任务 (Rollouts) 智能路由到匹配其 KV 缓存 (KV-cache) 前缀的副本节点，并将最新的适配器更新广播同步给所有副本。
-- **显著的性能飞跃**：通过精细调优训练微批次 (Microbatches)、关闭梯度检查点 (Gradient Checkpointing) 并提高在飞请求 (In-flight) 上限，500 步的整体训练时间从 **3 小时 27 分钟锐减至 53 分钟**（取得了高达 3.9 倍的加速比）。
-
-&gt; Key highlights include:
-&gt; - **Lightweight Synchronization:** Because rank-1 LoRA adapters are only a few megabytes, they can easily sync via a **Storage Bucket** mounted across separate jobs, avoiding heavy multi-node communication.
-&gt; - **Proxy Routing &amp; Broadcasting:** A custom proxy server handles authentication headers, routes rollouts to replicas matching their KV-cache prefix, and broadcasts adapter updates to all replicas.
-&gt; - **Performance Gains:** By tweaking training microbatches, disabling gradient checkpointing, and raising in-flight limits, training time for 500 steps drops from **3 hours 27 minutes down to 53 minutes** (a 3.9× speedup).
-
----
-
-## 背景引言
-
-&gt; ## Introduction
-
-随着 [PR #7017](https://github.com/huggingface/trl/pull/7017) 的合并（并在 TRL v1.14 版本中正式发布），TRL 库的 [`AsyncGRPOTrainer`](https://huggingface.co/docs/trl/en/async_grpo_trainer) 迎来了对 LoRA 的原生支持。现在的异步训练器可以只针对轻量级 LoRA 适配器展开训练，无需更新完整模型，并且仅需将适配器参数实时同步到 vLLM 推理引擎中。本文将详细介绍一个基于该特性搭建的真实工程项目，在该项目中，模型的训练与推理彻底解耦，不再共享同一台物理机。
-
-&gt; LoRA support recently landed in TRL's [`AsyncGRPOTrainer`](https://huggingface.co/docs/trl/en/async_grpo_trainer) with [PR #7017](https://github.com/huggingface/trl/pull/7017) (shipped in TRL v1.14). The asynchronous trainer can now train a LoRA adapter instead of the full model, syncing only the adapter to vLLM. This post covers a real-world project built on top of it, where training and inference no longer share a machine.
-
-LoRA 训练在强化学习场景中表现出奇契合。正如 Thinking Machines 在其博文 [LoRA Without Regret](https://thinkingmachines.ai/blog/lora/) 中所揭示的，在基于策略梯度的强化学习中，哪怕仅使用 Rank 1 的 LoRA，其效果也能与全量微调 (Full Fine-Tuning) 旗鼓相当。背后的数学机理在于：每个回合中优势函数 (Advantage Function) 仅能提供大约 `~O(1)` 比特的信息增益，因此极低秩的 Rank-1 适配器便具备足够的容量去吸收并掌握这些信号。
-
-&gt; LoRA training is particularly suited for RL, as shown in Thinking Machines's blog [LoRA Without Regret](https://thinkingmachines.ai/blog/lora/). They demonstrate that LoRA can match full fine-tuning for policy-gradient RL, even with rank 1. This stems from the fact that the advantage function only gives `~O(1)` bits of information per episode, so a rank-1 adapter has enough capacity to absorb it.
-
-从分布式系统工程的视角来看，一个 1.5B 参数量模型的 Rank-1 适配器文件仅有区区几兆字节，而完整模型权重则高达约 3 GB。我们无需在每次迭代后传输庞大的完整模型权重，仅需分发极小的适配器即可。此外，vLLM 支持同时在显存中保留多个 LoRA 适配器：旧的生成采样任务可以使用其启动时对应的旧策略从容执行完毕，而全新的采样任务则能无缝切换并使用最新的策略权重。
-
-&gt; From a systems perspective, a rank-1 adapter for a 1.5B model is a few megabytes, whereas the full model is ~3 GB. Instead of sending full weights after every update, we send just the adapter. Furthermore, vLLM can keep several adapters loaded at once: old rollouts finish with the policy they started with, while new rollouts use the latest one.</description>
-    </item>
-    <item>
-      <title>几乎零开销的状态-预测解耦架构</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-15/几乎零开销的状态-预测解耦架构/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-15/几乎零开销的状态-预测解耦架构/</guid>
-      <pubDate>Tue, 15 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在传统自回归大语言模型 (Large Language Model, LLM) 中，隐藏状态往往要同时承担两项相互冲突的繁重任务：一方面需要高度压缩并总结历史上下文，另一方面又必须竭力预测下一个 Token。状态-预测解耦 (State–Prediction Separation, SPS) 技术虽然通过将单次前向传播拆分为“状态流”与“预测流”成功化解了这一矛盾，但以往方案却带来了约 1.9 倍的惊人预训练计算开销。本文提出了一套革新机制，借助巧妙的“免费暂停 Token” (Free Pause Token) 设计，使预测流在推理过程中不写入任何键值缓存 (KV Cache) 且不占用额外上下文位置，真正实现了推理阶段的近乎零开销。同时，配合双阶段拆分、共享门控 FFN 等多项训练期优化，在几乎不增加端到端耗时的情况下全面提升了模型预测精度，为大模型基础架构设计开辟了兼顾高收益与低成本的新路径。
-
----
-
-## 📌 内容概要
-
-&gt; ## Summary
-
-状态-预测解耦 (State–Prediction Separation, SPS) 是一项旨在减轻语言模型双重竞争负担的架构技术——通过将模型的前向传播过程拆分为“状态流”与“预测流”，使模型无需同时兼顾“总结历史上下文”与“预测下一个 Token”这两个相互掣肘的目标。然而，传统的 SPS 方法计算代价高昂，通常需要消耗标准预训练浮点运算量 (FLOPs) 的约 $1.9\times$。
-
-&gt; State–prediction separation (SPS) is a technique that relieves language models of competing burdens—summarizing the context versus predicting the next token—by splitting the forward pass into a state stream and a prediction stream. However, traditional SPS is computationally expensive, typically costing roughly $1.9\times$ the standard pretraining FLOPs. 
-
-本文提出了一系列优化机制，不仅让状态-预测解耦在推理阶段变得**近乎零开销**，同时还大幅削减了训练阶段的额外负担：
-
-&gt; This paper introduces mechanisms to make state–prediction separation **almost free** during inference while drastically reducing training overhead:
-
-* **免费暂停 Token (Free Pause Token) ：** 构建一种完全不向显存写入任何键值 (Keys / Values) 的预测流，使其直接复用序列中现有的位置，既不会膨胀上下文长度，也无需额外的 KV 缓存 (KV Cache) 或解码步数。
-* **训练期加速优化 (Training Optimizations) ：** 引入两阶段拆分算法 (完整保留高效的 FlashAttention 内核算子) 、$w=0$ 预测窗口、共享门控前馈网络 (Shared Gated FFN) 以及仅在训练尾声分阶段引入解耦策略。
-
-&gt; * **Free Pause Token:** A prediction stream that writes no keys or values, allowing it to leverage existing sequence positions without increasing context length, requiring a KV cache, or adding decoding steps.
-&gt; * **Training Optimizations:** Incorporates a two-pass split (preserving FlashAttention kernels), a $w=0$ prediction window, a shared gated FFN, and phasing the separation toward the tail of training.
-
-这些优化方案协同发力，在等浮点算力 (Isoflop) 、等参数量 (Isoparameter) 与等训练 Token 量 (Isotoken) 的公平对比下，相比标准按次词预测训练的 Transformer 实现了显著性能飞跃，同时将实际物理耗时与硬件开销压至最低。
-
-&gt; Together, these adjustments achieve an *isoflop*, *isoparameter*, and *isotoken* improvement over standard next-token-trained transformers while minimizing wall-clock and hardware overhead.
-
----
-
-## 🔍 论文摘要
-
-&gt; ## Abstract
-
-状态-预测解耦 (SPS) 通过将前向传播划分为状态流与预测流，有效卸下了语言模型隐藏状态肩负的两大对立重担——即压缩上下文语义与预测下一个 Token。这种解耦固然收效显著，但代价也极其高昂：预测流本质上是对整个主干网络的二次前向遍历，使得预训练所需的 FLOPs 膨胀至约 $1.9\times$；而在采用灵活的注意力掩码时，实际训练物理耗时更是进一步恶化。
-
-&gt; State–prediction separation (SPS) relieves a language model's hidden state of two competing burdens—summarizing the context and predicting the next token—by splitting the forward pass into a state stream and a prediction stream. The separation works, but it is expensive: the prediction stream is a second pass over the whole backbone, costing $\sim$$1.9\times$ the pretraining FLOPs, and even more in terms of wall-clock time when using a flexible attention mask. 
-
-本篇论文致力于让状态-预测解耦变得近乎免费。我们将解耦设计推向极致，提出了“免费暂停 Token”机制：构建一种完全不写入任何键 (Keys) 或值 (Values) 的预测流，从而顺理成章地“搭便车”复用序列现有的位置坐标。在 10 亿 (1B) 参数规模的模型实测中，该机制为标准 Transformer 的下一个 Token 预测精度带来了 2 到 3 centinats 的切实提升；而且因为它没有引入任何额外的位置开销，因而在推理端完全没有代价——既不增加上下文长度，无需消耗 KV 缓存，也无需多余的解码步骤，延迟几乎毫无增加；至于推理阶段轻微增加的理论浮点计算量，由于当前推理吞吐的核心瓶颈并不在计算本身，因此基本可以忽略不计。
-
-&gt; This paper makes state–prediction separation almost free. We take the separation to its limit with a free pause token: a prediction stream that writes no keys or values at all and so rides the sequence's existing positions. It improves next-token prediction of a standard Transformer by 2-3 centinats in practice on a 1B parameter model, and because it adds no position it costs nothing at inference—no added context length, no KV cache, no decode steps, and essentially no latency, with the growth in inference flops typically irrelevant as it is not the active bottleneck on throughput. 
-
-如此一来，所有的计算额外开销便被完整转移并浓缩在训练阶段。为此，我们设计了四重核心机制来极限压缩训练成本：
-
-&gt; The cost is therefore entirely in training where we use four mechanisms to drive it down: 
-
-1. **两阶段拆分机制 (Two-Pass Split) ：** 确保高效的 FlashAttention 内核算子始终可用；
-2. **$w{=}0$ 预测窗口 ($w{=}0$ Prediction Window) ：** 极限裁剪预测流所关注的上下文窗口；
-3. **共享门控 FFN (Shared Gated FFN) ：** 每个物理位置仅计算一次前馈网络，而非每个数据流各自重复计算；
-4. **尾程分阶段解耦 (Phasing Separation) ：** 将解耦机制巧妙安排在预训练运行周期的尾声阶段切入。
-
-&gt; 1. A two-pass split that keeps FlashAttention kernels viable, 
-&gt; 2. The $w{=}0$ prediction window, 
-&gt; 3. A shared gated FFN that evaluates one FFN per position rather than one per stream, and 
-&gt; 4. Phasing the separation onto the tail of the run. 
-
-多项优化齐头并进，使得相对于高度优化的预训练基线管线，整体物理训练时间开销被大幅压低至 $1.33\times$，同时成功挽回了经典 SPS 约 94% 的性能增益；在更温和平滑的“质量/算力”权衡曲线下，训练耗时增幅甚至可以低至 $1.09\times$。此外，共享 FFN 优化还同步削减了推理所需的原始浮点运算量。最终，该研究达成了在等算力 (Isoflop) 、等参数 (Isoparameter) 以及等 Token (Isotoken) 条件下，相对于标准单次预测 Transformer 的全方位实质突破。
-
-&gt; Together these bring the overhead versus an optimized pretraining pipeline to $1.33\times$ wall-clock while recovering ~94% of the gain compared to SPS, and to as low as $1.09\times$ along a graceful quality/compute tradeoff. Furthermore, the FFN optimization reduces the raw flops required at inference time. The result is an isoflop, isoparameter, and isotoken improvement over standard next token trained transformers.
-
----
-
-## 🔗 全文阅读与相关资源
-
-&gt; ## Links and Resources
-
-* **全文阅读链接：**
-  * [阅读 PDF 论文](https://arxiv.org/pdf/2609.03807)
-  * [网页版 HTML (实验性)](https://arxiv.org/html/2609.03807v4)
-  * [TeX 源码包](https://arxiv.org/src/2609.03807)
-* **开源授权：** [知识共享署名 4.0 国际许可 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;
-
-&gt; * **Full-Text Options:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.03807)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.03807v4)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.03807)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;</description>
     </item>
   </channel>
 </rss>
