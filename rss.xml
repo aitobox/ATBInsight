@@ -5,6 +5,445 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-02/软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态/</guid>
+      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+      <description>开源代码作为现代数字社会的基石，长期面临着代码仓库失效、平台关闭导致链接 404 以及依赖版本难以永久追溯等持久化痛点。由法国国家信息与自动化研究所 (Inria) 主导的 Software Heritage 项目通过去重的 Merkle DAG 结构，构建了囊括全球数百亿源文件的通用代码档案馆，并推出了基于内容内在哈希的国际标准 SWHID (SoftWare Hash IDentifier) 。本文深入探讨了开源元数据平台 ecosyste.ms 与 Software Heritage 的深度整合实践，作者开发了包括 `swh-git`、多语言 SWHID 生成库及 WebAssembly 客户端在内的完整开源工具链，将人类可读的软件包标识符与防篡改的内在代码指纹连接起来。这一生态不仅系统性量化评估并补充了核心开源软件的归档覆盖率，还为科研软件追踪与软件物料清单 (SBOM) 的长期可重现性奠定了坚实的基础设施。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+本文探讨了如何将全球开源代码归档库 **Software Heritage (SWH)** 与软件哈希标识符 **SoftWare Hash IDentifiers (SWHIDs)** 深度整合到 [ecosyste.ms](https://ecosyste.ms) 开源元数据平台中。受到巴黎 CodeCommons 全会上一场技术演讲的启发，作者详细阐述了打造一系列配套开源工具的全过程——其中包括专为 Git 定制的归档传输助手 `swh-git`、面向 Ruby 与 Go 的 SWHID 原生生成库、基于 WebAssembly 的浏览器端客户端，以及 OpenAPI 规范接口封装。这一系列工具旨在打通软件包身份标识与底层代码指纹，显著提升关键开源包的归档完整度，进而为软件生态的长久可重现性保驾护航。
+
+&gt; This article explores the integration of **Software Heritage (SWH)** archives and **Software Hash IDentifiers (SWHIDs)** into the [ecosyste.ms](https://ecosyste.ms) platform. Inspired by a presentation at the CodeCommons plenary in Paris, the author details the creation of various open-source tools—including `swh-git`, language-specific SWHID generators for Ruby and Go, a WebAssembly client, and an OpenAPI wrapper—to connect package identities, improve archiving coverage, and enable long-term software reproducibility.
+
+---
+
+## 目录
+
+&gt; ## Table of Contents
+
+- [Software Heritage 开源代码档案馆](#software-heritage-开源代码档案馆)
+- [SWHID 软件哈希标识符](#swhid-软件哈希标识符)
+- [swh-git 传输层助手](#swh-git-传输层助手)
+- [计算 SWHID 指纹](#计算-swhid-指纹)
+- [Web API 接口封装](#web-api-接口封装)
+- [关键软件包的归档覆盖率](#关键软件包的归档覆盖率)
+- [science.ecosyste.ms 科学计算软件追踪](#scienceecosystems-科学计算软件追踪)
+- [packages.ecosyste.ms 软件包版本全生命周期指纹](#packagesecosystems-软件包版本全生命周期指纹)
+- [扫描与深度分析代码档案库](#扫描与深度分析代码档案库)
+
+&gt; - [Software Heritage](#software-heritage)
+&gt; - [SWHIDs](#swhids)
+&gt; - [swh-git](#swh-git)
+&gt; - [Computing SWHIDs](#computing-swhids)
+&gt; - [Web API](#web-api)
+&gt; - [Critical Package Coverage](#critical-package-coverage)
+&gt; - [science.ecosyste.ms](#scienceecosystems)
+&gt; - [packages.ecosyste.ms](#packagesecosystems)
+&gt; - [Scanning the Archive](#scanning-the-archive)
+
+---
+
+## Software Heritage 开源代码档案馆
+
+&gt; ## Software Heritage
+
+自法国国家信息与自动化研究所 (Inria) 于 2016 年发起该项目以来，[Software Heritage](https://www.softwareheritage.org/) 一直致力于为人类全部公开源代码构建一座通用“数字代码档案馆”。它的爬虫常年穿梭于 GitHub、GitLab、Bitbucket、各大中小型代码托管平台、软件包中心以及各大 Linux 发行版源码库，将采集到的所有代码统一沉淀在一个全局去重的 Merkle DAG 结构之中。截至目前，这张庞大的代码知识图谱已汇聚了来自 4.45 亿个代码源头的约 300 亿个源码文件、230 亿个目录以及 60 亿次代码提交记录。
+
+&gt; [Software Heritage](https://www.softwareheritage.org/) has been building a universal archive of source code since Inria launched the project in 2016. It crawls GitHub, GitLab, Bitbucket, smaller forges, package registries, and distro sources, storing everything in a single deduplicated Merkle DAG. Currently, this graph holds roughly 30 billion source files, 23 billion directories, and 6 billion commits across 445 million origins.
+
+即使同一个文件出现在成百上千个不同的地方 (例如某个文件既存在于 npm 的 tarball 压缩包中，又被打包进 Debian 源码包) ，Software Heritage 也只会在底层存储一次，直接通过其二进制字节哈希进行内容寻址，而图谱系统则负责记录该文件曾出现过的每一个代码源头 (Origin) 。其内部的 [Vault](https://docs.softwareheritage.org/devel/swh-web/uri-scheme-api-vault.html) 服务支持按需将任意历史快照、提交记录或目录重新组装为可直接下载的 git bundle 或 tarball 归档，从而确保代码检索完全立足于内容本身，彻底摆脱对原始代码托管服务商与 URL 链接的脆弱依赖。
+
+&gt; Files appearing in multiple places (such as an npm tarball and a Debian source package) are stored only once, addressed by their byte hash, while the graph tracks every origin. The [Vault](https://docs.softwareheritage.org/devel/swh-web/uri-scheme-api-vault.html) can reconstruct any snapshot, commit, or directory on demand as a downloadable git bundle or tarball, ensuring content-based retrieval rather than reliance on original hosting URLs.
+
+## SWHID 软件哈希标识符
+
+&gt; ## SWHIDs
+
+档案库中的每一个对象都被赋予了一个结构形如 `swh:1:&lt;type&gt;:&lt;sha1&gt;` 的 [SoftWare Hash IDentifier](https://www.swhid.org/) (SWHID) 。
+
+&gt; Every object in the archive is assigned a [SoftWare Hash IDentifier](https://www.swhid.org/) structured as `swh:1:&lt;type&gt;:&lt;sha1&gt;`. 
+
+其五大核心对象类型包括：
+
+&gt; The five core types include:
+
+* `cnt` (文件内容字节) 
+* `dir` (目录树结构) 
+* `rev` (代码提交) 
+* `rel` (版本标签) 
+* `snp` (仓库快照) 
+
+&gt; * `cnt` (file bytes)
+&gt; * `dir` (directory tree)
+&gt; * `rev` (commit)
+&gt; * `rel` (tag)
+&gt; * `snp` (repository snapshot)
+
+用户还可以为 SWHID 添加可选的限定修饰符 (Qualifiers) ，用以锚定来源 URL、爬虫访问记录 (Visits) 、目录内部的相对路径乃至具体的代码行号区间。该规范的 1.2 版本已被正式发布为国际标准 ISO/IEC 18670，标志着全球首个针对软件内在标识符的国际标准正式确立。
+
+&gt; Optional qualifiers can pin origin URLs, visits, paths inside directories, or line ranges. Version 1.2 of the specification was published as ISO/IEC 18670, establishing the first international standard for intrinsic software identifiers.
+
+SWHID 具备所谓“内在性 (Intrinsic)”——它完全由底层数据字节直接计算生成，不需要任何中心化的注册表或发证权威背书。由于这些哈希的计算规则与 Git 的对象哈希机制天然对齐，开发者本地任何一份 Git 检出仓库中，实际上都已经包含了完全合规的 SWHID。与之相对，形如 `pkg:pypi/astropy@7.1.0` 的软件包 URL (Package URL, purl) 虽然直观且人类可读，但它们的解析严重依赖于中心化注册中心的持续在线与可用。将这两大标识符体系无缝桥接起来，正是 ecosyste.ms 平台致力于实现的核心目标。
+
+&gt; SWHIDs are intrinsic—computed directly from bytes without a registry or issuing authority. Because these hashes align with Git's object hashes, any local Git checkout already contains valid SWHIDs. While package URLs (purls) like `pkg:pypi/astropy@7.1.0` are human-readable, resolving them depends on registries remaining active. Bridging these two identifier schemes forms a core focus of ecosyste.ms.
+
+## swh-git 传输层助手
+
+&gt; ## swh-git
+
+开源工具 [swh-git](https://github.com/andrew/swh-git) 作为 Git 远程助手 (Git Remote Helper) ，通过引入全新的 `swh::` 自定义传输层协议，允许开发者直接从归档库中检出并还原历史代码：
+
+&gt; The [swh-git](https://github.com/andrew/swh-git) git remote helper adds an `swh::` transport layer to retrieve archived code:
+
+```bash
+git clone swh::github.com/octocat/Hello-World
+git clone swh::swh:1:snp:f72e9d06dd0e58236a34328f094ca894a809f230
+```
+
+该助手会在后台向 Software Heritage 的 Vault 申请一份 git-bare bundle 归档包，将其缓存在本地磁盘，随后通过 Git 原生的 `git upload-pack` 协议无缝完成仓库克隆。对于那些在 GitHub 上早已显示 404、或者原始代码托管站点已经关门大吉的失效仓库而言，这提供了一道至关重要的代码灾难恢复生命线，不仅完整保留了提交历史与标签，还全面支持目录级的 SWHID 检索。
+
+&gt; The helper requests a git-bare bundle from the Vault, caches it locally, and serves clones via `git upload-pack`. It provides a vital recovery mechanism for 404ing repositories or defunct forges, supporting full commit histories, tags, and directory SWHIDs.
+
+## 计算 SWHID 指纹
+
+&gt; ## Computing SWHIDs
+
+为了在不同编程语言生态中原生计算 SWHID，作者开发了一套跨语言的工具链：
+
+&gt; To compute SWHIDs natively across different languages, the author developed:
+
+* [swhid gem](https://github.com/andrew/swhid) (Ruby) ：全面支持五种核心对象类型的解析、限定修饰符处理与指纹生成。
+* [swhid-go](https://github.com/andrew/swhid-go) (Go) ：提供便捷的命令行工具 (CLI) ，并内置了针对 SHA-1 哈希碰撞的防御性检测机制。
+* [swhid-wasm](https://github.com/andrew/swhid-wasm)：将 `swhid-go` 编译为 WebAssembly 模块，支持直接在前端浏览器中对软件包注册表中的包或本地归档文件进行客户端哈希计算。
+
+&gt; * [swhid gem](https://github.com/andrew/swhid) (Ruby): Handles parsing, qualifiers, and generation for all five object types.
+&gt; * [swhid-go](https://github.com/andrew/swhid-go) (Go): Includes a CLI and built-in SHA-1 collision detection.
+&gt; * [swhid-wasm](https://github.com/andrew/swhid-wasm): A WebAssembly compilation of `swhid-go` enabling client-side hashing in the browser from package registries or local archives.
+
+Ruby 和 Go 的这套实现均已接入上游官方的 [一致性测试套件](https://github.com/swhid/test-suite) (conformance test suite) ，确保生成的标识符严格符合国际规范。
+
+&gt; Both the Ruby and Go implementations integrate with the upstream [conformance test suite](https://github.com/swhid/test-suite).
+
+## Web API 接口封装
+
+&gt; ## Web API
+
+为了高效调用 Software Heritage 的开放接口 (`archive.softwareheritage.org/api/1`) ，作者开发了 [swh-openapi](https://github.com/andrew/swh-openapi) 工具，能够从官方文档字符串 (docstring) 中自动提取并生成标准 OpenAPI 接口描述文件；同时还配套推出了 Go 语言客户端 SDK [swh-go](https://github.com/andrew/swh-go) ，大幅降低了第三方开发者接入归档生态的门槛。
+
+&gt; To interact with the Software Heritage API (`archive.softwareheritage.org/api/1`), the author created [swh-openapi](https://github.com/andrew/swh-openapi) to generate OpenAPI descriptions from docstring data, along with [swh-go](https://github.com/andrew/swh-go) as a companion client.
+
+## 关键软件包的归档覆盖率
+
+&gt; ## Critical Package Coverage
+
+借助 [swh-critical](https://github.com/andrew/swh-critical) 审计工具，作者对 [packages.ecosyste.ms 关键软件包数据集](https://packages.ecosyste.ms/critical) 中的约 9,800 个核心开源包进行了系统性摸底评估：
+
+&gt; An audit using [swh-critical](https://github.com/andrew/swh-critical) evaluated ~9,800 packages in the [packages.ecosyste.ms critical set](https://packages.ecosyste.ms/critical):
+
+* **71.3%** 的源码仓库已将其当前默认分支的最新提交纳入归档；
+* **89.9%** 的匹配版本发布标签 (Release Tags) 均在档案库中完整就绪。
+
+&gt; * **71.3%** of source repositories had their current default-branch commit archived.
+&gt; * **89.9%** of matched release tags were present.
+
+通过将这些处于高依赖核心位置的软件包任务队列，主动推送给 Software Heritage 的代码即时保存服务 [Save Code Now](https://archive.softwareheritage.org/save/) ，ecosyste.ms 能够有效引导爬虫调度算法，将宝贵的采集与算力资源优先倾斜给那些全行业重度依赖的基础源码项目。
+
+&gt; By feeding high-dependency package queues into Software Heritage's [Save Code Now](https://archive.softwareheritage.org/save/) service, ecosyste.ms can help prioritize crawler resources toward heavily relied-upon source code.
+
+## science.ecosyste.ms 科学计算软件追踪
+
+&gt; ## science.ecosyste.ms
+
+[science.ecosyste.ms](https://science.ecosyste.ms) 平台正将这一归档闭环率先应用于科研软件生态。系统会自动拉取学术影响力较高的高分科研项目，自动执行仓库克隆并在本地生成 SWHID 指纹，随后批量调用 Software Heritage 的已知对象接口 (known-objects API) 进行同步校验。一旦验证归档成功，对应的 SWHID 元数据便会与学术数字对象唯一标识符 (DOI) 和学术引用信息并肩展示在项目页面上，同时通过开放的 [统计数据 JSON API](https://science.ecosyste.ms/swhids) 供学界直接调用。
+
+&gt; The [science.ecosyste.ms](https://science.ecosyste.ms) platform applies this feedback loop to research software. High-score projects undergo automated cloning, SWHID generation, and batch-posting to Software Heritage's known-objects API. Confirmed contributions and SWHID metadata are displayed alongside DOIs and citations on project pages and via a [stats page JSON API](https://science.ecosyste.ms/swhids).
+
+## packages.ecosyste.ms 软件包版本全生命周期指纹
+
+&gt; ## packages.ecosyste.ms
+
+未来，[packages.ecosyste.ms](https://packages.ecosyste.ms) 平台的集成计划将进一步深入到具体的“软件包版本”层面——直接为官方发布的每个 tarball 压缩包计算对应的目录级 SWHID。这意味着在软件物料清单 (Software Bill of Materials, SBOM) 中声明的每一个依赖组件 (例如 `pkg:npm/lodash@4.17.21`) ，未来都能精确解析到一个可独立查验、防篡改的 SWHID 权威指纹，从而为各大主流软件包注册中心建立起一套持续滚动的归档覆盖率度量体系。
+
+&gt; Future integration on [packages.ecosyste.ms](https://packages.ecosyste.ms) will extend this coverage to package versions by computing directory SWHIDs for published tarballs. This allows SBOM components (e.g., `pkg:npm/lodash@4.17.21`) to resolve to independently verifiable SWHIDs, establishing a rolling measurement of registry coverage.
+
+## 扫描与深度分析代码档案库
+
+&gt; ## Scanning the Archive
+
+借助开源的 [git-pkgs](https://github.com/git-pkgs) 工具套件——涵盖用于清单提取的 [manifests](https://github.com/git-pkgs/manifests)、开源协议分析的 [licenses](https://github.com/git-pkgs/licenses) 以及信息速览工具 [brief](https://github.com/git-pkgs/brief)——开发者能够将整个 Software Heritage 档案库当作一座容量惊人的代码分析语料库。当它与 `swh-git` 强强联手时，无论跨越多少历史版本迭代，针对项目依赖链、合规许可证乃至构建工具链的深度分析，都能实现完全可重现与可验证。
+
+&gt; Using the [git-pkgs](https://github.com/git-pkgs) suite—including [manifests](https://github.com/git-pkgs/manifests), [licenses](https://github.com/git-pkgs/licenses), and [brief](https://github.com/git-pkgs/brief)—developers can treat the Software Heritage archive as a massive analysis corpus. Combined with `swh-git`, analyses of dependencies, licenses, and toolchains become fully reproducible across historical software versions.</description>
+    </item>
+    <item>
+      <title>自我进化的算法设计智能体：基于种群筛选策略优化打破上下文进化停滞</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-02/自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞/</guid>
+      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (Large Language Model, LLM) 驱动的自主算法设计中，现有的纯上下文进化方案在面对芯片设计、底层算子等高门槛专业领域时极易遭遇“进化停滞”，而传统的参数微调方法又受困于高质量专业算法语料的极度匮乏。为此，南京大学与华为等机构的研究团队提出了全新的参数自进化框架——种群筛选策略优化 (Population-Curated Policy Optimization, PCPO) ，在理论上证明了通过渐进学习自生成算法能够打破停滞的“改进链 (Improvement Chain) ”命题，并借助全局种群与混合策略更新机制，让智能体直接在自生成的高质量多样化算法中持续迭代进化。在电子设计自动化 (Electronic Design Automation, EDA) 的芯片全局布局学习率调度任务中，基于 8B 参数开源底座的 PCPO 仅需 4 个芯片案例的轻量训练，就在全部 16 个测试案例上全面超越了 OpenEvolve 和 ShinkaEvolve 等前沿上下文进化基准，性能足以比肩顶尖闭源模型 GPT-5.5，并显著降低了推理阶段的 Token 开销。此外，PCPO 在 4 款 GPU 底层算子设计任务中相比 PyTorch Eager 基线实现了平均 8.27 倍的显著加速，为解决复杂工业与高性能计算领域的算法自动化探索开辟了全新路径。
+
+---
+
+## 📋 内容概要
+
+&gt; ## 📋 Summary
+
+如今，大语言模型 (LLM) 越来越多地以自主智能体的形态参与到复杂现实任务中，承担起算法设计与持续优化的重任。虽然基于**上下文进化框架** (In-Context Evolutionary Frameworks) 的探索方法颇受青睐，但在需要高度专业领域知识的复杂场景下，这类方法往往很快就会陷入能力瓶颈与进化停滞；而传统的**参数化适配** (Parametric Adaptation) 方法若想内化专业知识，又严重依赖海量的特定领域语料，这在高级算法设计这一高精尖场景中无疑是极其匮乏的。
+
+&gt; Large Language Models (LLMs) are increasingly utilized as autonomous agents to design and refine algorithms for complex real-world tasks. While **in-context evolutionary frameworks** are popular, they often plateau quickly in domains requiring specialized knowledge. Conversely, traditional **parametric adaptation** requires large datasets of domain-specific corpora, which are extremely scarce for advanced algorithm-design scenarios.
+
+为了弥合这一鸿沟，本文提出了**种群筛选策略优化** (Population-Curated Policy Optimization, PCPO) ——这是一种高样本效率的参数自进化框架，允许智能体直接从自身探索生成的算法中进行反思与学习。
+
+&gt; To bridge this gap, this paper introduces **Population-Curated Policy Optimization (PCPO)**—a sample-efficient parametric self-evolution framework where agents explore and learn directly from self-generated algorithms.</description>
+    </item>
+    <item>
+      <title>突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-02/突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销/</guid>
+      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+      <description>长期以来，大语言模型 (Large Language Model, LLM) 的在线推理服务普遍采用“无状态”架构，即针对同一份长文档的每一次用户提问，模型都必须从头重新计算完整的注意力状态，导致算力与能耗被极其严重地重复浪费。为攻克这一算力天花板瓶颈，研究者提出了名为 **Galahad** 的新型内存层，专为 vLLM、SGLang 和 llama.cpp 等主流推理框架量身设计。Galahad 由两大核心组件构成：**Taliesin** 能够对完全相同的字节级文本块实现键值缓存 (KV Cache) 状态的持久化存储与瞬时重载，真正将文档读取转变为“一次性开销”；而 **Blaise** 则负责直接维护文档并按需向模型精准投喂问题相关的特定片段。在包含 9.7 万 Token 的高难度语料测试中，配合 Gemma 4 31B 模型，Galahad 将问答准确率从基线的 10% 提升至 100% 满分，推理延迟降至 0.59–0.64 秒，且保存的注意力状态实现了 100% 比特级无损匹配。这项研究成果成功推动了大模型服务从低效的“无状态”计算迈向真正高效的“状态化推理” (Stateful Inference) 新范式。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+传统上，大语言模型 (Large Language Model, LLM) 的推理服务在各个请求之间是完全“无状态”的。这意味着每当收到针对同一份文档的新提问时，模型都必须从第一个 Token 开始重新计算整篇文档的注意力状态——这无疑在底层硬件上白白浪费了极其庞大的算力与电力。为了突破这一算力天花板的严苛限制，本文隆重推出了 **Galahad**——一套专为 vLLM、SGLang 以及 llama.cpp 等主流开源推理框架量身打造的高效内存层。
+
+&gt; Large Language Model (LLM) serving is traditionally stateless, meaning that a model recomputes a document's attention state from the first token upon every new request—wasting massive amounts of compute and energy. To address this compute ceiling constraint, this paper introduces **Galahad**, a memory layer designed for frameworks like vLLM, SGLang, and llama.cpp. 
+
+Galahad 巧妙借助两大核心组件，成功将大模型的文档读取转变为“一次性开销”：
+
+&gt; Galahad transforms LLM reading into a one-time cost by leveraging two main components:
+
+* **Taliesin：** 能够针对字节完全一致的文本块，自动持久化保存并极速重新加载模型的键值 (Key-Value, KV) 状态，彻底告别重复计算。
+* **Blaise：** 直接在底层接管长文档管理，每次仅向模型精准传递回答当前问题所必需的特定章节片段。
+
+&gt; * **Taliesin:** Saves and reloads a model's key-value (KV) state for blocks of text matching identical bytes.
+&gt; * **Blaise:** Manages documents directly, passing only the specific sections required by a question.</description>
+    </item>
+    <item>
+      <title>当推理陷入迷途：失控推理的注意力动态演化与实时干预</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-02/当推理陷入迷途-失控推理的注意力动态演化与实时干预/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/当推理陷入迷途-失控推理的注意力动态演化与实时干预/</guid>
+      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大推理模型 (Large Reasoning Models, LRMs) 的兴起，依靠延长思维链进行深度思考已成为攻克高难度数学与逻辑难题的核心范式，但这种漫长的思维过程极易误入歧途，蜕变为无休止的冗余验证与无限生成死循环，导致推理开销激增与算力资源枯竭。针对现有多依赖生硬截断长文本或浅层重复检测等被动防御手段的局限，研究团队提出了创新的 RADAR (Reasoning-state Analysis via Dynamic Attention Responses) 分析框架。该框架首次将大模型的推理生成过程形式化解构为四大离散状态，不仅能在推理运行时实时判定思维状态，更从底层注意力机制上清晰刻画了良性反思如何一步步恶化为失控生成。在此基础上，研究进一步提出了无需二次微调训练的 Attention Realignment 实时干预机制，在表层文本出现显性重复之前便将异常注意力分布导向回正常基准，在几乎无损模型原生解题能力的前提下成功消除了死循环，为保障大推理模型的高效稳定运行开辟了全新路径。
+
+---
+
+## 概述与核心摘要
+
+&gt; ## Overview &amp; Summary
+
+本文深入研究了 **Large Reasoning Models (LRMs)** 的失效模式。这类大推理模型往往借助更长推理步骤的“深度思考”在复杂任务中斩获优异表现，但这种漫长的思维延伸过程经常会退化为冗余的重复验证循环与无限生成状态。这些失控的推理行为不仅会成倍推高推理成本，带来计算资源枯竭的风险，还会严重拉低线上服务的响应质量。
+
+&gt; This paper investigates the failure modes of **Large Reasoning Models (LRMs)**, which often leverage extended reasoning to excel at complex tasks. However, this prolonged thinking process can frequently degenerate into redundant verification loops and persistent generation cycles. These uncontrolled behaviors drive up inference costs, risk resource exhaustion, and degrade service quality.
+
+为了打破现有被动应对策略 (例如直接暴力截断输出或仅针对字面词句做浅层重复检测) 的局限，作者提出了 **RADAR** (**R**easoning-state **A**nalysis via **D**ynamic **A**ttention **R**esponses) 框架。这一创新框架带来了以下关键突破：
+* **四状态形式化解构**：将 LRM 的生成过程细分为**四种界限分明的思维状态**；
+* **实时状态判定**：在模型推理过程中**实时识别**当前所处的推理状态；
+* **机理解析与演化映射**：从注意力机理上剖析有益的自我反思是如何逐步蜕化为失控生成的；
+* **引入 Attention Realignment**：提出了一种精准的纠偏干预策略，将偏离常态的异常注意力分布拉回健康基准模式——在几乎不损耗模型任务求解能力的前提下，成功阻断陷入死循环。
+
+&gt; To address the limitations of existing reactive mitigations (such as output truncation or superficial repetition detection), the authors introduce **RADAR** (**R**easoning-state **A**nalysis via **D**ynamic **A**ttention **R**esponses). This novel framework:
+&gt; * Operationalizes LRM generation into **four distinct states**.
+&gt; * Identifies current reasoning states **in real-time**.
+&gt; * Mechanistically maps how healthy reflection devolves into uncontrolled generation.
+&gt; * Introduces **Attention Realignment**, a corrective intervention that shifts abnormal attention distributions back toward healthy patterns—successfully reducing looping while preserving task performance.
+
+---
+
+## 论文元数据与发表详情
+
+&gt; ## Metadata &amp; Publication Details
+
+* **arXiv 编号：** [arXiv:2609.38817](https://arxiv.org/abs/2609.38817) [cs.AI]
+* **研究领域：** 人工智能 (`cs.AI`) ；计算与语言 (`cs.CL`) 
+* **提交时间：** 2026 年 9 月 30 日
+* **数字对象唯一标识符 (DOI) ：** [10.48550/arXiv.2609.38817](https://doi.org/10.48550/arXiv.2609.38817)
+* **知识共享许可：** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+&gt; * **arXiv ID:** [arXiv:2609.38817](https://arxiv.org/abs/2609.38817) [cs.AI]
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Computation and Language (`cs.CL`)
+&gt; * **Submitted on:** September 30, 2026
+&gt; * **DOI:** [10.48550/arXiv.2609.38817](https://doi.org/10.48550/arXiv.2609.38817)
+&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
+    </item>
+    <item>
+      <title>Perplexity 发布 pplx-embed-v2-context-9b-preview：兼顾直接答案与支撑证据的上下文向量检索模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-02/Perplexity-发布-pplx-embed-v2-context-9b-preview-兼顾直接答案与支撑证据的上下文向量检索模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/Perplexity-发布-pplx-embed-v2-context-9b-preview-兼顾直接答案与支撑证据的上下文向量检索模型/</guid>
+      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在传统的检索增强生成 (Retrieval-Augmented Generation, RAG) 系统中，长文档通常被粗暴地切分成孤立的文本块，检索模型往往只能押注单一的“黄金段落”，极易丢失周围至关重要的上下文信息。针对这一行业痛点，Perplexity 携手 turbopuffer 正式发布了开源上下文向量模型 **`pplx-embed-v2-context-9b-preview`**。该模型采用创新的“查询感知上下文压缩教师”训练机制，打破了非黑即白的单段落标注限制，使模型在单次向量检索中就能同时捕获直接答案与支撑证据。在全新基准测试 `context-bench` 与 `ConTEB` 上，该模型表现刷新行业上限，不仅在证据召回率上显著超越同类顶尖商业模型，还原生支持 int8 量化与 Matryoshka 灵活降维，在大幅缩减向量存储成本的同时保持极致性能。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+Perplexity 研究团队联合 turbopuffer 正式发布了 **`pplx-embed-v2-context-9b-preview`**，这是一款专为检索增强生成 (Retrieval-Augmented Generation, RAG) 流程量身定制的先进上下文向量模型。与传统模型依赖割裂孤立的文本块或死守单一“黄金段落 (Gold Passage) ”不同，该模型能够结合整篇文档的全局语境来精准评估每个文本块。通过在训练阶段引入创新的“查询感知上下文压缩教师模型”，它学会了在一次检索中同时找回直接答案以及不可或缺的支撑证据。目前该模型已通过 Hugging Face 以开源 MIT 许可证发布，不仅在多项上下文检索基准测试中斩获顶尖成绩，还原生支持 int8 量化与 Matryoshka 降维技术，在性能突破的同时大幅降低了向量存储开销。
+
+&gt; Perplexity Research, in collaboration with turbopuffer, has released **`pplx-embed-v2-context-9b-preview`**, an advanced contextual embedding model designed specifically for Retrieval-Augmented Generation (RAG) pipelines. Unlike traditional models that rely on isolated chunks or a single "gold passage," this model evaluates chunks in the full context of the document. Utilizing a novel query-aware context compression teacher during training, the model learns to retrieve both the direct answer and the necessary supporting evidence simultaneously. Released under an open-source MIT license via Hugging Face, it achieves state-of-the-art performance on context retrieval benchmarks while optimizing storage with native int8 quantization and Matryoshka dimensions.
+
+---
+
+## 部署方式与获取渠道
+
+&gt; ## Deployment and Availability
+
+* **获取方式：** 采用自托管预览形式，模型权重已按 MIT 开源许可证在 [Hugging Face](https://huggingface.co/perplexity-ai/pplx-embed-v2-context-9b-preview) 正式开放。
+* **环境要求：** 加载运行需要安装 `transformers&gt;=5.4.0`，并开启 `trust_remote_code=True`。
+* **API 状态：** 暂未上线 Perplexity 官方 API。
+* **特别说明：** 官方模型卡片提示，后续模型权重与接口可能会在不保证向后兼容的前提下进行更新调整。
+
+&gt; * **Access Type:** Self-hosted preview with open weights available on [Hugging Face](https://huggingface.co/perplexity-ai/pplx-embed-v2-context-9b-preview) under the MIT license.
+&gt; * **Requirements:** Loading requires `transformers&gt;=5.4.0` with `trust_remote_code=True`.
+&gt; * **API Status:** Not yet available on the Perplexity API. 
+&gt; * **Note:** The model card warns that weights and interfaces may change without backward compatibility.
+
+---
+
+## 为什么传统的“黄金段落”方案难以满足需求
+
+&gt; ## Why the Traditional "Gold Passage" Approach Falls Short
+
+常规的 RAG 系统在处理长文档时，习惯将长文粗暴地切分成互不相干的独立分块。然而在实际阅读中，单个分块往往严重依赖文档其他位置出现的外部上下文——例如某个人名实体、所属章节标题或关键术语定义。为了化解这一困境，上下文感知模型引入了**晚期分块 (late chunking) **技术：先将整篇完整文档进行单次编码，随后再针对每个文本块执行池化处理。
+
+&gt; Standard RAG systems split long documents into independent chunks. However, individual chunks frequently rely on external context—such as an entity, heading, or definition—stated elsewhere in the document. Contextual models combat this using **late chunking**, where the entire document is encoded in a single pass before being pooled per chunk.
+
+然而，传统的训练范式通常存在以下几大硬伤：
+
+&gt; Traditional training paradigms typically suffer from several limitations:
+
+1. **非黑即白的二元局限：** 现有数据集针对每个查询通常仅标注唯一的“黄金文本块”，其他所有文本块 (即便包含至关重要的上下文背景句) 都会被武断地视为负样本。
+2. **标注成本居高不下：** 依赖大语言模型 (Large Language Model, LLM) 进行数据标注的成本随数据集规模呈线性增长。
+3. **分块策略僵化死板：** 标签往往与某种单一且预先固定的分块切分规则强绑定，缺乏泛化适应能力。
+
+&gt; 1. **Binary Limitations:** Datasets usually mark only one "gold chunk" per query, treating all other chunks (including vital contextual sentences) as negatives.
+&gt; 2. **Annotation Costs:** LLM annotation costs scale linearly with dataset size.
+&gt; 3. **Rigid Labels:** Labels are strictly tied to a single, predetermined chunking strategy.
+
+---
+
+## 训练机制深度剖析
+
+&gt; ## How the Training Works
+
+该模型的训练架构摒弃了生硬的二元标签，转而采用一个**查询感知上下文压缩模型**充当教师模型 (Teacher) 。该教师模型会对用户的查询与整篇文档进行联合分析，并为其中的每一个 Token 进行打分：
+
+&gt; The training architecture replaces hard binary labels with a **query-aware context compression model** acting as a teacher. The teacher analyzes the query and document jointly to score every token:
+
+* **文本块相关性：** 通过计算每个文本块内得分排名前 $n$ (top-$n$) 的 Token 平均分来确定相关度。
+* **软目标概率分布：** 在正样本相关文档内的所有文本块上，应用带温度调节的 Softmax 概率分布 (同时对完全无关文档中的文本块直接赋零分) 。
+* **蒸馏损失：** 通过计算教师模型与学生模型分布之间的前向 KL 散度 (Forward KL Divergence) 进行匹配拟合。
+* **文档级损失：** 借鉴了 ColBERT 的 MaxSim 机制，引入 InfoNCE 损失函数，以文档中表现最佳的文本块得分作为整个文档的代表分。
+
+&gt; * **Chunk Relevance:** Determined by calculating the mean of the top-$n$ token scores inside each chunk.
+&gt; * **Soft Target:** Uses a temperature-scaled softmax distribution over chunks within the positive document (while assigning zero to chunks in irrelevant documents).
+&gt; * **Distillation Loss:** Calculated using forward KL divergence matching between the teacher and student distributions.
+&gt; * **Document Loss:** Inspired by ColBERT’s MaxSim, utilizing an InfoNCE loss where a document's score is represented by its best-performing chunk.
+
+在训练过程中，批次会动态随机采样多样化的分块切分策略。不同的文本块通过一个专门学习得到的 `&lt;|chunk_sep|&gt;` 特殊 Token 进行分隔，随后执行均值池化 (Mean-Pooling) 。由于教师模型仅在训练阶段发挥作用，因此在实际部署推理时完全不会带来额外的延迟或存储开销。
+
+&gt; During training, batches dynamically sample random chunking strategies. Chunks are separated by a learned `&lt;|chunk_sep|&gt;` token and mean-pooled. Because the teacher is only active during training, inference incurs zero added latency or storage overhead. 
+
+该模型的底层架构脱胎于团队自研的 9B 参数规模 ColBERT 检索模型，并通过线性投影层输出 2048 维向量表示；结合[套娃表征学习 (Matryoshka Training) ](https://arxiv.org/abs/2205.13147)，模型原生支持截断至 1024 维并搭配 int8 原生量化。最终发布的模型则是一份精心调配的模型融合套件 (Model Soup) ，集成了基于 50 多种语言、约 430 个数据集训练得出的多个检查点 (Checkpoints) 。
+
+&gt; The architecture originates from an in-house 9B ColBERT retrieval model using a linear projection to output 2048 dimensions, with [Matryoshka training](https://arxiv.org/abs/2205.13147) supporting 1024-dimensional truncation and native int8 quantization. The final release is a model soup combining multiple checkpoints trained across roughly 430 datasets in over 50 languages.
+
+---
+
+## 全新评估基准：`context-bench`
+
+&gt; ## `context-bench`: A New Evaluation Benchmark
+
+为了严防评测数据受到污染，[turbopuffer](https://turbopuffer.com/) 专门闭门打造并持有私有基准测试集 `context-bench`。该基准覆盖 21 个垂直领域，包含 38,894 篇长文档以及 2,099 个真实评测查询：
+
+&gt; Developed and held privately by [turbopuffer](https://turbopuffer.com/) to prevent data contamination, `context-bench` evaluates models across 2,099 queries spanning 38,894 documents across 21 domains. 
+
+* 按照句子级别分块后，共切分衍生出 **2,458,072 个独立文本块**。
+* 目标文档的长度中位数约为 6,100 个 Token。
+* 测试查询严谨考察了 12 种截然不同的上下文理解能力，从代词指代消歧一路涵盖到复杂的表格结构解析。
+
+&gt; * Sentence chunking generates **2,458,072 individual chunks**.
+&gt; * The median target document length is roughly 6,100 tokens.
+&gt; * Queries rigorously test 12 distinct contextual capabilities, ranging from pronoun resolution to complex table structures.
+
+评测指标包含 **Document@K**、**Answer@K**、**Evidence Recall@K** 以及 **All-Evidence@K**，测试过程独立于特定的索引配置，直接针对全部文本块进行穷举评估。
+
+&gt; Metrics include **Document@K**, **Answer@K**, **Evidence Recall@K**, and **All-Evidence@K**, evaluated exhaustively against all chunks independently of index configurations.
+
+---
+
+## 评测战报与核心性能亮点
+
+&gt; ## Results &amp; Performance Highlights
+
+* **`context-bench` 在 $K = 10$ 下的表现：** 答案召回率达到 45.5%，证据召回率达到 40.6%，全证据召回率达到 31.1%。
+* **文档级召回率：** 在 $K = 1$ 时为 15.2%，在 $K = 10$ 时高达 61.6%。
+* **竞品正面对决：** 在 $K = 10$ 的测试中，答案召回率超越 `voyage-context-4` 达 14.4 个百分点，证据召回率领先 5.0 个百分点。
+* **[ConTEB](https://github.com/illuin-tech/contextual-embeddings) 基准表现：** 在所有参评模型中斩获最高的平均 nDCG@10 评分。
+* **极致存储效率：** 1024 维 int8 配置 (单个向量仅占 1 KB 存储) 的性能表现甚至微弱超越了占用 2048 维 float32 (单向量 8 KB) 的 `voyage-context-4`。
+* **对分块大小的鲁棒性：** 当切分文本块的大小从 64 个 Token 扩展到 512 个 Token 时，模型的平均得分仅从 81.0% 轻微波动至 79.9%，表现出极高的稳定性。
+
+&gt; * **`context-bench` at $K = 10$:** 45.5% answer recall, 40.6% evidence recall, and 31.1% all-evidence recall.
+&gt; * **Document Recall:** 15.2% at $K = 1$ and 61.6% at $K = 10$.
+&gt; * **Versus Competitors:** Outperforms `voyage-context-4` by 14.4 points on answer recall and 5.0 points on evidence recall at $K = 10$.
+&gt; * **[ConTEB](https://github.com/illuin-tech/contextual-embeddings):** Achieves the highest average nDCG@10 among evaluated models.
+&gt; * **Storage Efficiency:** A 1024-dim int8 configuration (1 KB per vector) slightly outperforms `voyage-context-4` at 2048-dim float32 (8 KB).
+&gt; * **Chunk Size Robustness:** Average scores shift mildly from 81.0% to 79.9% as chunk sizes range from 64 to 512 tokens.
+
+---
+
+## 主流竞品横向技术对比
+
+&gt; ## Comparison with Closest Competitors
+
+| 特性对比 | `pplx-embed-v2-context-9b-preview` | [`voyage-context-4`](https://blog.voyageai.com/2026/06/29/voyage-context-4/) | [`pplx-embed-context-v1-4B`](https://huggingface.co/perplexity-ai/pplx-embed-context-v1-4b) | [`Nemotron-3-Embed-8B`](https://huggingface.co/nvidia/Nemotron-3-Embed-8B-BF16) |
+| :--- | :--- | :--- | :--- | :--- |
+| **分块向量表征** | 上下文感知 (Contextual) | 上下文感知 (Contextual) | 上下文感知 (Contextual) | 单独切块编码 (Independent) |
+| **获取方式** | 开源权重，遵循 MIT 许可证 | 托管 API (Voyage, MongoDB Atlas) | 开源权重，MIT 许可证；Perplexity API | 开源权重，遵循 OpenMDW-1.1 协议 |
+| **参数量** | 官方博文标注为 9B (Hugging Face 标注为 8B) | 未公开 (MoE 混合专家架构底座) | 4B | 约 8B |
+| **向量维度** | 2048, 1024 | 2048, 1024, 512, 256 | 2560 (支持 Matryoshka 降维) | 4096 (支持切片) |
+| **量化输出** | 原生 int8 | int8, uint8, binary, ubinary | int8, binary | Float (浮点) |
+| **上下文窗口** | 评测最高支持至 32,768 个 Token | 单次请求 32K；搭配自动切块可达 120K | 32K | 32,768 |
+| **自动分块 (Auto-chunking)** | 否 | 是 | 否 | 否 |
+| **价格资费** | 自托管 (免费开源) | 每百万 Token 收费 $0.12 (前 2 亿 Token 免费) | 自托管或通过 API 调用 | 自托管 (免费开源) |
+
+*(数据来源：[Voyage 官方文档](https://docs.voyageai.com/docs/contextualized-chunk-embeddings)，以及截至 2026 年 9 月 30 日上述各模型卡片信息)*。
+
+&gt; *(Sources: [Voyage docs](https://docs.voyageai.com/docs/contextualized-chunk-embeddings), linked model cards as of September 30, 2026).*
+
+---
+
+## 核心技术要点总结
+
+&gt; ## Key Takeaways
+
+* **Token 级教师机制的革新：** 成功摆脱了传统单一“黄金文本块”强标签的僵化约束。
+* **答案与证据兼收并蓄：** 模型能够在统一的分块索引空间内，高效同步检索出直接答案与不可或缺的支撑证据。
+* **基准测试性能卓越：** 在 `context-bench` 的 Answer@10 评测中达到 **45.5%** 的高召回率，相比同类竞品 `voyage-context-4` 大幅领先 14.4 个百分点。
+* **开源可用与生态进展：** 基于 MIT 许可证的开源模型权重现已全量开放下载，Perplexity 官方 API 接口集成则将在后续推出。
+
+&gt; * A token-level teacher mechanism successfully replaces restrictive single gold-chunk labels.
+&gt; * The model efficiently retrieves direct answers alongside necessary supporting evidence inside a unified chunk index.
+&gt; * `context-bench` Answer@10 reaches **45.5%**, outperforming `voyage-context-4` by 14.4 points.
+&gt; * Open MIT weights are available immediately, while official Perplexity API integration remains pending.
+
+---
+
+*欢迎深入阅读官方[技术博客长文](https://www.perplexity.ai/hub/blog/contextual-embedding-beyond-the-gold-passage)探索完整技术实现细节，并前往获取[开源模型权重](https://huggingface.co/perplexity-ai/pplx-embed-v2-context-9b-preview)。*
+
+&gt; *Explore the complete [technical details](https://www.perplexity.ai/hub/blog/contextual-embedding-beyond-the-gold-passage) and access the [model weights](https://huggingface.co/perplexity-ai/pplx-embed-v2-context-9b-preview).*</description>
+    </item>
+    <item>
       <title>TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-01/TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-01/TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界/</guid>
@@ -3858,944 +4297,6 @@ VQ-bench 将所有原语划分为三大主要类别：
 
 &gt; * **Benchmark Dominance:** When instantiated for scientific reasoning using RL-trained capability experts, VG-OPD achieved the best overall performance across **seven benchmarks** for both **4B and 8B student models**, ranking first on five benchmarks at both scales. The most significant performance gains occurred in knowledge-intensive scientific reasoning tasks.
 &gt; * **Source of Gains:** Analysis reveals that improvements stem from localizing verified supervision rather than simply adding more teachers or altering the distillation loss. Misplacing the supervision budget proved to be the most damaging modification, and indiscriminate distillation often dragged RL performance below its baseline—a drawback successfully mitigated by gated distillation.</description>
-    </item>
-    <item>
-      <title>深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-17/深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用/</guid>
-      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着深度学习模型规模的爆发式增长，现代 GPU 硬件面临着严峻的显存带宽瓶颈，传统框架层逐个算子调用的模式会产生海量中间张量的读写开销。NVIDIA 推出的 cuDNN Graph API 及其高层封装 cuDNN Frontend 彻底打破了以往僵硬的库函数黑盒限制，允许开发者以有向计算图的形式自由编排算子。借助该接口，工程师能够将卷积或矩阵乘法与其后续的偏置加法、激活函数、AMAX 规约等操作深度融合成单个高效内核，并精细挑选最优的底层执行引擎。本文通过详实的单卡实测代码，全面拆解了算子融合、引擎自动调优、执行计划序列化持久化、动态维度内核缓存以及 CUDA Graph 捕获等核心技术，为构建极致吞吐与低延迟的生产级推理服务提供了深度实践参考。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-本教程带你深入传统深度学习框架底层，全面探索 NVIDIA **cuDNN Frontend** 计算图 API (Graph API) 的强大功能。它摒弃了过往僵化固定的库函数逐层调用逻辑，转而将所有前向或反向计算建模为由各个算子构成的有向计算图。这种贴近硬件底层的构建方式，赋予了开发者极高的控制权：不仅能够手动挑选最契合当前硬件的底层执行引擎 (Execution Engine)，还能构建高度优化的融合内核 (Fused Kernel) ——彻底消除偏置相加 (Bias Addition)、激活函数 (Activation) 以及 AMAX 极值规约等尾部运算产生的显存往返开销；此外，它还原生支持全引擎自动调优 (Autotuning)、执行计划序列化与反序列化 (Plan Serialization)、动态张量形状 (Dynamic Shapes) 处理，并能无缝接入 CUDA Graph 进行图捕获，从而消除内核启动开销。
-
-&gt; This tutorial explores NVIDIA’s **cuDNN Frontend** graph API from beneath traditional deep learning frameworks. Rather than relying on rigid library calls, computations are modeled as directed graphs of operations. This low-level approach allows developers to manually select execution engines, construct highly optimized fused kernels (eliminating unnecessary memory traffic for operations like bias additions, activations, and AMAX reductions), leverage autotuning, utilize plan serialization, handle dynamic shapes, and integrate with CUDA graph capture. 
-
-文中给出的所有实操代码均在单张 GPU 上完成了严格测试，并与原生 PyTorch 的参考基准进行了逐一比对，在确保数值计算绝对正确的前提下量化测量了算子融合与图优化带来的实际性能飞跃。
-
-&gt; All code examples are tested against PyTorch references on a single GPU to validate correctness and measure performance gains.
-
----
-
-## 1. 环境配置与系统初始化
-
-&gt; ## 1. Environment Setup &amp; Initialization
-
-我们首先安装 `nvidia-cudnn-frontend` 依赖包，并配置动态链接器以确保系统能够精准定位并加载 `libcudnn.so` 动态库。接着，根据当前 GPU 的硬件计算能力 (Compute Capability) 自动匹配并初始化计算精度（在较新的架构上优先选择 `bfloat16`，否则采用 `float16`），同时定义了一套可复用的通用辅助函数，用于张量描述、计算图编译构建、显存工作区 (Workspace) 分配以及基准性能测试。
-
-&gt; We begin by installing the `nvidia-cudnn-frontend` package and configuring the dynamic loader to ensure `libcudnn.so` is correctly detected. We initialize the working precision (`bfloat16` or `float16` depending on compute capability) and define reusable helper functions for tensor descriptions, graph compilation, workspace allocation, and benchmarking.
-
-```python
-import os
-import sys
-import glob
-import math
-import time
-import ctypes
-import traceback
-import subprocess
-
-RESULTS = {}
-
-def banner(title):
-    print("\n" + "=" * 78)
-    print(title)
-    print("=" * 78)
-
-def section(name):
-    def wrap(fn):
-        def run(*a, **kw):
-            banner(name)
-            try:
-                out = fn(*a, **kw)
-                RESULTS[name] = out if isinstance(out, str) else "ok"
-                return out
-            except Exception as e:
-                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {e}"
-                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
-                traceback.print_exc(limit=3)
-                return None
-        return run
-    return wrap
-
-banner("0. Install nvidia-cudnn-frontend and locate libcudnn")
-subprocess.run(
-    [sys.executable, "-m", "pip", "install", "-q", "nvidia-cudnn-frontend"],
-    check=True,
-)
-
-import torch
-assert torch.cuda.is_available(), "No GPU. Runtime -&gt; Change runtime type -&gt; GPU."
-torch.backends.cudnn.enabled = True
-_ = torch.nn.functional.conv2d(
-    torch.randn(1, 1, 8, 8, device="cuda"), torch.randn(1, 1, 3, 3, device="cuda")
-)
-torch.cuda.synchronize()
-
-try:
-    import nvidia.cudnn
-    _libdir = os.path.join(os.path.dirname(nvidia.cudnn.__file__), "lib")
-    os.environ["CUDNN_PATH"] = os.path.dirname(nvidia.cudnn.__file__)
-    os.environ["LD_LIBRARY_PATH"] = _libdir + ":" + os.environ.get("LD_LIBRARY_PATH", "")
-    for _so in sorted(glob.glob(os.path.join(_libdir, "libcudnn*.so*"))):
-        try:
-            ctypes.CDLL(_so, mode=ctypes.RTLD_GLOBAL)
-        except OSError:
-            pass
-except Exception as _e:
-    print(f"  (no pip cuDNN package found, relying on system cuDNN: {_e})")
-
-import cudnn
-print("  cuDNN frontend imported successfully.")
-
-banner("1. Environment")
-DEV = torch.device("cuda")
-MAJOR, MINOR = torch.cuda.get_device_capability()
-SM = MAJOR * 10 + MINOR
-CUDNN_VER = cudnn.backend_version()
-
-print(f"  GPU                 : {torch.cuda.get_device_name(0)}")
-print(f"  Compute capability  : sm_{SM}")
-print(f"  Torch / CUDA        : {torch.__version__} / {torch.version.cuda}")
-print(f"  cuDNN backend       : {CUDNN_VER}")
-
-try:
-    print(f"  cuDNN version str   : {cudnn.backend_version_string()}")
-except Exception:
-    pass
-
-DTYPE = torch.bfloat16 if SM &gt;= 80 else torch.float16
-HAS_SDPA = SM &gt;= 80
-print(f"  Working dtype       : {DTYPE}")
-print(f"  Fused SDPA usable   : {HAS_SDPA}")
-
-HANDLE = cudnn.create_handle()
-TORCH2CUDNN = {
-    torch.float16: cudnn.data_type.HALF,
-    torch.bfloat16: cudnn.data_type.BFLOAT16,
-    torch.float32: cudnn.data_type.FLOAT,
-    torch.int32: cudnn.data_type.INT32,
-    torch.int64: cudnn.data_type.INT64,
-    torch.int8: cudnn.data_type.INT8,
-    torch.uint8: cudnn.data_type.UINT8,
-}
-
-def tensor_of(graph, t, name):
-    return graph.tensor(
-        name=name,
-        dim=list(t.size()),
-        stride=list(t.stride()),
-        data_type=TORCH2CUDNN[t.dtype],
-    )
-
-def scalar_of(graph, name):
-    return graph.tensor(
-        name=name,
-        dim=[1, 1, 1],
-        stride=[1, 1, 1],
-        data_type=cudnn.data_type.FLOAT,
-        is_pass_by_value=True,
-    )
-
-def build(graph, heur=None, policy=None):
-    heur = heur or [cudnn.heur_mode.A, cudnn.heur_mode.FALLBACK]
-    graph.validate()
-    graph.build_operation_graph()
-    graph.create_execution_plans(heur)
-    graph.check_support()
-    if policy is None:
-        graph.build_plans()
-    else:
-        graph.build_plans(policy)
-    return graph
-
-def workspace_for(graph):
-    n = graph.get_workspace_size()
-    return torch.empty(max(n, 1), device=DEV, dtype=torch.uint8)
-
-def bench(fn, warmup=10, iters=50):
-    for _ in range(warmup):
-        fn()
-    torch.cuda.synchronize()
-    s, e = torch.cuda.Event(True), torch.cuda.Event(True)
-    s.record()
-    for _ in range(iters):
-        fn()
-    e.record()
-    torch.cuda.synchronize()
-    return s.elapsed_time(e) / iters
-
-def tflops(flops, ms):
-    return flops / (ms * 1e-3) / 1e12
-
-def report(tag, ms, flops=None):
-    extra = f"   ({tflops(flops, ms):7.2f} TFLOP/s)" if flops else ""
-    print(f"    {tag:&lt;34s} {ms:8.3f} ms{extra}")
-```
-
----
-
-## 2. 算子融合实战：卷积 $\rightarrow$ 偏置加法 $\rightarrow$ ReLU
-
-&gt; ## 2. Fused Convolution $\rightarrow$ Bias $\rightarrow$ ReLU
-
-接下来我们着手构建第一个完整的计算图：将二维卷积 (2D Convolution)、偏置加法 (Bias Addition) 以及非线性激活函数 ReLU 紧密串联，全流程融合成单个 GPU 内核 (Single Kernel)。在张量内存布局上，所有输入输出均严格维持通道后置的 `channels_last` (NHWC) 内存格式，以便充分发挥 NVIDIA Tensor Core 硬件核心的向量化加速吞吐。
-
-&gt; We construct our first computation graph: a 2D convolution followed by a bias addition and a ReLU activation, fused entirely into a single kernel. Tensors are kept in `channels_last` (NHWC) format to match Tensor Core hardware requirements.
-
-```python
-N, C, H, W = 32, 128, 56, 56
-K, R, S = 256, 3, 3
-PAD, STR, DIL = 1, 1, 1
-P = (H + 2 * PAD - DIL * (R - 1) - 1) // STR + 1
-Q = (W + 2 * PAD - DIL * (S - 1) - 1) // STR + 1
-CONV_FLOPS = 2 * N * K * P * Q * C * R * S
-CONV_STATE = {}
-
-@section("2. Fused Conv -&gt; Bias -&gt; ReLU")
-def conv_fusion():
-    x = torch.randn(N, C, H, W, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-    w = torch.randn(K, C, R, S, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-    b = torch.randn(1, K, 1, 1, device=DEV, dtype=DTYPE)
-    y = torch.empty(N, K, P, Q, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-
-    g = cudnn.pygraph(
-        handle=HANDLE,
-        name="conv_bias_relu",
-        io_data_type=TORCH2CUDNN[DTYPE],
-        intermediate_data_type=cudnn.data_type.FLOAT,
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    X = tensor_of(g, x, "X")
-    Wt = tensor_of(g, w, "W")
-    Bt = tensor_of(g, b, "bias")
-
-    conv = g.conv_fprop(
-        image=X, weight=Wt,
-        padding=[PAD, PAD], stride=[STR, STR], dilation=[DIL, DIL],
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    biased = g.bias(input=conv, bias=Bt)
-    Y = g.relu(input=biased)
-    
-    Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
-    Y.set_dim(list(y.size())).set_stride(list(y.stride()))
-
-    t0 = time.perf_counter()
-    build(g)
-    build_ms = (time.perf_counter() - t0) * 1e3
-    ws = workspace_for(g)
-    
-    pack = {X: x, Wt: w, Bt: b, Y: y}
-    g.execute(pack, ws)
-    torch.cuda.synchronize()
-
-    ref = torch.relu(torch.nn.functional.conv2d(x, w, bias=b.flatten(), padding=PAD))
-    err = (y.float() - ref.float()).abs().max().item()
-    scale = ref.float().abs().max().item()
-
-    print(f"    problem  : N{N} C{C} {H}x{W} -&gt; K{K} {R}x{S}  ({DTYPE})")
-    print(f"    build    : {build_ms:.1f} ms   workspace: {ws.numel()/1024:.1f} KiB")
-    print(f"    max |err|: {err:.4f}  (ref max {scale:.2f}, rel {err/max(scale,1e-9):.2e})")
-    assert err / max(scale, 1e-9) &lt; 5e-2, "numerical mismatch vs PyTorch"
-
-    ms_cudnn = bench(lambda: g.execute(pack, ws))
-    ms_torch = bench(lambda: torch.relu(
-        torch.nn.functional.conv2d(x, w, bias=b.flatten(), padding=PAD)))
-    print()
-    report("cuDNN FE (single fused kernel)", ms_cudnn, CONV_FLOPS)
-    report("PyTorch (conv+bias, then relu)", ms_torch, CONV_FLOPS)
-    print(f"    speedup: {ms_torch/ms_cudnn:.2f}x")
-
-    CONV_STATE.update(graph=g, pack=pack, ws=ws, x=x, w=w, b=b, y=y)
-    return f"{ms_cudnn:.3f} ms, {tflops(CONV_FLOPS, ms_cudnn):.1f} TFLOP/s"
-
-conv_fusion()
-```
-
----
-
-## 3. 自动调优：全引擎候选配置基准评测
-
-&gt; ## 3. Autotuning: Benchmarking All Engine Configurations
-
-与其完全盲目依赖库提供的默认启发式搜索，我们主动向系统查询了多种启发式决策模式（包含模式 `A`、模式 `B` 以及保底降级模式 `FALLBACK`），并通过 `cudnn.build_plan_policy.ALL` 策略构建出所有通过支持检查的候选执行计划 (Execution Plans)，从而横向测评各个可用引擎在当前硬件工况下的实际性能差异与算力发挥。
-
-&gt; Instead of relying purely on default heuristics, we query multiple heuristic modes (`A`, `B`, and `FALLBACK`) and build all candidate plans using `cudnn.build_plan_policy.ALL` to evaluate performance variations across available engines.
-
-```python
-@section("3. Autotuning: build ALL plans, time each engine config")
-def autotune():
-    x, w, b, y = CONV_STATE["x"], CONV_STATE["w"], CONV_STATE["b"], CONV_STATE["y"]
-    g = cudnn.pygraph(
-        handle=HANDLE, name="conv_autotune",
-        io_data_type=TORCH2CUDNN[DTYPE],
-        intermediate_data_type=cudnn.data_type.FLOAT,
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    X = tensor_of(g, x, "X")
-    Wt = tensor_of(g, w, "W")
-    Bt = tensor_of(g, b, "bias")
-    Y = g.relu(input=g.bias(
-        input=g.conv_fprop(image=X, weight=Wt, padding=[PAD, PAD],
-                           stride=[STR, STR], dilation=[DIL, DIL],
-                           compute_data_type=cudnn.data_type.FLOAT),
-        bias=Bt))
-    Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
-    Y.set_dim(list(y.size())).set_stride(list(y.stride()))
-
-    g.validate()
-    g.build_operation_graph()
-    g.create_execution_plans([cudnn.heur_mode.A, cudnn.heur_mode.B, cudnn.heur_mode.FALLBACK])
-    g.check_support()
-    g.build_plans(cudnn.build_plan_policy.ALL)
-    
-    n_plans = g.get_execution_plan_count()
-    print(f"    {n_plans} candidate engine configs survived support checks\n")
-
-    pack = {X: x, Wt: w, Bt: b, Y: y}
-    timings = []
-    for i in range(n_plans):
-        try:
-            g.build_plan_at_index(i)
-            ws_sz = max(g.get_workspace_size_plan_at_index(i), 1)
-            ws = torch.empty(ws_sz, device=DEV, dtype=torch.uint8)
-            ms = bench(lambda: g.execute_plan_at_index(pack, ws, i), warmup=3, iters=15)
-            timings.append((ms, i, ws_sz))
-            print(f"      plan {i:&gt;3d}: {ms:8.3f} ms  "
-                  f"{tflops(CONV_FLOPS, ms):7.2f} TFLOP/s  ws={ws_sz/1024:8.1f} KiB")
-        except Exception as e:
-            print(f"      plan {i:&gt;3d}: unusable ({type(e).__name__})")
-
-    assert timings, "no plan executed"
-    timings.sort()
-    best_ms, best_i, best_ws = timings[0]
-    worst_ms = timings[-1][0]
-
-    print(f"\n    fastest = plan {best_i} @ {best_ms:.3f} ms")
-    print(f"    slowest = {worst_ms:.3f} ms  -&gt; {worst_ms/best_ms:.1f}x spread across engines")
-    print("    Takeaway: heuristics are good, but for a hot shape you ship the")
-    print("    autotuned index (or the serialized plan from section 6).")
-    return f"best plan {best_i} @ {best_ms:.3f} ms ({worst_ms/best_ms:.1f}x spread)"
-
-autotune()
-```
-
----
-
-## 4. 矩阵乘法尾声流水线：缩放、偏置、激活与 AMAX 规约
-
-&gt; ## 4. Matrix Multiplication Epilogues (Scaling, Bias, Activation, and AMAX)
-
-现在我们将算子融合的范围扩展至批处理矩阵乘法 (Batched Matmul)，并在其尾声 (Epilogue) 阶段嫁接一条复杂的流水线：包含一个主机端标量 alpha 缩放因子相乘、偏置加法、非线性激活，以及提取绝对值最大值的 `AMAX` 极值规约（这一运算在最新的 FP8 低精度训练与量化工作流中至关重要）。
-
-&gt; We expand to batched matrix multiplication with a complex epilogue chain: a host scalar alpha scaling factor, bias addition, activation, and an `AMAX` reduction (useful for FP8 training quantization workflows).
-
-```python
-@section("4. Matmul -&gt; scale -&gt; bias -&gt; activation -&gt; AMAX")
-def matmul_epilogue():
-    Bsz, M, Kd, Nd = 16, 512, 1024, 512
-    MM_FLOPS = 2 * Bsz * M * Nd * Kd
-    a = torch.randn(Bsz, M, Kd, device=DEV, dtype=DTYPE)
-    bm = torch.randn(Bsz, Kd, Nd, device=DEV, dtype=DTYPE)
-    bias = torch.randn(1, 1, Nd, device=DEV, dtype=DTYPE)
-    out = torch.empty(Bsz, M, Nd, device=DEV, dtype=DTYPE)
-    amax = torch.empty(1, 1, 1, device=DEV, dtype=torch.float32)
-
-    alpha_val = 0.125
-    alpha = torch.full((1, 1, 1), alpha_val, dtype=torch.float32)
-
-    g = cudnn.pygraph(
-        handle=HANDLE, name="matmul_epilogue",
-        io_data_type=TORCH2CUDNN[DTYPE],
-        intermediate_data_type=cudnn.data_type.FLOAT,
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    A = tensor_of(g, a, "A")
-    Bt = tensor_of(g, bm, "B")
-    BIAS = tensor_of(g, bias, "bias")
-    ALPHA = scalar_of(g, "alpha")
-
-    acc = g.matmul(A=A, B=Bt, compute_data_type=cudnn.data_type.FLOAT)
-    scaled = g.mul(a=acc, b=ALPHA)
-    biased = g.bias(input=scaled, bias=BIAS)
-
-    act_name = "relu"
-    if hasattr(g, "gelu"):
-        try:
-            act = g.gelu(input=biased)
-            act_name = "gelu"
-        except Exception:
-            act = g.relu(input=biased)
-    else:
-        act = g.relu(input=biased)
-
-    print(f"    activation used: {act_name}")
-    OUT = act
-    OUT.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
-
-    have_amax = True
-    try:
-        AMAX = g.reduction(input=act, mode=cudnn.reduction_mode.AMAX,
-                           compute_data_type=cudnn.data_type.FLOAT)
-        AMAX.set_output(True).set_data_type(cudnn.data_type.FLOAT)
-        AMAX.set_dim([1, 1, 1]).set_stride([1, 1, 1])
-    except Exception as e:
-        have_amax = False
-        print(f"    (AMAX reduction unavailable here: {e})")
-
-    build(g)
-    ws = workspace_for(g)
-    pack = {A: a, Bt: bm, BIAS: bias, ALPHA: alpha, OUT: out}
-    if have_amax:
-        pack[AMAX] = amax
-
-    g.execute(pack, ws)
-    torch.cuda.synchronize()
-
-    ref = torch.matmul(a.float(), bm.float()) * alpha_val + bias.float()
-    ref = torch.nn.functional.gelu(ref) if act_name == "gelu" else torch.relu(ref)
-    rel = ((out.float() - ref).abs().max() / ref.abs().max()).item()
-
-    print(f"    shape    : ({Bsz},{M},{Kd}) x ({Bsz},{Kd},{Nd})")
-    print(f"    rel err  : {rel:.2e}")
-    if have_amax:
-        print(f"    fused AMAX {amax.item():.4f} vs torch {ref.abs().max().item():.4f}")
-
-    ms = bench(lambda: g.execute(pack, ws))
-    def torch_ref():
-        r = torch.baddbmm(bias.expand(Bsz, M, Nd), a, bm, beta=1.0, alpha=alpha_val)
-        r = torch.nn.functional.gelu(r) if act_name == "gelu" else torch.relu(r)
-        return r.abs().amax()
-    ms_t = bench(torch_ref)
-    print()
-    report("cuDNN FE (one fused kernel)", ms, MM_FLOPS)
-    report("PyTorch (bmm + act + amax)", ms_t, MM_FLOPS)
-    print(f"    speedup: {ms_t/ms:.2f}x  -- the win is the epilogue traffic, not the GEMM")
-    return f"{ms:.3f} ms, {tflops(MM_FLOPS, ms):.1f} TFLOP/s, {ms_t/ms:.2f}x vs torch"
-
-matmul_epilogue()
-```
-
----
-
-## 5. 缩放点积注意力机制 (FlashAttention) 与执行计划序列化
-
-&gt; ## 5. SDPA (FlashAttention) &amp; Plan Serialization
-
-我们基于 cuDNN Graph API 实现了带有因果掩码 (Causal Masking) 的缩放点积注意力机制 (Scaled Dot-Product Attention, SDPA，即工业级 FlashAttention 实现，该特性需要 NVIDIA Ampere 架构及以上的 `SM80+` 硬件支持)；同时，我们展示了执行计划的序列化技术 (Plan Serialization) ——将编译完成的计算图序列化为二进制数据保存至磁盘，后续在生产部署时直接反序列化重载，并通过整数形式的唯一标识符 (UID) 绑定张量即可直接运行，从而彻底消除服务初次冷启动时的实时 JIT 编译等待。
-
-&gt; We implement Scaled Dot-Product Attention (SDPA) with causal masking (requiring Ampere `SM80+` architectures) and demonstrate plan serialization, allowing compiled graphs to be saved to disk, reloaded, and executed via integer UIDs to eliminate startup compilation delays.
-
-```python
-@section("5. SDPA (Flash Attention) with causal masking")
-def sdpa_demo():
-    if not HAS_SDPA:
-        raise RuntimeError(f"fused SDPA needs SM80+ (Ampere), this GPU is sm_{SM}")
-    b, h, s, d = 4, 16, 1024, 64
-    scale = 1.0 / math.sqrt(d)
-    SDPA_FLOPS = 4 * b * h * s * s * d * 0.5
-
-    q = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
-    k = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
-    v = torch.randn(b, h, s, d, device=DEV, dtype=DTYPE)
-    o = torch.empty(b, h, s, d, device=DEV, dtype=DTYPE)
-
-    g = cudnn.pygraph(
-        handle=HANDLE, name="sdpa",
-        io_data_type=TORCH2CUDNN[DTYPE],
-        intermediate_data_type=cudnn.data_type.FLOAT,
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    Q, Kt, V = tensor_of(g, q, "Q"), tensor_of(g, k, "K"), tensor_of(g, v, "V")
-    causal = True
-    try:
-        O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
-                           is_inference=True, attn_scale=scale, use_causal_mask=True)
-    except TypeError:
-        try:
-            O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
-                               is_inference=True, attn_scale=scale,
-                               diagonal_alignment=cudnn.diagonal_alignment.TOP_LEFT,
-                               right_bound=0)
-        except Exception:
-            causal = False
-            O, _stats = g.sdpa(name="sdpa", q=Q, k=Kt, v=V,
-                               is_inference=True, attn_scale=scale)
-    print(f"    causal masking: {causal}")
-    O.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
-    O.set_dim(list(o.size())).set_stride(list(o.stride()))
-
-    build(g)
-    ws = workspace_for(g)
-    pack = {Q: q, Kt: k, V: v, O: o}
-    g.execute(pack, ws)
-    torch.cuda.synchronize()
-
-    ref = torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=causal, scale=scale)
-    rel = ((o.float() - ref.float()).abs().max() / ref.float().abs().max()).item()
-    print(f"    shape   : b{b} h{h} s{s} d{d}   workspace {ws.numel()/1024:.1f} KiB")
-    print(f"    rel err : {rel:.2e}")
-
-    ms = bench(lambda: g.execute(pack, ws))
-    ms_t = bench(lambda: torch.nn.functional.scaled_dot_product_attention(
-        q, k, v, is_causal=causal, scale=scale))
-    print()
-    report("cuDNN FE SDPA", ms, SDPA_FLOPS)
-    report("torch SDPA (backend's choice)", ms_t, SDPA_FLOPS)
-    print("    Note: torch may already be dispatching to cuDNN or FlashAttention,")
-    print("    so parity here is the expected, healthy outcome.")
-    return f"{ms:.3f} ms, {tflops(SDPA_FLOPS, ms):.1f} TFLOP/s"
-
-sdpa_demo()
-
-@section("6. Serialize a built graph, reload it, execute by UID")
-def serialization():
-    Bsz, M, Kd, Nd = 8, 256, 512, 256
-    a = torch.randn(Bsz, M, Kd, device=DEV, dtype=DTYPE)
-    bm = torch.randn(Bsz, Kd, Nd, device=DEV, dtype=DTYPE)
-    out = torch.empty(Bsz, M, Nd, device=DEV, dtype=DTYPE)
-    UID_A, UID_B, UID_C = 1, 2, 3
-
-    g = cudnn.pygraph(
-        handle=HANDLE, name="serializable_mm",
-        io_data_type=TORCH2CUDNN[DTYPE],
-        intermediate_data_type=cudnn.data_type.FLOAT,
-        compute_data_type=cudnn.data_type.FLOAT,
-    )
-    A = tensor_of(g, a, "A").set_uid(UID_A)
-    Bt = tensor_of(g, bm, "B").set_uid(UID_B)
-    C = g.matmul(A=A, B=Bt, compute_data_type=cudnn.data_type.FLOAT)
-    C.set_output(True).set_data_type(TORCH2CUDNN[DTYPE]).set_uid(UID_C)
-
-    t0 = time.perf_counter()
-    build(g)
-    cold_ms = (time.perf_counter() - t0) * 1e3
-    blob = g.serialize()
-
-    print(f"    cold build      : {cold_ms:.1f} ms")
-    print(f"    serialized plan : {len(blob)} bytes (cache this to disk / ship it)")
-
-    t0 = time.perf_counter()
-    g2 = cudnn.pygraph()
-    try:
-        g2.deserialize(HANDLE, blob)
-    except TypeError:
-        g2.deserialize(blob)
-    warm_ms = (time.perf_counter() - t0) * 1e3
-    print(f"    deserialize     : {warm_ms:.1f} ms  -&gt; {cold_ms/max(warm_ms,1e-6):.1f}x faster startup")
-
-    ws = torch.empty(max(g2.get_workspace_size(), 1), device=DEV, dtype=torch.uint8)
-    g2.execute({UID_A: a, UID_B: bm, UID_C: out}, ws, handle=HANDLE)
-    torch.cuda.synchronize()
-
-    ref = torch.bmm(a.float(), bm.float())
-    rel = ((out.float() - ref).abs().max() / ref.abs().max()).item()
-    print(f"    rel err after reload: {rel:.2e}")
-    return f"{len(blob)} B blob, reload {cold_ms/max(warm_ms,1e-6):.1f}x faster than rebuild"
-
-serialization()
-```
-
----
-
-## 6. 动态维度处理与 CUDA Graph 捕获加速
-
-&gt; ## 6. Dynamic Shapes and CUDA Graph Capture
-
-在实际推理场景中，为了高效应对多变的批处理大小 (Batch Size) 或变长序列长度 (Sequence Length)，同时避免每次维度微调都触发昂贵的实时 JIT 重新编译，我们跨计算图共享了底层内核缓存 (Kernel Cache)。更进一步，我们还将编译好的执行计划封装进 CUDA Graph 的图捕获机制中，彻底抹平了每次迭代在 CPU 与 GPU 之间的内核启动延迟 (Kernel Launch Latency)。
-
-&gt; To manage dynamic batch sizes or sequence lengths efficiently without incurring continuous JIT compilation overhead, we share a kernel cache across graph iterations. Furthermore, we wrap execution plans inside CUDA graphs to remove per-iteration kernel launch latencies.
-
-```python
-@section("7. Dynamic shapes with a shared kernel cache")
-def dynamic_shapes():
-    kc = cudnn.create_kernel_cache()
-    def make(n):
-        x = torch.randn(n, 64, 32, 32, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-        w = torch.randn(64, 64, 3, 3, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-        y = torch.empty(n, 64, 32, 32, device=DEV, dtype=DTYPE).to(memory_format=torch.channels_last)
-        g = cudnn.pygraph(
-            handle=HANDLE, name=f"dyn_{n}",
-            io_data_type=TORCH2CUDNN[DTYPE],
-            intermediate_data_type=cudnn.data_type.FLOAT,
-            compute_data_type=cudnn.data_type.FLOAT,
-            kernel_cache=kc,
-            is_dynamic_shape_enabled=True,
-        )
-        X, Wt = tensor_of(g, x, "X"), tensor_of(g, w, "W")
-        Y = g.conv_fprop(image=X, weight=Wt, padding=[1, 1], stride=[1, 1],
-                         dilation=[1, 1], compute_data_type=cudnn.data_type.FLOAT)
-        Y.set_output(True).set_data_type(TORCH2CUDNN[DTYPE])
-        Y.set_dim(list(y.size())).set_stride(list(y.stride()))
-
-        t0 = time.perf_counter()
-        build(g)
-        ms = (time.perf_counter() - t0) * 1e3
-        ws = workspace_for(g)
-        g.execute({X: x, Wt: w, Y: y}, ws)
-        torch.cuda.synchronize()
-        return ms
-
-    times = [(n, make(n)) for n in (8, 16, 24, 32)]
-    for n, ms in times:
-        print(f"      batch {n:&gt;3d}: build {ms:7.1f} ms")
-    first, rest = times[0][1], [m for _, m in times[1:]]
-    print(f"\n    first shape {first:.1f} ms, later shapes avg {sum(rest)/len(rest):.1f} ms")
-    print("    The cache lets shape-variant graphs reuse an already-JIT'd kernel,")
-    print("    which is what keeps variable batch/seqlen serving out of rebuild hell.")
-    return f"first {first:.0f} ms vs subsequent {sum(rest)/len(rest):.0f} ms"
-
-dynamic_shapes()
-
-@section("8. CUDA Graph capture around a cuDNN execution plan")
-def cuda_graph_capture():
-    if not CONV_STATE:
-        raise RuntimeError("section 2 did not run, nothing to capture")
-    g, pack, ws = CONV_STATE["graph"], CONV_STATE["pack"], CONV_STATE["ws"]
-    eager_ms = bench(lambda: g.execute(pack, ws))
-
-    side = torch.cuda.Stream()
-    side.wait_stream(torch.cuda.current_stream())
-    with torch.cuda.stream(side):
-        cudnn.set_stream(handle=HANDLE, stream=side.cuda_stream)
-        for _ in range(3):
-            g.execute(pack, ws, handle=HANDLE)
-    torch.cuda.current_stream().wait_stream(side)
-    torch.cuda.synchronize()
-
-    cg = torch.cuda.CUDAGraph()
-    with torch.cuda.graph(cg):
-        cudnn.set_stream(handle=HANDLE, stream=torch.cuda.current_stream().cuda_stream)
-        g.execute(pack, ws, handle=HANDLE)
-    cudnn.set_stream(handle=HANDLE, stream=torch.cuda.current_stream().cuda_stream)
-
-    replay_ms = bench(lambda: cg.replay())
-    report("plain execute()", eager_ms)
-    report("cuda graph replay()", replay_ms)
-    print(f"    launch overhead removed: {(eager_ms-replay_ms)*1e3:.1f} us/iter")
-    print("    Pointers are frozen at capture time -- reuse the same buffers and")
-    print("    copy new data into them, or re-capture.")
-    return f"{eager_ms:.3f} -&gt; {replay_ms:.3f} ms via replay"
-
-cuda_graph_capture()
-
-banner("SUMMARY")
-for name, res in RESULTS.items():
-    print(f"  {name:&lt;58s} {res}")
-
-print("""
-Where to go next
- - samples/python in the repo: FP8/MXFP8 attention, paged KV cache, MoE grouped GEMM
- - python/cudnn/: the open-sourced CuTe DSL kernels (SDPA, grouped GEMM + SwiGLU,
-   block-sparse and native sparse attention) you can read and modify
- - debugging: CUDNN_FRONTEND_LOG_INFO=1 and CUDNN_FRONTEND_LOG_FILE=stdout
-   (use level 10 during CUDA graph capture -- level 1 dumps tensors and is not
-   capture-safe)
-""")
-```
-
----
-
-## 总结
-
-&gt; ## Conclusion
-
-将深度学习网络层重构为显式的有向计算图，使开发者得以对内核融合、执行引擎筛选、编译生命周期以及内核启动开销拥有极致而精准的控制力。cuDNN Frontend API 在许多高频严苛场景中表现尤为卓越，例如：定制化的算子融合（彻底免除激活与规约尾声中间变量的显存写回）、对频繁调用的热点形状 (Hot Shapes) 进行严密的自动调优，以及结合 CUDA Graph 与执行计划序列化技术打造高性能、极低延迟的生产级在线推理服务闭环。
-
-&gt; By structuring deep learning layers as explicit computation graphs, developers unlock precise control over kernel fusion, engine selection, compilation lifecycles, and launch overheads. The cuDNN Frontend API excels particularly in scenarios involving custom fusions (such as avoiding intermediate writes for activation and reduction epilogues), hot shapes requiring rigorous autotuning, and performance-critical low-latency serving loops enhanced via CUDA graphs and plan serialization.
-
----
-
-欢迎查阅 **[完整源码链接](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%20Learning/cudnn_frontend_nvidia_tutorial_Marktechpost.ipynb)**。本项目所有成果归原作者研究团队所有。欢迎在 **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** 上关注我们，加入拥有 **[15 万+ 成员的机器学习 SubReddit 社区](https://www.reddit.com/r/machinelearningnews/)**，订阅 **[官方技术周刊](https://magic.beehiiv.com/v1/f5e63dd4-5653-4f09-83e2-321a8b1ba526?email={{email}})**，以及关注我们的 **[Telegram 频道](https://t.me/machinelearningresearchnews)**。
-
-&gt; Check out the **[FULL CODES here](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%20Learning/cudnn_frontend_nvidia_tutorial_Marktechpost.ipynb)**. All credit goes to the researcher of this project. Feel free to follow us on **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** and join our **[150k+ ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**, subscribe to **[our Newsletter](https://magic.beehiiv.com/v1/f5e63dd4-5653-4f09-83e2-321a8b1ba526?email={{email}})**, and join our **[Telegram channel](https://t.me/machinelearningresearchnews)**.
-
-如需洽谈 GitHub 开源项目推广、Hugging Face 专题页面合作、新品发布或线上技术研讨会等商务合作，欢迎 **[点击此处与我们联系](https://forms.gle/wbash1wF6efRj8G58)**。
-
-&gt; For partnership inquiries regarding GitHub repo promotions, Hugging Face pages, product releases, or webinars, **[connect with us here](https://forms.gle/wbash1wF6efRj8G58)**.
-
-本文首发于 [MarkTechPost](https://www.marktechpost.com)，原文标题为 [Inside NVIDIA’s cuDNN Graph API: Fusion, Autotuning, and Plan Reuse with cuDNN Frontend](https://www.marktechpost.com/2026/09/15/inside-nvidias-cudnn-graph-api-fusion-autotuning-and-plan-reuse-with-cudnn-frontend/)。
-
-&gt; The post [Inside NVIDIA’s cuDNN Graph API: Fusion, Autotuning, and Plan Reuse with cuDNN Frontend](https://www.marktechpost.com/2026/09/15/inside-nvidias-cudnn-graph-api-fusion-autotuning-and-plan-reuse-with-cudnn-frontend/) appeared first on [MarkTechPost](https://www.marktechpost.com).</description>
-    </item>
-    <item>
-      <title>Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-17/Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架/</guid>
-      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
-      <description>尽管现代大语言模型在生成简短数学证明方面表现出色，但在面对需要长程决策与精密推演的前沿科学研究时，往往容易因链条脆弱和不确定性累积而遭遇瓶颈。为了攻克这一难题，来自学术界与 Google 等机构的研究团队联合推出了 **Stellar Colosseum** —— 一个与模型无关的多智能体协同与推理竞技框架，专为数学和理论计算机科学 (Theoretical Computer Science, TCS) 等高难度长程科研任务量身打造。该框架创新性地引入了备选策略探索、成熟度门控、结构化证明图、针对性证伪反馈闭环以及重叠随机采样树聚合机制，让多智能体在协同博弈中不断锤炼严密的学术论证。在涵盖 FOCS、STOC 等顶级学术会议的 TCS-Bench 定理证明评测中，Stellar Colosseum 斩获了高达 71.0% 的准确率，并在复杂算法挑战赛中攻克了绝大部分难题，为 AI 辅助前沿科学探索迈出了坚实一步。
-
----
-
-# Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架
-
-&gt; # Stellar Colosseum: A Many-Agent Harness for Long-Horizon Research in Mathematics and Theoretical Computer Science
-
-**作者：** Honghao Lin, David P. Woodruff, Yuan Deng, Jieming Mao, Song Zuo, Vahab Mirrokni  
-**arXiv 预印本：** [arXiv:2609.15983 [cs.AI]](https://arxiv.org/abs/2609.15983) (提交于 2026 年 9 月 14 日，最后修订于 2026 年 9 月 15 日)   
-**主分类：** 人工智能 (`cs.AI`)  
-**其他分类：** 计算与语言 (`cs.CL`)、机器学习 (`cs.LG`)  
-
-&gt; **Authors:** Honghao Lin, David P. Woodruff, Yuan Deng, Jieming Mao, Song Zuo, Vahab Mirrokni  
-&gt; **arXiv:** [arXiv:2609.15983 [cs.AI]]() (Submitted on 14 Sep 2026, last revised 15 Sep 2026)  
-&gt; **Primary Subject:** Artificial Intelligence (`cs.AI`)  
-&gt; **Additional Subjects:** Computation and Language (`cs.CL`), Machine Learning (`cs.LG`)  
-
----
-
-## 摘要
-
-&gt; ## Summary
-
-虽然现代语言模型在给出看似严密自洽的简短证明方面表现抢眼，但在面对长程科研难题时却屡屡碰壁。这类长程探索的成败，往往完全取决于一连串环环相扣、充满不确定性且高度脆弱的连锁决策——稍有不慎，推演便前功尽弃。
-
-&gt; While modern language models excel at producing plausible short proofs, they frequently stumble on long-horizon research problems where success hinges on a fragile sequence of uncertain and interdependent decisions. 
-
-为了突破这一瓶颈，研究团队推出了 **Stellar Colosseum** —— 一个专为数学与理论计算机科学 (Theoretical Computer Science, TCS) 复杂长程研究打造的模型无关推理框架。
-
-&gt; To bridge this gap, the authors introduce **Stellar Colosseum**, a model-agnostic inference framework designed for complex research in mathematics and theoretical computer science (TCS).</description>
-    </item>
-    <item>
-      <title>BlueLM-GUI 技术报告：面向自进化移动端 GUI 智能体的真机飞轮系统</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-17/BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/BlueLM-GUI-技术报告-面向自进化移动端-GUI-智能体的真机飞轮系统/</guid>
-      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
-      <description>当前，能够像人类一样自主操作手机应用的移动端图形用户界面智能体 (GUI Agent) 正成为前沿热点，但现有模型在模拟沙盒中表现出色，一到真实真机环境下往往频频碰壁。本论文推出了 BlueLM-GUI——一个拥有 350 亿参数 (35B-A3B) 的移动端 GUI 智能体，首次确立了以“真实物理设备”为核心的数据与演进飞轮系统。该系统贯彻“珍惜每个样本、交互基于真机、评测动态演进”三大原则，不仅将真机操作中的报错转化为宝贵的高质量训练数据，还在数百台真实物理手机上展开强化学习。在 MobileGUI-VBench 与 AndroidWorld 等权威基准测试中，BlueLM-GUI 均斩获顶尖成绩，大幅超越顶尖闭源与开源模型，为移动端智能体的工业规模化落地开辟了全新路径。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-在移动端，能够帮我们操作手机应用的图形用户界面 (GUI) 智能体 (AI Agent) 正在经历深刻演化——正从以往拼凑式的模块化框架，迅速转向浑然一体的原生端到端训练模型。然而，要想把这种智能体真正推向实际工业化落地，长期以来一直受制于三大棘手瓶颈：
-
-&gt; Mobile Graphical User Interface (GUI) agents are rapidly transitioning from modular frameworks to native, end-to-end trained models. However, industrial deployment has historically been impeded by three persistent bottlenecks:
-
-1. **分布偏差 (Distribution Mismatch)**：传统的沙盒模拟训练环境很难真实还原真实生产环境中的复杂状况；
-2. **失败经验未充分利用 (Underutilized Failures)**：智能体在真机上执行任务遭遇的昂贵报错，往往被随手丢弃，未能转化为反哺训练的养料；
-3. **基准测试易饱和 (Benchmark Saturation)**：固定的静态基准测试很快就会被模型“刷爆”，逐渐失去指引模型持续迭代的能力。
-
-&gt; 1. **Distribution Mismatch:** Sandbox training environments fail to accurately simulate real-world production conditions.
-&gt; 2. **Underutilized Failures:** Expensive errors occurring on physical devices are typically discarded rather than leveraged for training.
-&gt; 3. **Benchmark Saturation:** Static benchmarks quickly saturate, reducing their efficacy in guiding model iteration.
-
-为了攻克这些难题，研究团队推出了 **BlueLM-GUI**——一个基于“以真机为中心”的自我演化飞轮打造的 350 亿参数 (35B-A3B) 移动端 GUI 智能体。BlueLM-GUI 严格秉持三大核心理念——**“珍惜每个样本” (Every Sample Matters)**、**“交互基于真机” (Every Rollout Is Real)** 以及 **“评测动态演进” (Every Query Evolves)**，成功跨越了虚拟模拟与真实应用之间的鸿沟，在多项主流权威评测中均斩获了顶尖水准的性能表现。
-
-&gt; To address these challenges, the authors introduce **BlueLM-GUI**, a 35B-A3B mobile GUI agent built around a real-device-centric self-improvement flywheel. By adhering to three core principles—**Every Sample Matters**, **Every Rollout Is Real**, and **Every Query Evolves**—BlueLM-GUI bridges the gap between simulated training and real-world deployment, achieving state-of-the-art performance across major evaluation suites.
-
----
-
-## BlueLM-GUI 飞轮的核心设计原则
-
-&gt; ## Core Principles of the BlueLM-GUI Flywheel</description>
-    </item>
-    <item>
-      <title>标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机/</guid>
-      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在动态编程语言的发展历史中，许多运行时环境默认会将当前工作目录或脚本所在路径置于模块搜索路径中，这为“模块遮蔽” (Module Shadowing) 攻击埋下了重大隐患——攻击者只需在目录下放置同名文件，就能偷梁换柱劫持原生标准库。尽管 Ruby、Perl、Node.js、Deno 和 Julia 等现代运行时已逐步从设计层面剔除或防范了这种隐式路径查找，但 Python 和 PHP 至今仍默认将工作目录置于搜索路径首位，在解压不可信压缩包或访问外部目录时极易受到供应链攻击。尤其在当今 AI 编程智能体 (AI Agent) 广泛自主解压缩外部文件并即时运行辅助脚本的时代，这一看似古老的语言设计特性正演变为不可忽视的高危远程代码执行隐患。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-在动态编程语言的发展历史中，许多语言在默认情况下都会将当前工作目录或脚本所在路径纳入模块搜索路径。这意味着，本地目录下的任意文件都有可能悄悄覆盖内置的核心库，这种安全隐患被称为“模块遮蔽” (Module Shadowing)。本文将系统梳理各大主流编程语言运行时如何应对这一安全挑战。像 Ruby、Perl、Node.js、Deno 和 Julia 等现代语言，早已从根本上彻底消除或严格限制了这种从上下文环境中自动查找路径的做法，以杜绝恶意脚本被意外执行；然而，像 Python 和 PHP 这样的老牌语言，至今仍默认将当前工作目录排在搜索路径的首位。这就带来了一个严重的安全漏洞：一旦程序解压了不可信的压缩包，或是进入了不受信任的文件目录，攻击者就能轻而易举地通过同名文件掉包标准库，达成恶意代码执行。
-
-&gt; Dynamic languages have historically included the current directory or script location in their module search paths by default, allowing local files to override built-in libraries (a vulnerability known as module shadowing). This write-up explores how various runtimes handle this security challenge. While languages like Ruby, Perl, Node.js, Deno, and Julia have eliminated or mitigated ambient path lookups to prevent malicious file execution, languages like Python and PHP still place the working directory first on the path, leaving them vulnerable to attacks where unpacked archives or untrusted folders compromise standard library resolution.
-
----
-
-## 已彻底移除：将当前工作目录踢出默认搜索路径
-
-&gt; ## Removed
-
-早在 2010 年 8 月发布的 [1.9.2](https://github.com/ruby/ruby/blob/master/doc/NEWS/NEWS-1.9.2) 版本中，Ruby 就果断从 `$LOAD_PATH` 中删除了代表当前目录的 `.`。当时的更新公告极其简短，只有一句话：“`$:` 不再包含当前目录，请改用 `require_relative`”。引入的 [`require_relative`](https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require_relative) 方法能够直接基于当前调用文件所在的磁盘位置进行相对寻址，与进程当前的工作目录完全解耦。这样一来，脚本既能安全地加载与自身同目录的兄弟文件，又能确保整个进程中的其他 `require` 调用免受外部不可信工作目录的污染。由于当时 Ruby 从 1.8 升级至 1.9 本身就是一次重大破坏性升级，因此这次加载路径的调整直接顺理成章地一同落地，既没有专门申请通用漏洞披露 (Common Vulnerabilities and Exposures, CVE) 编号，也没有提供任何用于回退兼容的“逃生舱”环境变量。
-
-&gt; Ruby dropped `.` from `$LOAD_PATH` in [1.9.2](https://github.com/ruby/ruby/blob/master/doc/NEWS/NEWS-1.9.2), released August 2010. The NEWS entry is one line, “$: no longer includes the current directory, use require_relative”. [`require_relative`](https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require_relative) resolves against the calling file’s location, independent of the process working directory, so a script can load its own siblings while keeping the working directory off the search path for every other `require` in the process. There was no CVE and no escape-hatch environment variable; 1.9 was already a compatibility break from 1.8 and the load-path change went in alongside everything else.
-
-Perl 则在 2017 年 5 月发布的 [5.26.0](https://perldoc.perl.org/perl5260delta#Removal-of-the-current-directory-(%22.%22)-from-@INC) 版本中，将 `.` 从模块加载数组 `@INC` 的末尾彻底移除。与 Ruby 不同，Perl 的这次改动直接关联了一起严重的安全漏洞 [CVE-2016-1238](https://www.nntp.perl.org/group/perl.perl5.porters/2016/07/msg238271.html)，该漏洞最初由 cPanel 团队提交：当一个脚本切换工作目录到公共临时目录 `/tmp` 并尝试加载可选模块时，就会毫无防备地直接执行本地恶意用户提前在 `/tmp/Module.pm` 中留下的任意代码。Perl 在传统上一向默认在 `@INC` 中携带 `.`，不过污点模式 (Taint Mode, `perl -T`) 一直会自动剔除它，这说明官方早已知晓其潜在风险。为了平稳过渡，Perl 5.26 新增了环境变量 [`PERL_USE_UNSAFE_INC=1`](https://perldoc.perl.org/perl5260delta#PERL_USE_UNSAFE_INC) 供老项目临时回退，下游各大 Linux 发行版也为此[维护了长达数年的兼容补丁](https://wiki.gentoo.org/wiki/Project:Perl/Dot-In-INC-Removal)，直至 CPAN 社区中所有依赖 `.` 路径的历史模块被逐一修复完毕。
-
-&gt; Perl removed `.` from the end of `@INC` in [5.26.0](https://perldoc.perl.org/perl5260delta#Removal-of-the-current-directory-(%22.%22)-from-@INC), released May 2017. That one did have a CVE, [CVE-2016-1238](https://www.nntp.perl.org/group/perl.perl5.porters/2016/07/msg238271.html), reported by cPanel: a script that changes directory to `/tmp` and then loads an optional module runs whatever a local user has left at `/tmp/Module.pm`. Perl had traditionally shipped with `.` on `@INC`, and taint mode (`perl -T`) had always stripped it, so the risk was documented long before the fix. 5.26 added [`PERL_USE_UNSAFE_INC=1`](https://perldoc.perl.org/perl5260delta#PERL_USE_UNSAFE_INC) to restore the old behaviour for the transition, and downstream distributions [carried patches for years](https://wiki.gentoo.org/wiki/Project:Perl/Dot-In-INC-Removal) while CPAN modules that depended on `.` being present were fixed one at a time.
-
----
-
-## 架构原生防范：优先内置模块与显式路径设计
-
-&gt; ## Designed Out
-
-在 Node.js 中，`require` 机制[会优先检查内置核心模块名称](https://nodejs.org/api/modules.html#core-modules)，其优先级高于磁盘上的 `node_modules` 或任何本地文件。因此，即便调用脚本的同一目录下存在一个名为 `http.js` 的文件，执行 `require('http')` 也只会返回官方原生模块。在 Node.js 中若要加载同目录下的本地文件，历来都必须显式使用相对路径，例如 `require('./http')`。从 Node.js 14.18.0 开始，官方还引入了 [`node:` 协议前缀](https://nodejs.org/api/modules.html#core-modules)，使得 `require('node:http')` 可以进一步绕过 require 缓存，并且类似 `node:test` 这样的全新内置模块甚至只能通过该前缀访问。不过需要指出的是，这种防护仅覆盖了核心标准库：当引入第三方库如 `require('express')` 时，Node.js 仍会[从调用方所在目录开始向上逐级检索 `node_modules`](https://nodejs.org/api/modules.html#loading-from-node_modules-folders)。这意味着，解压后的不可信压缩包里若暗藏 `node_modules/express`，仍会优先于全局或系统安装的版本被加载。类似地，Java 在运行时通过类路径 (Classpath) 解析类，虽然[在未设置 `-cp` 或 `CLASSPATH` 环境变量时默认类路径就是 `.` 当前目录](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)，但其启动类加载器 (Bootstrap Class Loader) 会在应用程序类加载器扫描类路径之前先一步锁定 `java.*` 等基础核心类，因此同目录下的 `./java/lang/String.class` 根本不可能实现偷梁换柱。而 Deno 则更为纯粹，它完全抛弃了上下文环境隐式搜索路径的设计理念：所有模块导入必须是 [URL 或明确的相对路径](https://docs.deno.com/runtime/fundamentals/modules/)，任何未在导入映射表 (Import Map) 中声明的裸说明符都会直接抛出异常。
-
-&gt; Node’s `require` [checks core module names first](https://nodejs.org/api/modules.html#core-modules), before `node_modules` or anything else on disk, so `require('http')` returns the built-in even with an `http.js` in the caller’s directory. Loading a neighbouring file has always taken an explicit relative path, `require('./http')`. Node 14.18.0 added the [`node:` prefix](https://nodejs.org/api/modules.html#core-modules) so `require('node:http')` bypasses the require cache as well, and some newer built-ins such as `node:test` are only reachable that way. That protection covers core modules only: `require('express')` [searches upward from the caller’s directory through each `node_modules`](https://nodejs.org/api/modules.html#loading-from-node_modules-folders), so a `node_modules/express` inside an extracted archive is resolved ahead of any installed copy. Java resolves classes at run time from a classpath, and the [default classpath when neither `-cp` nor `CLASSPATH` is set is `.`](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html), but the bootstrap class loader finds `java.*` before the application loader searches the classpath, so a `./java/lang/String.class` is unreachable for the same reason a local `http.js` is in Node. Deno dropped the ambient search path entirely: every import is [a URL or a relative path](https://docs.deno.com/runtime/fundamentals/modules/), and a bare specifier outside the import map is an error.
-
-Julia 默认的 [`LOAD_PATH`](https://docs.julialang.org/en/v1/base/constants/#Base.LOAD_PATH) 变量被设定为 `["@", "@v#.#", "@stdlib"]`。这三个符号路径分别对应当前激活的项目环境、带有版本号的用户全局默认环境以及标准库。无论进程当前切换到哪个目录下，`@` 符号都会严格锚定当前激活的 `Project.toml` 清单文件，因此即使在不可信目录下执行脚本，模块导入也只会严格依据配置文件清单进行解析。PowerShell 的 `Import-Module` 命令则仅检索 [`$env:PSModulePath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath) 环境变量，默认只涵盖单用户目录、全体用户共享目录以及 `$PSHOME` 核心目录；此外，PowerShell 在可执行文件寻址上也采用了同样的严密设计：在当前工作目录下运行脚本[必须显式添加 `.\` 前缀](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scripts)，直接键入裸名称只会搜索系统 `$env:PATH`，绝不会误执行当前目录下的同名文件。
-
-&gt; Julia’s default [`LOAD_PATH`](https://docs.julialang.org/en/v1/base/constants/#Base.LOAD_PATH) is `["@", "@v#.#", "@stdlib"]`, three symbolic entries that expand to the active project environment, the user’s versioned default environment, and the standard library. `@` resolves to whichever `Project.toml` is active, regardless of which directory the process is in, so a script run from an untrusted directory looks up imports in a manifest file. PowerShell’s `Import-Module` searches [`$env:PSModulePath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath), which defaults to the per-user, all-users and `$PSHOME` module directories only, and the shell applies the equivalent rule to executable lookup: running a script in the working directory [requires an explicit `.\` prefix](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scripts), so a bare name searches only `$env:PATH`.
-
----
-
-## 隐患仍存：工作目录优先与被遮蔽的标准库
-
-&gt; ## Still There
-
-与上述语言形成鲜明对比的是，PHP 默认的 [`include_path`](https://www.php.net/manual/en/ini.core.php#ini.include-path) 依然将 `.` 放在第一位。这意味着，执行 `include 'config.php'` 时，程序会毫不犹豫地优先加载当前工作目录下的 `config.php`，而不是系统 PEAR 路径中的对应库文件。Lua 默认的 [`package.path`](https://github.com/lua/lua/blob/v5.4.0/luaconf.h#L208-L219) 则以 `./?.lua;./?/init.lua` 结尾；当执行 `require "json"` 且所有已安装路径均未匹配时，搜索机制就会顺延兜底到当前目录下的 `./json.lua`。好在 Lua 自身的官方标准库 (如 `string`、`table`、`math` 等) 在 [`require` 遍历任何磁盘路径之前就已经注册到了 `package.loaded` 表中](https://github.com/lua/lua/blob/v5.4.0/linit.c)，因此本地的 `./string.lua` 无法覆盖原生标准库，只有第三方未预载的名称会暴露给同名劫持风险。在这两种语言中，如果开发者想要将工作目录从搜索路径中剥离，通常必须通过 `php -d include_path=...` 命令行参数或配置 `LUA_PATH` 环境变量来全量重写整个搜索路径字符串。
-
-&gt; PHP’s `.` is the first entry in the default [`include_path`](https://www.php.net/manual/en/ini.core.php#ini.include-path), so `include 'config.php'` picks up a `config.php` in the working directory ahead of one under the PEAR path. Lua’s default [`package.path`](https://github.com/lua/lua/blob/v5.4.0/luaconf.h#L208-L219) ends with `./?.lua;./?/init.lua`, so `require "json"` falls through to `./json.lua` after the installed-path entries have all missed. Lua’s own standard libraries, `string`, `table`, `math` and the rest, are [registered in `package.loaded` before `require` searches any path](https://github.com/lua/lua/blob/v5.4.0/linit.c), so a `./string.lua` is unreachable and only third-party names are exposed. In both PHP and Lua, dropping the working-directory entry means overriding the full path string, via `php -d include_path=...` or the `LUA_PATH` environment variable.
-
-Python 的机制则更为直接：当直接运行 Python 脚本文件时，解释器会将脚本所在目录置入 `sys.path[0]`；使用 `-m` 运行模块时，置入的是当前工作目录；而在使用 `-c` 或进入交互式终端 (REPL) 时，置入的则是一个空字符串，其实际含义同样等同于当前工作目录。早在 Python 3.4 中，官方就[新增了隔离模式 (Isolated Mode, `-I`) ](https://docs.python.org/3/using/cmdline.html#cmdoption-I)，该模式会在禁用该前置路径的同时，一并屏蔽用户级 site-packages 以及所有的 `PYTHON*` 环境变量。为了提供更精细的控制，Python 3.11 引入了一个针对性更强的安全开关：[`-P` 参数与 `PYTHONSAFEPATH` 环境变量](https://docs.python.org/3/using/cmdline.html#cmdoption-P)，它仅单独剔除 `sys.path[0]` 中的本地目录，而保留其他环境变量完好无损。该功能背后的问题跟踪单 [bpo-13475](https://github.com/python/cpython/issues/57684) 早在 2011 年 11 月就已被提出。合入 `-P` 功能的核心开发者 Victor Stinner 还在其个人仓库中起草了一份 [PEP 提案草案](https://github.com/vstinner/misc/blob/main/cpython/pep_path0.rst)，主张以 Perl 5.26 为先例将 safe-path 设为解释器的全局默认行为。然而，Ruby 当年能够从容剔除 `.`，是因为其同步推出了 `require_relative` 为同级依赖提供了替代出路；而 Python 的[显式相对导入语法](https://docs.python.org/3/reference/import.html#package-relative-imports)仅在正式包结构内部有效。这意味着，一个单独的独立脚本 `script.py` 若要直接 `import helper` 加载同级辅助模块，其底层完全依赖 `sys.path[0]` 指向当前目录；一旦在 `-P` 模式下运行，就会立即因找不到模块而抛出 `ModuleNotFoundError` 异常。
-
-&gt; Python prepends the script’s directory as `sys.path[0]` when running a file, the working directory when running `-m`, and an empty string, meaning the working directory, when running `-c` or the REPL. Isolated mode, `-I`, [added in 3.4](https://docs.python.org/3/using/cmdline.html#cmdoption-I), suppresses that entry along with user site-packages and all `PYTHON*` environment variables. 3.11 added a narrower switch, [`-P` and `PYTHONSAFEPATH`](https://docs.python.org/3/using/cmdline.html#cmdoption-P), which drops only the `sys.path[0]` entry and leaves the rest of the environment alone. The tracker issue behind `-P`, [bpo-13475](https://github.com/python/cpython/issues/57684), was opened in November 2011. Victor Stinner, who landed `-P`, has a [draft PEP](https://github.com/vstinner/misc/blob/main/cpython/pep_path0.rst) in his personal repo proposing to make safe-path the default and citing Perl 5.26 as precedent. Ruby could drop `.` because `require_relative` shipped in the same release and gave scripts another way to load their siblings. Python’s [explicit relative imports](https://docs.python.org/3/reference/import.html#package-relative-imports) only work inside a package, so a standalone `script.py` importing `helper.py` from the same directory depends on `sys.path[0]` being that directory, and running it under `-P` fails with `ModuleNotFoundError`.
-
-在历史设计上，Perl、Ruby 和 Lua 都倾向于将 `.` 放在搜索路径的最末端——排在标准库和第三方库目录之后。因此，工作目录中的文件只有在全系统都找不到该名称时，才会作为“兜底”被加载；这也是为什么 CVE-2016-1238 漏洞需要依赖脚本尝试加载某个“可选模块”才能触发。然而，Python 和 PHP 却反其道而行之，直接将外部环境目录推到了搜索路径的最前端。由于官方标准库在路径列表里排在后面，一旦工作目录下存在一个名为 `struct.py` 的文件，它就会直接被加载并偷换掉真正的 `struct` 模块，所有从磁盘读取的标准库模块都无一幸免。虽然直接编译进解释器内核的内置模块以及[自 Python 3.11 起](https://docs.python.org/3/whatsnew/3.11.html#faster-startup)被冻结在启动内存中的核心集合 (例如 `os`、`abc`、`io`、`codecs` 等) 会在 `PathFinder` 扫描磁盘之前由 `sys.meta_path` 上的 `BuiltinImporter` 和 `FrozenImporter` 优先处理，但像 `struct` 这样纯粹基于磁盘 `.py` 包装 C 扩展的标准库模块，仍会交由 `PathFinder` 检索，从而不可避免地面临被恶意掉包的命运。
-
-&gt; Perl, Ruby and Lua all put `.` last, after the standard-library and site directories, so a file in the working directory could only supply a name that was missing everywhere else, and CVE-2016-1238 accordingly needed a target script that loaded an optional module. Python and PHP put the ambient directory first. The standard library comes after it on the path, `struct.py` in the working directory is loaded in place of the real `struct`, and any standard-library module read from disk is exposed the same way. Modules compiled into the interpreter and, [since 3.11](https://docs.python.org/3/whatsnew/3.11.html#faster-startup), the frozen startup set (`os`, `abc`, `io`, `codecs` among them) are served by `BuiltinImporter` and `FrozenImporter` on `sys.meta_path` before `PathFinder` touches disk; `struct` is a plain `.py` wrapper around a C extension and goes to `PathFinder`.
-
-| 语言/运行时 | 默认路径条目 | 搜索优先级 | 标准库可被遮蔽？ | 移除版本 | 安全模式开关 |
-|---|---|---|---|---|---|
-| Ruby | `$:` 中的 `.` | 末位 (last) | 否 | 1.9.2 (2010) | |
-| Perl | `@INC` 中的 `.` | 末位 (last) | 否 | 5.26 (2017) | 可通过 `PERL_USE_UNSAFE_INC` 恢复 |
-| Node.js | 无 (none) | | 否 | | |
-| Java | 未设置 `-cp` 时的 `.` | | 否 | | 任意 `-cp` 均可替换该默认值 |
-| Deno | 无 (none) | | 否 | | |
-| Julia | 无 (依据项目清单) | | 否 | | |
-| Lua | `package.path` 中的 `./?.lua` | 末位 (last) | 否 | | |
-| PHP | `include_path` 中的 `.` | 首位 (first) | 是 | | |
-| Python | `sys.path` 中的脚本目录 / 工作目录 | 首位 (first) | 是 | | `-I` (3.4) , `-P` / `PYTHONSAFEPATH` (3.11) |
-
-&gt; |   | Entry on default path | Position | Stdlib shadowable | Removed in | Safe-mode switch |
-&gt; |---|---|---|---|---|---|
-&gt; | Ruby | `.` in `$:` | last | no | 1.9.2 (2010) | |
-&gt; | Perl | `.` in `@INC` | last | no | 5.26 (2017) | (`PERL_USE_UNSAFE_INC` restores) |
-&gt; | Node.js | none | | no | | |
-&gt; | Java | `.` when `-cp` unset | | no | | any `-cp` replaces it |
-&gt; | Deno | none | | no | | |
-&gt; | Julia | none (project manifest) | | no | | |
-&gt; | Lua | `./?.lua` in `package.path` | last | no | | |
-&gt; | PHP | `.` in `include_path` | first | yes | | |
-&gt; | Python | script dir / cwd in `sys.path` | first | yes | | `-I` (3.4), `-P` / `PYTHONSAFEPATH` (3.11) |
-
----
-
-## 威胁模型：AI 编程智能体时代的新危机
-
-&gt; ## Threat Model
-
-Perl 5.26 的发行说明中曾将这一风险清晰定义为：脚本在“当前目录不受信任 (例如 `/tmp`) ”时加载可选模块。在官方修复之前的二十年里，人们采取的应对方案纯粹是防御性的操作规程：系统运维脚本在加载任何可选模块前必须先 `chdir` 切换到一个安全可信的目录，并且用户只应当在自己完全受控的目录中运行工具。显然，这些经验法则全都是为“人类开发者”或“固定工作目录的系统守护进程”量身定制的，因为人类在终端敲下回车之前，清楚地知晓解释器将在哪个目录下启动。
-
-&gt; The Perl 5.26 release notes describe the risk as a script loading an optional module “when its current directory is untrusted (such as `/tmp`)”, and the mitigation for the twenty years before that was procedural: system scripts `chdir` somewhere safe before loading anything optional, and users run tools only from directories they control, advice written for a person or a fixed-cwd daemon choosing where the interpreter runs.
-
-然而，当当今的 AI 编程智能体自主下载一个压缩包、将其解压、在解压内容旁随手编写一个辅助脚本并立即执行时，这实质上就是换了个目录名称的 `/tmp` 经典提权攻击场景。不可信的压缩包直接决定了目录中包含哪些文件，而智能体自行生成的脚本正好成为了触发恶意模块导入的扳机。更关键的是，Python 是各类 AI 智能体生成辅助代码时的绝对首选：无论是 OpenAI 的[代码解释器 (Code Interpreter) ](https://developers.openai.com/api/docs/guides/tools-code-interpreter)，还是 Anthropic 的[代码执行工具 (Code Execution Tool) ](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool)，亦或是本文直接针对的 Claude Code 智能体命令行工具，在运行临时脚本时无一例外都依赖 Python 解释器。在安全研究员 Rehberger 构造的概念验证攻击中，被掉包的遮蔽模块甚至还贴心地将调用转发给了真正的标准库，从而使数据解码器依然能返回完全正确的结果，神不知鬼不觉地完成了恶意载荷注入。这与之前讨论过的[子进程可通过环境变量注入的覆盖标志位 (Override Flags) ](https://nesbitt.io/2026/08/25/hardening-the-override-flag.html)如出一辙：在由人类开发者审慎指定工作目录或命令行标志的年代，这种设计或许还能勉强容忍；但在 AI 智能体自主解压压缩包并随之将解压目录隐式作为工作目录的新时代，这一历史遗留特性无疑为远程代码执行大开方便之门。
-
-&gt; A coding agent that downloads an archive, extracts it, writes a helper next to the contents, and runs the helper is the `/tmp` case with a different label on the directory. The archive determined the directory contents, and the agent’s own script is what triggers the import. Python is also the language agents default to for generated helpers: the sandboxed runtime for both OpenAI’s [Code Interpreter](https://developers.openai.com/api/docs/guides/tools-code-interpreter) and Anthropic’s [code execution tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool), and the interpreter Claude Code, the target in the write-up, invokes for ad-hoc scripts. In Rehberger’s version the shadowed module forwards to the real one, so the decoder returns a correct result. It is the same class of default as the [override flags a subprocess can set through its environment](https://nesbitt.io/2026/08/25/hardening-the-override-flag.html): tolerable while a person supplied the working directory or the flag, and an agent processing an archive supplies the working directory as a side effect of extracting it.</description>
-    </item>
-    <item>
-      <title>一个向量能容纳多少思维？叠加推理的表征容量</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-16/一个向量能容纳多少思维-叠加推理的表征容量/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-16/一个向量能容纳多少思维-叠加推理的表征容量/</guid>
-      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (LLM) 的多步复杂推理中，传统方法通常依赖“思维链” (Chain-of-Thought, CoT) 将思考步骤逐一解码为离散的 Token，但这往往会带来巨大的计算开销与显存瓶颈。为了突破这一限制，近期的连续思维与循环架构尝试将推理过程直接置于固定维度的隐状态向量中，利用向量的“叠加”能力同时表征多种备选思考。然而，一个根本性的理论难题在于：随着推理逐步推进，连续思维向量究竟该保留哪些历史信息？
-
-本文针对这一核心问题开展了严谨的理论与容量分析，得出了一项反直觉的关键发现：相比于只保留最新的即时推理前沿，将全部历史推导累积叠加进向量中，在面对相同的下游计算时反而能够显著降低所需的表征维度。其深层原因在于，包含有效信息的历史成分在向量空间中能够相干互强，而无关的备选项只会产生相互抵消的随机噪声。此外，研究还证明了在未来信息效用未知时，“均匀累积加权”具有极小化极大 (Minimax) 最优性。这项工作成功将隐空间中的叠加态从一种经验观察升华为构建高效、稳健神经推理系统的严谨架构设计原则。
-
----
-
-# 一个向量能容纳多少思维？叠加推理的表征容量
-
-&gt; # How Many Thoughts Can a Vector Hold? The Capacity of Reasoning by Superposition
-
-* **arXiv 编号：** [2609.13747](https://arxiv.org/abs/2609.13747) [cs.AI]
-* **作者：** Hongyu Gu, Chang Liu, Jingwen Fu
-* **提交时间：** 2026年9月12日
-* **主要学科：** 人工智能 (`cs.AI`)
-* **备注说明：** 20 页，4 张图表
-
-&gt; * **arXiv ID:** [2609.13747](https://arxiv.org/abs/2609.13747) [cs.AI]
-&gt; * **Authors:** Hongyu Gu, Chang Liu, Jingwen Fu
-&gt; * **Submitted:** September 12, 2026
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Comments:** 20 pages, 4 figures
-
----
-
-## 摘要概要
-
-&gt; ## Abstract Summary
-
-大语言模型 (Large Language Model, LLM) 在解决复杂难题时，通常采用多步推理机制，将中间的思考推导过程显式编码为一个接一个的离散 Token，这就是我们熟知的思维链 (Chain-of-Thought, CoT)。然而，近期涌现的连续与循环计算方法，尝试将部分推理计算转移到固定维度的隐状态中，使得单个向量能够同时叠加多种可能的备选思维。
-
-&gt; Large language models typically solve complex problems through multi-step reasoning by encoding intermediate computations as discrete tokens (Chain-of-Thought). However, recent continuous and recurrent methods shift partial computations into fixed-dimensional latent states where a single vector can superpose multiple alternative thoughts simultaneously.
-
-针对这一新兴范式，本文深入探究了一个底层的核心设计问题：**随着推理的步步推进，连续思维向量究竟应当保留哪些信息？**
-
-&gt; This paper investigates a fundamental design question: **What should continuous thoughts preserve as reasoning proceeds?**
-
-* **反直觉的核心发现：** 直觉通常认为，与仅保留当前的即时推理前沿相比，将全部推理历史都保留在向量中 (即累积叠加) 会稀释向量状态并浪费表征容量；但作者的研究表明，在完成相同下游计算任务时，**累积叠加实际上反而只需要更低的表征维度**。
-* **背后的作用机制：** 携带有价值信息的历史思维成分在向量空间中能够彼此相干增强，而无关的备选项则只会带来相互抵消的随机干扰。
-* **架构设计准则：** 论文深入探讨了在未来信息效用未知的情况下，模型该如何为隐状态中累积的记忆赋予权重。虽然优先考虑近期或显著的信息看似合理，但容易造成“弱表征”瓶颈；而**均匀累积加权**能够彻底避免这一缺陷，并被证明在保障未来稳健推理方面具有**极小化极大最优性 (Minimax-Optimal)**。
-
-&gt; * **The Counter-Intuitive Finding:** While intuition suggests that retaining full reasoning history (cumulative superposition) would dilute states and waste representational capacity compared to keeping only the immediate reasoning frontier, the authors demonstrate that **cumulative superposition can actually require lower representational dimensions** under identical downstream computations.
-&gt; * **The Mechanism:** Informative historical components coherently reinforce one another, whereas unrelated alternatives introduce random interference. 
-&gt; * **The Design Principle:** The paper addresses how models should weight memories accumulated inside latent states when future utility is unknown. While prioritizing recent or salient items creates weak-representation bottlenecks, **uniform cumulative weighting** avoids this flaw and is proven to be **minimax-optimal** for robust future reasoning.
-
-总的来说，这项研究将隐空间中的“叠加态”现象，从一种单纯被观察到的神经网络经验现象，升华为了指导高效、高可靠神经计算的严谨架构设计原则。
-
-&gt; Ultimately, this research turns superposition from a mere observed latent-space phenomenon into a rigorous design principle for efficient, reliable neural computation.
-
----
-
-## 文档元数据
-
-&gt; ## Document Metadata
-
-| 元数据字段 | 详情 |
-| :--- | :--- |
-| **引用方式** | `arXiv:2609.13747 [cs.AI]` |
-| **DOI 链接** | [10.48550/arXiv.2609.13747](https://doi.org/10.48550/arXiv.2609.13747) |
-| **许可协议** | [知识共享署名-非商业性使用-相同方式共享 4.0 国际 (CC BY-NC-SA 4.0)](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
-
-&gt; | Metadata Field | Details |
-&gt; | :--- | :--- |
-&gt; | **Cite As** | `arXiv:2609.13747 [cs.AI]` |
-&gt; | **DOI** | [10.48550/arXiv.2609.13747](https://doi.org/10.48550/arXiv.2609.13747) |
-&gt; | **License** | [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
-
----
-
-## 全文与参考文献链接
-
-&gt; ## Full-Text &amp; References Links
-
-* **论文获取：**
-  * [查看 PDF](https://arxiv.org/pdf/2609.13747)
-  * [HTML 版本 (实验性)](https://arxiv.org/html/2609.13747v1)
-  * [TeX 源码](https://arxiv.org/src/2609.13747)
-* **外部文献工具与学术引用：**
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.13747)
-  * [Google 学术 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2609.13747)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.13747)
-
-&gt; * **Access Paper:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2609.13747)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2609.13747v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2609.13747)
-&gt; * **External Bibliographic Tools &amp; Citations:**
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.13747)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.13747)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.13747)
-
----
-*注：本文档包含衍生自仓库构建流水线的许可证图标 (例如：`&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;` )。*
-
-&gt; *Note: This document incorporates license graphics derived from the repository pipeline (e.g., `&lt;img alt="license icon" role="presentation" src="./images/079cd8198ba3.png"&gt;`).*</description>
     </item>
   </channel>
 </rss>
