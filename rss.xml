@@ -5,6 +5,276 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>冲突监督改变的是承诺而非能力：在惯例无关评分下归零的12.29个标准差数据排布效应</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-03/冲突监督改变的是承诺而非能力-在惯例无关评分下归零的12.29个标准差数据排布效应/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-03/冲突监督改变的是承诺而非能力-在惯例无关评分下归零的12.29个标准差数据排布效应/</guid>
+      <pubDate>Sat, 03 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (Large Language Model, LLM) 的监督微调 (Supervised Fine-Tuning, SFT) 与训练中，当训练数据包含两种互不兼容但各自正确的表达惯例时，数据的输入顺序往往会对最终评测产生显著干扰，常被认为深刻影响了模型能力。本文通过严格控制训练预算与数据集，深入剖析了学习率调度器与数据排布之间的相互作用机制，证明数据排序所引发的剧烈波动并未真正改变模型的底层“能力”，而仅仅是决定了模型在没有明确指令时优先“承诺”遵循哪一种特定惯例。令人惊叹的是，当引入“惯例无关”的评估准则 (只要模型在任一合规惯例下求解正确即可) 时，此前高达 $12.29\sigma$ 的巨大排布偏差直接归零，模型综合准确率在各种数据排布下保持高度守恒。进一步实验发现，只需在提示词 (Prompt) 中显式注明当前生效的惯例，即可轻松化解数据顺序带来的偏好锁定，并释放出高达 87.5% 的能力上限，为大模型数据工程与公平评测提供了极具穿透力的新视角。
+
+---
+
+## 📌 核心要点
+
+&gt; ## 📌 Summary
+
+面对同一批问题，如果采用两种互不相容却各自正确的表达规范对机器学习模型展开训练，模型究竟会学到什么？作者在严格控制训练算力预算、训练数据集以及优化路径的前提下，深入探究了数据的先后排列顺序与学习率调度策略如何联手塑造模型的最终表现。
+
+&gt; This paper investigates what happens when a machine learning model is trained on identical problems written under two incompatible yet equally correct conventions. By keeping the training budget, dataset, and path strictly controlled, the author examines how the arrangement of data and the learning rate schedule influence model outcomes. 
+
+该项研究的核心结论包括：
+
+&gt; Key takeaways from the research include:
+
+* **学习率调度器充当加权平均算子 (The Learning Rate Schedule as an Averaging Operator) ：** 在优化算法中，数据排布效应与学习率调度是以互相独立的乘法因子形式发挥作用的。学习率衰减策略能够避免大步长与未收缩的余项在最终一步发生剧烈碰撞，从而有效平抑了数据顺序带来的影响；而恒定学习率策略则不具备这种平抑机制。
+* **惯例承诺与底层能力的辨析 (Commitment vs. Capability) ：** 研究证明，“顺序至关重要”与“顺序无关紧要”实际上只是同一控制旋钮的两端。训练数据的排布顺序只是促使模型在无约束时“承诺”遵循某一种具体惯例，而并未真正改变其解决问题的底层“能力”。
+* **惯例无关下的能力守恒 (Convention-Agnostic Conservation) ：** 在引入不区分惯例的综合评估指标后，原本测得的 $12.29\sigma$ 剧烈排布跳变效应**直接归零** (在十二个测试组中，$\text{acc}_A + \text{acc}_B$ 的总和波动始终保持在 9.7% 的极小范围内) 。
+* **提示词干预消除偏差 (Prompt Intervention) ：** 只要在提示词中显式标注当前生效的规范惯例，即可绕过数据顺序带来的排布锁定，并成功恢复高达 87.5% 的联合能力上限。
+
+&gt; * **The Learning Rate Schedule as an Averaging Operator:** The arrangement effect and schedule enter the optimization as separate, multiplied factors. While decaying schedules prevent large step sizes and uncontracted remainders from colliding at the final step, constant schedules do not, which moderates ordering effects.
+&gt; * **Commitment vs. Capability:** "Order matters" and "order does not matter" are demonstrated to be two ends of a single knob. Training order forces a model to *commit* to a specific convention rather than altering its underlying *capability*.
+&gt; * **Convention-Agnostic Conservation:** The measured $12.29\sigma$ arrangement switch drops to **exactly zero** under a convention-agnostic metric ($\text{acc}_A + \text{acc}_B$ remains constant within 9.7% across twelve arms). 
+&gt; * **Prompt Intervention:** Marking the active convention explicitly in the prompt bypasses the ordering switch and recovers 87.5% of the union ceiling.
+
+---
+
+## 📄 论文摘要
+
+&gt; ## 📄 Abstract
+
+如果用两种互不兼容、但各自完全正确的表达惯例来书写同一批问题，并以此训练模型，那么这些数据的输入先后顺序究竟会在模型参数中留下怎样的印记？学习率调度策略绝非这一问题的旁观背景，它本质上是一个加权平均算子，正是它决定了最终的答案。我们从理论上证明了一个上界：在该上界中，数据排布和学习率调度以完全解耦的乘法因子形式作用于数据排序效应——排布方式仅体现为分块周期 (Block Period) ，而调度策略则仅决定了最终模型状态能对训练历程中的某一个特定时刻施加多大的权重。衰减型学习率调度器无法在同一个时刻同时出现大步长与未收缩的余项；相反，恒定学习率调度器在训练的最后一步恰恰会遭遇这种冲突。尽管在预训练阶段已有研究指出衰减调度能够平抑排序效应，但揭示其内在机理、实现两者因素的数学分离，以及对这两部分进行严格受控的定量测量，则是本文的核心原创贡献。我们在同一语料库、相同算力预算下设计了十种数据排序，除优化路径外完全保持一致，并在仅有 `lr_scheduler_type` 不同的两类调度策略下各运行了一次：在恒定学习率下，中间分布在分配份额上跨越了 0.2221，对比底限达到 11.63，且随着排布分块程度的加深呈现单调变化。而在所有已发表实验所普遍采用的单次余弦 (Cosine) 衰减调度下，原本自身分辨率足以分辨出约十种状态的十个实验组，最终仅坍缩为两种可区分的状态。“顺序重要”与“顺序无关”，本质上不过是同一个旋钮的两端。优化路径真正在参数中刻下的，仅仅是模型到底承诺遵循哪一种惯例，而传统的精确匹配 (Exact-Match) 基准测试根本无法洞察这一真相。在全部十二个实验分支中，尽管惯例分配份额在 0.04 到 0.87 之间大幅波动，但两者的准确率之和 $\text{acc}_A + \text{acc}_B$ 的变动幅度始终保持在 9.7% 以内；因此，本文所测量到的高达 $12.29\sigma$ 的排布跳变效应，在不区分具体惯例的评估指标下其实恰好归零。该守恒定律在采用衰减调度的模型组中表现得尤为纯粹，而恒定学习率组因包含更多噪声而不易直接观测。只要在提示词中明确标注当前生效的惯例，这种由数据排序引起的跳变就会彻底瓦解，并能达到联合能力上限的 87.5%。
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; "Train a model on the same problems written under two incompatible conventions, both correct, and ask what the ordering of that data writes into the parameters. The learning-rate schedule is not a background condition for that question. It is the averaging operator, and it decides the answer. We prove a bound in which the arrangement and the schedule enter the ordering effect as separate multiplied factors: the arrangement only as a block period, the schedule only as how much weight the endpoint can place on any one moment of the run. A decaying schedule cannot put a large step size and an uncontracted remainder at the same moment; a constant one does exactly that at the last step. That decay moderates ordering effects has been reported in pretraining; the mechanism, the separation, and a controlled measurement of both halves are ours. Ten orderings of one corpus, one budget, everything but the path held fixed, run twice under families differing in `lr_scheduler_type` and nothing else: at a constant rate the interior spans 0.2221 in allocation, 11.63 contrast floors, monotone in how blocked the arrangement is. Under the single cosine every published arm uses, the same ten arms occupy two distinguishable states where their own resolution would allow about ten. 'Order matters' and 'order does not matter' are the two ends of one knob. What the path writes is which convention the model commits to, and no exact-match benchmark can see it. Across twelve arms acc_A+acc_B is constant to within 9.7% while the allocation share runs 0.04 to 0.87, so the 12.29-sigma arrangement switch this paper measures is exactly zero under a convention-agnostic metric. That conservation is quoted from the decayed family throughout, the constant-rate one being a noisier place to read it. Marking the convention in the prompt collapses the switch and reaches 87.5% of the union ceiling."
+
+---
+
+## 🛠️ 论文元数据与全文链接
+
+&gt; ## 🛠️ Metadata &amp; Access Links
+
+* **论文备注 (Comments) ：** 62 页 (62 pages) 
+* **授权协议 (License) ：** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+* **全文获取 (Full-Text Access) ：** 
+  * [查看 PDF (View PDF) ](https://arxiv.org/pdf/2610.00234)
+  * [HTML 版本 (Experimental) ](https://arxiv.org/html/2610.00234v1)
+  * [TeX 源码 (TeX Source) ](https://arxiv.org/src/2610.00234)
+* **引文检索与工具 (Citations &amp; Tools) ：** 
+  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.00234)
+  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.00234)
+  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.00234)</description>
+    </item>
+    <item>
+      <title>全局连贯性困境：当每个智能体都正确而团队依然出错</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-03/全局连贯性困境-当每个智能体都正确而团队依然出错-多智能体协同的局部到全局语义基石/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-03/全局连贯性困境-当每个智能体都正确而团队依然出错-多智能体协同的局部到全局语义基石/</guid>
+      <pubDate>Sat, 03 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在当今的大语言模型 (Large Language Model, LLM) 应用中，多智能体协同已成为应对复杂任务的核心范式，但系统在实际运行中常常遭遇一种难以捉摸的困境：每一个 AI 智能体 (AI Agent) 依据自身视角做出的决策都完全合理，但团队汇总出的最终结果却漏洞百出。针对这一长期困扰业界的难题，学者 Xin Heng 在本篇论文中深入剖析了这一“全局连贯性 (Global Coherence) ”问题，并给出了严格的数学证明——“观测混淆不可能定理 (Observation-Aliasing Impossibility Theorem) ”，指出在观测上下文缺失的情况下，单纯增加推理步数、引入更多角色或扩充通信轮次，在理论上根本无法消除错误。为此，论文基于拓扑学与层论提出了“局部到全局运行时语义框架” ($\mathcal{X}$)，确立了“模型仅负责提议行动、管控底座全权掌控共享状态与提交”的设计准则。该研究为多智能体系统从松散对话迈向高可靠工程落地奠定了严谨的理论基石。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+多智能体 AI 系统常常深陷一个致命的系统性缺陷：**每个独立的智能体都能做出局部完全合理的正确决策，但团队协同起来却得出一个全盘错误的荒诞结果。**
+
+&gt; Multi-agent AI systems frequently suffer from a critical systemic flaw: **individual agents can make locally valid decisions while the team jointly produces an invalid result.**
+
+在这篇论文中，Xin Heng 对这一现象——即 **全局连贯性问题 (global coherence problem) **——展开了深入探究。作者指出，这种故障的根源在于共享状态管理的底层失效，而非模型本身不够聪明。为了厘清系统能力的严格理论边界，作者提出了 **观测混淆不可能定理 (Observation-Aliasing Impossibility Theorem) **，从数学上证明了局部层面的小修小补、增加思考推理步数或在智能体之间发送更多消息，都无法弥补因观测上下文不全而带来的天然盲区。
+
+&gt; In this paper, Xin Heng investigates this phenomenon—termed the **global coherence problem**—arguing that it represents a fundamental failure of shared state management rather than a deficiency in model intelligence. To establish strict theoretical boundaries, the author introduces the **Observation-Aliasing Impossibility Theorem**, proving that localized improvements, increased reasoning steps, or additional messaging cannot overcome incomplete observational context.
+
+为破解这一死局，论文提出了一套严谨的 **从局部到全局运行时语义框架 ($\mathcal{X}$) **。大量实证评估充分证明：采用具备全局管控能力的运行底座 (harness) 来统一协调状态，其可靠性远远优于单纯依赖去中心化智能体之间的相互通信。
+
+&gt; To resolve this, the paper presents a robust **local-to-global runtime semantics framework ($\mathcal{X}$)**, backed by empirical evaluations demonstrating that enforcing global state harnesses vastly outperforms reliance on decentralized agent communication.
+
+---
+
+## 核心理论贡献
+
+&gt; ## Key Theoretical Contributions</description>
+    </item>
+    <item>
+      <title>AWS Strands Labs 开源 Strands Decider 2B：115 毫秒极速响应的单次前向决策大模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-03/AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-03/AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型/</guid>
+      <pubDate>Sat, 03 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在构建现代 AI 智能体 (AI Agent) 系统的过程中，传统的大语言模型 (Large Language Model, LLM) 往往扮演着“事无巨细皆需长篇大论”的角色，即便是面对二选一确认、意图路由或工具选择等简单的确定性判定，也必须逐字解码生成 Token，带来了不可忽视的延迟开销与格式幻觉隐患。为攻克这一工程痛点，AWS Strands Labs 正式开源了参数量为 19 亿的“快思考系统” (System One) 决策模型 Strands Decider 2B。该模型创新性地去除了传统大语言模型的解码生成头，改用极轻量的指针分类头，在单次前向传播中仅需约 115 毫秒即可直接返回离散选项、概率或评分，同时保持了极佳的统计校准水平。这一成果不仅能够在消费级显卡或 Apple Silicon 上本地流畅运行，更以零幻觉、低延迟和全开源的特性，为下一代端到端智能体系统的敏捷编排与实时安全护栏树立了全新的技术标杆。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+AWS Strands Labs 正式推出了 **Strands Decider 2B**，这是一款包含 19 亿参数的开源“快思考系统” (System One) 决策模型。与传统的大语言模型 (Large Language Model, LLM) 不同，Strands Decider 并不生成自由文本；相反，它能够精确评估当前上下文状态与特定类型的问题，直接返回离散选项、是否概率 (yes/no) 或结构化的评分评估。该模型支持在本地 CPU、消费级 GPU 以及搭载 Apple Silicon 的 Mac 电脑上运行，中位推理延迟仅约 115 毫秒，专为工具选择、模型路由以及智能体安全护栏 (Guardrails) 等讲求高效率与校准精度的关键任务量身打造。目前，其完整模型权重已在 [Hugging Face](https://huggingface.co/StrandsAgents/strands-decider-2B-hobson-v19) 上完全开源，遵循宽松的 Apache-2.0 许可证。
+
+&gt; AWS Strands Labs has launched **Strands Decider 2B**, an open-source "System One" decision model containing 1.9 billion parameters. Unlike traditional Large Language Models (LLMs), Strands Decider does not generate text; instead, it evaluates a state and typed questions to return a discrete choice, a yes/no probability, or a scored evaluation. Running locally on CPUs, consumer GPUs, or Apple Silicon Macs with a median latency of roughly 115 ms, the model is designed for efficient, calibrated tasks like tool selection, model routing, and agent guardrails. Its weights are openly available on [Hugging Face](https://huggingface.co/StrandsAgents/strands-decider-2B-hobson-v19) under the Apache-2.0 license.
+
+---
+
+## 部署方式与易用性
+
+&gt; ## Deployment &amp; Accessibility
+
+Strands Decider 2B 完全支持在本地与私有化自托管环境中独立部署：
+
+&gt; Strands Decider 2B is fully deployable for local and self-hosted environments:
+
+* **便捷安装**：只需执行 `pip install strands-decider` 即可完成一键安装，同时提供命令行工具 (CLI) 与 HTTP 服务端；
+* **环境要求**：由于内置的服务器默认绑定至本地回环地址 `127.0.0.1` 且未集成原生身份验证，若在生产环境中向外部开放，必须配置外部鉴权代理层；
+* **推理服务**：目前阶段尚无托管型的第三方云推理服务商接入该模型。
+
+&gt; * **Installation:** Easily installed via `pip install strands-decider`, providing both a CLI and an HTTP server.
+&gt; * **Requirements:** Because the bundled server binds to `127.0.0.1` without built-in authentication, production deployments require an external auth layer.
+&gt; * **Inference:** Currently, no hosted third-party inference providers serve the model.
+
+---
+
+## 决策模型的核心机制
+
+&gt; ## What a Decision Model Does
+
+作为自 TypeSafe AI 推出 Jev 以来不断壮大的“快思考系统” (System One) 模型门类的新成员，决策模型将输出范围严格限制在预定义选项列表或特定数值刻度之内，彻底避免了标准大语言模型常见的无序自由文本生成与输出漂移。
+
+&gt; As part of a growing category of "System One" models that emerged following TypeSafe AI’s launch of Jev, decision models restrict their outputs strictly to predefined options or numerical scales, avoiding the arbitrary text generation common in standard LLMs. 
+
+Strands Decider 原生支持三类各具特色的结构化提问类型：
+
+&gt; Strands Decider supports three distinct question types:
+
+* **`choice` (单项选择) **：从 $N$ 个预定义候选选项中挑选出 1 个最佳选项；
+* **`noul` (二元概率) **：在 0 到 1 之间精确评估针对某一命题的“是/否”判定置信概率；
+* **`score` (标准评分) **：依据预设的有序评判基准量表对输入内容进行打分评级。
+
+&gt; * **`choice`**: Selects 1 out of $N$ possible options.
+&gt; * **`noul`**: Evaluates a yes/no probability between 0 and 1.
+&gt; * **`score`**: Rates an input against an ordered rubric.
+
+模型的每一次输出均严格受限于所允许的候选选项子集，并附带经过严格统计校准的置信度评分。需要注意的是，该模型**并不适合**用于处理复杂的长链推理、代码编写、多轮闲聊对话或长篇文本摘要等任务。
+
+&gt; Every output returns a strict subset of the allowed options alongside a calibrated confidence score. The model is **not** suited for complex reasoning, coding, conversational chat, or summarization tasks.
+
+---
+
+## 架构设计：拆掉“发言嘴”的大语言模型
+
+&gt; ## Architecture: An LLM with Its Mouth Removed
+
+该模型构建于 [Qwen3.5-2B-Base](https://huggingface.co/Qwen/Qwen3.5-2B-Base) 基础架构之上，并针对分类决策的执行效率重构了核心网络层：
+
+&gt; The model is built upon the [Qwen3.5-2B-Base](https://huggingface.co/Qwen/Qwen3.5-2B-Base) architecture, modifying the core structure for classification efficiency:
+
+* **轻量指针头 (The Pointer Head)**：彻底弃用了传统大语言模型庞大的因果语言建模输出头，转而换上了一个仅约 100 万参数 (约 1M) 的精简指针头；
+* **单步推理机制 (Inference Mechanism)**：该指针头直接将 `&lt;answer&gt;` 标记位置的隐藏状态 (Hidden State) 与每个候选选项末尾 Token 的隐藏状态进行点积比对。这使得模型无需经历缓慢的自回归**解码循环** (Decoding Loop)，仅凭单次前向传播 (Forward Pass) 即可瞬间给出决策结果；
+* **模型主干与精度 (Torso &amp; Scale)**：模型主干网络采用了 rank-16 的 LoRA 微调，而指针分类头则以高精度的 `fp32` 格式执行。由于候选标签集是在每次 API 请求中动态给出的，因此可支持的选项数量在理论上几乎不受限制 (当前发布的模型检查点为 `v19`) ；
+* **极速多任务复用 (Efficiency)**：针对同一段文本输入同时进行多项问题评估时具有极致的性能优化——原始文本的状态仅需计算读取一次，后续附加的多个判定问题只会产生极小的额外 Token 计算开销。
+
+&gt; * **The Pointer Head:** The traditional language-modeling head is discarded and replaced with a lightweight pointer head (~1M parameters). 
+&gt; * **Inference Mechanism:** The head compares the hidden state at the `&lt;answer&gt;` position against the hidden state at each option’s last token. This allows the model to yield results in a single forward pass **without a decoding loop**.
+&gt; * **Torso &amp; Scale:** The torso utilizes a rank-16 LoRA, while the head executes in `fp32`. Because label sets are defined dynamically via requests, option counts are virtually uncapped (current released checkpoint: `v19`).
+&gt; * **Efficiency:** Evaluating multiple questions for a single text input is highly optimized—the state is read just once, and subsequent questions incur minimal token overhead.
+
+---
+
+## 基准测试与推理延迟
+
+&gt; ## Benchmarks and Latency
+
+在 [JevBench](https://benchmarkheaven.com/jev-models) 公开基准测试集上，`v19` 版本的模型检查点展现出了极具竞争力的性能水准：
+
+&gt; Measured against public sets on [JevBench](https://benchmarkheaven.com/jev-models), the `v19` checkpoint delivers competitive performance:
+
+* **公开测试准确率**：0.723 (在 JevBench v1 的 231 项评测任务中成功解决 167 项) ；
+* **概率校准表现**：Brier 得分为 0.342，预期校准误差 (Expected Calibration Error, ECE) 仅为 0.052；
+* **分级难度表现**：简单任务达 1.000；标准任务为 0.875；困难任务为 0.505；
+* **硬件延迟表现 (RTX 3090)**：中位延迟仅 115 毫秒，p95 延迟为 299 毫秒；
+* **硬件延迟表现 (M3 Pro)**：预热后中位延迟为 153 毫秒 (输入文本在 300 个 Token 以内) 。
+
+&gt; * **Public Accuracy:** 0.723 (167 out of 231 tasks on JevBench v1).
+&gt; * **Calibration:** Brier score of 0.342; Expected Calibration Error (ECE) of 0.052.
+&gt; * **Tier Breakdown:** Easy tasks: 1.000; Standard tasks: 0.875; Hard tasks: 0.505.
+&gt; * **Latency (RTX 3090):** 115 ms median, 299 ms p95.
+&gt; * **Latency (M3 Pro):** 153 ms warm median (under 300 tokens).</description>
+    </item>
+    <item>
+      <title>AI 监管能否实现零知识 (Zero Knowledge) ？兼顾机密隐私与可验证性的密码学监督边界</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-03/AI-监管能否实现零知识-兼顾机密隐私与可验证性的密码学监督边界/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-03/AI-监管能否实现零知识-兼顾机密隐私与可验证性的密码学监督边界/</guid>
+      <pubDate>Sat, 03 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着人工智能日益深入医疗诊断评估、前沿药物分子研发等关键领域，AI 系统频繁接触并处理大量核心机密数据，如何在不公开底层敏感数据的前提下证明其输出结果的正确性，成为保障 AI 安全可信的核心瓶颈。本文深入探讨了在引入外部物理实验、人类判断或网络查询的预言机辅助计算 (oracle-aided computation) 场景下，交互式论证能否达成零知识 (Zero Knowledge) 隐私保护；研究首先证明了一个奠基性的不可能结果：在标准的 random oracle model 下，即便证明方与验证方具备无限算力，通用的 zero knowledge 证明在数学上也是无法实现的，这一理论限制同样适用于当下的主流 AI 监督范式辩论机制 (Debate) 。针对这一看似不可逾越的理论鸿沟，作者给出了极具突破性的密码学解决方案：只要预言机为返回的每个答案附加密码学签名，那么仅需依赖标准的 collision-resistant hash functions ，就能在多项式时间内以极高效率实现完备的 zero knowledge 验证。该成果不仅从密码学理论上划定了兼顾隐私保密与计算可验证性的清晰边界，更为无需依赖可信对手或鲁棒性假设的新一代可扩展 AI 监督架构铺平了道路。
+
+---
+
+# AI 监管能否实现零知识 (Zero Knowledge) ？兼顾机密隐私与可验证性的密码学监督边界
+
+&gt; # Can AI Oversight Be Zero Knowledge?
+
+## 📌 核心概要
+
+&gt; ## 📌 Summary
+
+如今的 AI 系统正在处理越来越多的核心机密数据——比如在员工健康评估中调用的个人病历，或是创新药研发中涉及商业秘密的独家分子结构。在这种背景下，如何在完全不公开底层敏感数据的前提下，让人确信 AI 给出的结论是完全正确的？这成为了至关重要的现实难题。本文针对带有外部辅助输入的 oracle-aided computations (预言机辅助计算) ，深入探讨了其 interactive arguments (交互式论证) 能否达成 **zero knowledge** (确保 verifier 在验证过程中，除了确信输出正确之外，无法获取任何额外机密信息) 。
+
+&gt; As AI systems increasingly process confidential data—such as medical records for fitness-for-duty assessments or proprietary molecular structures for drug discovery—verifying the correctness of their outputs without exposing the underlying data becomes crucial. This paper investigates whether interactive arguments for oracle-aided computations can achieve **zero knowledge** (ensuring the verifier learns nothing beyond the output's correctness). 
+
+作者首先给出了一个奠基性的理论“不可能定理”：在经典的 random oracle model 下，通用的 zero-knowledge proofs 根本无法覆盖所有的 oracle-aided computations ；哪怕赋予 prover (证明者) 和 verifier (验证者) 无限的计算时间与算力，这一局限也无法打破。不过研究者并未止步于此，而是进一步提出了一套精巧的正向解决方案：只要 oracle (预言机) 对其返回的每一个答案进行密码学签名，那么仅仅依托基础的 collision-resistant hash functions ，就能让多项式时间内高效运行的 prover 与 verifier，对任意 oracle-aided computations 完成严谨的 zero knowledge 验证。
+
+&gt; The authors demonstrate a fundamental impossibility result: in the random oracle model, zero-knowledge proofs do not exist for all oracle-aided computations, even with unbounded provers and verifiers. However, they introduce a positive solution: if the oracle signs each answer cryptographically, every oracle-aided computation can be verified in zero knowledge with efficient provers and verifiers using only collision-resistant hash functions.
+
+---
+
+## 📋 论文元数据
+
+&gt; ## 📋 Metadata
+
+* **arXiv 编号：** [arXiv:2610.01995](https://arxiv.org/abs/2610.01995) [cs.AI]
+* **研究领域：** 人工智能 (`cs.AI`)；计算复杂度 (`cs.CC`)；密码学与安全 (`cs.CR`)
+* **论文作者：** Alessandro Chiesa, Ziyi Guan, Burcu Yildiz
+* **提交时间：** 2026 年 10 月 1 日
+* **DOI：** [10.48550/arXiv.2610.01995](https://doi.org/10.48550/arXiv.2610.01995)
+
+&gt; * **arXiv ID:** [arXiv:2610.01995](https://arxiv.org/abs/2610.01995) [cs.AI]
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Computational Complexity (`cs.CC`); Cryptography and Security (`cs.CR`)
+&gt; * **Authors:** Alessandro Chiesa, Ziyi Guan, Burcu Yildiz
+&gt; * **Submitted:** October 1, 2026
+&gt; * **DOI:** [10.48550/arXiv.2610.01995](https://doi.org/10.48550/arXiv.2610.01995)
+
+---
+
+## 📄 论文摘要
+
+&gt; ## 📄 Abstract
+
+现代 AI 系统正愈发频繁地基于机密数据生成关键结果——典型应用如根据私密医疗病历评估员工的健康适职状况，或是根据未公开的分子化学结构预测候选新药的理化性质。面对这类高敏感场景，如何在严守数据机密、杜绝底层泄密的前提下，令人信服地验证 AI 输出的正确性，已成为一个迫在眉睫的课题。近期的一系列学术探索尝试借助针对 oracle-aided computation (预言机辅助计算) 的 interactive proofs (交互式证明) 与 debate (辩论机制) 来校验 AI 输出；在这些体系中，计算的正确性往往依赖于外部 oracle (例如人类主观判断、物理化学实验或万维网查询) 。以往研究的核心诉求通常是效率，即追求让 verifier (验证者) 以远快于原本计算的极高速度完成验证。然而在理论上，通用的 oracle-aided computation 根本无法实现这种超高效校验，导致现有成果不得不依赖严苛的额外假设。本文则另辟蹊径，将研究焦点全面转向**隐私保护**：在允许 verifier 以计算规模的多项式时间正常运行的前提下，我们提出一个根本性问题——面向 oracle-aided computation 的 interactive arguments (交互式论证) 能否达成 **zero knowledge** ，从而确保 verifier 除了知晓“结论确实正确”之外，对底层的任何机密数据都毫无所悉？
+
+&gt; AI systems increasingly produce outputs from confidential data, such as a fitness-for-duty assessment from medical records or the predicted properties of a drug candidate from its secret structure. It is important to verify that such outputs are correct without revealing the underlying data. A recent line of work studies verification of AI outputs via interactive proofs and debate for oracle-aided computation, where correctness may depend on an oracle such as human judgment, a physical experiment, or the web. These works focus on verification by a verifier that runs much faster than the computation. However, such efficient verification is impossible for general oracle-aided computation, and these works therefore rely on additional assumptions. We focus instead on privacy: allowing the verifier to run in time polynomial in the computation, we ask whether interactive arguments for oracle-aided computation can be zero knowledge, so that the verifier learns nothing about the confidential data beyond the correctness of the output.
+
+我们的数学证明给出了一个确凿的结论：**在一般情况下，这根本无法做到**。在密码学经典的 random oracle model 中，通用性的 zero-knowledge proofs 无法涵盖所有的 oracle-aided computations ；即便允许 prover 与 verifier 的运行耗时远远超过计算本身 (哪怕算力无限) ，这一不可行性依然牢固成立。更引人注目的是，这项理论“不可能禁令”还直接延伸到了当前被学术界视作可扩展监督 (scalable oversight) 经典范式的 debate 机制。
+
+&gt; We prove that, in general, they cannot. In the random oracle model, there are no zero-knowledge proofs for all oracle-aided computations, even if both the prover and the verifier are allowed to run much longer than the computation itself. The impossibility extends to debate, a canonical model for scalable oversight.
+
+令人振奋的是，研究团队在揭示局限的同时也提出了一条极富建设性的破局路径：只要让外部 oracle 在返回每个应答时附带密码学签名 (cryptographic signature) ，那么在仅依赖基础的 collision-resistant hash functions 的最低密码学假设下，任意 oracle-aided computation 均能由多项式时间内高效运行的 prover 与 verifier 实现完备的 zero knowledge 验证。除了强有力的隐私保障外，这项设计还为 AI 的可扩展监督提供了一种全新的替代范式：它既不需要像 debate 模型那样假设博弈中必定存在一个“诚实的对手”，也无需像以往的单证明者协议 (single-prover protocols) 那样苛求计算过程本身具备鲁棒性，从而在机制设计上展现出了卓越的稳健性。
+
+&gt; On the positive side, we show that if the oracle attaches a cryptographic signature to each of its answers, then every oracle-aided computation can be verified in zero knowledge with an efficient prover and verifier, assuming only collision-resistant hash functions. Beyond privacy, this also gives an alternative approach to scalable oversight that relies neither on an honest opponent, as in debate, nor on the robustness of the computation, as in prior single-prover protocols.
+
+---
+
+## 🔗 全文与相关资源
+
+&gt; ## 🔗 Full-Text &amp; Resources
+
+* **[查看 PDF (View PDF)](https://arxiv.org/pdf/2610.01995)**
+* **[HTML 版本 (Experimental)](https://arxiv.org/html/2610.01995v1)**
+* **[TeX 源码 (TeX Source)](https://arxiv.org/src/2610.01995)**
+* **授权许可：** [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+&gt; * **[View PDF](https://arxiv.org/pdf/2610.01995)**
+&gt; * **[HTML Version (Experimental)](https://arxiv.org/html/2610.01995v1)**
+&gt; * **[TeX Source](https://arxiv.org/src/2610.01995)**
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
+    </item>
+    <item>
       <title>软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-02/软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-02/软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态/</guid>
@@ -3880,423 +4150,6 @@ AI 智能体请求在执行过程中，往往需要花费大量的物理时间�
 我们将该方法在自主科研系统 **Columbus-1** 中付诸实战检验。该系统不仅成功锁定了 Linux 蓝牙协议栈 BlueZ 中 8 个已被独立复现、攻击者可触及的高危漏洞，还全程主导了一枚 10 英尺高火箭的设计、仿真模拟与物理加工制造——该火箭旨在通过不可节流的固体发动机完成极高难度的动力反推软着陆。综合这些实验成果，研究证明了过程层面的科学判断能够为大模型的推理策略提供清晰可解释、高度动态的有效控制监督。
 
 &gt; We operationalize the method in **Columbus-1**, an autonomous research system that identified eight independently reproduced, attacker-reachable vulnerabilities in BlueZ and directed the design, simulation, and fabrication of a ten-foot rocket intended to land propulsively using non-throttleable solid motors. Together, these results show that process-level scientific judgment can provide supervision for interpretable, dynamic control over a model's reasoning strategy.</description>
-    </item>
-    <item>
-      <title>Z.ai 详解基于 10 万张国产芯片的 GLM-5.3-Flash 推理系统架构构建</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-18/Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建/</guid>
-      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
-      <description>2026 年 9 月 17 日，人工智能企业 Z.ai 正式发布技术报告，详细披露了其如何在由超过 10 万张国产 AI 加速芯片组成的超大规模集群上，从零搭建起面向核心大模型 GLM-5.3-Flash 的生产级推理系统架构。这是国产算力芯片首次在十万卡级别生产环境中承受住超大规模真实业务流量的严苛检验。
-
-尤为引人瞩目的是，该系统的底层算子与架构性能调优并非单纯依赖人类工程师手动完成，而是由以 GLM-5.3 为核心驱动的“基础架构智能体” (Infra Agent) 自主探索与优化完成的。该系统成功应对了稀疏与线性注意力混合架构、高达 100 万 Token 的超长上下文窗口以及复杂多模态请求，最终使集群端到端吞吐量提升了整整三倍，硬件利用效率与单 Token 推理成本比肩主流 NVIDIA 硬件，生动展现了大模型递归自我进化的巨大工程威力。
-
----
-
-## 总结
-
-&gt; ## Summary
-
-2026 年 9 月 17 日，Z.ai 发布了一份详尽的技术报告，全面展示了其如何从零构建起支撑 **GLM-5.3-Flash** 模型的生产级推理基础设施。该集群由超过 **10 万张国产 AI 加速芯片**组成，这一里程碑代表了国产算力芯片在生产环境中前所未有的部署规模。尤为突出的是，整个基础设施优化的绝大部分工作并不是单纯依赖人类工程师手动完成，而是由基于 **GLM-5.3 驱动的基础架构智能体 (Infra Agent)** 协同完成的。最终构建的推理系统能够游刃有余地支撑模型的复杂混合架构、高达 100 万 Token 的长上下文窗口以及海量多模态请求，其效率指标已可比肩业界主流的 NVIDIA 硬件。
-
-&gt; On September 17, 2026, Z.ai released a comprehensive technical report detailing how it successfully built a production-grade inference infrastructure for its **GLM-5.3-Flash** model from scratch. Operating across a cluster of over **100,000 Chinese-made AI accelerators**, this milestone represents an unprecedented scale for domestic silicon in production. Notably, a significant portion of the infrastructure optimization was driven by an **Infra Agent powered by GLM-5.3** rather than engineers alone. The resulting system successfully handles the model's complex hybrid architecture, 1-million-token context window, and multimodal requests, achieving efficiency levels comparable to mainstream NVIDIA hardware.
-
----
-
-## 国产芯片上的超大规模推理挑战
-
-&gt; ## Scaling Inference on Domestic Silicon
-
-在这种前所未有的超大体量下驾驭国产芯片集群，团队面临着极为特殊的工程挑战。Z.ai 不仅要应对单芯片片上显存容量与通信带宽的物理制约，还要直面国产算力生态尚不成熟的现实困境——算子底层支持不全、权威的标准开发文档时常缺位等问题屡见不鲜。
-
-&gt; Operating a massive cluster of Chinese-made accelerators at this scale presented unique hurdles. Z.ai faced limitations regarding on-chip memory capacity and bandwidth, coupled with an immature ecosystem where kernel support was incomplete and standard documentation was frequently missing. 
-
-GLM-5.3-Flash 模型本身于 2026 年 8 月 26 日正式发布，拥有 3,200 亿总参数量和 180 亿激活参数，采用了融合稀疏注意力与线性注意力的前沿混合架构。在此前以 *ox-alpha* 的化名在 OpenCode 和 OpenRouter 平台上进行匿名盲测期间，该模型迅速成为两家平台上调用量最高的模型，在上线最初的六天内就处理了超过 62 万亿 Token 的庞大流量。
-
-&gt; The GLM-5.3-Flash model itself—launched on August 26, 2026—features 320 billion total parameters and 18 billion active parameters utilizing a hybrid architecture of sparse and linear attention. Following its anonymous testing phase on OpenCode and OpenRouter under the alias *ox-alpha*, it rapidly became the most-used model on those platforms, processing over 62 trillion tokens within its first six days.
-
-## 密集反馈方法：为智能体打造高效闭环
-
-&gt; ## The Dense Feedback Method
-
-在对复杂的推理基础设施进行深度调优时，传统的端到端性能指标所能提供的帮助十分有限；它们虽然能报警提示性能“发生了”下滑，却无法准确定位问题出在“何处”以及“为什么”。为了打破这种黑盒困境，Z.ai 独创性地引入了**密集反馈方法 (Dense Feedback Method)**。
-
-&gt; Traditional end-to-end metrics provide limited utility when optimizing complex infrastructures; they signal *that* performance dropped, but fail to pinpoint *why*. To bridge this gap, Z.ai implemented a **dense feedback method**. 
-
-该方法将以下多维度的诊断手段有机交织在一起：
-
-&gt; This approach weaves together:
-
-* 正确性测试
-* 运行时日志与关键事件
-* 执行追踪轨迹 (Execution Traces)
-* 微基准测试 (Microbenchmarks) 与端到端宏观指标
-
-&gt; * Correctness tests
-&gt; * Runtime logs and events
-&gt; * Execution traces
-&gt; * Microbenchmarks and end-to-end metrics
-
-通过将这些元素整合为可快速重复执行的自动化工作流，基础架构智能体 (Infra Agent) 每次做出微调后，都可以在局部环境下迅速验证推想，而不必经历漫长的全量集群重新部署与全网压力测试等待。
-
-&gt; By unifying these elements into repeatable workflows, the Infra Agent could locally validate hypotheses without waiting for full deployment and load testing after every tweak. 
-
-Z.ai 为这一反馈闭环确立了三大核心构建准则：
-
-&gt; Z.ai established three core criteria for this feedback loop:
-
-1. **局部精准性 (Locality)**：必须直接绑定到具体的启动参数、代码修改、计算算子、输入边界条件、执行线程或调用路径。
-2. **极高时效性 (Efficiency)**：获取成本极其低廉，且反馈结果必须足够快速及时。
-3. **客观可验证性 (Objective Verification)**：由标准参考实现和对照实验提供强力背书，以实锤确定系统性能因果机制，而非停留在表象的相关性推测上。
-
-&gt; 1. **Locality:** Tied directly to launch parameters, code changes, kernels, input conditions, threads, or execution paths.
-&gt; 2. **Efficiency:** Inexpensive and timely to acquire.
-&gt; 3. **Objective Verification:** Supported by reference implementations and controlled experiments to confirm root causes rather than mere correlations.
-
-在双方协同工作时，人类工程师主要负责界定顶层系统边界并把控生产核心风险（如数值计算精度规范与高并发行为），而智能体则承担了海量细节分析、假设推演与底层代码修改。最终打造出的整套极致优化技术栈，集成了节点内张量并行 (Tensor Parallelism)、ReplaySSM 机制、W8A8 权重激活量化、INT8/FP8/BF16 混合精度缓存量化、Layer Split 层分割技术，以及编码-预填充-解码解耦 (Encode-Prefill-Decode Disaggregated) 架构。
-
-&gt; Working in tandem, engineers defined high-level system boundaries and assessed critical production risks (such as numerical semantics and concurrency behavior), while the agent handled analysis, hypotheses, and code modifications. The optimized stack combined intra-node tensor parallelism, ReplaySSM, W8A8 quantization, mixed-precision INT8/FP8/BF16 cache quantization, Layer Split, and an Encode-Prefill-Decode disaggregated architecture.
-
-## 三大关键工程突破
-
-&gt; ## Three Key Engineering Triumphs</description>
-    </item>
-    <item>
-      <title>VQ-bench：可组合式矢量量化框架与评测基准</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-18/VQ-bench-可组合式矢量量化框架与评测基准/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/VQ-bench-可组合式矢量量化框架与评测基准/</guid>
-      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在人工智能与现代信息检索领域，高维向量是向量数据库和各类大语言模型 (Large Language Model, LLM) 运转的核心数据载体，但全精度的海量向量存储与检索面临着极高的硬件成本。矢量量化 (Vector Quantization, VQ) 技术通过将高维连续向量压缩为紧凑的离散编码，成为大幅削减内存占用并加速相似度计算的关键支柱。然而，学术界与工业界虽然涌现出繁多的量化算法，却因评估指标各异、测试数据集不同以及底层硬件优化不一致，长期缺乏公平可比的标准评测。为此，Pinecone 正式推出了开源框架与基准评测套件 VQ-bench，创新性地将绝大多数复杂量化器解构为由少量核心原语模块组装而成的流水线。VQ-bench 不仅为经典与前沿量化算法提供了统一严谨的横向对比舞台，更让开发者能够像搭积木一样自由组合、快速验证新型量化策略，为向量检索生态注入了强大的模块化基础设施。
-
----
-
-## 核心内容摘要
-
-&gt; ## Summary
-
-对于向量数据库和大语言模型 (Large Language Model, LLM) 而言，矢量量化 (Vector Quantization, VQ) 是一项不可或缺的关键技术，能够大幅压缩高维向量的存储空间。然而，学术界近年来发表了浩如烟海的量化器算法，由于评测指标各异、测试数据集不统一以及针对不同硬件的底层优化大相径庭，想要对它们进行公平公正的横向对比，一直是一大行业痛点。
-
-&gt; Vector quantization (VQ) is crucial for reducing the storage size of high-dimensional vectors in vector databases and large language models (LLMs). However, evaluating and comparing the sheer volume of published quantizers has historically been challenging due to inconsistent metrics, datasets, and hardware optimizations. 
-
-为了攻克这一难题，Pinecone 推出了开源框架与基准评测套件 **VQ-bench**。它的精妙之处在于，将绝大多数主流量化器抽象为由少量基础“原语”组合而成的模块化“流水线”。本文将深入探讨 VQ-bench 如何实现量化器评测的标准化体系，详细拆解备受关注的 E-RaBitQ 等经典架构，并重点展示在 ArXiv 和 Yahoo 等公开数据集上的核心性能对比结果。
-
-&gt; To solve this, Pinecone introduces **VQ-bench**, an open-source framework and benchmarking suite that models most published quantizers as modular "pipelines" built from a small set of primitive operations. This post outlines how VQ-bench standardizes quantizer evaluation, breaks down popular architectures like E-RaBitQ, and highlights key performance comparisons across datasets like ArXiv and Yahoo.
-
----
-
-## 引言
-
-&gt; ## Introduction
-
-对于任何向量数据库来说，在对向量进行相似度检索之前，必须先将它们妥善存储在系统中。然而，以全精度直接保存海量的高维向量，硬件开销极为昂贵。**矢量量化 (Vector Quantization, VQ) ** 技术能够显著减少存储单个向量所需的比特位 (Bit) 数，因此成为了构建与运维高效向量数据库的核心技术基石。
-
-&gt; Before a vector database can search vectors, it has to store them. But storing high-dimensional vectors at full precision is quite expensive. **Vector quantization** (VQ) reduces the number of bits needed to store a vector, making it a critical part of maintaining a vector database.
-
-正因为 VQ 在向量数据库与大模型体系中扮演着举足轻重的角色，每年学术界都会涌现出海量的相关研究论文。早在打造首批系统原型时，Pinecone 就已经深入应用了量化技术。不过精益求精的追求永无止境，于是我们着手对近年来的前沿研究成果展开全面调研与基准测试。在这个过程中，市面上数量极其庞大的量化器让我们眼花缭乱；更棘手的是，几乎每篇论文的评测标准都不尽相同——各家使用的测试数据集互不一致，衡量的性能指标五花八门，底层更针对不同的硬件架构做了各自定制的加速优化。我们始终无法在业内找到任何能够对主流顶尖量化算法进行系统性、横向公平对比的研究工作。
-
-&gt; Because VQ is so important (to both vector databases and LLMs), many research papers are published on the topic every year. Pinecone has been using quantization since its first prototypes. But we can always do better, so we set out to survey and benchmark newer results. We were pretty overwhelmed by just how many quantizers are out there. To make matters worse, every paper seemed to evaluate performance differently, measuring different metrics on different datasets and optimizing for different hardware. We were unable to find any systematic attempt to evaluate the leading methods against one another.
-
-显然，想要从零开始百分之百忠实复现几十种量化器，本身就是一项巨大的挑战。幸运的是，随着我们对前沿文献的逐步深挖，一条清晰的规律浮出了水面：许多新发表的量化器本质上只是对现有算法的微小变体。事实上，绝大部分量化器都是基于一组数量相当有限的基础运算单元构建起来的。这激发了我们的灵感：如果我们把这些核心基础单元打包成一个开源原语库，让构建量化器变得如同照着菜单配菜一样简单——只需选定使用哪些原语并排定先后执行顺序，那会怎样？如此一来，我们便能在一个完全统一、透明且可复现的基准线上公平评测所有算法；同时，这也为研究人员探索现有量化器的全新变体、甚至是彻底发明全新的算法，铺平了实验道路。
-
-&gt; Of course, faithfully implementing dozens of quantizers from scratch comes with its own challenges. Luckily, as we dug deeper into the literature, we began to notice a pattern. Many published quantizers are actually just slight variations of existing ones. In fact, most of them are built from a relatively small set of primitive operations. That gave us an idea: what if we published an open-source library of these core primitives, where building a quantizer was as easy as writing a recipe of which primitives to use and in what order? Then, we would be able to evaluate all of these quantizers in a fair and reproducible way. It would also make it easier to experiment with new variations of existing quantizers or invent new ones altogether.
-
-这就是 VQ-bench 项目的缘起。伴随着这篇博文，我们非常自豪地正式向社区开源发布 VQ-bench，包含以下核心资源：
-
-&gt; This was the start of the VQ-bench project. With this post, we're excited to share VQ-bench with the public, including:
-
-* 公开的 [官方网站 (website) ](https://vq-bench.com)：持续更新并展示主流热门量化器的最新基准评测数据；
-* 开源 [GitHub 仓库](https://github.com/pinecone-io/vq-bench)：欢迎社区贡献您自己的量化器实现与运算原语；
-* 专题学术 [论文 (paper) ](https://arxiv.org/abs/2608.11240)：发表于 [VecDB@VLDB 2026](https://vecdb-ws.github.io/vldb2026) 研讨会，并附带完整的 [演讲幻灯片 (talk slides) ](https://vq-bench.com/slides.pdf)。
-
-&gt; * A public [website](https://vq-bench.com) with a running benchmark of popular quantizers
-&gt; * A [GitHub repo](https://github.com/pinecone-io/vq-bench) where you can contribute your own quantizers and primitives
-&gt; * A [paper](https://arxiv.org/abs/2608.11240) on VQ-bench (presented at [VecDB@VLDB 2026](https://vecdb-ws.github.io/vldb2026)), along with the [talk slides](https://vq-bench.com/slides.pdf).
-
-*请注意，目前发布的仅是 VQ-bench 的首个迭代版本；我们非常期待来自社区的宝贵反馈、勘误建议与代码贡献，后续我们也会持续纳入更多前沿量化器。*
-
-&gt; *Note that this is just the first iteration of VQ-bench; we encourage feedback, corrections, and contributions, and we will add more quantizers over time.*
-
----
-
-## 量化器核心接口
-
-&gt; ## Quantizers
-
-通俗来说，**量化器 (Quantizer) ** 本质上是任何能够接收一组向量、将其压缩编码并在后续按需还原出目标信息的计算实体。在 VQ-bench 体系中，一个标准的量化器必须实现以下四种核心方法：
-
-&gt; A **quantizer** is anything that can take a set of vectors, compress them, and recover desired information later on. In VQ-bench, a quantizer must implement four methods:
-
-| 接口方法 | 功能说明 |
-| :--- | :--- |
-| `fit` | 输入一组向量样本（以及可选的查询向量样本），训练并拟合出量化模型 (*model*) |
-| `encode` | 根据训练好的模型与输入向量集，为每个向量生成对应的紧凑压缩编码 (*codes*) |
-| `reconstruct` | 根据模型以及向量 *x* 的压缩编码，还原重构 (*reconstruct*) 出该向量的近似表示 |
-| `score` | 根据模型、查询向量 *q* 以及向量 *x* 的压缩编码，直接预估两者之间的点积相似度得分 (*score*) ⟨q, x⟩ |
-
-&gt; | Method | Function |
-&gt; | :--- | :--- |
-&gt; | `fit` | given a sample of vectors (and optionally queries), learn a *model* |
-&gt; | `encode` | given the model and a set of vectors, return per-vector *codes* |
-&gt; | `reconstruct` | given the model and the code for vector *x*, *reconstruct* it |
-&gt; | `score` | given the model, a query vector *q*, and the code for *x*, estimate the dot-product *score* ⟨q, x⟩ |
-
----
-
-## 基础运算原语
-
-&gt; ## Primitives
-
-在学术界的研究中，量化器极少是从零孤立构建的，它们大都是由一组基础运算单元拼接组装而成的。在 VQ-bench 中，这套核心运算单元被形式化定义为**原语 (Primitives) **。一个原语除了实现上述普通量化器具备的四种方法外，还额外实现了两个核心方法，用于精确定义数据如何流转传递给下一个处理阶段：
-
-&gt; Quantizers are rarely built from scratch. In the literature, they are assembled from a small set of basic operations, which VQ-bench formalizes as **primitives**. A primitive implements the same four methods as any other quantizer, plus two more that specify exactly how it hands data to the next stage:
-
-| 接口方法 | 功能说明 |
-| :--- | :--- |
-| `apply` | 根据当前模型对输入向量进行变换，生成下游阶段所接收的数据表示 |
-| `apply_queries` | 根据当前模型对查询向量进行变换，生成下游阶段所接收的查询数据表示 |
-
-&gt; | Method | Function |
-&gt; | :--- | :--- |
-&gt; | `apply` | given the model, transform the vectors into what the next stage should see |
-&gt; | `apply_queries` | given the model, transform the queries into what the next stage should see |
-
-此外，原语的 `reconstruct` 与 `score` 方法分别将下游下一阶段输出的重构向量与得分估计值作为输入，进而完成逆向的数据折叠与聚合。
-
-&gt; A primitive's `reconstruct` and `score` methods also take as input the next stage's reconstruction and score estimate, respectively.
-
-这样一来，每个原语总共实现了六个核心方法。额外增加的两个方法构成了一套级联契约 (Chaining Contract) ，正是它们的存在，才使得各个原语能够像积木一样顺畅组合串联，这正是下一章节要探讨的核心。
-
-&gt; That makes six methods in total. The extra two are the chaining contract: they are what let primitives be composed, which is the subject of the next section.
-
-VQ-bench 将所有原语划分为三大主要类别：
-
-&gt; VQ-bench implements three groups of primitives.
-
-* **调节器 (Conditioners) **：负责对输入数据进行预处理变换，并将处理后的数据传递给下游模块，例如去均值中心化 (`Center`) 、归一化 (`Normalize`) 、主成分分析 (`PCA`) 、随机旋转 (`RandomRotate`) 等；
-* **舍入器 (Rounders) **：负责将连续向量投影映射到有限码本 (Codebook) 中，并将逼近后的残差 (*residual*) 继续向下游传递，例如无符号整数映射 (`CastUint`) 、角度映射 (`CastAngular`) 、正态分布映射 (`CastNormal`) 、K 均值聚类 (`KMeans`) 等；
-* **切分器 (Splitters) **：负责将高维向量拆分为多个子向量切片，并为每个切片分配各自独立的原语处理链，例如子空间分段 (`Segment`) 等。
-
-&gt; * **Conditioners** transform the data and pass it downstream (`Center`, `Normalize`, `PCA`, `RandomRotate`, ...).
-&gt; * **Rounders** cast each vector to a finite codebook, passing the *residual* downstream (`CastUint`, `CastAngular`, `CastNormal`, `KMeans`, ...).
-&gt; * **Splitters** split the vectors and quantize each part with its own chain of primitives (`Segment`).
-
----
-
-## 模块化流水线架构
-
-&gt; ## Pipelines
-
-所谓的**流水线 (Pipeline) **，是指将两个或多个原语以链表形式级联组合而成的特殊量化器。压缩向量的过程就像沿着流水线正向穿行，而重构还原向量（或计算检索得分）的过程则是反向逆流而上。
-
-&gt; A **pipeline** is a special type of quantizer given by composing two or more primitives in a chain. Compressing a vector walks it forward through the chain, and recovering a vector (or its score) walks it backward.
-
-* **正向传递 (Forward pass) **：`fit` 与 `encode` 遵循相同的正向流转逻辑。在每个处理阶段，它们完成当前阶段的既定任务（训练拟合模型或生成编码）。随后调用 `apply` 方法对向量进行变换并递归传递给下一阶段。流程结束时，`fit` 会将各阶段的模型参数拼接合并，`encode` 则将各阶段生成的编码有序串联。
-* **反向传递 (Backward pass) **：`reconstruct` 从流水线的最后一个阶段开始逆向执行。处于上层的每个阶段依次将自身对应的变换“撤销并叠加”回去（例如重新加上均值中心向量、做逆向旋转等），最终第一阶段就能还原出对原始向量的高精度近似。
-* **得分计算 (`score`)**：整体执行逻辑与反向传递类似，唯一区别在于每个阶段都需要看到与当前阶段视角完全一致的查询向量。因此，它首先通过 `apply_queries` 将查询向量单向正向推导一遍，随后再在计算得分时执行反向聚合。
-
-&gt; * The forward pass: `fit` and `encode` follow the same path. At each stage, they perform that stage's job (learning the model / computing the codes). Then, they call `apply` to transform the vectors to the next stage and recurse. At the end, `fit` concatenates each stage's model and `encode` concatenates each stage's codes.
-&gt; * The backward pass: `reconstruct` starts at the last stage. Each stage above it folds its own contribution back in (e.g., adding back the mean, undoing a rotation, etc.) until the first stage has an approximation of the original vector.
-&gt; * `score` works the same way, except every stage needs the query as *it* saw the data. So, it begins by walking just the query forward with `apply_queries`. Then, it performs the backward pass on the score.
-
-当然，量化器并非必须采用流水线架构。只要一个算法完整实现了上述四个核心方法，就可以作为合法的量化器接入体系，我们的接口充分包容了各类非流水线结构的算法设计。不过，文献中绝大多数已发表的量化方案都可以极其优雅地表达为原语流水线，这也正是这种解构设计能够作为统一基石的巨大价值所在。
-
-&gt; A quantizer does not have to be a pipeline. Anything that implements the four methods qualifies, and the interface leaves room for methods that are built some other way. But most published quantizers can be expressed as pipelines of primitives, which is what makes the decomposition worth building on.
-
-以近年来备受关注的前沿量化算法 E-RaBitQ 为例（在我们的系列基准实验中，它的表现极为出色）。E-RaBitQ 的核心处理管线仅仅由四个原语串联而成：
-
-&gt; For example, E-RaBitQ is a popular quantizer (which we found to be quite performant in our experiments). The E-RaBitQ pipeline consists of four primitives:
-
-1. **中心化 (Center) **：从每个向量中减去整个数据集的均值向量；
-2. **归一化 (Normalize) **：将每个向量缩放调整为单位范数（模长为 1）；
-3. **随机旋转 (Random Rotation) **：对每个向量施加一个随机正交旋转（或随机阿达马旋转，Random Hadamard Rotation）；
-4. **角度映射 (Angular Cast) **：在超球面上根据角度将每个向量映射到离它最近的 $b$ 位 ($b$-bit) 整数网格点上。
-
-&gt; 1. **Center:** subtract the average dataset vector from each vector
-&gt; 2. **Normalize:** scale each vector to unit norm
-&gt; 3. **Random Rotation:** apply a random orthogonal (or random Hadamard) rotation to each vector
-&gt; 4. **Angular Cast:** snap each vector to a &lt;span class="latex-inline inline-flex items-center text-sm sm:text-base"&gt;&lt;!--$!--&gt;&lt;template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"&gt;&lt;/template&gt;&lt;!--/$--&gt;&lt;/span&gt;-bit integer grid by rounding to the nearest grid point in angle.
-
-下图直观展示了这一流水线的数据流向，下方表格则详细列出了各个原语在此流水线中所执行的具体函数逻辑：
-
-&gt; A diagram of this pipeline and table for the primitive functions are given below.
-
-&lt;div class="flex flex-col items-center align-middle md:px-0 mt-7 pb-3"&gt;
-  &lt;div class="w-full max-w-full"&gt;
-    &lt;div class="flex flex-col items-center justify-center"&gt;
-      &lt;div class="flex hover:cursor-zoom-in max-w-full items-center justify-center" style="height:auto;cursor:zoom-in"&gt;
-        &lt;img alt="The E-RaBitQ pipeline." class="max-w-full h-auto hover:cursor-zoom-in hover:opacity-80 transition-opacity duration-300" data-nimg="1" decoding="async" height="1020" loading="lazy" src="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=3840&amp;amp;q=75" srcset="/_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=1920&amp;amp;q=75 1x, /_next/image/?url=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Fvr8gru94%2Fproduction%2F63bdd3cfe8a48bf2b28ce46f92e5ce8a6ba69df8-1400x1020.png&amp;amp;w=3840&amp;amp;q=75 2x" style="color:transparent" width="1400"/&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-  &lt;/div&gt;
-  &lt;div class="w-full text-center text-sm text-text-secondary mt-4"&gt;The E-RaBitQ pipeline.&lt;/div&gt;
-&lt;/div&gt;
-
-| 接口方法 | 中心化 (Center) | 归一化 (Normalize) | 随机旋转 (Random Rotation) | 角度映射 (Angular Cast) |
-| :--- | :--- | :--- | :--- | :--- |
-| `fit` | 拟合数据集均值向量 μ | 无 (none) | 生成旋转随机种子 | 无 (none) |
-| `encode` | 无 (none) | 提取向量范数 ‖x‖ | 无 (none) | 提取网格点 grid(x) 及夹角余弦 cos(x, grid(x)) —— 每维度分配 b 比特及一个标量 |
-| `apply` | x → x − μ | x → x / ‖x‖ | x → Rx | x → x − ĝ，其中 ĝ = grid(x) / ‖grid(x)‖ |
-| `apply_queries` | 恒等变换 (identity) | 恒等变换 (identity) | q → Rq | 恒等变换 (identity) |
-| `reconstruct` | y → y + μ | y → ‖x‖ · y | y → Rᵀy | y → y + ĝ |
-| `score` | s → s + ⟨q, μ⟩ | s → ‖x‖ · s | 保持 s 不变，因查询向量同步经过了相同旋转 | s → s + ⟨q, ĝ⟩ / cos(x, grid(x)) |
-
-&gt; | | Center | Normalize | Random Rotation | Angular Cast |
-&gt; | :--- | :--- | :--- | :--- | :--- |
-&gt; | `fit` | mean dataset vector μ | none | rotation seed | none |
-&gt; | `encode` | none | the norm ‖x‖ | none | grid(x) and cos(x, grid(x)) — b bits per dimension and one scalar |
-&gt; | `apply` | x → x − μ | x → x / ‖x‖ | x → Rx | x → x − ĝ, where ĝ = grid(x) / ‖grid(x)‖ |
-&gt; | `apply_queries` | identity | identity | q → Rq | identity |
-&gt; | `reconstruct` | y → y + μ | y → ‖x‖ · y | y → Rᵀy | y → y + ĝ |
-&gt; | `score` | s → s + ⟨q, μ⟩ | s → ‖x‖ · s | s → s, since the query was rotated too | s → s + ⟨q, ĝ⟩ / cos(x, grid(x)) |
-
----
-
-## 实验评测与结果分析
-
-&gt; ## Experimental Results
-
-我们在来自 [VIBE](https://vector-index-bench.github.io/) 基准的 5 个公开数据集上，全面评测了包含 14 种经典及前沿算法的量化器套件。每个数据集均包含用于量化编码的基础向量集以及用于相似度打分的检索查询集。在此，我们重点展示其中两个典型数据集的评测结果：**ArXiv**（包含 1,344,643 个 768 维向量）和 **Yahoo**（包含 677,305 个 384 维向量）。更详尽完整的评测数据与交互图表均可在 [官方网站 (website) ](https://vq-bench.com) 上公开查阅。
-
-&gt; We evaluated a suite of 14 quantizers on 5 datasets from [VIBE](https://vector-index-bench.github.io/). Each dataset consists of vectors to encode and queries to score. Below, we present some results for two of the datasets: **ArXiv** (1,344,643 vectors in 768 dimensions) and **Yahoo** (677,305 vectors in 384 dimensions). You can view the full results on the [website](https://vq-bench.com).</description>
-    </item>
-    <item>
-      <title>4-bit 旋转量化技术深度剖析：消除离群值的极致压缩艺术</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-18/4-bit-旋转量化技术深度剖析-消除离群值的极致压缩艺术/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-18/4-bit-旋转量化技术深度剖析-消除离群值的极致压缩艺术/</guid>
-      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在海量向量检索与大语言模型 (LLM) 部署中，高维嵌入向量的爆炸式增长给服务器内存与带宽带来了严峻挑战。传统的标量或二值量化往往受制于向量维度的“离群值” (Outliers) ，导致低比特压缩时精度急剧下滑。开源向量数据库 Weaviate 在 1.39 版本中重磅升级了旋转量化 (Rotational Quantization, RQ) 技术，正式推出 4-bit 旋转量化，并通过快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 和 SIMD 指令级优化打通了硬件性能瓶颈。该方案在保持与原始精度近乎一致召回率的同时，将堆内存占用骤降 45%，并显著超越了 TurboQuant 等前沿方案，为亿级规模向量检索树立了极致压缩与极速查询的新标杆。
-
----
-
-## 核心内容摘要
-
-&gt; ## Summary
-
-在 Weaviate 1.39 版本中，**旋转量化 (Rotational Quantization, RQ)** 正式拓展支持了 4-bit 量化，并同步带来了一整套全方位的底层性能升级。这些改进涵盖了旋转计算、距离算子内核、内存访问通道以及编码流水线——不仅让 8-bit RQ 的运行速度实现了质的飞跃，更全新引入了 4-bit RQ。在提供与以往相当的召回率的同时，4-bit RQ 成功将**堆内存 (Heap) 占用削减了 45%**。本文将深入剖析这些性能提升背后的底层技术细节，深度剖析 RQ 在亿级海量数据规模下的扩展表现，并将其与前沿的 TurboQuant 算法进行详尽的横向对比。
-
-&gt; In Weaviate 1.39, **Rotational Quantization (RQ)** is extended to support 4-bit quantization alongside a comprehensive suite of performance updates. These enhancements cover rotations, distance kernels, memory access paths, and encoding pipelines—making 8-bit RQ significantly faster while introducing 4-bit RQ, which delivers comparable recall with a **45% heap reduction**. This post explores the technical details behind these improvements, analyzes RQ's behavior at massive scale, and compares its performance against TurboQuant.
-
----
-
-## 技术引言
-
-&gt; ## Introduction
-
-去年，我们推出了支持 8-bit 与 1-bit 规格的 [旋转量化 (Rotational Quantization, RQ)](https://weaviate.io/blog/8-bit-rotational-quantization) 。这些量化技术能够在大幅削减内存占用的同时实现极速向量检索，并且相比标量量化 (Scalar Quantization) 和二值量化 (Binary Quantization) 等同类替代方案，拥有显著更出色的召回率表现。
-
-&gt; Last year we introduced [Rotational Quantization](https://weaviate.io/blog/8-bit-rotational-quantization) (or RQ) with 8-bit and 1-bit sizes. These quantization techniques allow for fast vector search, while reducing memory usage, and at better recall than comparable alternatives such as scalar and binary quantization.
-
-在全新的 Weaviate 1.39 中，我们进一步为 RQ 赋予了 4-bit 量化能力，并带来了一整套通用的量化性能优化。旋转计算、距离算子、编码逻辑以及内存访问路径均得到了全链路重构，最终达成了显著成效：1.39 中的 8-bit RQ 运行速度迎来了*大幅飞跃*，而全新的 4-bit RQ 则在保持相近召回率的前提下，实现了 **45%** 的堆内存降幅。
-
-&gt; Weaviate 1.39 extends RQ with 4-bit support, alongside a stack of quantization improvements in general. Rotations, distance kernels, encoding and the memory path have all been improved with net effect: 8-bit RQ is now *significantly faster* in 1.39 and 4-bit RQ provides similar recall with a **45%** heap reduction.
-
-本文将完整记录这一工程探索背后的技术历程，并顺带解答开发者们最常关心的两个核心问题：随着数据集规模呈几何级数膨胀，RQ 的表现依然坚挺吗？以及，RQ 相比业界大热的 TurboQuant 究竟孰优孰劣？
-
-&gt; This post documents the story of that work, and along the way answers two questions people often ask: How does RQ hold up as datasets scale? And how does RQ compare to TurboQuant?
-
----
-
-## 核心优化与架构升级
-
-&gt; ## Improvements
-
-旋转量化基于 [Extended-RaBitQ](https://arxiv.org/abs/2409.09913) 算法演进而来，通过引入结构化快速旋转机制以及简化的逐向量区间拟合，大幅提升了编码速度。极速的编码性能（即将原始高维向量转换为量化压缩表示的过程）是衡量优秀量化算法的核心指标之一，因为它直接决定了向量数据导入与构建索引时的吞吐效率。
-
-&gt; Rotational quantization is based on [Extended-RaBitQ](https://arxiv.org/abs/2409.09913) with a structured fast rotation and simplified per-vector interval fitting to speed up encoding. Fast encoding performance (converting the original vector into its quantized representation) is an important part of a good quantization algorithm as it can have significant impacts on import performance.
-
-这类方法的第一步，就是将原始向量与一个随机旋转矩阵相乘。这听起来或许有些反直觉，但随机旋转矩阵能赋予向量 [更优异的数学特性](https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization) ——尤其是抹平各维度上的尖锐离群值，使数值更加均匀地散布在整个量化区间的全长之上。
-
-&gt; The first step in these approaches is to multiply the original vector by a random rotation matrix. It may seem counter-intuitive but a random rotation matrix gives [better properties](https://weaviate.io/blog/8-bit-rotational-quantization#the-universal-power-of-random-rotations-making-every-vector-well-suited-for-scalar-quantization) to the vector in particular distributing the dimension values over the entire length of the quantization interval.
-
-为了让随机旋转快如闪电，我们采用快速沃尔什-阿达马变换 (Fast Walsh-Hadamard Transforms, FWHT) 来对原始向量进行旋转。在 1.39 版本中，我们为 FWHT 增加了 SIMD 硬件指令集级优化支持。在输出结果与原有 Go 语言基线实现完全保持比特级一致 (Bit-identical) 的前提下，取得了如下显著的加速成绩：
-
-&gt; To speed up the random rotation we use Fast Walsh-Hadamard Transforms (FWHT) to rotate the original vector. In 1.39, we added SIMD support for FWHT which led to the below improvements while being bit-identical to the Go reference:
-
-| 变换类型 (Transform) | 处理器架构 (CPU) | 1.38 版本 (Go 原生) | 1.39 版本 (SIMD 加速) | 加速比 (Speedup) |
-| :--- | :--- | ---: | ---: | ---: |
-| FWHT64 | Intel Xeon 8581C (amd64/AVX) | 81.3 ns | 26.5 ns | **3.1×** |
-| FWHT256 | Intel Xeon 8581C (amd64/AVX) | 515 ns | 84.5 ns | **6.1×** |
-| FWHT64 | Apple M1 (arm64/NEON) | 67.4 ns | 21.6 ns | **3.1×** |
-| FWHT256 | Apple M1 (arm64/NEON) | 428 ns | 96.2 ns | **4.5×** |
-
-&gt; | Transform | CPU | 1.38 (Go) | 1.39 (SIMD) | Speedup |
-&gt; | :--- | :--- | ---: | ---: | ---: |
-&gt; | FWHT64 | Intel Xeon 8581C (amd64/AVX) | 81.3 ns | 26.5 ns | **3.1×** |
-&gt; | FWHT256 | Intel Xeon 8581C (amd64/AVX) | 515 ns | 84.5 ns | **6.1×** |
-&gt; | FWHT64 | Apple M1 (arm64/NEON) | 67.4 ns | 21.6 ns | **3.1×** |
-&gt; | FWHT256 | Apple M1 (arm64/NEON) | 428 ns | 96.2 ns | **4.5×** |
-
-配合对 SIMD 编码算子内核的一系列深度优化，整套 RQ 量化家族在向量编码性能上迎来了全方位的净提升：
-
-&gt; Together with some other enhancements to SIMD encode kernels, this led to the following net increases in encoding performance across the whole RQ family:
-
-| 量化器类型 (Quantizer) | 处理器架构 (CPU) | 1.38 版本 | 1.39 版本 | 加速比 (Speedup) |
-| :--- | :--- | ---: | ---: | ---: |
-| RQ8 | Intel Xeon 8581C (amd64/AVX) | 27.3 µs | 7.11 µs | **3.8×** |
-| RQ1 | Intel Xeon 8581C (amd64/AVX) | 15.2 µs | 6.84 µs | **2.2×** |
-| RQ4 (非中心化 / uncentered) | Intel Xeon 8581C (amd64/AVX) | — | 6.36 µs | **1.39 新增** |
-| RQ4 (中心化 / centered) | Intel Xeon 8581C (amd64/AVX) | — | 8.08 µs | **1.39 新增** |
-| RQ8 | Apple M1 (arm64/NEON) | 14.7 µs | 6.18 µs | **2.4×** |
-| RQ1 | Apple M1 (arm64/NEON) | 13.0 µs | 6.18 µs | **2.1×** |
-| RQ4 (非中心化 / uncentered) | Apple M1 (arm64/NEON) | — | 5.65 µs | **1.39 新增** |
-| RQ4 (中心化 / centered) | Apple M1 (arm64/NEON) | — | 7.00 µs | **1.39 新增** |
-
-&gt; | Quantizer | CPU | 1.38 | 1.39 | Speedup |
-&gt; | :--- | :--- | ---: | ---: | ---: |
-&gt; | RQ8 | Intel Xeon 8581C (amd64/AVX) | 27.3 µs | 7.11 µs | **3.8×** |
-&gt; | RQ1 | Intel Xeon 8581C (amd64/AVX) | 15.2 µs | 6.84 µs | **2.2×** |
-&gt; | RQ4 (uncentered) | Intel Xeon 8581C (amd64/AVX) | — | 6.36 µs | **new in 1.39** |
-&gt; | RQ4 (centered) | Intel Xeon 8581C (amd64/AVX) | — | 8.08 µs | **new in 1.39** |
-&gt; | RQ8 | Apple M1 (arm64/NEON) | 14.7 µs | 6.18 µs | **2.4×** |
-&gt; | RQ1 | Apple M1 (arm64/NEON) | 13.0 µs | 6.18 µs | **2.1×** |
-&gt; | RQ4 (uncentered) | Apple M1 (arm64/NEON) | — | 5.65 µs | **new in 1.39** |
-&gt; | RQ4 (centered) | Apple M1 (arm64/NEON) | — | 7.00 µs | **new in 1.39** |</description>
-    </item>
-    <item>
-      <title>谁来教授哪个 Token？面向科学推理的验证器门控多专家策略内蒸馏</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-17/谁来教授哪个-Token-面向科学推理的验证器门控多专家策略内蒸馏/</guid>
-      <pubDate>Thu, 17 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在利用大语言模型 (Large Language Model, LLM) 攻坚科学推理难题时，如何融合多个领域专家的智慧并注入到单一模型中是极具前景的方向。然而，传统的多教师策略内蒸馏 (On-Policy Distillation, OPD) 方法往往采取粗放的“序列级别”策略，误以为专家在整条推理链条的每一个位置都能提供有益指导，反而引入了大量噪音与负迁移。针对这一痛点，本文提出了“验证器门控多专家策略内蒸馏” (Verifier-Gated Multi-Expert On-Policy Distillation, VG-OPD) 架构，通过验证器实时评估专家的真实贡献并定位认知分歧，精准解答了“究竟由哪位专家来传授哪一个 Token”的核心问题。实验表明，该方案在 4B 与 8B 参数规模的学生模型上均取得了顶尖表现，不仅稳居 7 项科学推理基准测试的综合榜首，更为复杂推理场景下的精细化知识蒸馏提供了全新范式。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-多教师策略内蒸馏 (Multi-Teacher On-Policy Distillation, OPD) 是近年来崭露头角的一种前沿方法，它旨在将各垂直领域的专家能力融会贯通到统一模型中：先利用强化学习 (Reinforcement Learning, RL) 训练出各具专长的专家模型，再以学生模型自身采样生成的推理轨迹 (Rollouts) 为基础，将专家能力蒸馏给学生模型。
-
-&gt; Multi-teacher on-policy distillation (OPD) is an emerging approach for integrating specialist AI capabilities into a unified model by training experts using Reinforcement Learning (RL) and distilling them into a student model based on its own rollouts.
-
-然而，传统方法通常在序列级别 (Sequence-level) 进行粗放的均匀监督分配——即把某个提示词 (Prompt) 整体分配给单一领域的专家教师，且整段回答中的每一个 Token 都被赋予相同的权重。这种做法错误地假设了专家老师在整段长回答的每一个字词上都同样有益、都能带来正向启发。
-
-&gt; Traditional methodologies assign supervision uniformly at the sequence level (allocating each prompt to a single domain teacher where every token receives identical weighting). This approach erroneously assumes that a teacher is uniformly helpful across an entire response.
-
-本文的研究表明，在漫长的推理轨迹上，真正有价值的教师指导信号其实是高度稀疏且参差不齐的。为了攻克这一挑战，作者团队提出了**验证器门控多专家策略内蒸馏 (Verifier-Gated Multi-Expert On-Policy Distillation, VG-OPD)**，通过精巧的验证机制，系统解答了*“究竟谁该来教授哪一个 Token？”*的核心问题：
-
-&gt; This paper demonstrates that useful teacher signals are actually sparse and heterogeneous along a reasoning trajectory. To address this, the authors introduce **Verifier-Gated Multi-Expert On-Policy Distillation (VG-OPD)**, which answers the question of *"who should teach which token?"* through a verification mechanism:
-
-* **反事实收益 (Counterfactual Gain)**：基于具体的答案判定准则评估专家的真实贡献，以此决定是否授予该专家教学权限；
-* **分歧精确定位 (Disagreement Localization)**：细致度量专家与学生之间的认知差异，精准圈定需要施加监督的关键位置；
-* **准则重要性设定 (Criterion Importance)**：合理设定各评价维度的权重参数；
-* **加性优势项注入 (Additive Advantage)**：将经过门控过滤的 KL 散度 (Kullback-Leibler Divergence) 作为 Token 级别的加性优势，无缝整合进分组相对策略优化 (Group Relative Policy Optimization, GRPO) 算法中。
-
-&gt; * **Counterfactual Gain:** Evaluates an expert's contribution based on specific answer criteria to authorize teaching rights.
-&gt; * **Disagreement Localization:** Measures divergence between the expert and student to pinpoint supervision.
-&gt; * **Criterion Importance:** Sets the appropriate weighting parameters.
-&gt; * **Additive Advantage:** Incorporates the gated KL divergence into GRPO (Group Relative Policy Optimization) as a token-level additive advantage.
-
----
-
-## 核心发现与卓越性能
-
-&gt; ## Key Findings &amp; Performance
-
-* **全面领跑权威基准测试 (Benchmark Dominance)**：在面向科学推理任务、利用强化学习训练出的能力专家进行评估时，VG-OPD 在 **4B 和 8B 两种参数规模的学生模型**上均取得了 **7 个基准测试**的综合最优成绩，并在两种规模下均夺得了 5 项基准测试的第一名。尤其在知识密集型的科学推理挑战中，该方法带来的性能飞跃最为显著。
-* **收益来源剖析 (Source of Gains)**：深入分析表明，性能提升的核心动力在于对监督信号进行了经过验证的精准局部定位，而非简单地堆叠更多教师模型或微调蒸馏损失函数。错配监督预算被证实是对模型破坏性最强的做法，盲目全盘蒸馏往往会把强化学习的性能反向拖拽至基线以下——而验证器门控蒸馏机制成功遏制了这一弊端。
-
-&gt; * **Benchmark Dominance:** When instantiated for scientific reasoning using RL-trained capability experts, VG-OPD achieved the best overall performance across **seven benchmarks** for both **4B and 8B student models**, ranking first on five benchmarks at both scales. The most significant performance gains occurred in knowledge-intensive scientific reasoning tasks.
-&gt; * **Source of Gains:** Analysis reveals that improvements stem from localizing verified supervision rather than simply adding more teachers or altering the distillation loss. Misplacing the supervision budget proved to be the most damaging modification, and indiscriminate distillation often dragged RL performance below its baseline—a drawback successfully mitigated by gated distillation.</description>
     </item>
   </channel>
 </rss>
