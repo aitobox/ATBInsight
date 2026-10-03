@@ -4,6 +4,8 @@
 
 ## 2026-10
 
+- **2026-10-04**: [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+- **2026-10-04**: [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 - **2026-10-03**: [全局连贯性困境：当每个智能体都正确而团队依然出错——多智能体协同的局部到全局语义基石](blog/posts/2026-10-03-全局连贯性困境-当每个智能体都正确而团队依然出错-多智能体协同的局部到全局语义基石.md)
 - **2026-10-03**: [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 - **2026-10-03**: [AI 监管能否实现零知识？兼顾机密隐私与可验证性的密码学监督边界](blog/posts/2026-10-03-AI-监管能否实现零知识-兼顾机密隐私与可验证性的密码学监督边界.md)

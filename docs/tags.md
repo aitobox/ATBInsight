@@ -673,6 +673,10 @@ title: 标签浏览
 
 - [GoAnt：基于质量-多样性多智能体搜索的市场微观结构数据Alpha因子挖掘](blog/posts/2026-09-10-GoAnt：基于质量-多样性多智能体搜索的市场微观结构数据Alpha因子挖掘.md)
 
+## Altera
+
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
+
 ## AnalyticDB
 
 - [ScaleSense：阿里巴巴 AnalyticDB 中基于学习型资源评估的成本智能扩展框架](blog/posts/2026-08-12-ScaleSense：阿里巴巴 AnalyticDB 中基于学习型资源评估的成本智能扩展框架.md)
@@ -1346,6 +1350,10 @@ title: 标签浏览
 
 - [别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理](blog/posts/2026-09-08-别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理.md)
 
+## Dynamo
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+
 ## Dyna架构
 
 - [以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法](blog/posts/2026-08-11-以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法.md)
@@ -1524,6 +1532,10 @@ title: 标签浏览
 ## FlashAttention
 
 - [PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析](blog/posts/2026-08-07-PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析.md)
+
+## FlashInfer
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 
 ## Flow Matching
 
@@ -2516,6 +2528,10 @@ title: 标签浏览
 
 - [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
 
+## Linux 逆向工程
+
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
+
 ## Linux内存
 
 - [分析 Linux 上 Go 1.27 程序的内存映射](blog/posts/2026-08-06-分析Linux上Go1.27程序的内存映射.md)
@@ -2849,6 +2865,10 @@ title: 标签浏览
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
 - [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 
+## Mooncake
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+
 ## Multi-Agent Systems
 
 - [Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统](blog/posts/2026-09-05-Bioinfoysis技术报告：面向长期生物信息学任务的持久化构件锚定多智能体系统.md)
@@ -2941,6 +2961,10 @@ title: 标签浏览
 ## NVIDIA A100
 
 - [用强化学习削减AI数据中心能耗：从单GPU到整个集群的LLM训练实测功耗控制](blog/posts/2026-08-14-用强化学习削减AI数据中心能耗：从单GPU到整个集群的LLM训练实测功耗控制.md)
+
+## NVIDIA Blackwell
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 
 ## NVIDIA OSMO
 
@@ -3343,6 +3367,14 @@ title: 标签浏览
 
 - [推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失](blog/posts/2026-09-01-推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失.md)
 
+## Prime Inference
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+
+## Prime Intellect
+
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+
 ## PrismML
 
 - [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
@@ -3454,6 +3486,10 @@ title: 标签浏览
 ## Quantization-Aware Training
 
 - [感知量化修复：恢复压缩版 4-bit 大语言模型的实用方法论](blog/posts/2026-08-25-感知量化修复：恢复压缩版 4-bit 大语言模型的实用方法论.md)
+
+## Quartus
+
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 
 ## Qwen
 
@@ -4501,6 +4537,10 @@ title: 标签浏览
 
 - [OpenNMC：昂贵 APC 管理卡的开源替代方案](blog/posts/2026-09-09-OpenNMC：昂贵 APC 管理卡的开源替代方案.md)
 
+## USB Blaster
+
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
+
 ## Ubiquiti
 
 - [排查 Ubiquiti 设备的 AT&T 5G 备用网络连接问题](blog/posts/2026-08-27-排查 Ubiquiti 设备的 AT&T 5G 备用网络连接问题.md)
@@ -4809,6 +4849,10 @@ title: 标签浏览
 
 - [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 
+## jtagd
+
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
+
 ## llama.cpp
 
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
@@ -4919,6 +4963,7 @@ title: 标签浏览
 - [vToken：面向可回收 KV 缓存的Token级虚拟化技术](blog/posts/2026-08-16-vToken：面向可回收 KV 缓存的Token级虚拟化技术.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 
 ## visitation measure
 
@@ -11823,6 +11868,7 @@ title: 标签浏览
 - [精美的指针式伏特表时钟](blog/posts/2026-08-21-精美的指针式伏特表时钟.md)
 - [在现实中还原康威生命游戏：硬件极客打造实体触觉沙盒](blog/posts/2026-08-21-在现实中还原康威生命游戏：硬件极客打造实体触觉沙盒.md)
 - [在 NTP 诞生之前：Daytime 与 Time 协议的前世今生](blog/posts/2026-09-01-在 NTP 诞生之前：Daytime 与 Time 协议的前世今生.md)
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 
 ## 嵌入式系统
 
@@ -11952,6 +11998,7 @@ title: 标签浏览
 
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 - [软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态](blog/posts/2026-10-02-软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态.md)
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 
 ## 工具编排
 
@@ -12327,6 +12374,7 @@ title: 标签浏览
 - [Contrastive-LM 开源 CLM-8B：动作评分提速 9 倍的开源 System One 决策模型](blog/posts/2026-09-25-Contrastive-LM-开源-CLM-8B-动作评分提速-9-倍的开源-System-One-决策模型.md)
 - [Perplexity 发布 pplx-embed-v2-context-9b-preview：兼顾直接答案与支撑证据的上下文向量检索模型](blog/posts/2026-10-02-Perplexity-发布-pplx-embed-v2-context-9b-preview-兼顾直接答案与支撑证据的上下文向量检索模型.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
+- [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 
 ## 开源治理
 
@@ -25100,6 +25148,7 @@ title: 标签浏览
 - [使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞](blog/posts/2026-08-25-使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞.md)
 - [潜在的力量：AI时代黑客技术的趋同与独立思考的反思](blog/posts/2026-09-06-潜在的力量：AI时代黑客技术的趋同与独立思考的反思.md)
 - [重新编译远远不够：测试引导的反编译C代码修复](blog/posts/2026-09-10-重新编译远远不够：测试引导的反编译C代码修复.md)
+- [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 
 ## 逆向技术
 
