@@ -4,6 +4,7 @@
 
 ## 2026-10
 
+- **2026-10-05**: [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 - **2026-10-04**: [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 - **2026-10-04**: [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 - **2026-10-03**: [全局连贯性困境：当每个智能体都正确而团队依然出错——多智能体协同的局部到全局语义基石](blog/posts/2026-10-03-全局连贯性困境-当每个智能体都正确而团队依然出错-多智能体协同的局部到全局语义基石.md)

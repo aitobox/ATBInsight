@@ -1754,6 +1754,10 @@ title: 标签浏览
 
 - [Gated-BEPO：面向大语言模型智能体的置信门控贝尔曼信用分配](blog/posts/2026-08-11-Gated-BEPO：面向大语言模型智能体的置信门控贝尔曼信用分配.md)
 
+## Gboard
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
+
 ## Gemma 3
 
 - [人工智能语言表征中：虚假（Falsehood）与不可能（Impossibility）指向不同的方向](blog/posts/2026-08-20-人工智能语言表征中：虚假（Falsehood）与不可能（Impossibility）指向不同的方向.md)
@@ -1822,6 +1826,10 @@ title: 标签浏览
 ## Google Discover
 
 - [解构推荐系统中的内容陈旧度：用于替代与衰减的双滤镜框架](blog/posts/2026-08-19-解构推荐系统中的内容陈旧度：用于替代与衰减的双滤镜框架.md)
+
+## Google Research
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 
 ## Goroutine
 
@@ -3384,6 +3392,10 @@ title: 标签浏览
 - [PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP](blog/posts/2026-08-07-PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP.md)
 - [PyTorch 性能剖析（第一篇）：`torch.profiler` 新手入门指南](blog/posts/2026-08-07-PyTorch 性能剖析（第一篇）：`torch.profiler` 新手入门指南.md)
 
+## Project Oak
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
+
 ## Prometheus
 
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
@@ -4252,6 +4264,10 @@ title: 标签浏览
 ## TCT框架
 
 - [当智能体执行提交：认知可串行化保障复杂系统一致性](blog/posts/2026-09-19-当智能体执行提交-认知可串行化保障复杂系统一致性.md)
+
+## TEE
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 
 ## TEPA
 
@@ -12046,6 +12062,10 @@ title: 标签浏览
 
 - [大语言模型在工艺流程图工程中的应用：从最优PFD到验证级P&ID](blog/posts/2026-08-14-大语言模型在工艺流程图工程中的应用：从最优PFD到验证级P&ID.md)
 
+## 差分隐私
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
+
 ## 差异偏移检测
 
 - [从代码评审到代码批判：大规模 AI 生成差异的意图、偏移与聚光灯机制](blog/posts/2026-08-18-从代码评审到代码批判：大规模 AI 生成差异的意图、偏移与聚光灯机制.md)
@@ -16004,6 +16024,10 @@ title: 标签浏览
 ## 机场陆侧
 
 - [一种受QUBO启发的机场陆侧瓶颈诊断与动态调度优化计算框架](blog/posts/2026-08-12-一种受QUBO启发的机场陆侧瓶颈诊断与动态调度优化计算框架.md)
+
+## 机密计算
+
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 
 ## 机构声望
 
@@ -21602,6 +21626,7 @@ title: 标签浏览
 - [联邦学习中破坏模型置信度的温度缩放攻击](blog/posts/2026-09-05-联邦学习中破坏模型置信度的温度缩放攻击.md)
 - [联邦学习框架下X射线透视中导管与导丝分割的新方法](blog/posts/2026-09-10-联邦学习框架下X射线透视中导管与导丝分割的新方法.md)
 - [面向智能体网络的类型化联邦构件：在冻结的异构LLM智能体间共享工具路由知识](blog/posts/2026-09-10-面向智能体网络的类型化联邦构件：在冻结的异构LLM智能体间共享工具路由知识.md)
+- [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 
 ## 聚合函数
 

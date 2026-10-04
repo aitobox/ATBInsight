@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-10-05**: [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 - **2026-10-04**: [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 - **2026-10-03**: [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 - **2026-10-02**: [软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态](blog/posts/2026-10-02-软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态.md)
