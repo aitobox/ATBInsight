@@ -90,12 +90,12 @@ const hash = {
 };
 
 try {
-  const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
+  const handle = await navigator.crossOriginStorage.getFileHandle(hash);
   const fileBlob = await handle.getFile();
 } catch {
   const fileBlob = await fetch('https://cdn.jsdelivr.net/.../ort-wasm-simd-threaded.asyncify.wasm')
     .then(r => r.blob());
-  const handle = await navigator.crossOriginStorage.requestFileHandle(
+  const handle = await navigator.crossOriginStorage.getFileHandle(
     hash,
     { create: true, origins: '*' },
   );
