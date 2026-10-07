@@ -1,0 +1,664 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-08-%E8%A7%A3%E8%80%A6-Key-%E4%B8%8E-Value-%E9%9D%9E%E5%AF%B9%E7%A7%B0%E7%A8%80%E7%96%8F%E6%B3%A8%E6%84%8F%E5%8A%9B-SAGA-%E8%AE%A9%E5%A4%A7%E6%A8%A1%E5%9E%8B%E9%95%BF%E6%96%87%E6%9C%AC%E8%A7%A3%E7%A0%81%E6%8F%90%E9%80%9F%E4%B8%A4%E5%80%8D/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>解耦 Key 与 Value：非对称稀疏注意力 SAGA 让大模型长文本解码提速两倍 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#key-value-saga" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              解耦 Key 与 Value：非对称稀疏注意力 SAGA 让大模型长文本解码提速两倍
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="key-value-saga">解耦 Key 与 Value：非对称稀疏注意力 SAGA 让大模型长文本解码提速两倍</h1>
+<blockquote>
+<h1 id="more-value-per-key-asymmetric-sparse-attention-for-faster-llm-decoding">More Value per Key: Asymmetric Sparse Attention for Faster LLM Decoding</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在大语言模型 (Large Language Model, LLM) 的自回归文本生成过程中，注意力机制的显存占用与计算开销一直是制约长文本推理速度的核心痛点。虽然稀疏注意力机制能够大幅减少对非关键 Token 的计算，但研究人员敏锐地发现：稀疏化之后，注意力概率与 Value 向量相乘的计算开销已微乎其微，真正的性能瓶颈转移到了 Query 与 Key 的匹配计算上。为此，入选 NeurIPS 2026 的这项研究突破性地提出了<strong>非对称稀疏分组查询注意力 (Sparse Asymmetric Group-Query Attention, SAGA)</strong> 与<strong>近似 Top-N 注意力 (Approximate top-N, Atop-N)</strong> 架构，创新性地将 Key 和 Value 的注意力头数量进行解耦——通过大幅削减 Key 头数量来打破瓶颈加速推理，同时保留更多 Value 头以维系模型的强大表达能力。在长上下文场景下，SAGA 配合 Atop-N 实现了端到端解码速度超 <span class="arithmatex">\(2\times\)</span> 的显著飞跃，且模型质量几乎无损；研究团队还进一步设计了轻量高效的微调方法，让现有预训练大模型无需从头训练即可快速无缝升级。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>本文提出了<strong>非对称稀疏分组查询注意力 (Sparse Asymmetric Group-Query Attention, SAGA)</strong> 以及<strong>近似 Top-N 注意力 (Approximate top-N, Atop-N)</strong> ，旨在全面加速大语言模型 (Large Language Model, LLM) 的自回归生成过程。研究人员观察到，在各类稀疏注意力方法中，注意力概率与 Value 向量相乘的计算开销已经被大幅压缩到几乎可以忽略，整个系统的性能瓶颈由此转移到了 Query 与 Key 的乘积计算上。基于这一核心洞察，作者提出将 Key 与 Value 的头数量彻底解耦：大幅减少 Key 头的数量以打通 Query-Key 的计算瓶颈，同时保留较多的 Value 头以维持模型原有的表征能力。实验表明，在长上下文场景下，SAGA 结合 Atop-N 带来了超过 <span class="arithmatex">\(2\times\)</span> 的端到端解码提速，且模型生成质量依然十分稳健；此外，该方案不仅支持从零开始训练，还配备了一套高效的微调方法。</p>
+<blockquote>
+<p>This paper introduces <strong>Sparse Asymmetric Group-Query Attention (SAGA)</strong> and <strong>approximate top-N (Atop-N) attention</strong> to accelerate autoregressive generation in Large Language Models (LLMs). By observing that sparse attention methods render probability-value multiplications negligible, the authors propose decoupling key and value head counts—reducing key heads to alleviate query-key bottlenecks while preserving more value heads to maintain capacity. Together, SAGA and Atop-N achieve over <span class="arithmatex">\(2\times\)</span> end-to-end decoding speedups at long contexts while preserving competitive model quality, supported by both an efficient fine-tuning method and training from scratch.</p>
+</blockquote>
+<hr />
+<h2 id="_3">论文发表信息</h2>
+<blockquote>
+<h2 id="publication-details">Publication Details</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv ID：</strong> <a href="https://arxiv.org/abs/2610.04753">arXiv:2610.04753 [cs.CL]</a></li>
+<li><strong>DOI 链接：</strong> <a href="https://doi.org/10.48550/arXiv.2610.04753">10.48550/arXiv.2610.04753</a></li>
+<li><strong>学术会议：</strong> 已被 NeurIPS 2026 接收录用</li>
+<li><strong>学科领域：</strong> 计算与语言 (<code>cs.CL</code>) ；人工智能 (<code>cs.AI</code>)</li>
+<li><strong>提交动态：</strong> 2026年10月3日首次提交；2026年10月6日最新修订 (v2 版本)</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2610.04753">arXiv:2610.04753 [cs.CL]</a></li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2610.04753">10.48550/arXiv.2610.04753</a></li>
+<li><strong>Conference:</strong> Accepted to NeurIPS 2026</li>
+<li><strong>Subjects:</strong> Computation and Language (<code>cs.CL</code>); Artificial Intelligence (<code>cs.AI</code>)</li>
+<li><strong>Submission Timeline:</strong> Submitted on October 3, 2026; Last revised on October 6, 2026 (v2)</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">论文作者</h2>
+<blockquote>
+<h2 id="authors">Authors</h2>
+</blockquote>
+<ul>
+<li>Noam Elata</li>
+<li>Itay Lamprecht</li>
+<li>Mikey Shechter</li>
+<li>Daniel Ohayon</li>
+<li>Itay Hubara</li>
+<li>Daniel Soudry</li>
+</ul>
+<blockquote>
+<ul>
+<li>Noam Elata</li>
+<li>Itay Lamprecht</li>
+<li>Mikey Shechter</li>
+<li>Daniel Ohayon</li>
+<li>Itay Hubara</li>
+<li>Daniel Soudry</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>大语言模型 (LLM) 在执行自回归文本生成任务时，常常受限于注意力机制庞大的显存开销与计算需求。稀疏注意力方法通过仅挑选注意力矩阵中高概率的有效条目，在一定程度上减轻了这一负担。然而我们观察到，在许多现有的稀疏注意力方法中，这种过滤使得注意力概率与 Value 向量相乘的计算量变得微不足道，反倒使系统的整体瓶颈转移到了 Query 与 Key 的匹配计算环节。因此，我们可以大幅削减 Key 头的数量以加速推理，同时保留更多的 Value 头，这样既能维护模型的表征容量，又几乎不会引入额外的解码开销。</p>
+<blockquote>
+<p>Autoregressive generation in Large Language Models (LLMs) is constrained by the memory and computational demands of attention mechanisms. Sparse attention methods mitigate this cost by selecting only high-probability entries of the attention matrix. We observe that in many such methods, this renders the probability-value multiplication negligible, shifting the bottleneck to the query-key step. Key heads can therefore be reduced to accelerate inference, while retaining more value heads preserves capacity with limited additional decoding cost. </p>
+</blockquote>
+<p>针对这一发现，我们提出了<strong>非对称稀疏分组查询注意力 (Sparse Asymmetric Group-Query Attention, SAGA)</strong> ，通过解耦 Key 与 Value 的头数量来充分释放这一机制的潜能；同时，我们搭配了<strong>近似 Top-N 注意力 (Approximate top-N, Atop-N)</strong> ——一种专门用于探究稀疏性与头数非对称性相互作用的简洁稀疏注意力方法。我们在理论上对这种非对称设计的增益进行了严格形式化推演，并在高达 1.5B 参数规模的模型上，通过端到端延迟实测与生成质量评测完成了充分的实证验证。实验结果表明，在长上下文场景下，SAGA 与 Atop-N 相比全注意力 GQA 基线实现了超过 <span class="arithmatex">\(2\times\)</span> 的端到端解码加速。在各大基准测试中，基于 SAGA 从零开始训练的模型，其综合表现几乎完全媲美同等配置的 GQA 变体。为了便于工业界和学术界快速落地采用，我们还推出了一种高效的微调方法，能够将已有的预训练模型直接转换为 SAGA 架构，让开发者无需承受高昂的重训成本便能直接享受加速红利。</p>
+<blockquote>
+<p>We introduce <strong>Sparse Asymmetric Group-Query Attention (SAGA)</strong>, which decouples key and value head counts to exploit this principle, and pair it with <strong>approximate top-N (Atop-N) attention</strong>, a simple sparse attention method designed to study the interaction between sparsity and head-count asymmetry. We formalize the benefits of this asymmetry theoretically and validate them empirically through latency measurements and quality evaluations on models up to 1.5B parameters. Together, SAGA and Atop-N achieve end-to-end decoding speedups exceeding <span class="arithmatex">\(2\times\)</span> over our full-attention GQA baseline at long contexts. Models trained from scratch with SAGA nearly match the quality of comparable GQA variants on the evaluated benchmarks. To facilitate adoption, we introduce an efficient fine-tuning method that converts pretrained models to the SAGA architecture, enabling practitioners to benefit from our approach without costly retraining.</p>
+</blockquote>
+<hr />
+<h2 id="_6">相关资源与链接</h2>
+<blockquote>
+<h2 id="additional-resources-links">Additional Resources &amp; Links</h2>
+</blockquote>
+<ul>
+<li><strong>论文全文：</strong> <a href="https://arxiv.org/pdf/2610.04753">查看 PDF (View PDF)</a> | <a href="https://arxiv.org/html/2610.04753v2">HTML 在线版本 (HTML Version)</a> | <a href="https://arxiv.org/src/2610.04753">TeX 源码 (TeX Source)</a></li>
+<li><strong>代码与社区生态：</strong> <a href="https://huggingface.co/huggingface">Hugging Face</a> | <a href="https://www.catalyzex.com">CatalyzeX 算法检索</a> | <a href="https://dagshub.com/">DagsHub</a></li>
+<li><strong>学术引用检索：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.04753">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.04753">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.04753">NASA ADS</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text:</strong> <a href="https://arxiv.org/pdf/2610.04753">View PDF</a> | <a href="https://arxiv.org/html/2610.04753v2">HTML Version</a> | <a href="https://arxiv.org/src/2610.04753">TeX Source</a></li>
+<li><strong>Code &amp; Integrations:</strong> <a href="https://huggingface.co/huggingface">Hugging Face</a> | <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a> | <a href="https://dagshub.com/">DagsHub</a></li>
+<li><strong>Citations:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.04753">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.04753">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.04753">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">SAGA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">非对称注意力</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">稀疏注意力</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GQA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">解码加速</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">NeurIPS 2026</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">arXiv论文</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

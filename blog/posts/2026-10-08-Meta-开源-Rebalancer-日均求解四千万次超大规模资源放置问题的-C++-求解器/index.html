@@ -1,0 +1,857 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-08-Meta-%E5%BC%80%E6%BA%90-Rebalancer-%E6%97%A5%E5%9D%87%E6%B1%82%E8%A7%A3%E5%9B%9B%E5%8D%83%E4%B8%87%E6%AC%A1%E8%B6%85%E5%A4%A7%E8%A7%84%E6%A8%A1%E8%B5%84%E6%BA%90%E6%94%BE%E7%BD%AE%E9%97%AE%E9%A2%98%E7%9A%84-C++-%E6%B1%82%E8%A7%A3%E5%99%A8/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#meta-rebalancer-c" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="meta-rebalancer-c">Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器</h1>
+<blockquote>
+<h1 id="meta-ai-open-sources-rebalancer-a-c-assignment-solver-that-runs-about-40-million-placement-problems-a-day">Meta AI Open-Sources Rebalancer: A C++ Assignment Solver That Runs About 40 Million Placement Problems a Day</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在超大规模数据中心中，如何将数以百万计的计算任务、存储分片高效且均衡地安置在数以万计的服务器机架上，是支撑全球海量互联网服务的底层核心难题。这类“分箱与资源放置”问题大多属于计算复杂度极高的 NP-Hard 难题，传统商业优化求解器在面对数百万量级的实体规模时往往力不从心或耗时过长。为此，Meta 正式开源了其在内部生产环境中稳定运行超过 9 年的高性能 C++ 求解器——Rebalancer。该项目创新性地将“问题建模规范”与“底层求解计算”彻底解耦，通过统一的表达式图结构，无缝支持面向小规模任务的精确混合整数规划 (Mixed Integer Programming, MIP) 求解，以及面向超大规模集群的高并发并行局部搜索 (Local Search)，目前在 Meta 内部日均高效处理约 4,000 万次放置决策。Rebalancer 以 Apache 2.0 协议全量开源并提供原生 Python 绑定，为工业界解决海量资源调度、全局流量治理与运筹优化提供了强大而开箱即用的基础设施。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>Meta 正式开源了高性能 C++ 算法库 <strong>Rebalancer</strong>，该项目配备了便捷的 Python 接口，专为解决复杂的分配与放置问题而生 (即在严苛的约束条件与优化目标下，将海量对象合理分配到不同容器中)。Rebalancer 已在 Meta 内部平稳运行超过 9 年，日均处理约 <strong>4,000 万次资源放置问题</strong>，覆盖 30 多种截然不同的业务建模形态。该项目基于 Apache 2.0 协议发布，通过创新的“双求解器架构”巧妙打通了从业务问题抽象到高效求解执行之间的鸿沟：一方面为中小规模任务提供能求得全局最优解的混合整数规划 (Mixed Integer Programming, MIP) 求解器，另一方面为处理对象超过 100 万个的超大规模负载提供极速的大规模并行局部搜索求解器。</p>
+<blockquote>
+<p>Meta has open-sourced <strong>Rebalancer</strong>, a high-performance C++ library with a Python interface designed to solve complex assignment problems (allocating objects to bins under strict constraints and objectives). Used internally at Meta for over 9 years, the library handles around <strong>40 million placement problems daily</strong> across 30+ unique formulations. Released under the Apache 2.0 license, Rebalancer bridges the gap between problem specification and execution by offering a dual-solver architecture: an optimal Mixed Integer Programming (MIP) solver for smaller tasks and a massively parallel local-search solver for hyperscale workloads (exceeding 1 million objects).</p>
+</blockquote>
+<hr />
+<h2 id="rebalancer">Rebalancer 解决了什么痛点？</h2>
+<blockquote>
+<h2 id="what-problem-does-rebalancer-solve">What Problem Does Rebalancer Solve?</h2>
+</blockquote>
+<p>在 Meta 的超大规模基础设施中，各类资源分配挑战无处不在——从在数据中心摆放服务器机架、向具体服务分配物理服务器，到调度分布式计算任务以及调度全球用户的网络流量。在以往应对这些挑战时，工程师们通常会遭遇两大核心瓶颈：</p>
+<blockquote>
+<p>Assignment challenges appear everywhere in Meta’s hyperscale infrastructure—from placing racks in datacenters and servers into services, to scheduling tasks and routing global user traffic. Two primary bottlenecks traditionally plagued engineers tackling these issues:</p>
+</blockquote>
+<ol>
+<li><strong>易用性瓶颈</strong>：如何将高度抽象、复杂多变的底层基础设施策略，准确翻译为严谨的数学规划公式；</li>
+<li><strong>可扩展性瓶颈</strong>：大多数资源放置问题在计算理论上都属于 NP-hard 难题，面对海量数据时其计算复杂度呈爆炸式增长，传统商业求解器根本无法承受如此庞大的求解规模。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Usability:</strong> Translating abstract infrastructure policies into precise mathematical formulas.</li>
+<li><strong>Scalability:</strong> Many resource allocation problems are NP-hard and far too massive for traditional commercial solvers.</li>
+</ol>
+</blockquote>
+<p>Rebalancer 巧妙地化解了这一困局，其核心思想在于将<strong>“如何定义/描述问题”</strong>与<strong>“如何求解计算问题”</strong>彻底解耦。关于这一系统架构的完整理论与工程细节，已发表在其入选顶会系统的 <a href="https://www.usenix.org/conference/osdi24/presentation/kumar">OSDI 2024 论文</a> 中。</p>
+<blockquote>
+<p>Rebalancer solves this by decoupling <strong>how a problem is specified</strong> from <strong>how it is solved</strong>, an architecture detailed in its <a href="https://www.usenix.org/conference/osdi24/presentation/kumar">OSDI 2024 paper</a>.</p>
+</blockquote>
+<hr />
+<h2 id="_3">规范描述层的工作机制</h2>
+<blockquote>
+<h2 id="how-the-specification-layer-works">How the Specification Layer Works</h2>
+</blockquote>
+<p>Rebalancer 的问题描述语言被精心划分为三个清晰的抽象层级：</p>
+<blockquote>
+<p>The specification language is structured into three distinct layers:</p>
+</blockquote>
+<ul>
+<li><strong>建模基础构件 (Modeling Constructs)</strong>：定义资源的具体维度 (例如 CPU、存储属性等)、分区 (对象的分组集合)、作用域 (容器的分组集合) 以及资源利用率指标；</li>
+<li><strong>表达式 API (Expression API)</strong>：提供灵活的聚合计算操作 (例如 <code>SUM</code> 求和或 <code>MAX</code> 求极大值)，并支持各类数学变换 (例如 <code>SQUARE</code> 平方运算)；</li>
+<li><strong>规范 API (Spec API)</strong>：内置开箱即用的数十种预设优化目标与约束条件 (例如用于容量限制的 <code>CapacitySpec</code>、控制分组数量的 <code>GroupCountSpec</code>，以及实现负载均衡的 <code>BalanceSpec</code> 等)。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Modeling Constructs:</strong> Dimensions (e.g., CPU, storage attributes), partitions (groups of objects), scopes (groups of bins), and utilization metrics.</li>
+<li><strong>Expression API:</strong> Aggregate utilization using operations like <code>SUM</code> or <code>MAX</code>, or apply mathematical transformations like <code>SQUARE</code>.</li>
+<li><strong>Spec API:</strong> Access to dozens of predefined objectives and constraints (such as <code>CapacitySpec</code>, <code>GroupCountSpec</code>, and <code>BalanceSpec</code>).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">统一表达式图与双求解器架构</h2>
+<blockquote>
+<h2 id="one-expression-graph-two-solvers">One Expression Graph, Two Solvers</h2>
+</blockquote>
+<p>Rebalancer 会将用户定义的业务规范编译为一个有向无环表达式图，进而驱动两种截然不同且优势互补的求解引擎：</p>
+<blockquote>
+<p>Rebalancer compiles specifications into a directed acyclic expression graph, enabling two distinct solving strategies:</p>
+</blockquote>
+<ul>
+<li><strong>最优解求解器 (MIP)</strong>：自动将表达式图转换为标准的混合整数规划问题，底层支持无缝对接 <strong>FICO Xpress</strong>、<strong>Gurobi</strong> 或 <strong>HiGHS</strong> 等成熟后端，非常适合追求理论全局最优的中小规模调度场景；</li>
+<li><strong>局部搜索求解器 (Local Search Solver)</strong>：直接作用于编译生成的表达式图，能够以大规模并行的方式高效评估对象之间的迁移与交换操作，每秒运算评估次数高达数百万次。面对极其庞大的超大规模基础设施挑战时，Meta 正是依托该引擎实现秒级高效收敛。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Optimal Solver (MIP):</strong> Translates the graph into a Mixed Integer Program using backends like <strong>FICO Xpress</strong>, <strong>Gurobi</strong>, or <strong>HiGHS</strong>. Ideal for small-to-mid-scale problems.</li>
+<li><strong>Local Search Solver:</strong> Operates directly on the expression graph by evaluating object moves and swaps in parallel, achieving millions of evaluations per second. Meta relies on this method for its largest infrastructure challenges.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="meta">Meta 内部生产环境实测数据</h2>
+<blockquote>
+<h2 id="production-numbers-at-meta">Production Numbers at Meta</h2>
+</blockquote>
+<ul>
+<li><strong>日均求解 4,000 万次</strong>：覆盖全公司 30 多种完全不同的业务场景与建模公式；</li>
+<li><strong>P99 求解时间仅需 12 秒</strong>：在包含 26.5 万个对象与 3,200 个容器的典型生产负载下达成；</li>
+<li><strong>超大规模平均求解时间仅 171 秒</strong>：在对象规模突破 100 万且容器超过 5,000 个的超大型极值负载下，历经 3,400 多次实际运行测得。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>40 million</strong> assignment problems solved daily across 30+ unique formulations.</li>
+<li><strong>P99 solve time of 12 seconds</strong> on workloads featuring 265k objects and 3.2k bins.</li>
+<li><strong>Average solve time of 171 seconds</strong> for hyperscale workloads exceeding 1 million objects and 5k bins (across 3.4k+ runs).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">典型应用场景</h2>
+<blockquote>
+<h2 id="best-use-cases">Best Use Cases</h2>
+</blockquote>
+<ol>
+<li><strong>集群资源分配</strong>：在严格满足 CPU、内存等资源容量上限的同时，将数据分片、容器或计算任务分配至服务器，并保证副本跨物理机架均匀分布 (例如 Meta 内部著名的 <em>Shard Manager</em> 与 <em>RAS</em> 系统)；</li>
+<li><strong>全局流量管理</strong>：在满足网络延迟与带宽约束的前提下，将在线工作负载与边缘接入流量精准导流至最适宜的数据中心 (例如 Meta 的 <em>Taiji</em> 流量管理系统)；</li>
+<li><strong>运维与运营调度</strong>：依据复杂的容量与规则限制，自动分发客服工单至对应的工程师、分配会议室资源或调度办公工位等。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Cluster Resource Allocation:</strong> Assigning shards, containers, or tasks to servers while respecting resource caps and distributing replicas across racks (e.g., Meta’s <em>Shard Manager</em> and <em>RAS</em>).</li>
+<li><strong>Global Traffic Management:</strong> Routing workloads and edge traffic to datacenters while balancing latency constraints (e.g., <em>Taiji</em>).</li>
+<li><strong>Operational Logistics:</strong> Mapping support tickets to engineers, allocating conference rooms, or assigning office desks based on capacity rules.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="rebalancer_1">Rebalancer 与主流开源方案特性对比</h2>
+<blockquote>
+<h2 id="rebalancer-vs-closest-open-source-alternatives">Rebalancer vs. Closest Open-Source Alternatives</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">特性维度</th>
+<th style="text-align: left;">Meta Rebalancer</th>
+<th style="text-align: left;">Google OR-Tools</th>
+<th style="text-align: left;">Timefold Solver (Community 社区版)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>开源许可证</strong></td>
+<td style="text-align: left;"><a href="https://github.com/facebook/rebalancer/blob/main/LICENSE">Apache 2.0</a></td>
+<td style="text-align: left;"><a href="https://github.com/google/or-tools/blob/stable/LICENSE">Apache 2.0</a></td>
+<td style="text-align: left;"><a href="https://github.com/TimefoldAI/timefold-solver">Apache 2.0</a> <em>(企业版闭源商业化)</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>核心实现语言</strong></td>
+<td style="text-align: left;">C++</td>
+<td style="text-align: left;">C++</td>
+<td style="text-align: left;">Java</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>支持 API 语言</strong></td>
+<td style="text-align: left;">C++, Python</td>
+<td style="text-align: left;">C++, Python, Java, C#</td>
+<td style="text-align: left;">Java, Kotlin</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>核心聚焦点</strong></td>
+<td style="text-align: left;">通用分配/放置问题 (将对象分配至容器)</td>
+<td style="text-align: left;">综合性套件：涵盖 CP-SAT、LP、MIP 包装器、路径规划、装箱问题等</td>
+<td style="text-align: left;">业务规划：路径规划、排班考勤、作业调度、任务分派</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>局部搜索能力</strong></td>
+<td style="text-align: left;">支持，基于表达式图的高并发并行评估</td>
+<td style="text-align: left;"><a href="https://developers.google.com/optimization/routing/routing_options">支持，内置于路径规划求解器中</a></td>
+<td style="text-align: left;"><a href="https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search">支持，作为核心求解引擎</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MIP 求解后端</strong></td>
+<td style="text-align: left;">FICO Xpress, Gurobi, HiGHS</td>
+<td style="text-align: left;">封装对接多种商业/开源求解器</td>
+<td style="text-align: left;">不支持 / 未使用</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>调试可视化 UI</strong></td>
+<td style="text-align: left;">Rebalancer Explorer (基于 Docker)</td>
+<td style="text-align: left;">官方 README 中未列出</td>
+<td style="text-align: left;">基准测试套件；商业版中提供评分诊断分析</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>安装方式</strong></td>
+<td style="text-align: left;"><code>pip install rebalancer</code></td>
+<td style="text-align: left;"><code>pip install ortools</code></td>
+<td style="text-align: left;">Maven, JDK 21+</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Meta Rebalancer</th>
+<th style="text-align: left;">Google OR-Tools</th>
+<th style="text-align: left;">Timefold Solver (Community)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>License</strong></td>
+<td style="text-align: left;"><a href="https://github.com/facebook/rebalancer/blob/main/LICENSE">Apache 2.0</a></td>
+<td style="text-align: left;"><a href="https://github.com/google/or-tools/blob/stable/LICENSE">Apache 2.0</a></td>
+<td style="text-align: left;"><a href="https://github.com/TimefoldAI/timefold-solver">Apache 2.0</a> <em>(Enterprise is commercial)</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Core Language</strong></td>
+<td style="text-align: left;">C++</td>
+<td style="text-align: left;">C++</td>
+<td style="text-align: left;">Java</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>APIs</strong></td>
+<td style="text-align: left;">C++, Python</td>
+<td style="text-align: left;">C++, Python, Java, C#</td>
+<td style="text-align: left;">Java, Kotlin</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Focus</strong></td>
+<td style="text-align: left;">Generic assignment (objects to bins)</td>
+<td style="text-align: left;">Broad suite: CP-SAT, LP, MIP wrappers, routing, packing</td>
+<td style="text-align: left;">Planning: routing, rostering, scheduling, task assignment</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Local Search</strong></td>
+<td style="text-align: left;">Yes, parallel, on expression graph</td>
+<td style="text-align: left;"><a href="https://developers.google.com/optimization/routing/routing_options">Yes, in routing solver</a></td>
+<td style="text-align: left;"><a href="https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search">Yes, core engine</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>MIP Backends</strong></td>
+<td style="text-align: left;">FICO Xpress, Gurobi, HiGHS</td>
+<td style="text-align: left;">Wrappers for commercial/open-source solvers</td>
+<td style="text-align: left;">Not used</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Debugging UI</strong></td>
+<td style="text-align: left;">Rebalancer Explorer (Docker)</td>
+<td style="text-align: left;">Not listed in README</td>
+<td style="text-align: left;">Benchmarker; score analysis in commercial editions</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Installation</strong></td>
+<td style="text-align: left;"><code>pip install rebalancer</code></td>
+<td style="text-align: left;"><code>pip install ortools</code></td>
+<td style="text-align: left;">Maven, JDK 21+</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_6">核心要点梳理</h2>
+<blockquote>
+<h2 id="key-takeaways">Key Takeaways</h2>
+</blockquote>
+<ul>
+<li><strong>高度通用的抽象模型</strong>：Rebalancer 将现实世界中任意复杂的资源放置问题，统一抽象为对象、容器、约束条件以及优化目标；</li>
+<li><strong>双求解器灵活驱动</strong>：上层业务规范统一编译为表达式图，既可驱动并行局部搜索求解，亦可直接对接 MIP 商业/开源后端 (<strong>FICO Xpress</strong>、<strong>Gurobi</strong>、<strong>HiGHS</strong>)；</li>
+<li><strong>超大规模生产验证</strong>：历经 Meta 内部 9 年以上的真实超大规模集群检验，日均稳定承载数千万次高并发放置计算；</li>
+<li><strong>全面开源易于集成</strong>：采用极为宽松的 <strong>Apache 2.0 许可证</strong>，提供原生 <strong>C++ 与 Python API</strong>，通过 <code>pip install rebalancer</code> 即可一键安装使用。</li>
+</ul>
+<blockquote>
+<ul>
+<li>Rebalancer abstracts any assignment problem into objects, bins, constraints, and objectives.</li>
+<li>Specifications compile into expression graphs solved via local search or MIP backends (<strong>FICO Xpress</strong>, <strong>Gurobi</strong>, <strong>HiGHS</strong>).</li>
+<li>Proven at hyperscale inside Meta, handling millions of complex placement routines daily.</li>
+<li>Open-sourced under the <strong>Apache 2.0 license</strong> with native <strong>C++ and Python APIs</strong> (<code>pip install rebalancer</code>).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_7">项目资源与参考链接</h2>
+<blockquote>
+<h2 id="resources-links">Resources &amp; Links</h2>
+</blockquote>
+<ul>
+<li><strong>代码仓库与官方文档</strong>：<a href="https://github.com/facebook/rebalancer">GitHub 代码仓库</a> | <a href="https://facebook.github.io/rebalancer/">官方技术文档</a></li>
+<li><strong>学术研究与工程深度解析</strong>：<a href="https://www.usenix.org/system/files/osdi24-kumar.pdf">OSDI 2024 会议论文</a> | <a href="https://engineering.fb.com/2026/09/21/open-source/rebalancer-generic-high-performance-library-assignment-problems/">Meta 工程官方发布博文</a></li>
+<li><strong>PyPI 安装包</strong>：<a href="https://pypi.org/project/rebalancer/">PyPI 官方主页 (rebalancer)</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Documentation &amp; Code:</strong> <a href="https://github.com/facebook/rebalancer">GitHub Repository</a> | <a href="https://facebook.github.io/rebalancer/">Official Documentation</a></li>
+<li><strong>Research &amp; Technical Details:</strong> <a href="https://www.usenix.org/system/files/osdi24-kumar.pdf">OSDI 2024 Paper</a> | <a href="https://engineering.fb.com/2026/09/21/open-source/rebalancer-generic-high-performance-library-assignment-problems/">Engineering at Meta Announcement</a></li>
+<li><strong>PyPI Package:</strong> <a href="https://pypi.org/project/rebalancer/">rebalancer on PyPI</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Meta</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rebalancer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">C++</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">资源调度</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">MIP 求解器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">局部搜索</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">开源项目</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">产品发布</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
