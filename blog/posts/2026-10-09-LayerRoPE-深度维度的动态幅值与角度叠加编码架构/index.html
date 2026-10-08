@@ -1,0 +1,652 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-09-LayerRoPE-%E6%B7%B1%E5%BA%A6%E7%BB%B4%E5%BA%A6%E7%9A%84%E5%8A%A8%E6%80%81%E5%B9%85%E5%80%BC%E4%B8%8E%E8%A7%92%E5%BA%A6%E5%8F%A0%E5%8A%A0%E7%BC%96%E7%A0%81%E6%9E%B6%E6%9E%84/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>LayerRoPE：深度维度的动态幅值与角度叠加编码架构 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#layerrope" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              LayerRoPE：深度维度的动态幅值与角度叠加编码架构
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="layerrope">LayerRoPE：深度维度的动态幅值与角度叠加编码架构</h1>
+<blockquote>
+<h1 id="layerrope-dynamic-depth-wise-magnitude-angular-superposition">LayerRoPE: Dynamic Depth-wise Magnitude &amp; Angular Superposition</h1>
+<p><strong>arXiv:2610.09179</strong> [cs.LG]<br />
+<strong>Subjects:</strong> Machine Learning (cs.LG); Artificial Intelligence (cs.AI); Computation and Language (cs.CL)<br />
+<strong>Authors:</strong> Shikhar Srivastava, Christopher Kanan<br />
+<strong>Submitted:</strong> October 6, 2026<br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2610.09179">10.48550/arXiv.2610.09179</a></p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在现代 Transformer 架构中，随着网络深度不断增加，隐藏状态的特征范数往往呈数量级剧烈膨胀，这种长期困扰深度网络训练的现象被学界称为“深度诅咒” (Curse of Depth) ，并普遍被视作阻碍深层模型稳定训练的病态缺陷而加以压制。然而，Shikhar Srivastava 与 Christopher Kanan 深入剖析了跨越 9 个模型家族的 16 款主流预训练大语言模型 (Large Language Models, LLMs) ，颠覆性地发现这种范数膨胀并非有害缺陷，而是网络为了区分不同层信息而自发演化出的“涌现式深度位置编码” (Emergent Depth-Positional Encoding) ——它主要由残差流上唯一的逐层可学习增益参数 <span class="arithmatex">\(\gamma\)</span> 所承载，通过幅值增长与方向旋转协同记录网络层索引。基于这一深刻洞见，作者团队提出了创新的 <strong>LayerRoPE</strong> 架构，将旋转位置编码 (Rotary Position Embedding, RoPE) 思想巧妙迁移至深度维度，仅用单个共享向量搭配深度条件标量全面替换原本冗余的逐层参数，在计算量 (FLOPs) 变动不足 <span class="arithmatex">\(0.02\%\)</span> 的同时显著精简了参数量。实验证明，LayerRoPE 不仅以节省 <span class="arithmatex">\(3.4\times\)</span> 的算力达到了与传统 Pre-Norm 相当的损失水平，更首次在 512 层极深网络中展现出强劲收敛性与近乎单调的性能提升，同时具备极高的学习率鲁棒性，并能无缝迁移至循环潜变量模型与视觉 Transformer (ViTs) 中，为下一代超深层模型架构的设计开辟了全新路径。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在现代 Transformer 架构中，随着特征在网络深度方向逐层传递，隐藏状态的范数通常会出现数个数量级的剧烈膨胀——这一现象被学界广泛称为“深度诅咒” (Curse of Depth) ，且长期以来都被视作一种亟待抑制的训练病态。然而，本文的研究彻底颠覆了这一固有假设。通过对涵盖稠密模型、混合专家模型 (Mixture-of-Experts) 、混合架构以及 Pre-Norm、Peri-Norm 和 Post-Norm 归一化设计的 9 大模型家族、共 16 款主流预训练大语言模型 (Large Language Models, LLMs) 进行系统性探究，作者团队发现：这一数值膨胀根本不是有害的系统缺陷，而是网络在训练过程中自发演化出的<strong>涌现式深度位置编码</strong> (Emergent Depth-Positional Encoding) 。</p>
+<blockquote>
+<p>In modern Transformer architectures, the norm of hidden states typically grows by orders of magnitude as data propagates through depth—a phenomenon widely known as the "curse of depth" and generally treated as a pathology that requires suppression. This paper challenges that premise. Investigating 16 pre-trained Large Language Models (LLMs) across 9 families (spanning dense, mixture-of-experts, hybrid, and Pre-, Peri-, and Post-Norm designs), the authors discover that this growth is actually an <strong>emergent depth-positional encoding</strong>. </p>
+</blockquote>
+<p>这项深度编码主要由归一化权重 <span class="arithmatex">\(\gamma\)</span> (残差流上唯一逐层可学习的增益参数) 负责承载：它不仅在幅值上逐步变大，还在空间方向上动态旋转，两者巧妙配合，共同完成了对网络层索引的精确编码。基于这一深刻洞见，作者团队正式推出了 <strong>LayerRoPE</strong>——一种在网络深度轴向上对标旋转位置编码 (Rotary Position Embedding, RoPE) 的隐式深度编码方案。LayerRoPE 巧妙地用单个全局共享向量结合深度条件标量，全面替换掉了原本各层独立的 <span class="arithmatex">\(\gamma\)</span> 向量；在有效精简模型参数量的同时，对整体计算量 (FLOPs) 的影响不足 <span class="arithmatex">\(0.02\%\)</span> 。</p>
+<blockquote>
+<p>This encoding is carried by the normalization weight <span class="arithmatex">\(\gamma\)</span> (the sole learned per-layer gain on the residual stream), which grows in magnitude and rotates in direction to jointly encode the layer index. Building on this insight, the authors introduce <strong>LayerRoPE</strong>—an implicit depth-axis analog to Rotary Position Embedding (RoPE). LayerRoPE replaces all layerwise <span class="arithmatex">\(\gamma\)</span> vectors with a single shared vector and depth-conditioned scalars, simultaneously reducing parameters and incurring <span class="arithmatex">\(&lt;0.02\%\)</span> change in FLOPs. </p>
+</blockquote>
+<h3 id="_3">核心发现与性能表现</h3>
+<blockquote>
+<h3 id="key-findings-performance">Key Findings &amp; Performance:</h3>
+</blockquote>
+<ul>
+<li><strong>极致效率 (Efficiency) ：</strong> LayerRoPE 仅需减少 <strong><span class="arithmatex">\(3.4\times\)</span> 的计算量</strong>，即可达到传统 Pre-Norm 1.3B 模型的同等损失水平。</li>
+<li><strong>超强扩展性 (Scalability) ：</strong> 当网络深度大幅扩展至 512 层时，LayerRoPE 是唯一展现出强劲收敛性与近乎单调性能提升的架构方案。</li>
+<li><strong>高鲁棒性 (Robustness) ：</strong> 将模型对学习率的敏感度改善了 <span class="arithmatex">\(3\text{–}10\times\)</span> ，并且能够开箱即用地无缝迁移到循环潜变量模型与视觉 Transformer (ViTs) 中。</li>
+<li><strong>范式转变 (Conceptual Shift) ：</strong> LayerRoPE 并非一味缩小或压制残差流，反而对其进行了拓宽——它抑制了各个计算模块从残差流读取的信息幅度，同时放大了各模块写回的信息幅度。这深刻揭示出：维持深层网络的稳定性，核心在于对各计算模块施加深度条件化的动态调控，而非生硬压制残差流本身。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Efficiency:</strong> LayerRoPE reaches a Pre-Norm 1.3B model's loss using <strong><span class="arithmatex">\(3.4\times\)</span> less compute</strong>.</li>
+<li><strong>Scalability:</strong> It is the only approach showing strong convergence and near-monotonic improvement when depth is scaled up to 512 layers.</li>
+<li><strong>Robustness:</strong> Improves learning-rate sensitivity by <span class="arithmatex">\(3\text{–}10\times\)</span> and transfers out-of-the-box to looped latent models and Vision Transformers (ViTs).</li>
+<li><strong>Conceptual Shift:</strong> Rather than shrinking the residual stream, LayerRoPE widens it, dampening what each block reads while amplifying what it writes, suggesting that depth stability relies on depth-conditioned regulation of computational blocks rather than suppressing the residual stream.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">论文元数据与参考信息</h2>
+<blockquote>
+<h2 id="metadata-reference-information">Metadata &amp; Reference Information</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv 编号 (arXiv Identifier) ：</strong> <code>arXiv:2610.09179</code> [cs.LG]</li>
+<li><strong>论文作者 (Authors) ：</strong> Shikhar Srivastava, Christopher Kanan</li>
+<li><strong>提交时间 (Submitted) ：</strong> 2026年10月6日</li>
+<li><strong>主学科分类 (Primary Subject) ：</strong> 机器学习 (<code>cs.LG</code>)</li>
+<li><strong>交叉学科分类 (Secondary Subjects) ：</strong> 人工智能 (<code>cs.AI</code>)、计算与语言 (<code>cs.CL</code>)</li>
+<li><strong>DOI 链接 (DOI) ：</strong> <a href="https://doi.org/10.48550/arXiv.2610.09179">10.48550/arXiv.2610.09179</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv Identifier:</strong> <code>arXiv:2610.09179</code> [cs.LG]</li>
+<li><strong>Authors:</strong> Shikhar Srivastava, Christopher Kanan</li>
+<li><strong>Submitted:</strong> October 6, 2026</li>
+<li><strong>Primary Subject:</strong> Machine Learning (<code>cs.LG</code>)</li>
+<li><strong>Secondary Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>), Computation and Language (<code>cs.CL</code>)</li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2610.09179">10.48550/arXiv.2610.09179</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">全文与访问链接</h2>
+<blockquote>
+<h2 id="full-text-access-links">Full-Text &amp; Access Links</h2>
+</blockquote>
+<ul>
+<li><a href="https://arxiv.org/pdf/2610.09179">查看 PDF 全文 (View PDF)</a></li>
+<li><a href="https://arxiv.org/html/2610.09179v1">HTML 网页版本 (实验性) (HTML Version)</a></li>
+<li><a href="https://arxiv.org/src/2610.09179">TeX 源码包 (TeX Source)</a></li>
+<li><a href="http://creativecommons.org/licenses/by/4.0/">开源授权协议 (CC BY 4.0) (License)</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://arxiv.org/pdf/2610.09179">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2610.09179v1">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2610.09179">TeX Source</a></li>
+<li><a href="http://creativecommons.org/licenses/by/4.0/">License (CC BY 4.0)</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">LayerRoPE</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">深度位置编码</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">残差连接</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">arXiv论文</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

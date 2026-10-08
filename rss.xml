@@ -5,6 +5,244 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>打破空间壁垒：亚对数空间计算理论在大模型结构化推理中的突破与应用</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-09/打破空间壁垒-亚对数空间计算理论在大模型结构化推理中的突破与应用/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/打破空间壁垒-亚对数空间计算理论在大模型结构化推理中的突破与应用/</guid>
+      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 在实际工业场景中的深度应用，各类系统越来越依赖模型生成严格符合模式规范的结构化输出 (如 JSON Schema 或强类型工具调用) 。然而，传统的约束解码机制通常依赖庞大的自动机状态跳转表与预计算掩码，在处理复杂语法规则时往往消耗高达数 GB 的显存开销，构成了高并发推理与端侧部署的严峻瓶颈。本文作者另辟蹊径，从计算复杂性理论 (Computational Complexity Theory) 的经典难题入手，敏锐捕捉到约束解码自动机中“从任意给定状态出发每个 Token 仅有一条有效路径”的独特拓扑性质，成功将该特定图结构上的可达性验证空间复杂度打破了经典 Savitch's theorem 的理论下界，实现了亚对数空间 (Sublogarithmic Space) $\mathcal{O}(\log^2 n / \log \log n)$ 级别。将该理论成果落地为实际推理引擎后，不仅将语法规则内存占用从 1.5 GB 骤降至 3 MB，更在并发工具调用场景下实现了 2.5 倍的速度跃升，为兼顾严格输出规范与极致计算效率的大模型结构化推理提供了开创性的理论基石与工程范式。
+
+---
+
+## 📋 内容总结
+
+&gt; ## 📋 Summary
+
+现代大语言模型在实际业务场景中，正越来越频繁地被要求输出格式严整的结构化内容——例如严格遵循特定模式 (Schema) 的 JSON 数据或强类型的工具调用。为了确保输出结果百分之百合规，主流推理系统通常会在底层运行轻量级的自动机 (Automata) 机制，动态拦截并禁止任何不符合语法规则的非法 Token。
+
+&gt; Modern language models are increasingly required to generate structured outputs—such as schema-constrained JSON or typed tool calls. This is typically enforced by small automation machines that forbid unauthorized tokens.
+
+本文深入挖掘了此类自动机中一个极其独特却长期被忽视的性质：从任意给定的当前状态出发，每个候选 Token 所引导的转移路径都是完全唯一且确定的。借助这一特性，作者攻克了计算复杂性理论中关于“少路径图”的一道经典公开难题，从数学上严格证明了在此类特殊图结构中，验证节点之间的可达性 (Reachability) 仅需占用极低的内存空间 ($\mathcal{O}(\log^2 n / \log \log n)$ 空间复杂度) ，一举打破了计算机科学史上著名的 Savitch's theorem 所确立的 $\mathcal{O}(\log^2 n)$ 经典空间下界。
+
+&gt; This paper highlights a rare property of these machines: from any given state, each token leads along precisely one path. By resolving an open question in complexity theory regarding graphs with few paths between points, the author proves that reachability in such structures can be verified with remarkably low memory ($\mathcal{O}(\log^2 n / \log \log n)$ space), falling below the classical $\mathcal{O}(\log^2 n)$ bound of Savitch's theorem.
+
+将这些精妙的理论建构落地转化为面向实际生产的推理引擎，带来了极其显著的性能飞跃：
+
+&gt; Leveraging these theoretical constructions into a practical inference engine yields significant performance improvements:
+
+* **前置预计算 (Pre-computation) ：** 对于输出格式中固定的模板文本，无需调用大模型进行实际推理即可直接生成。
+* **GPU 动态掩码 (GPU Masking) ：** Token 掩码直接在 GPU 上实时动态重新计算，彻底摆脱了对内存中庞大状态跳转表的依赖。
+* **极致执行效率 (Efficiency) ：** 递归嵌套格式仅占用微小的调用栈，彼此独立的字段支持并行并发解码与校验，且在 Token 上限截断等极端情况下仍能确保所有输出严格符合语法规则。
+* **基准评测表现 (Benchmarks) ：** 在配备 16 GB 统一内存的 Apple M2 Pro 芯片设备上，使用 Qwen3.5 (包含 2B 与 4B 规格) 对比集成 `llguidance` 的标准 MLX 推理方案：
+  * 在保证输出内容完全一致的前提下，Schema 约束抽取任务的完成速度提升了 **1.2 倍至 1.3 倍**。
+  * 语法规则所占用的内存开销从最高 **1.5 GB 骤降至 3 MB**。
+  * 在传统方案因掩码表过大而耗尽内存的极限场景下，单台服务器可轻松并发承载 **16 种不同语法**。
+  * 在 16 个并发调用外部工具的智能体协同执行任务时，完成速度提升了 **2.5 倍**。
+
+&gt; * **Pre-computation:** Format-mandated text is generated without running the model.
+&gt; * **GPU Masking:** Masks are dynamically recomputed on the GPU without memory tables.
+&gt; * **Efficiency:** Recursive formats utilize a small stack, independent fields are decoded in parallel and verified, and all outputs remain valid under token limits.
+&gt; * **Benchmarks:** Tested on a 16 GB Apple M2 Pro using Qwen3.5 (2B and 4B models) against standard MLX setups with `llguidance`:
+&gt;   * Schema-constrained extraction finishes **1.2x–1.3x faster** while maintaining identical outputs.
+&gt;   * Grammar memory footprint drops from up to **1.5 GB down to 3 MB**.
+&gt;   * A single server can host **sixteen grammars** in scenarios where traditional tables exhaust memory.
+&gt;   * Sixteen simultaneous tool-calling agents finish **2.5x faster**.
+
+---
+
+## 🔗 全文与资源链接
+
+&gt; ## 🔗 Full-Text &amp; Resources
+
+* [查看论文 PDF (View PDF)](https://arxiv.org/pdf/2610.09139)
+* [HTML 网页版本 (实验性 / Experimental)](https://arxiv.org/html/2610.09139v1)
+* [TeX 源码 (TeX Source)](https://arxiv.org/src/2610.09139)
+* [授权许可 (License)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+
+&gt; * [View PDF](https://arxiv.org/pdf/2610.09139)
+&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2610.09139v1)
+&gt; * [TeX Source](https://arxiv.org/src/2610.09139)
+&gt; * [License](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
+    </item>
+    <item>
+      <title>LayerRoPE：深度维度的动态幅值与角度叠加编码架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-09/LayerRoPE-深度维度的动态幅值与角度叠加编码架构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/LayerRoPE-深度维度的动态幅值与角度叠加编码架构/</guid>
+      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在现代 Transformer 架构中，随着网络深度不断增加，隐藏状态的特征范数往往呈数量级剧烈膨胀，这种长期困扰深度网络训练的现象被学界称为“深度诅咒” (Curse of Depth) ，并普遍被视作阻碍深层模型稳定训练的病态缺陷而加以压制。然而，Shikhar Srivastava 与 Christopher Kanan 深入剖析了跨越 9 个模型家族的 16 款主流预训练大语言模型 (Large Language Models, LLMs) ，颠覆性地发现这种范数膨胀并非有害缺陷，而是网络为了区分不同层信息而自发演化出的“涌现式深度位置编码” (Emergent Depth-Positional Encoding) ——它主要由残差流上唯一的逐层可学习增益参数 $\gamma$ 所承载，通过幅值增长与方向旋转协同记录网络层索引。基于这一深刻洞见，作者团队提出了创新的 **LayerRoPE** 架构，将旋转位置编码 (Rotary Position Embedding, RoPE) 思想巧妙迁移至深度维度，仅用单个共享向量搭配深度条件标量全面替换原本冗余的逐层参数，在计算量 (FLOPs) 变动不足 $0.02\%$ 的同时显著精简了参数量。实验证明，LayerRoPE 不仅以节省 $3.4\times$ 的算力达到了与传统 Pre-Norm 相当的损失水平，更首次在 512 层极深网络中展现出强劲收敛性与近乎单调的性能提升，同时具备极高的学习率鲁棒性，并能无缝迁移至循环潜变量模型与视觉 Transformer (ViTs) 中，为下一代超深层模型架构的设计开辟了全新路径。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+在现代 Transformer 架构中，随着特征在网络深度方向逐层传递，隐藏状态的范数通常会出现数个数量级的剧烈膨胀——这一现象被学界广泛称为“深度诅咒” (Curse of Depth) ，且长期以来都被视作一种亟待抑制的训练病态。然而，本文的研究彻底颠覆了这一固有假设。通过对涵盖稠密模型、混合专家模型 (Mixture-of-Experts) 、混合架构以及 Pre-Norm、Peri-Norm 和 Post-Norm 归一化设计的 9 大模型家族、共 16 款主流预训练大语言模型 (Large Language Models, LLMs) 进行系统性探究，作者团队发现：这一数值膨胀根本不是有害的系统缺陷，而是网络在训练过程中自发演化出的**涌现式深度位置编码** (Emergent Depth-Positional Encoding) 。
+
+&gt; In modern Transformer architectures, the norm of hidden states typically grows by orders of magnitude as data propagates through depth—a phenomenon widely known as the "curse of depth" and generally treated as a pathology that requires suppression. This paper challenges that premise. Investigating 16 pre-trained Large Language Models (LLMs) across 9 families (spanning dense, mixture-of-experts, hybrid, and Pre-, Peri-, and Post-Norm designs), the authors discover that this growth is actually an **emergent depth-positional encoding**. 
+
+这项深度编码主要由归一化权重 $\gamma$ (残差流上唯一逐层可学习的增益参数) 负责承载：它不仅在幅值上逐步变大，还在空间方向上动态旋转，两者巧妙配合，共同完成了对网络层索引的精确编码。基于这一深刻洞见，作者团队正式推出了 **LayerRoPE**——一种在网络深度轴向上对标旋转位置编码 (Rotary Position Embedding, RoPE) 的隐式深度编码方案。LayerRoPE 巧妙地用单个全局共享向量结合深度条件标量，全面替换掉了原本各层独立的 $\gamma$ 向量；在有效精简模型参数量的同时，对整体计算量 (FLOPs) 的影响不足 $0.02\%$ 。
+
+&gt; This encoding is carried by the normalization weight $\gamma$ (the sole learned per-layer gain on the residual stream), which grows in magnitude and rotates in direction to jointly encode the layer index. Building on this insight, the authors introduce **LayerRoPE**—an implicit depth-axis analog to Rotary Position Embedding (RoPE). LayerRoPE replaces all layerwise $\gamma$ vectors with a single shared vector and depth-conditioned scalars, simultaneously reducing parameters and incurring $&lt;0.02\%$ change in FLOPs.</description>
+    </item>
+    <item>
+      <title>Humanize：面向智能体编码的判断力工程与构建者-审查者双模型协同框架</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-09/Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架/</guid>
+      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着智能体编程 (Agentic Coding) 技术的普及，自动生成代码的门槛与成本大幅降低，但要让 AI 智能体 (AI Agent) 稳定、可靠地交付端到端完整工程，依然存在一道难以逾越的鸿沟——负责写代码的智能体往往极度缺乏对自身工作质量的客观评判能力，容易陷入“自审自查必然失效”的盲目自信。针对这一固有困境，来自学术界与业界的联合研究团队提出了全新的多智能体编排框架 **Humanize**，开创性地确立了**判断力工程** (Judgement Engineering) 理念：在规划、实现、审查与经验沉淀等关键阶段边界处，引入明确且由程序硬性执行的机械门控规则。该框架通过确定性路由钩子强制执行 72 道机械校验门，并引入异构大模型的“构建者-审查者”交替协同机制，确保软件缺陷只有在两个独立模型同时漏检的极罕见情况下才会留存。在经历 108 天、68 个迭代版本的实战演进中，Humanize 在 GitHub 斩获 1,468 颗星，不仅高水准完成了 567 个文件的 `gem5` 复杂底层系统重构，更在 MLSys 2026 FlashInfer 算子大赛、国际五大学科奥林匹克竞赛以及顶尖形式化数学评测 (PutnamBench 与 Lean-Eval) 中刷新了权威记录。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+尽管基于 AI 智能体的代码生成技术让编写代码变得前所未有地廉价，但要想让其真正可靠地交付可用的软件系统，依然面临着严峻的技术瓶颈——负责写代码的智能体往往是一个极不称职的“自我裁判”，极难察觉自身的逻辑缺陷与漏洞。**Humanize** 正是为此而生的一种全新多智能体编排工作流，它紧紧围绕**判断力工程** (Judgement Engineering) 这一核心支柱展开：在任务规划、代码实现、独立审查以及经验学习的关键阶段分界线上，建立起明确、不可妥协且由程序机械化强制执行的决策约束。
+
+&gt; While agentic coding makes code generation inexpensive, reliable completion remains a critical bottleneck because the coding agent is typically a poor judge of its own work. **Humanize** is a novel multi-agent orchestration workflow built around **judgement engineering**—explicit, mechanically enforced decisions at the boundaries of planning, implementation, review, and learning. 
+
+通过引入确定性路由钩子 (严格强制执行 72 道机械校验门) 并巧妙地在“构建者” (Builder) 模型与“审查者” (Reviewer) 模型之间进行交替接力，Humanize 从机制上保证了代码缺陷只有在*两个模型同时漏检*的极端情况下才会存留。在历时 108 天、经过 68 个版本的持续打磨迭代中，该框架在开源社区获得了广泛关注 (在 GitHub 上斩获 1,468 颗星) ，并在高复杂度系统工程重构、标准基准测试集以及国际顶级奥林匹克竞赛中展现出了顶尖水平的实测战果。
+
+&gt; By utilizing deterministic routing hooks (enforcing 72 mechanical gates) and alternating between builder and reviewer models, Humanize ensures that defects survive only if *both* models miss them. Across 68 versions over 108 days, the framework gained significant traction (1,468 GitHub stars) and demonstrated state-of-the-art results across complex systems engineering, benchmark datasets, and international Olympiads.
+
+---
+
+## 核心工作流机制
+
+&gt; ## Key Workflow Mechanics
+
+* **规划契约 (Plan Contract) ：** 在进入具体的代码执行之前，必须先制定明确的行动方案，并由人类专家进行手动审核与批准；
+* **构建者-审查者交替机制 (Builder-Reviewer Alternation) ：** 负责实现的构建者智能体分轮次推进计划，而负责验收的审查者智能体则来自完全不同的模型厂商，专门对完成度与代码质量进行独立把关；
+* **确定性路由 (Deterministic Routing) ：** 智能体之间的工作流流转与角色切换完全由硬编码的程序化钩子强力约束，而非交由模型自行主观决定，其中内嵌了 **72 道机械门控**；
+* **马尔可夫链动力学 (Markov Chain Dynamics) ：** 若将代码仓库的状态演化视作一个马尔可夫链 (Markov Chain) ，通过两个独立模型联合采样交替推进，能够最大程度消除单模型的监督盲区。
+
+&gt; * **Plan Contract:** A human manually approves an explicit plan before execution begins.
+&gt; * **Builder-Reviewer Alternation:** A builder agent implements the plan in rounds, while a reviewer agent from a separate vendor evaluates completion.
+&gt; * **Deterministic Routing:** Workflows and transitions between roles are enforced via programmatic hooks rather than model discretion, incorporating **72 mechanical gates**.
+&gt; * **Markov Chain Dynamics:** Viewed as a Markov chain over repository states, alternating agent samples jointly from two models to minimize oversight blind spots.
+
+---
+
+## 实际应用与技术成果
+
+&gt; ## Applications &amp; Achievements
+
+Humanize 框架已成功落地于多项高难度的重工业级软件工程实战与权威基准评测之中：
+
+&gt; Humanize has been successfully applied to heavy-duty software engineering tasks and benchmark evaluations:
+
+* **系统软件工程 (Systems Engineering) ：** 在上游社区维护者的严格审查下，成功完成了涉及 567 个代码文件的 `gem5` 构建系统全量迁移；
+* **算子设计智能体 (Kernel Design Agents) ：** 深度整合算子专用知识库与性能分析 (Profiling) 反馈回路，在 **MLSys 2026 FlashInfer 竞赛**中一举斩获全部三个全智能体 (Full-Agent) 赛道的前三名；
+* **奥林匹克竞赛智能体 (Humanize Olympiad Agents, HOA) ：** 在 **IOI 2026**、**IMO 2026**、**IPhO 2026** 与 **IBO 2024** 中均斩获满分，并在 **IChO 2026** 中取得了高达 **418.5/437 分的金牌战绩**；
+* **形式化推理与高等数学 (Formal Reasoning &amp; Mathematics) ：** 在 **PutnamBench** 上拿下了无可挑剔的 **672/672 全满分**，并在 **Lean-Eval 排行榜上以 251/303 位列全球第一**，在极高难度的数学定理证明中直接与专业数学家同台竞技。
+
+&gt; * **Systems Engineering:** Successfully completed a 567-file `gem5` build-system migration under upstream review.
+&gt; * **Kernel Design Agents:** Integrated a kernel knowledge base and profiling feedback loop, placing in the top three of all three Full-Agent tracks at the **MLSys 2026 FlashInfer contest**.
+&gt; * **Humanize Olympiad Agents (HOA):** Achieved full scores in **IOI 2026**, **IMO 2026**, **IPhO 2026**, and **IBO 2024**, alongside a gold-medal score of **418.5/437 in IChO 2026**.
+&gt; * **Formal Reasoning &amp; Mathematics:** Scored a flawless **672/672 on PutnamBench** and ranked **first (251/303) on the Lean-Eval leaderboard**, competing directly alongside professional mathematicians.
+
+---
+
+## 复盘洞察与关键发现
+
+&gt; ## Postmortem Insights &amp; Observations
+
+通过对 118 份公开任务复盘报告的深入剖析，研究团队总结出了以下关键运行洞察：
+
+&gt; An analysis of 118 public postmortems revealed key operational insights:
+
+* **核心优势 (Strengths) ：** 引入独立的跨厂商多模型审查机制，能够极其有效地识别并拦截构建者智能体提出的缺乏依据的主观论断；
+* **现存脆弱点 (Vulnerabilities) ：** 判定何时停止迭代的停机可靠性依然是系统的核心薄弱点。在按阶段区分轮次的报告中，**多达三分之二的迭代轮次居然发生在代码实现已经被验收通过*之后***；
+* **说明 (Note) ：** 当前收集到的证据属于实际运行中的观察性总结，而非严格控制变量的工作流对照实验研究。
+
+&gt; * **Strengths:** Independent multi-vendor review effectively catches unsupported claims made by builder agents.
+&gt; * **Vulnerabilities:** Stopping reliability remains a primary weakness. In reports separating rounds by phase, **two-thirds of all rounds occurred *after* implementation was already accepted**. 
+&gt; * *Note:* Evidence gathered is observational rather than a controlled comparative study of workflows.
+
+---
+
+## 获取方式与相关资源
+
+&gt; ## Access &amp; Resources
+
+* **论文 PDF 全文 (Full-Text PDF) ：** [arXiv:2610.08900 PDF](https://arxiv.org/pdf/2610.08900)
+* **论文源码与 TeX 资源 (Source Code &amp; TeX) ：** [arXiv Source](https://arxiv.org/src/2610.08900)
+* **许可协议 (License) ：** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"/&gt;
+
+&gt; * **Full-Text PDF:** [arXiv:2610.08900 PDF](https://arxiv.org/pdf/2610.08900)
+&gt; * **Source Code &amp; TeX:** [arXiv Source](https://arxiv.org/src/2610.08900)
+&gt; * **License:** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"/&gt;</description>
+    </item>
+    <item>
+      <title>用 Docker Agent 构建 AI 智能体 (AI Agent)</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-09/Docker-Agent-实战指南-像运行容器一样声明与编排-AI-智能体/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/Docker-Agent-实战指南-像运行容器一样声明与编排-AI-智能体/</guid>
+      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着 AI 智能体架构的演进，如何像管理微服务一样对智能体进行统一打包、分发与编排，成为了工程落地的核心挑战。Docker Agent 沿袭了 Docker“一次构建，到处运行”的经典哲学，将大语言模型、提示词指令、工具集及协作关系抽象为声明式的 YAML 配置文件，消除了繁琐的代码胶水层。它不仅天然解耦底层模型供应商，还深度集成了模型上下文协议 (Model Context Protocol, MCP)，能够将各类扩展工具安全隔离在独立容器中运行。最终成型的智能体团队可以直接推送到标准 OCI 镜像仓库进行版本化管理与无缝分发，真正实现了 AI 智能体从开发到生产的标准化容器化交付。
+
+---
+
+## 内容摘要
+
+&gt; ## Summary
+
+Docker Agent 是一款基于 Apache 2.0 开源协议的命令行 (CLI) 插件，旨在像运行传统容器一样运行 AI 智能体。开发者只需编写声明式 YAML 配置文件，就能定义、版本化管理并编排单智能体或多智能体团队。这些智能体完全解耦模型供应商 (支持 OpenAI、Anthropic 以及通过 Docker Model Runner 驱动的本地模型等)，可无缝集成模型上下文协议 (Model Context Protocol, MCP)，并能够利用标准的 OCI 镜像仓库完成打包、共享与分发。本篇实战指南将全面带你走过环境安装、构建单智能体与多智能体工作流、挂载工具以及最终打包部署的全流程。
+
+&gt; Docker Agent is an open-source, Apache 2.0-licensed CLI plugin designed to run AI agents like traditional containers. By using declarative YAML configurations, developers can define, version, and orchestrate single or multi-agent teams. These agents are provider-agnostic (supporting OpenAI, Anthropic, local models via Docker Model Runner, etc.), integrate seamlessly with the Model Context Protocol (MCP), and can be packaged, shared, and distributed using standard OCI registries. This comprehensive guide walks through installation, building single and multi-agent workflows, utilizing tools, and packaging agents for deployment.
+
+---
+
+&lt;img alt="Building AI Agents with Docker Agent" class="article-hero perfmatters-lazy" data-src="https://www.kdnuggets.com/wp-content/uploads/KDN-Shittu-Building-AI-Agents-with-Docker-Agent-scaled.png" decoding="async" height="1429" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='2560'%20height='1429'%20viewBox='0%200 2560 1429'%3E%3C/svg%3E" width="2560"/&gt;
+
+Docker 当年声名鹊起的核心理念其实非常简单：一次打包，到处运行，且每次运行表现始终如一。[Docker Agent 将同样的理念延伸到了 AI 智能体领域](https://docker.github.io/docker-agent/)：不再需要编写繁杂的胶水代码，而是通过声明式配置定义智能体，借助 CLI 插件启动运行，并直接复用托管容器镜像的现成 OCI 仓库进行分发。如果你曾设想过像管理容器一样去定义、版本化控制并分享 AI 智能体，那么这款工具正是为你填补这一空白的利器。
+
+&gt; Docker built its reputation on one idea: package software once, run it anywhere, the same way, every time. [Docker Agent applies that same idea to AI agents](https://docker.github.io/docker-agent/): describe them in a declarative config instead of code, run them through a CLI plugin, and distribute them through the same OCI registries that already store your container images. If you've ever wished an AI agent could be defined, versioned, and shared like a container, that's the gap this tool fills.
+
+这是一篇详尽的实战教程，将带你从零开始完成全新安装，一步步搭建出能够协同运转的多智能体团队。
+
+&gt; This is a full, hands-on tutorial, from a completely bare install to a real, working multi-agent team.
+
+---
+
+## 什么是 Docker Agent？
+
+&gt; ## What Is Docker Agent?
+
+Docker Agent 是一款由 Docker 工程团队打造的开源命令行插件，采用 [Apache 2.0 许可证](https://github.com/docker/docker-agent/blob/main/LICENSE)，以 **docker agent** 命令的形式安装与运行。它的官方宣传语非常直截了当：[像运行容器一样运行 AI 智能体](https://docker.github.io/docker-agent/)。从 pkg.go.dev 上的 Go 模块发布历史来看，它在 2026 年 3 月就打上了最初的发布标签，并在随后迅猛发展；目前该项目在 GitHub 上已收获超 [3,300 颗 Star](https://github.com/docker/docker-agent)，代码提交量接近 10,000 次。
+
+&gt; Docker Agent is an open-source, [Apache 2.0-licensed](https://github.com/docker/docker-agent/blob/main/LICENSE) CLI plugin built by Docker Engineering, installed and run as **docker agent**. Its own tagline states the goal plainly: [run AI agents like containers](https://docker.github.io/docker-agent/). Its Go module history on pkg.go.dev shows early tagged releases from March 2026, and it's grown quickly since; the project has already passed [3,300 GitHub stars](https://github.com/docker/docker-agent) and nearly 10,000 commits.
+
+它的诞生并非凭空出现。早在 2025 年，Docker 就一直在为此铺路：[2025 年 7 月发布的一项声明便扩展了 Docker Compose，使其能够直接支持智能体与 AI 模型](https://www.docker.com/press-release/agentic-apps-to-life-with-new-compose-support-cloud-offload-and-partner-integrations/)，随后推出的 Docker Model Runner 也让开发者无需云端 API 密钥即可在本地运行模型。Docker Agent 正是这些前期技术积淀结出的果实——它成为了一个独立的专属工具，而不是硬塞在 Compose 中的某个附属功能。
+
+&gt; It didn't appear out of nowhere. Docker spent 2025 building toward exactly this: [a July 2025 announcement extended Docker Compose to support agents and AI models directly](https://www.docker.com/press-release/agentic-apps-to-life-with-new-compose-support-cloud-offload-and-partner-integrations/), and Docker Model Runner shipped as a way to run models locally without a cloud API key. Docker Agent is the product of that groundwork landing in one dedicated tool, rather than a single feature bolted onto Compose.
+
+它的核心独特优势体现在以下几个方面：
+
+&gt; What actually makes it distinctive: 
+
+* **YAML 声明驱动**：智能体通过 **YAML** (或 HCL) 文件进行定义，这意味着无需深厚的软件工程背景也能轻松构建智能体。
+* **解耦模型供应商**：支持 OpenAI、Anthropic、Gemini、AWS Bedrock、Mistral、xAI，并且能借助 Docker Model Runner 纯本地运行开源模型。
+* **多智能体协同编排**：原生支持构建专业分工的智能体团队，并在彼此之间灵活委派任务。
+* **灵活的工具生态**：除了内置工具外，还支持挂载任意 [MCP 服务端](https://modelcontextprotocol.io/)，工具既可以在本地或远程运行，也可以安全运行在隔离的 Docker 容器中。
+* **基于 OCI 标准分发**：构建好的智能体可以直接推送至任何兼容 OCI 的镜像仓库，亦可从中拉取——分发机制与大家熟知的 Docker 镜像完全一致。
+
+&gt; * **YAML-Driven:** Agents are defined in **YAML** (or HCL), meaning no deep software engineering background is required to build one.
+&gt; * **Provider-Agnostic:** Works with OpenAI, Anthropic, Gemini, AWS Bedrock, Mistral, xAI, and fully local models through Docker Model Runner.
+&gt; * **Multi-Agent Orchestration:** Supports genuine teams of specialized agents that delegate work to each other.
+&gt; * **Flexible Tool Ecosystem:** Includes built-in tools plus any [MCP server](https://modelcontextprotocol.io/), run locally, remotely, or inside an isolated Docker container.
+&gt; * **OCI Distribution:** Finished agents can be pushed to and pulled from any OCI-compatible registry—the same distribution mechanism Docker images use.
+
+---
+
+## 前提条件与安装 Docker Agent
+
+&gt; ## Prerequisites and Installing Docker Agent
+
+开始前你需要准备三样东西：机器上已安装 Docker、能够正常运行该插件的安装方式，以及至少可访问一个语言模型。
+
+&gt; You need three things: Docker installed on your machine, a way to actually run it, and access to at least one language model.</description>
+    </item>
+    <item>
       <title>面向长程应用开发的高级 Harness 架构设计：生成-评估对抗与多智能体闭环工程</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-08/面向长程应用开发的高级-Harness-架构设计-生成-评估对抗与多智能体闭环工程/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-08/面向长程应用开发的高级-Harness-架构设计-生成-评估对抗与多智能体闭环工程/</guid>
@@ -3989,471 +4227,6 @@ Lean Pool 是一个形式化数学知识库，完全由 AI 智能体负责自主
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.25199)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.25199)
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.25199)</description>
-    </item>
-    <item>
-      <title>Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-24/Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-24/Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型/</guid>
-      <pubDate>Thu, 24 Sep 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，传统语音交互主要依赖“语音转文字 $\rightarrow$ 文本大模型 $\rightarrow$ 文字转语音”的级联架构，不仅通信时延高，还会损失语调与情绪等副语言特征；而新一代原生端到端语音模型虽然能实现无缝实时对话，却因必须按节律持续输出音频流，在面对复杂数学多步推理任务时举步维艰。为攻克这一核心技术难题，开源人工智能前沿机构 Kyutai 正式开源了 **Voice of Reason** 系列模型，这是业界首个通过强化学习 (Reinforcement Learning, RL) 原生解算口语数学题的端到端语音大模型。该方案基于开源的 `GLM-4-Voice-9B`，巧妙融合高质量监督微调 (Supervised Fine-Tuning, SFT) 与类 GRPO 的强化学习策略，彻底摆脱了中间文本转录与外部文本大语言模型 (Large Language Model, LLM) 的依赖。实验评测显示，该模型在口语 GSM8K 数学基准测试上的解题准确率从基线的 27.3% 飙升至 77.1%，同时完美保持了语音的高自然度与流畅度。目前两款 9B 参数的 BF16 权重已全面开源，单张 H100 GPU 即可实现低成本私有化部署，为打造真正具备深度逻辑思考能力的原生实时语音交互智能体铺平了道路。
-
----
-
-## 核心速览与内容概要
-
-&gt; ## TL;DR / Summary
-
-人工智能研究机构 Kyutai 正式发布了开源权重模型 **Voice of Reason**。该项目基于开源模型 `GLM-4-Voice-9B` 打造，包含两款能够直接在语音交互中“边说边想”解算数学难题的原生端到端语音模型。通过将监督微调 (Supervised Fine-Tuning, SFT) 与强化学习 (Reinforcement Learning, RL) 有机结合——全程无需任何中间文本转录或外部文本大语言模型——新模型将口语版 GSM8K 数学评测基准的准确率从基准的 **27.3% 跨越式提升至 77.1%**。目前，两款 BF16 精度的模型权重文件均已在 Hugging Face 开放下载，单张 H100 GPU 即可完成本地私有化部署。
-
-&gt; Kyutai has released **Voice of Reason**, a pair of open-weight speech-to-speech models built on top of `GLM-4-Voice-9B` that solve math problems natively out loud. By combining Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL)—without any intermediate transcription steps or text LLMs—the models dramatically boost spoken GSM8K accuracy from a baseline of **27.3% up to 77.1%**. Both BF16 checkpoints are available on Hugging Face and can be self-hosted on a single H100 GPU.
-
----
-
-## 部署要求与开源资源
-
-&gt; ## Deployment &amp; Availability
-
-* **硬件要求**：两款 BF16 精度权重均可完整装入单张 H100 GPU。运行需依赖 [GLM-4-Voice 代码仓库](https://github.com/THUDM/GLM-4-Voice) 提供的语音编解码器 (Speech Tokenizer &amp; Decoder) 。
-* **开源协议**：沿用 GLM-4-Voice 的开源许可证。
-* **模型权重文件 (Checkpoints) **：
-  * [`glm-4-voice-of-reason-9b`](https://hf.co/kyutai/glm-4-voice-of-reason-9b)
-  * [`glm-4-voice-of-reason-stitch-9b`](https://hf.co/kyutai/glm-4-voice-of-reason-stitch-9b)
-
-&gt; * **Hardware Requirements:** Both BF16 checkpoints fit on a single H100 GPU. Requires the [GLM-4-Voice repo](https://github.com/THUDM/GLM-4-Voice) for its speech tokenizer and decoder.
-&gt; * **License:** Inherits the GLM-4-Voice license. 
-&gt; * **Checkpoints:** 
-&gt;   * [`glm-4-voice-of-reason-9b`](https://hf.co/kyutai/glm-4-voice-of-reason-9b)
-&gt;   * [`glm-4-voice-of-reason-stitch-9b`](https://hf.co/kyutai/glm-4-voice-of-reason-stitch-9b)
-
----
-
-## 为什么语音模型在数学推理上普遍表现不佳？
-
-&gt; ## Why Speech Models Lag on Math
-
-在复杂推理任务中，传统的级联流水线架构 (即语音转文字 $\rightarrow$ 文本大语言模型 $\rightarrow$ 文字转语音) 依然占据主导地位。然而，各个独立阶段不仅会不断累加响应延迟，还会丢失诸如语调、重音等至关重要的副语言信息 (Paralinguistic Cues) 。
-
-&gt; Traditional cascaded pipelines (speech-to-text $\rightarrow$ text LLM $\rightarrow$ text-to-speech) still dominate in reasoning tasks. However, each stage introduces latency and drops crucial paralinguistic cues like tone. 
-
-相比之下，原生语音模型必须以恒定的时间间隔持续吐出音频，以维持实时的人机对话互动感，这极大地限制了模型在幕后用于深度思考的“隐藏推理 Token”数量。在基准表现上，原始版本的 `GLM-4-Voice` 在 [GSM8K](https://arxiv.org/abs/2110.14168) 上的得分仅为 27.3%；尽管此前的 [STITCH](https://arxiv.org/abs/2507.15375) 方法通过引入推理块机制将得分提升到了 58.7%，但 Voice of Reason 真正开创了先河——它标志着强化学习首次在原生语音模型的数学逻辑推理中获得成功应用。
-
-&gt; Speech-native models must emit audio at regular intervals to maintain interactivity, strictly limiting the hidden reasoning tokens they can afford. While the base `GLM-4-Voice` scores 27.3% on [GSM8K](https://arxiv.org/abs/2110.14168), and the earlier [STITCH](https://arxiv.org/abs/2507.15375) method raised that to 58.7% using reasoning chunks, Voice of Reason marks the first successful application of Reinforcement Learning to math reasoning in speech-native models.
-
----
-
-## 模型训练机制详解
-
-&gt; ## How the Training Works
-
-在底层输出结构上，`GLM-4-Voice` 采用了序列交替机制：按固定节律**生成 13 个文本 Token，紧接着生成 26 个音频 Token**，循环往复。
-
-&gt; `GLM-4-Voice` interleaves its outputs sequentially: **13 text tokens followed by 26 audio tokens**, repeating.
-
-1. **第一阶段：监督微调 (Stage-1 SFT) **：模型在来自 [Orca-Math](https://arxiv.org/abs/2402.14830) 的 150,616 道题目上进行微调。所有题目均使用 Qwen3-235B 进行了口语化重写，并借助 Kyutai 自研的 [DSM TTS](https://arxiv.org/abs/2509.08753) 系统合成为多种说话风格的口语音频。仅靠监督微调阶段，模型的数学解题准确率就直接从 27.3% 攀升至 61.7%。
-2. **第二阶段：强化学习 (Stage-2 RL) **：对于每一个口语数学问题，模型在采样温度 0.9 下采样生成 4 个回答候选。裁判模型 (`Qwen3-235B-A22B-2507`) 在盲审机制下 (即不依赖标准参考答案) 对解码后的文本给出 0 或 1 的二元奖励 (Binary Reward) 。算法采用与 [GRPO](https://arxiv.org/abs/2402.03300) 相关的 REINFORCE 目标函数计算群组相对奖励 (Group-Relative Rewards) ，并移除了 PPO 中的截断裁剪操作与 KL 散度正则化约束。强化学习训练共调用了 16 张 H100 GPU，历经 1,500 次 RL 梯度更新完成训练。
-
-&gt; 1. **Stage-1 SFT:** Trained on 150,616 problems from [Orca-Math](https://arxiv.org/abs/2402.14830). Problems were rewritten for speech using Qwen3-235B and voiced in various styles using Kyutai's [DSM TTS](https://arxiv.org/abs/2509.08753). SFT alone lifts accuracy from 27.3% to 61.7%.
-&gt; 2. **Stage-2 RL:** For each spoken question, the model samples 4 replies at temperature 0.9. A judge (`Qwen3-235B-A22B-2507`) scores the decoded text via a binary reward (blind to the reference answer). Rewards are group-relative using a REINFORCE objective related to [GRPO](https://arxiv.org/abs/2402.03300), while dropping PPO clipping and KL regularization. Training used 16 H100 GPUs for 1,500 RL updates.</description>
-    </item>
-    <item>
-      <title>HBQ：兼顾硬件效率与精度的分层块量化架构，加速大模型推理</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-24/HBQ-兼顾硬件效率与精度的分层块量化架构-加速大模型推理/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-24/HBQ-兼顾硬件效率与精度的分层块量化架构-加速大模型推理/</guid>
-      <pubDate>Thu, 24 Sep 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 规模的不断激增，海量参数给端侧与数据中心推理带来了巨大的内存带宽与能耗负担，量化压缩技术因而成为突破这一算力瓶颈的关键钥匙。然而，传统块量化 (Block Quantization, BQ) 架构在硬件执行效率与模型输出精度之间存在着显著的矛盾：采用大分块能通过充分摊薄反量化和累加成本来大幅提升芯片吞吐，却因数值动态范围受限而导致精度严重劣化；小分块虽能保留精度，却带来了沉重的硬件开销。针对这一两难困局，入选微体系结构顶级学术会议 MICRO 2026 的学术研究提出了 **HBQ (Hierarchical Block Quantization)** 架构。该方法将大尺寸分块与超低开销的有效数 (Significand, SIG) 缩放相结合，在第二层分级中精准补偿了大分块带来的量化误差，同时完美适配了权重与激活值迥异的统计分布特性。在 28nm ASIC 专用加速芯片上的实测表明，HBQ 实现了对权重、激活值与 KV Cache 的端到端量化支持；在保持甚至超越更高位宽精度的前提下，相较于当前最先进的仅权重量化技术实现了 **2.3 倍的面积效率与 4.6 倍的能效提升**，相比经典块量化方案系统能耗降低最高达 3.3 倍，为大语言模型的高效硬件落地提供了突破性的新路径。
-
----
-
-## 📌 内容总结
-
-&gt; ## 📌 Summary
-
-**HBQ (Hierarchical Block Quantization)** 是一套兼顾硬件执行效率感知、专为大语言模型 (Large Language Model, LLM) 高精度推理打造的创新量化框架。通过深入探索 Block Quantization (BQ) 中硬件效率与计算精度之间的权衡关系，研究人员发现：采用较大的数据分块虽然能够通过摊薄反量化与数据累加的硬件开销来提升芯片效率，但往往会造成严重的模型精度下降。为破解这一两难困境，HBQ 提出了创新的分层量化策略——以大分块作为第一层基础，并引入硬件开销极低的有效数 (Significand, SIG) 缩放作为第二层量化。这种分层设计既能契合权重与激活值截然不同的数值分布特性，又能高精度地弥补大分块带来的量化误差。在 28nm ASIC 专用加速器上的实测表明，HBQ 在模型精度与硬件效率两个核心维度上，均大幅超越了当前业内最先进的 Block Quantization 方案以及仅权重量化方法。
-
-&gt; **HBQ (Hierarchical Block Quantization)** is a hardware-efficiency-aware quantization framework designed for accurate Large Language Model (LLM) inference. By exploring the trade-offs in Block Quantization (BQ), the authors identify that larger blocks improve hardware efficiency (by amortizing dequantization and accumulation costs) but hurt accuracy. HBQ resolves this dilemma by pairing large blocks with low-overhead significand (SIG) scaling for second-level quantization, effectively compensating for errors while accommodating distinct weight and activation distributions. Implemented on a 28nm ASIC accelerator, HBQ significantly outperforms state-of-the-art BQ and weight-only quantization methods in both accuracy and hardware efficiency.
-
----
-
-## 📋 论文元数据
-
-&gt; ## 📋 Metadata
-
-* **arXiv 编号：** [arXiv:2609.00450](https://arxiv.org/abs/2609.00450) [cs.LG] *(v2)*
-* **研究领域：** 机器学习 (`cs.LG`)；人工智能 (`cs.AI`)；硬件架构 (`cs.AR`)
-* **录用会议：** 第 59 届 IEEE/ACM 国际微体系结构研讨会 (**MICRO 2026**)
-* **提交日期：** 2026 年 8 月 31 日 (最后修订：2026 年 9 月 21 日)
-* **论文作者：** 
-  * Chun-Ting Chen
-  * Dongmin Han
-  * Hangyeol Mun
-  * Jake Hyun
-  * Arnab Raha
-  * Amit Agarwal
-  * Mark Anders
-  * Mohamed Abdelfattah
-  * Jae-sun Seo
-* **代码仓库：** [GitHub - SeoLabCornell/HBQ](https://github.com/SeoLabCornell/HBQ.git)
-
-&gt; * **arXiv ID:** [arXiv:2609.00450](https://arxiv.org/abs/2609.00450) [cs.LG] *(v2)*
-&gt; * **Subjects:** Machine Learning (`cs.LG`); Artificial Intelligence (`cs.AI`); Hardware Architecture (`cs.AR`)
-&gt; * **Conference Acceptance:** Accepted to the 59th IEEE/ACM International Symposium on Microarchitecture (**MICRO 2026**)
-&gt; * **Submission Date:** August 31, 2026 (Last revised: September 21, 2026)
-&gt; * **Authors:** 
-&gt;   * Chun-Ting Chen
-&gt;   * Dongmin Han
-&gt;   * Hangyeol Mun
-&gt;   * Jake Hyun
-&gt;   * Arnab Raha
-&gt;   * Amit Agarwal
-&gt;   * Mark Anders
-&gt;   * Mohamed Abdelfattah
-&gt;   * Jae-sun Seo
-&gt; * **Code Repository:** [GitHub - SeoLabCornell/HBQ](https://github.com/SeoLabCornell/HBQ.git)
-
----
-
-## 🔍 论文摘要
-
-&gt; ## 🔍 Abstract
-
-Block Quantization (BQ) 技术通过同时对神经网络的权重与激活值进行低比特压缩，能够显著降低大模型的计算与存储开销，是加速大模型推理的强力手段。然而，该技术底层的架构设计空间至今仍未被充分挖掘。通过在硬件能耗与模型精度之间进行深入的系统性探索，我们发现分块尺寸 (Block Size) 是决定整体性能最为核心的权衡要素：分块越大，反量化计算与数据累加所耗费的硬件成本被摊薄得越彻底，芯片运行效率也就越高；然而，过大的分块会导致量化误差急剧积累，从而显著损害模型输出的准确率。
-
-&gt; Block Quantization (BQ) enables efficient LLM inference by quantizing both weights and activations, but its design space remains underexplored. Through hardware-accuracy design space exploration, we identify block size as a key trade-off: larger blocks improve hardware efficiency by amortizing dequantization and accumulation costs, but degrade accuracy. 
-
-正是基于这一深刻洞察，我们提出了分层块量化架构 **HBQ (Hierarchical Block Quantization)**。该架构创造性地将粗粒度的大尺寸分块与开销极低的有效数 (Significand, SIG) 缩放机制深度融合，构建起精巧的第二级量化体系。通过 SIG 缩放微调，不仅能够精确补偿大分块粗放量化所带来的精度损失，还能自适应地契合权重与激活值各自独特的统计分布模式，实现精度与算力成本的双赢。
-
-&gt; Motivated by this insight, we propose **Hierarchical Block Quantization (HBQ)**, which combines large blocks with low-overhead significand (SIG) scaling for second-level quantization. SIG scaling effectively compensates for large-block quantization errors while accounting for distinct weight and activation distributions. 
-
-* **HBQ-A** 仅采用超紧凑的 W4A5 配置，便成功达到了 W4A16 级别的模型精度，且硬件占用面积比 NVFP4 更加精简。
-* **HBQ-E** 在精度上全面超越现有 Block Quantization 方法的同时，将硬件成本进一步大幅削减了 17%。
-
-&gt; * **HBQ-A** achieves W4A16-level accuracy with W4A5 and lower area than NVFP4.
-&gt; * **HBQ-E** further reduces hardware cost by 17% while outperforming existing BQ methods in accuracy.
-
-我们在 28nm ASIC 专用加速器上，全面实现了针对权重、激活值以及 KV Cache 的端到端 HBQ 硬件支持，并创新性地引入了部分和 (Partial-Sum) BQ 技术以大幅削减累加过程中的能耗开销。实测数据表明：在保持相当精度的前提下，HBQ 相比当前顶尖的仅权重量化方案，实现了 **2.3 倍的面积效率与 4.6 倍的能效提升**；相比先前的各路 Block Quantization 方案，更是实现了 **1.6 至 3.3 倍的系统能耗削减与 1.5 至 3 倍的推理提速**。
-
-&gt; We implement HBQ for weights, activations, and KV cache in a 28nm ASIC accelerator and introduce partial-sum BQ to reduce EMA energy. At comparable accuracy, HBQ achieves **2.3×/4.6× higher area/energy efficiency** than state-of-the-art weight-only quantization and **1.6–3.3× lower system energy with 1.5–3× speedup** over prior BQ methods.
-
----
-
-## 🔗 链接与资源 (Links &amp; Resources)
-
-&gt; ## 🔗 Links &amp; Resources
-
-* **论文全文：** [查看 PDF](https://arxiv.org/pdf/2609.00450) | [HTML 版本](https://arxiv.org/html/2609.00450v2)
-* **开源代码：** [GitHub 仓库](https://github.com/SeoLabCornell/HBQ.git)
-* **许可协议：** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-* **引用与索引：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.00450) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.00450) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.00450)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2609.00450) | [HTML Version](https://arxiv.org/html/2609.00450v2)
-&gt; * **Source Code:** [GitHub Repository](https://github.com/SeoLabCornell/HBQ.git)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-&gt; * **Citations &amp; Metrics:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2609.00450) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2609.00450) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2609.00450)</description>
-    </item>
-    <item>
-      <title>Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-23/Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-23/Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生/</guid>
-      <pubDate>Wed, 23 Sep 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，以 llama.cpp 为代表的轻量化 C/C++ 运行时凭借紧凑的 GGUF 量化格式和极高的端侧执行效率，成为了开发者在个人电脑 (尤其是 Apple Silicon Mac) 上运行大语言模型 (Large Language Model, LLM) 的首选方案；而 Hugging Face 的 Transformers 虽是学术研究、微调实验与模型定义的事实标准，但在本地量化推理方面却因 Python 运行开销和缺乏专属低比特算子支持而略显吃力。为了打破两大主流生态之间的壁垒，Transformers 官方宣布通过接入高性能算子库原生支持 GGUF 格式。该方案直接复用了针对 Apple Silicon Metal 优化的 ggml 底层计算内核，并对 Python 生成循环中的同步瓶颈进行了深度重构与优化。基准测试表明，Transformers 在运行 Qwen3.5 等前沿模型时吞吐量已极其逼近原生 llama.cpp。这一突破让开发者既能保留 PyTorch 和 Transformers 灵活易用的开发生态 (如直接挂载钩子、动态调试与全流程评估) ，又能零性能损耗地畅享轻量级 GGUF 带来的端侧推理红利。
-
----
-
-**核心摘要**：Hugging Face 旗下的 `transformers` 库现已原生支持在本地高效运行 `llama.cpp` (GGUF) 量化模型。通过复用底层的 `ggml` 算子内核 (首发通过 Metal 针对 Apple Silicon 进行深度优化) ，并大幅削减 Python 生成循环中的调度开销，开发者现在无需牺牲本地推理性能，即可直接借助熟悉的 `transformers` API 无缝加载、评估、微调以及对外提供 GGUF 权重检查点服务。
-
-&gt; **Summary:** Hugging Face `transformers` now natively supports running efficient `llama.cpp` (GGUF) quantized models locally. By reusing underlying `ggml` kernels (initially optimized for Apple Silicon via Metal) and reducing overhead in Python's generation loops, developers can now seamlessly load, evaluate, fine-tune, and serve GGUF checkpoints using familiar `transformers` APIs without sacrificing local inference performance.
-
----
-
-## 目录
-
-&gt; ## Table of Contents
-
-- [项目概述](#overview)
-- [什么是 GGUF 文件格式？](#what-is-the-gguf-file-format)
-- [在 Transformers 中加载 GGUF 模型](#load-gguf-with-transformers)
-- [通过常用接口部署 GGUF 服务](#serve-gguf-with-your-preferred-interface)
-- [对比 llama.cpp 的性能基准测试](#benchmarking-against-llamacpp)
-- [Transformers 与 llama.cpp：优势互补的两大生态](#transformers-and-llamacpp-complementary-roles)
-- [超越 GGUF：为更多架构注入 ggml 算子加速](#beyond-gguf-ggml-kernels-for-more-models)
-- [基于 Python 与 PyTorch 的本地高速推理实现](#fast-local-inference-with-python-and-pytorch)
-  - [复用 ggml 的 Metal 硬件内核](#reusing-ggmls-metal-kernels)
-  - [消除瓶颈：让 CPU 与 GPU 高效协同](#keeping-the-cpu-and-gpu-working-together)
-- [当前局限与未来规划](#current-limitations-and-next-steps)
-- [致谢](#acknowledgments)
-
-&gt; - [Overview](#overview)
-&gt; - [What is the GGUF File Format?](#what-is-the-gguf-file-format)
-&gt; - [Load GGUF with Transformers](#load-gguf-with-transformers)
-&gt; - [Serve GGUF with Your Preferred Interface](#serve-gguf-with-your-preferred-interface)
-&gt; - [Benchmarking Against llama.cpp](#benchmarking-against-llamacpp)
-&gt; - [Transformers and llama.cpp: Complementary Roles](#transformers-and-llamacpp-complementary-roles)
-&gt; - [Beyond GGUF: ggml Kernels for More Models](#beyond-gguf-ggml-kernels-for-more-models)
-&gt; - [Fast Local Inference with Python and PyTorch](#fast-local-inference-with-python-and-pytorch)
-&gt;   - [Reusing ggml's Metal Kernels](#reusing-ggmls-metal-kernels)
-&gt;   - [Keeping the CPU and GPU Working Together](#keeping-the-cpu-and-gpu-working-together)
-&gt; - [Current Limitations and Next Steps](#current-limitations-and-next-steps)
-&gt; - [Acknowledgments](#acknowledgments)
-
----
-
-## 项目概述
-
-&gt; ## Overview
-
-我们在 **transformers** 中正式加入了对 GGUF 模型的高效运行支持。现在，开发者只需借助早已烂熟于心的 transformers 常用 API，即可直接加载和运行适配个人笔记本电脑显存容量的模型检查点 (Checkpoint) 。从 Hugging Face Hub 上挑选心仪的 GGUF 模型，一行 `from_pretrained` 即可载入内存，在本地机器上立即开启模型推理与内容生成。
-
-&gt; We're adding support for running GGUF models efficiently in **transformers**, so you can use checkpoints sized for your laptop's memory through the familiar transformers APIs. Pick a GGUF from the Hub, load it with `from_pretrained`, and start generating on your own machine.
-
-如今在个人笔记本电脑上流畅运行 AI 模型已经不再是奢望，而 [llama.cpp](https://github.com/ggml-org/llama.cpp) 在这场本地化浪潮中功不可没。其轻量高效的推理引擎正是诸如 Ollama、LM Studio 和 Jan 等主流桌面端 AI 客户端背后的核心驱动力。与苹果生态的 [MLX](https://github.com/ml-explore/mlx) 等项目齐头并进，它让本地离线推理真正走入了大众的日常工作流，成为了极具实用价值的生产力工具。
-
-&gt; Running AI models on your laptop has become much easier, and [llama.cpp](https://github.com/ggml-org/llama.cpp) has been a big part of that. Its inference engine powers local AI tools such as Ollama, LM Studio, and Jan. Alongside projects like [MLX](https://github.com/ml-explore/mlx), it has helped make local inference a practical option for everyday use.
-
-由 llama.cpp 团队倾力打造的 **GGUF** 格式，早已成为本地端侧推理领域事实上的通用标准。该团队不仅在 Hugging Face Hub 的 [ggml-org 主页](https://huggingface.co/ggml-org) 下维护发布了海量量化模型检查点，同时诸如 [Unsloth](https://huggingface.co/unsloth)、[LM Studio Community](https://huggingface.co/lmstudio-community) 以及开源量化先锋 [bartowski](https://huggingface.co/bartowski) 等著名发布者，也提供了覆盖各种精度规格、开箱即用的 GGUF 检查点，方便用户根据自身设备的硬件配置按需取用。迄今为止，各类 GGUF 模型在社区中的累计下载量已达数百万次之多。
-
-&gt; **GGUF**, developed by the llama.cpp team, is a widely used format for local inference. The team also shares quantized checkpoints under [ggml-org on the Hub](https://huggingface.co/ggml-org). Publishers such as [Unsloth](https://huggingface.co/unsloth), [LM Studio Community](https://huggingface.co/lmstudio-community), and [bartowski](https://huggingface.co/bartowski) also provide ready-to-use GGUF checkpoints in a range of quantizations, so users can pick the version that fits their machine. GGUF models have been downloaded millions of times.
-
-为了将 Transformers 的运行速度提升至足以与 `llama.cpp` 原生性能平起平坐的水平，我们通过 [`kernels`](https://huggingface.co/docs/kernels/index) 算子库直接复用了 `ggml` 底层的核心计算算子，同时深度精简了 `generate` 生成循环中的调度与同步开销。在推进的第一阶段，我们重点攻关基于 Apple Silicon 平台的本地推理加速，并首批全面适配了 Qwen3.5 架构。
-
-&gt; To bring performance close to `llama.cpp`, we're reusing its underlying `ggml` kernels through the [`kernels`](https://huggingface.co/docs/kernels/index) library and reducing overhead in `generate`. Our initial focus is local inference on Apple Silicon, starting with the Qwen3.5 architecture.
-
----
-
-## 什么是 GGUF 文件格式？
-
-&gt; ## What is the GGUF File Format?
-
-[GGUF](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) 是一种将模型权重与其全部元数据 (包括分词器 Tokenizer 信息以及可选的对话模板 Chat Template) 打包在单个独立文件中的轻量封装格式。它原生支持多种不同粒度的量化级别，允许开发者以极微小的精度折损为代价，大幅降低模型的显存占用。以 `Q4_K_M` 这一经典变体为例，它巧妙采用了混合张量精度的策略：核心权重主要压缩为 4-bit 表示，而在关键敏感层张量上则维持更高的计算精度。
-
-&gt; [GGUF](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) packages model weights and metadata, including tokenizer information and an optional chat template, into a single file. It supports different quantization levels, letting you trade some precision for a smaller memory footprint. Variants such as `Q4_K_M` mix tensor precisions, using mostly 4-bit weights while keeping sensitive tensors at higher precision.
-
-以下是以 [Unsloth 维护的 Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main) 为例，不同量化规格对模型体积的具体影响对比：
-
-&gt; Here's how quantization changes the file size of [Unsloth's Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/tree/main):
-
-| GGUF 变体规格 | 文件大小 | 特性权衡 (Tradeoff) |
-| :--- | ---: | :--- |
-| `BF16` | 8.42 GB | 未量化的基准参考版本 |
-| `Q6_K` | 3.53 GB | 相比更小变体保留了更高的精度 |
-| `Q5_K_M` | 3.14 GB | 体积与精度兼得的折中优选方案 |
-| `Q4_K_M` | 2.74 GB | 本地推理最实用的黄金起点 |
-
-我们建议大多数用户可以先从 `Q4_K_M` 开始上手体验；若设备的可用内存或显存较为充裕，则可以进一步尝试 `Q5_K_M` 或 `Q6_K`。如果想深入探究不同量化类型背后的技术差异，可以参阅 [Hugging Face Hub 的 GGUF 官方文档](https://huggingface.co/docs/hub/gguf#quantization-types)。
-
-&gt; We suggest starting with `Q4_K_M`, then trying `Q5_K_M` or `Q6_K` if you have more memory available. The [Hub's GGUF documentation](https://huggingface.co/docs/hub/gguf#quantization-types) describes the available quantization types in detail.
-
----
-
-## 在 Transformers 中加载 GGUF 模型
-
-&gt; ## Load GGUF with Transformers
-
-开始上手前，你的环境需要满足以下基本要求：
-* **一台搭载 Apple Silicon 芯片的 Mac 电脑**；
-* **与官方发布的 [ggml-quantization 算子编译版本](https://huggingface.co/kernels/ggml-org/ggml-quantization) 相兼容的 PyTorch 版本** (通常涵盖最新的两个 PyTorch 正式版本) ；
-* **最新版本的 transformers 库** (当前推荐使用 main 分支代码) 以及相匹配的 `kernels` 算子库。
-
-&gt; To get started, you need:
-&gt; * **An Apple Silicon Mac**.
-&gt; * **A PyTorch version supported by the published [ggml-quantization kernel builds](https://huggingface.co/kernels/ggml-org/ggml-quantization)** (usually the two latest PyTorch releases).
-&gt; * **The latest version of transformers** (main branch for now) and a compatible version of `kernels`.
-
-```bash
-pip install -U "git+https://github.com/huggingface/transformers.git" kernels
-```
-
-加载 GGUF 模型非常简单，只需在调用 `from_pretrained` 时，将模型在 Hub 上的 `model_id` 以及目标文件名传入 `gguf_file` 参数即可：
-
-&gt; To load a GGUF model, pass its Hub `model_id` and filename as `gguf_file` to `from_pretrained`:
-
-```python
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-model_id = "unsloth/Qwen3.5-4B-GGUF"
-filename = "Qwen3.5-4B-Q4_K_M.gguf"
-
-tokenizer = AutoTokenizer.from_pretrained(model_id, gguf_file=filename)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    gguf_file=filename
-)
-```
-
-模型加载完成后，后续的所有推理与调用代码均完全沿用标准的 transformers API 接口：
-
-&gt; Everything after loading uses the standard transformers API:
-
-```python
-messages = [{"role": "user", "content": "Explain why the sky is blue in a few sentences."}]
-inputs = tokenizer.apply_chat_template(
-    messages,
-    tokenize=True,
-    add_generation_prompt=True,
-    return_dict=True,
-    return_tensors="pt",
-).to(model.device)
-
-with torch.inference_mode():
-    outputs = model.generate(**inputs, max_new_tokens=256)
-
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
-```
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; **警告**：如果没有安装兼容的量化算子内核，加载器将回退到对模型进行反量化 (Dequantization) 处理，这将显著增加内存消耗。
-&gt; 
-&gt; **Warning:** Without a compatible quantization kernel, the loader falls back to dequantizing the model and uses significantly more memory.
-
----
-
-## 通过常用接口部署 GGUF 服务
-
-&gt; ## Serve GGUF with Your Preferred Interface
-
-你可以使用 [`transformers serve`](https://huggingface.co/docs/transformers/main/en/serve-cli/serving) 命令行工具，快速对外暴露一个与 OpenAI 规范完全兼容的 API 接口服务：
-
-&gt; You can expose an OpenAI-compatible API using [`transformers serve`](https://huggingface.co/docs/transformers/main/en/serve-cli/serving):
-
-```bash
-pip install -U "transformers[serving] @ git+https://github.com/huggingface/transformers.git" kernels
-
-transformers serve "unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf"
-```
-
-随后，你可以在诸如 [Jan](https://www.jan.ai/docs/desktop/remote-models/custom-endpoint) 或 [Pi](https://pi.dev) 等第三方客户端中配置如下自定义连接参数，轻松接入并使用该本地模型：
-
-&gt; You can connect clients like [Jan](https://www.jan.ai/docs/desktop/remote-models/custom-endpoint) or [Pi](https://pi.dev) via these custom settings:
-
-| 配置项 (Setting) | 配置值 (Value) |
-| :--- | :--- |
-| Base URL | `http://localhost:8000/v1` |
-| Model ID | `unsloth/Qwen3.5-4B-GGUF:Qwen3.5-4B-Q4_K_M.gguf` |
-
----
-
-## 对比 llama.cpp 的性能基准测试
-
-&gt; ## Benchmarking against llama.cpp
-
-在本地端侧推理性能方面，我们的核心参照基准是 `llama.cpp`。在配备 **32 GB 统一内存的 MacBook Pro M2 Max** 设备上进行的实测结果显示，Transformers 所实现的生成吞吐量已极其逼近原生 `llama.cpp` 的表现。
-
-&gt; Our reference for local inference performance is `llama.cpp`. Measured on a **MacBook Pro M2 Max, 32 GB unified memory**, transformers achieves throughput remarkably close to native `llama.cpp`.
-
-[![GGUF generation throughput compared with llama.cpp](./images/cb3f00fa2c44.svg)](./images/cb3f00fa2c44.svg)
-
----
-
-## Transformers 与 llama.cpp：优势互补的两大生态
-
-&gt; ## Transformers and llama.cpp
-
-在 [GGML 与 llama.cpp 正式加入 Hugging Face 大家庭](https://huggingface.co/blog/ggml-joins-hf) 之际，我们曾阐述过二者之间优势互补的分工定位：`llama.cpp` 为本地高效推理筑牢了坚实基石，而 `transformers` 则为大模型的结构定义与生态拓展提供了核心底座。
-
-&gt; When [GGML and llama.cpp joined Hugging Face](https://huggingface.co/blog/ggml-joins-hf), we described their complementary roles: `llama.cpp` provides a foundation for local inference, while `transformers` provides a foundation for model definition. 
-
-在 PyTorch 中原生支持 GGUF，彻底解锁了许多极具生产力的高阶工作流：
-* **畅享 Python 灵活实验环境**：利用熟悉的 PyTorch 工具链，通过挂载钩子 (Hooks) 检查中间层激活值、自由定制修改前向传播 (Forward Pass) 逻辑，或是快速构建自定义网络层的原型；
-* **便捷评估 GGUF 模型质量**：直接复用现有的评估测试流水线，精准衡量量化检查点的输出质量；
-* **基于 GGUF 权重进行微调**：只需传入 `GgufConfig(dequantize=True)` 将量化权重反量化为浮点，即可无缝衔接标准的模型训练与微调 (Fine-Tuning) 工作流：
-
-&gt; GGUF support unlocks powerful workflows in PyTorch:
-&gt; * **Experiment in Python:** Inspect intermediate activations with hooks, modify forward passes, or prototype custom layers using familiar PyTorch tools.
-&gt; * **Evaluate GGUF Models:** Use your existing evaluation pipelines to measure quantized checkpoint quality.
-&gt; * **Fine-tune from GGUF:** Dequantize weights and continue with standard training workflows using `GgufConfig(dequantize=True)`:
-
-```python
-import torch
-from transformers import AutoModelForCausalLM, GgufConfig
-
-model = AutoModelForCausalLM.from_pretrained(
-    "unsloth/Qwen3.5-4B-GGUF",
-    gguf_file="Qwen3.5-4B-Q4_K_M.gguf",
-    quantization_config=GgufConfig(dequantize=True),
-    dtype=torch.bfloat16,
-)
-```
-
----
-
-## 超越 GGUF：为更多架构注入 ggml 算子加速
-
-&gt; ## Beyond GGUF: ggml Kernels for More Models
-
-更为诱人的技术前景，在于将 `ggml` 的极致性能推广到目前 `llama.cpp` 尚未官方支持的更广阔模型天地中。通过在 PyTorch 中直接调用 `ggml` 算子内核与量化方案，我们可以直接为计算机视觉、音频处理以及多模态 (Multimodal) 流水线中的各类前沿研究模型、全新网络架构及自定义变体提供显著的计算加速，再也无需苦苦等待专用独立运行时的繁琐适配。
-
-&gt; The bigger opportunity is bringing `ggml`'s performance to models that `llama.cpp` does not support. By utilizing `ggml` kernels and quantization schemes directly in PyTorch, we can accelerate operations for research models, new architectures, and custom variants across computer vision, audio, and multimodal pipelines without waiting for dedicated runtime implementations.
-
----
-
-## 基于 Python 与 PyTorch 的本地高速推理实现
-
-&gt; ## Fast Local Inference with Python and PyTorch</description>
-    </item>
-    <item>
-      <title>阿里开源 Qwen-Image-2.1：统一文生图与图像编辑的 7B 全能模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-09-22/阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-09-22/阿里开源-Qwen-Image-2.1-统一文生图与图像编辑的-7B-全能模型/</guid>
-      <pubDate>Tue, 22 Sep 2026 00:00:00 GMT</pubDate>
-      <description>在生成式 AI (Generative AI) 领域，文生图与图像编辑以往往往由相互独立的模型或检查点分别处理，既增加了部署复杂度，也限制了多任务协同的效率。阿里巴巴 Qwen 团队正式开源发布了视觉生成全能模型 **Qwen-Image-2.1**，成功将高品质文本生图与高级多图参考编辑融合至单个 7B 架构之中。该模型基于 32 层的单流扩散 Transformer (Diffusion Transformer, DiT) 设计，并结合 8B 的 Qwen3-VL 文本编码器，原生支持多达 10 张图像的多图参考编辑、涂鸦圈选等局部控制、原生透明通道 (RGBA) 输出以及超高清 2K 图像生成。凭借新颖的混合粒度注意力机制与前缀键值缓存 (Prefix KV Cache) 复用技术，Qwen-Image-2.1 在显著提升推理速度与部署经济性的同时，还在自研评测基准 Qwen-Image-Bench 上斩获 60.28 的高分，强力领跑当前开源权重图像模型，为视觉生成领域树立了兼具卓越画质与高能效的全新标杆。
-
----
-
-## 📋 内容总结
-
-&gt; ## 📋 Summary
-
-阿里巴巴 Qwen 团队正式发布了 **Qwen-Image-2.1** —— 这是一款统一了文本生成图像 (Text-to-Image) 与高阶图像编辑能力的 7B 开源权重模型。该模型采用 32 层的扩散 Transformer (Diffusion Transformer, DiT) ，并搭配 8B 的 Qwen3-VL 文本编码器，仅凭单一检查点 (Checkpoint) 即可全能支持多图参考编辑、局部精细修改、原生透明通道 (RGBA) 输出以及 2K 分辨率的高清图像生成。得益于混合粒度注意力机制 (Mixed-Granularity Attention) 与前缀键值缓存 (Prefix KV Cache) 技术，该模型在交付开源权重领域顶尖 SOTA 表现的同时，还在 Diffusers、ComfyUI、vLLM-Omni 以及 SGLang 等主流平台上大幅优化了推理速度与部署效率。
-
-&gt; Alibaba’s Qwen team has released **Qwen-Image-2.1**, a unified 7B open-weight model for text-to-image generation and advanced image editing. Featuring a 32-layer Diffusion Transformer (DiT) combined with an 8B Qwen3-VL text encoder, this single checkpoint supports multi-reference editing, local edits, native transparency (RGBA), and 2K resolution generation. Thanks to mixed-granularity attention and prefix KV caching, the model delivers state-of-the-art open-weight performance while optimizing speed and deployment efficiency across platforms like Diffusers, ComfyUI, vLLM-Omni, and SGLang.
-
----
-
-## 🚀 核心概述
-
-&gt; ## 🚀 Overview
-
-阿里巴巴 Qwen 团队推出了 [Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1)，这是一款兼具文本生图与图像编辑功能的统一视觉生成模型。其视觉生成核心组件在 32 个单流 DiT 层中容纳了 7B 参数，仅需一个模型权重检查点，便能全面涵盖文生图、多参考图编辑、局部针对性修改以及带透明通道的 RGBA 输出等多种生成任务。
-
-&gt; Alibaba’s Qwen team has introduced [Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1), a unified text-to-image generation and image editing model. Its visual generation component packs 7B parameters across 32 single-stream DiT layers, with a single checkpoint covering text-to-image, multi-reference editing, local edits, and transparent RGBA output. 
-
-**该模型目前可以直接部署吗？** 对于学术研究与效果评估而言，答案是肯定的。模型发布首日 (Day 0) 便已全面获得 Diffusers、ComfyUI、vLLM-Omni、SGLang 和 LightX2V 等生态工具与框架的开箱即用支持；若计划将其投入商业化生产环境部署，则需单独获取 Qwen 官方的商业许可授权。
-
-&gt; **Is it deployable?** Yes, for research and evaluation. Day 0 support covers Diffusers, ComfyUI, vLLM-Omni, SGLang, and LightX2V. Commercial deployment requires a separate license from Qwen.
-
----
-
-## 📉 轻量进化：从 20B 到 7B
-
-&gt; ## 📉 From 20B to 7B
-
-早先于 2025 年 8 月以 Apache 2.0 许可证开源的初代 [Qwen-Image](https://huggingface.co/Qwen/Qwen-Image) 是一个参数量达 20B 的大模型，且其图像编辑功能独立存放在另一个专门的检查点中。而新一代 Qwen-Image-2.1 将这两项重任合二为一，模型体积仅为初代的约三分之一，使其成为当前 Qwen-Image 家族中综合表现最为均衡、性价比最突出的代表之作。
-
-&gt; The original [Qwen-Image](https://huggingface.co/Qwen/Qwen-Image) shipped in August 2025 as a 20B model under Apache 2.0, where image editing lived in a separate checkpoint. Qwen-Image-2.1 folds both jobs into one model at about a third of the size, making it the most balanced and cost-effective model in the Qwen-Image series. 
-
-*关于显存与算力规划的说明：* 7B 这一参数规模仅特指负责去噪生成的扩散 Transformer 主体。在实际运行流水线 (Pipeline) 时，系统还会同时加载一个 8B 参数的 Qwen3-VL 文本编码器。
-
-&gt; *Note on capacity planning:* The 7B figure covers the diffusion transformer only. The pipeline also loads an 8B Qwen3-VL encoder.
-
----
-
-## ⚙️ 核心架构设计
-
-&gt; ## ⚙️ Architecture
-
-官方 [GitHub 代码仓库](https://github.com/QwenLM/Qwen-Image-2.1#architecture) 详细列出了模型的 4 大核心构成组件：
-
-&gt; The [GitHub Repo](https://github.com/QwenLM/Qwen-Image-2.1#architecture) lists 4 core components:
-
-* **Transformer：** 32 层、7B 参数，采用带块因果注意力 (Block-Causal Attention) 的单流设计。
-* **文本编码器 (Text Encoder)：** Qwen3-VL 8B，负责将文本提示词指令与作为条件的参考图像编码并融合为统一的多模态表征。
-* **变分自编码器 (VAE)：** 64 通道 RGBA 自编码器，具备 16 倍空间压缩率并原生支持透明通道。
-* **调度器 (Scheduler)：** 流匹配 (Flow Matching) 框架，结合欧拉离散调度 (Euler Discrete Scheduling) 与动态时间步平移 (Dynamic Shifting) 策略。
-
-&gt; * **Transformer:** 32 layers, 7B parameters, single-stream design with block-causal attention.
-&gt; * **Text encoder:** Qwen3-VL 8B, which encodes text instructions and condition images into a unified representation.
-&gt; * **VAE:** 64-channel RGBA autoencoder with 16x spatial compression and native transparency.
-&gt; * **Scheduler:** Flow Matching with Euler discrete scheduling and dynamic shifting.</description>
     </item>
   </channel>
 </rss>
