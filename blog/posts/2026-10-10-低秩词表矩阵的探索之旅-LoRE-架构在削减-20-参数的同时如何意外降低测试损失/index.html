@@ -1,0 +1,1234 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-10-%E4%BD%8E%E7%A7%A9%E8%AF%8D%E8%A1%A8%E7%9F%A9%E9%98%B5%E7%9A%84%E6%8E%A2%E7%B4%A2%E4%B9%8B%E6%97%85-LoRE-%E6%9E%B6%E6%9E%84%E5%9C%A8%E5%89%8A%E5%87%8F-20-%E5%8F%82%E6%95%B0%E7%9A%84%E5%90%8C%E6%97%B6%E5%A6%82%E4%BD%95%E6%84%8F%E5%A4%96%E9%99%8D%E4%BD%8E%E6%B5%8B%E8%AF%95%E6%8D%9F%E5%A4%B1/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>低秩词表矩阵的探索之旅：LoRE 架构在削减 20% 参数的同时如何意外降低测试损失 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#lore-20" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              低秩词表矩阵的探索之旅：LoRE 架构在削减 20% 参数的同时如何意外降低测试损失
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="lore-20">低秩词表矩阵的探索之旅：LoRE 架构在削减 20% 参数的同时如何意外降低测试损失</h1>
+<blockquote>
+<h1 id="fun-with-low-rank-vocab-matrices-and-a-bonus-test-loss-reduction">Fun with Low-Rank Vocab Matrices (and a Bonus Test Loss Reduction?)</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在以 GPT-2 为代表的中小规模语言模型中，由于网络隐藏层维度与深度较为适中，负责处理输入和输出的词表嵌入矩阵通常会吞噬掉整个模型高达 50% 的参数配额，构成了极为沉重的内存与算力负担。受 ALBERT 嵌入分解与低秩微调 (LoRA) 思想的启发，这项工程探索提出了 LoRE (Low-Rank Embeddings) 架构，尝试将词表输入嵌入层与输出分类头矩阵分解为低秩瓶颈矩阵 (<span class="arithmatex">\(r=128\)</span>) ，以期大幅精简参数并加速训练。在基于 8 张 A100 GPU、涵盖 11 轮训练运行的严格消融实验中，作者发现了一个出人意料的现象：仅在输入端应用 LoRE (Input-only LoRE) 时，不仅成功砍掉了约 3,200 万参数 (相当于整体参数削减近 20%) ，而且在多个随机数种子下均稳定超越了基线模型，意外降低了测试损失 (Test Loss) ；而输出分类头分解则会引入严重的表达瓶颈。这一发现颠覆了“压缩嵌入矩阵必然损害表征能力”的传统直觉，为中小规模垂直专用模型和端侧模型的极致轻量化设计提供了极具工程价值的实践范式与非对称设计启示。</p>
+<hr />
+<h2 id="_2">执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>受到近期关于词表嵌入矩阵分解 (Factorised Embeddings) 讨论的启发——这是一种类似于将 LoRA 思想应用于词表矩阵以削减参数总量的技巧，此前在 ALBERT 和 Maba 等模型架构中已有实践——本文深入探索了使用低秩瓶颈结构全面替换全秩 (Full-Rank) 输入嵌入层与输出分类头的可行性，并将这一改进方案命名为 <strong>LoRE</strong> (Low-Rank Embeddings) 。</p>
+<blockquote>
+<p>Inspired by a discussion on factorised embeddings (a trick similar to LoRA applied to vocabulary matrices to reduce parameter counts, as seen in ALBERT and Maba), this post explores replacing full-rank input embeddings and output heads with low-rank bottlenecks—dubbed <strong>LoRE</strong> (Low-Rank Embeddings). </p>
+</blockquote>
+<p>对于千亿、万亿参数的超大规模模型而言，词表嵌入层所占的参数比例微乎其微；然而在中小规模模型中（例如拥有 1.63 亿 / 163M 参数的 GPT-2 架构），多达 50% 的模型参数竟然仅仅耗费在负责数据的“读入与输出”上。通过将这些庞大的词表矩阵分解为秩为 <span class="arithmatex">\(r=128\)</span> 的两个低秩因子矩阵 (<span class="arithmatex">\(A\)</span> 与 <span class="arithmatex">\(B\)</span>) ，我们能够大幅压缩参数总量，并显著加快训练迭代速度。</p>
+<blockquote>
+<p>While large models spend a tiny fraction of parameters on embeddings, smaller models (like 163M parameter GPT-2 architectures) spend up to 50% of their parameters just getting data in and out. By factorizing these matrices into low-rank factors (<span class="arithmatex">\(A\)</span> and <span class="arithmatex">\(B\)</span>) with rank <span class="arithmatex">\(r=128\)</span>, we can drastically reduce parameter counts and speed up training. </p>
+</blockquote>
+<p>在 8 张 A100 GPU 上开展了涵盖 11 轮独立训练的系统性消融实验后，研究团队得出了以下几项核心发现：</p>
+<blockquote>
+<p>Through rigorous ablation studies across 11 training runs using 8x A100 GPUs, the following key findings emerged:</p>
+</blockquote>
+<ol>
+<li><strong>仅在输入端使用 LoRE (Input-only LoRE) ：</strong> 在成功削减约 3,200 万 (~32M) 参数的同时，竟然意外地<strong>改善</strong>了最终的测试损失 (Test Loss) 。</li>
+<li><strong>在输出分类头使用 LoRE (Output-head LoRE) ：</strong> 始终会导致验证集测试损失不可逆地出现上升。</li>
+<li><strong>精妙初始化策略 (Smart Initialisation) ：</strong> 调整瓶颈投影矩阵的方差尺度会显著影响训练初期的收敛动态与起始损失；但令人称奇的是，在这些具体的实验运行中，被数学理论证明“存在偏差”的初始设置反而在下游测试损失上取得了更优的表现。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Input-only LoRE</strong> unexpectedly <em>improved</em> test loss while reducing the parameter count by ~32M.</li>
+<li><strong>Output-head LoRE</strong> caused a consistent increase in validation test loss.</li>
+<li><strong>Smart initialisation</strong> (scaling bottleneck projection variance) heavily impacts training dynamics and initial loss, though incorrect initialisations surprisingly led to better downstream test loss in these specific runs.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="_3">低秩因子：理论基础与工程实现</h2>
+<blockquote>
+<h2 id="low-rank-factors-theory-and-implementation">Low-Rank Factors: Theory and Implementation</h2>
+</blockquote>
+<p>在传统的神经网络中，庞大的权重矩阵可以通过矩阵分解 (Matrix Factorisation) 技术进行瘦身。假设存在一个维度为 <span class="arithmatex">\(m \times n\)</span> 的权重矩阵 <span class="arithmatex">\(W\)</span>，我们能够将其分解为一个 <span class="arithmatex">\(m \times r\)</span> 的矩阵 <span class="arithmatex">\(A\)</span> 与一个 <span class="arithmatex">\(r \times n\)</span> 的矩阵 <span class="arithmatex">\(B\)</span>，其中 <span class="arithmatex">\(r\)</span> 代表分解后的<strong>秩</strong> (Rank) 。只要 <span class="arithmatex">\(r\)</span> 取得足够小，矩阵 <span class="arithmatex">\(A\)</span> 与 <span class="arithmatex">\(B\)</span> 所包含的参数总量就会远远少于原始的全秩矩阵。</p>
+<blockquote>
+<p>Standard neural network matrices can be downscaled using matrix factorisation. Given an <span class="arithmatex">\(m \times n\)</span> weight matrix <span class="arithmatex">\(W\)</span>, we can factorise it into an <span class="arithmatex">\(m \times r\)</span> matrix <span class="arithmatex">\(A\)</span> and an <span class="arithmatex">\(r \times n\)</span> matrix <span class="arithmatex">\(B\)</span>, where <span class="arithmatex">\(r\)</span> is the <strong>rank</strong> of the factorisation. If <span class="arithmatex">\(r\)</span> is sufficiently small, the combination of <span class="arithmatex">\(A\)</span> and <span class="arithmatex">\(B\)</span> contains far fewer parameters than the full matrix.</p>
+</blockquote>
+<p><img alt="LoRE 矩阵低秩分解原理" src=".././images/4054e9e718cc.svg" /></p>
+<p>以 GPT-2 Small 模型为例：</p>
+<blockquote>
+<p>For a GPT-2 small model:</p>
+</blockquote>
+<ul>
+<li><strong>全秩输出分类头 (Output Head, Full) ：</strong> <span class="arithmatex">\(768 \times 50,257 = 38,597,376\)</span> 个参数。</li>
+<li><strong>低秩输出分类头 (Output Head, LoRE, <span class="arithmatex">\(r=128\)</span>) ：</strong> <span class="arithmatex">\((768 \times 128) + (50,257 \times 128) = 6,531,200\)</span> 个参数 (参数量缩减为原本的约六分之一) 。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Output Head (Full):</strong> <span class="arithmatex">\(768 \times 50,257 = 38,597,376\)</span> parameters.</li>
+<li><strong>Output Head (LoRE, <span class="arithmatex">\(r=128\)</span>):</strong> <span class="arithmatex">\((768 \times 128) + (50,257 \times 128) = 6,531,200\)</span> parameters (~6x smaller).</li>
+</ul>
+</blockquote>
+<p>得益于矩阵乘法的结合律 (<span class="arithmatex">\(Z = X(AB) = (XA)B\)</span>) ，在 PyTorch 中实现这一结构非常直接简便：</p>
+<blockquote>
+<p>Thanks to the associativity of matrix multiplication (<span class="arithmatex">\(Z = X(AB) = (XA)B\)</span>), implementation in PyTorch is straightforward:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">out_head_A</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">d_emb</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">out_head_B</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">vocab_size</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="n">intermediate</span> <span class="o">=</span> <span class="n">out_head_A</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+<span class="n">logits</span> <span class="o">=</span> <span class="n">out_head_B</span><span class="p">(</span><span class="n">intermediate</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="lore">深入探索 LoRE</h2>
+<blockquote>
+<h2 id="introducing-lore">Introducing LoRE</h2>
+</blockquote>
+<p>作者在 PyTorch 训练代码库中集成了 LoRE 的配置选项，支持对输入嵌入层和输出分类头进行独立的开关控制，同时引入了名为 <code>smart_initialize</code> 的控制标志，用于调控内部瓶颈投影矩阵的方差尺度 (<span class="arithmatex">\(std = 1.0 / \sqrt{r}\)</span>) 。</p>
+<blockquote>
+<p>I implemented LoRE configurations into my PyTorch training codebase, allowing independent toggling for input embeddings and output heads, alongside a <code>smart_initialize</code> flag to control the variance of the inner projection matrices (<span class="arithmatex">\(std = 1.0 / \sqrt{r}\)</span>).</p>
+</blockquote>
+<h3 id="_4">第一批训练运行实验</h3>
+<blockquote>
+<h3 id="training-runs-batch-1">Training Runs: Batch 1</h3>
+</blockquote>
+<p>最初的测试将未做分解的基线模型与采用普通初始化及智能初始化的 LoRE 模型进行了对比：</p>
+<blockquote>
+<p>Initial tests compared a baseline against ordinary and smart-initialized LoRE models:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">训练耗时 (秒)</th>
+<th style="text-align: left;">初始训练损失</th>
+<th style="text-align: left;">最终训练损失</th>
+<th style="text-align: left;">测试损失</th>
+<th style="text-align: left;">成本 (美元)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-1-baseline-disabled"><code>8xa100m40-lore-1-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">9,339</td>
+<td style="text-align: left;">10.992</td>
+<td style="text-align: left;">3.579</td>
+<td style="text-align: left;">3.599611</td>
+<td style="text-align: left;">43.96</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-2-both-ordinary-init"><code>8xa100m40-lore-2-both-ordinary-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">8,057</td>
+<td style="text-align: left;">10.89</td>
+<td style="text-align: left;">3.703</td>
+<td style="text-align: left;">3.723328</td>
+<td style="text-align: left;">38.55</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-3-both-smart-init"><code>8xa100m40-lore-3-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">~8,100</td>
+<td style="text-align: left;">11.865</td>
+<td style="text-align: left;">未知 (unknown)</td>
+<td style="text-align: left;">3.671585</td>
+<td style="text-align: left;">41.44</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Training Time (s)</th>
+<th style="text-align: left;">Initial Training Loss</th>
+<th style="text-align: left;">Final Training Loss</th>
+<th style="text-align: left;">Test Loss</th>
+<th style="text-align: left;">Cost (US$)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-1-baseline-disabled"><code>8xa100m40-lore-1-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">9,339</td>
+<td style="text-align: left;">10.992</td>
+<td style="text-align: left;">3.579</td>
+<td style="text-align: left;">3.599611</td>
+<td style="text-align: left;">43.96</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-2-both-ordinary-init"><code>8xa100m40-lore-2-both-ordinary-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">8,057</td>
+<td style="text-align: left;">10.89</td>
+<td style="text-align: left;">3.703</td>
+<td style="text-align: left;">3.723328</td>
+<td style="text-align: left;">38.55</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-3-both-smart-init"><code>8xa100m40-lore-3-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">~8,100</td>
+<td style="text-align: left;">11.865</td>
+<td style="text-align: left;">unknown</td>
+<td style="text-align: left;">3.671585</td>
+<td style="text-align: left;">41.44</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">消融实验：输入层与输出层对比</h3>
+<blockquote>
+<h3 id="ablation-runs-input-vs-output">Ablation Runs: Input vs. Output</h3>
+</blockquote>
+<p>测试仅在单侧启用 LoRE 的配置带来了令人吃惊的发现：相较于基线模型，<strong>仅在输入端使用 LoRE 反而降低了测试损失</strong>。</p>
+<blockquote>
+<p>Testing single-side LoRE configurations yielded a startling result: <strong>input-only LoRE improved test loss</strong> compared to the baseline.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">训练耗时 (秒)</th>
+<th style="text-align: left;">初始训练损失</th>
+<th style="text-align: left;">最终训练损失</th>
+<th style="text-align: left;">测试损失</th>
+<th style="text-align: left;">成本 (美元)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-4-input-only"><code>8xa100m40-lore-4-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">9,225</td>
+<td style="text-align: left;">10.978</td>
+<td style="text-align: left;">3.505</td>
+<td style="text-align: left;"><strong>3.526610</strong></td>
+<td style="text-align: left;">44.83</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-5-output-only"><code>8xa100m40-lore-5-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">8,202</td>
+<td style="text-align: left;">11.817</td>
+<td style="text-align: left;">3.717</td>
+<td style="text-align: left;">3.737128</td>
+<td style="text-align: left;">41.59</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Training Time (s)</th>
+<th style="text-align: left;">Initial Training Loss</th>
+<th style="text-align: left;">Final Training Loss</th>
+<th style="text-align: left;">Test Loss</th>
+<th style="text-align: left;">Cost (US$)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-4-input-only"><code>8xa100m40-lore-4-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">9,225</td>
+<td style="text-align: left;">10.978</td>
+<td style="text-align: left;">3.505</td>
+<td style="text-align: left;"><strong>3.526610</strong></td>
+<td style="text-align: left;">44.83</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-5-output-only"><code>8xa100m40-lore-5-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">8,202</td>
+<td style="text-align: left;">11.817</td>
+<td style="text-align: left;">3.717</td>
+<td style="text-align: left;">3.737128</td>
+<td style="text-align: left;">41.59</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_6">复现验证与随机数种子测试</h2>
+<blockquote>
+<h2 id="replication-and-seed-testing">Replication and Seed Testing</h2>
+</blockquote>
+<p>为了核实仅在输入端使用 LoRE 带来的性能提升是否只是随机初始化带来的侥幸巧合，作者使用了一个全新的随机数种子 (<code>123</code>) 训练了第二批模型。</p>
+<blockquote>
+<p>To verify whether the input-only LoRE improvement was a fluke of random initialisation, a second batch of models was trained using a new random seed (<code>123</code>).</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">训练耗时 (秒)</th>
+<th style="text-align: left;">初始训练损失</th>
+<th style="text-align: left;">最终训练损失</th>
+<th style="text-align: left;">测试损失</th>
+<th style="text-align: left;">成本 (美元)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-6-new-seed-baseline-disabled"><code>8xa100m40-lore-6-new-seed-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">9,409</td>
+<td style="text-align: left;">11.006</td>
+<td style="text-align: left;">3.577</td>
+<td style="text-align: left;">3.597584</td>
+<td style="text-align: left;">45.03</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-7-new-seed-input-only"><code>8xa100m40-lore-7-new-seed-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">9,163</td>
+<td style="text-align: left;">10.989</td>
+<td style="text-align: left;">3.563</td>
+<td style="text-align: left;"><strong>3.584511</strong></td>
+<td style="text-align: left;">43.03</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-8-new-seed-both-smart-init"><code>8xa100m40-lore-8-new-seed-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">8,102</td>
+<td style="text-align: left;">11.829</td>
+<td style="text-align: left;">3.678</td>
+<td style="text-align: left;">3.698644</td>
+<td style="text-align: left;">37.91</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-9-new-seed-output-only"><code>8xa100m40-lore-9-new-seed-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">8,192</td>
+<td style="text-align: left;">11.806</td>
+<td style="text-align: left;">3.693</td>
+<td style="text-align: left;">3.712537</td>
+<td style="text-align: left;">38.32</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Training Time (s)</th>
+<th style="text-align: left;">Initial Training Loss</th>
+<th style="text-align: left;">Final Training Loss</th>
+<th style="text-align: left;">Test Loss</th>
+<th style="text-align: left;">Cost (US$)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-6-new-seed-baseline-disabled"><code>8xa100m40-lore-6-new-seed-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">9,409</td>
+<td style="text-align: left;">11.006</td>
+<td style="text-align: left;">3.577</td>
+<td style="text-align: left;">3.597584</td>
+<td style="text-align: left;">45.03</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-7-new-seed-input-only"><code>8xa100m40-lore-7-new-seed-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">9,163</td>
+<td style="text-align: left;">10.989</td>
+<td style="text-align: left;">3.563</td>
+<td style="text-align: left;"><strong>3.584511</strong></td>
+<td style="text-align: left;">43.03</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-8-new-seed-both-smart-init"><code>8xa100m40-lore-8-new-seed-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">8,102</td>
+<td style="text-align: left;">11.829</td>
+<td style="text-align: left;">3.678</td>
+<td style="text-align: left;">3.698644</td>
+<td style="text-align: left;">37.91</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-9-new-seed-output-only"><code>8xa100m40-lore-9-new-seed-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">8,192</td>
+<td style="text-align: left;">11.806</td>
+<td style="text-align: left;">3.693</td>
+<td style="text-align: left;">3.712537</td>
+<td style="text-align: left;">38.32</td>
+</tr>
+</tbody>
+</table>
+<p>第二批实验再次证实了这一趋势：仅在输入端使用 LoRE 不仅能够大幅削减参数规模，而且在测试损失上稳定且持续地优于基线模型。</p>
+<blockquote>
+<p>The second batch confirmed the trend: input-only LoRE consistently outperformed the baseline model in test loss while slashing parameter requirements.</p>
+</blockquote>
+<hr />
+<h2 id="_7">修正智能初始化的数学推导</h2>
+<blockquote>
+<h2 id="correcting-the-smart-initialisation-math">Correcting the Smart Initialisation Math</h2>
+</blockquote>
+<p>在撰写实验总结的过程中，借助 AI 的细致分析，作者在 <code>smart_initialize</code> 针对矩阵权重的初始化逻辑中发现了一个隐蔽的 Bug。对于一个分解为 <span class="arithmatex">\(A\)</span> 与 <span class="arithmatex">\(B\)</span> 的输出分类头矩阵（满足 <span class="arithmatex">\(W' = AB\)</span>），若要通过 <span class="arithmatex">\(std = 1.0 / \sqrt{r}\)</span> 缩放方差，该操作必须施加在<strong>第二个</strong>矩阵 (<span class="arithmatex">\(B\)</span>) 上，而非第一个矩阵 (<span class="arithmatex">\(A\)</span>) 。</p>
+<blockquote>
+<p>During write-up, AI analysis revealed a subtle bug in how <code>smart_initialize</code> targeted the matrix weights. For an output head matrix factorized into <span class="arithmatex">\(A\)</span> and <span class="arithmatex">\(B\)</span> (where <span class="arithmatex">\(W' = AB\)</span>), scaling variance via <span class="arithmatex">\(std = 1.0 / \sqrt{r}\)</span> must be applied to the <strong>second</strong> matrix (<span class="arithmatex">\(B\)</span>), not the first.</p>
+</blockquote>
+<p>从数学角度推导，为了确保分解后矩阵的方差与标准线性层保持严格一致，需要满足如下条件：</p>
+<blockquote>
+<p>Mathematically, to ensure the variance of the factorised matrix matches a standard linear layer, we require:</p>
+</blockquote>
+<div class="arithmatex">\[\text{Var}(W') = r \cdot \sigma_A^2 \cdot \sigma_B^2 = \sigma_A^2 \implies \sigma_B^2 = \frac{1}{r}\]</div>
+<p>当这一数学逻辑得到修正后，初始阶段的损失激增现象确实消失了；然而令人啼笑皆非的是，与最初那个“存在错误”的初始化脚本相比，下游最终的测试损失反而出现了恶化。</p>
+<blockquote>
+<p>When corrected, initial loss spikes disappeared, but paradoxically, downstream test loss worsened compared to the original "incorrect" initialisation script.</p>
+</blockquote>
+<hr />
+<h2 id="_8">完整实验结果汇总</h2>
+<blockquote>
+<h2 id="comprehensive-results-summary">Comprehensive Results Summary</h2>
+</blockquote>
+<p>按所有训练运行的最终测试损失升序排列：</p>
+<blockquote>
+<p>Sorted by test loss across all runs:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">输入端 LoRE</th>
+<th style="text-align: left;">输出端 LoRE</th>
+<th style="text-align: left;">种子</th>
+<th style="text-align: left;">智能初始化</th>
+<th style="text-align: left;">初始训练损失</th>
+<th style="text-align: left;">测试损失</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-4-input-only"><code>8xa100m40-lore-4-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">10.978</td>
+<td style="text-align: left;"><strong>3.526610</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-7-new-seed-input-only"><code>8xa100m40-lore-7-new-seed-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">10.989</td>
+<td style="text-align: left;"><strong>3.584511</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-6-new-seed-baseline-disabled"><code>8xa100m40-lore-6-new-seed-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">11.006</td>
+<td style="text-align: left;">3.597584</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-1-baseline-disabled"><code>8xa100m40-lore-1-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">10.992</td>
+<td style="text-align: left;">3.599611</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-3-both-smart-init"><code>8xa100m40-lore-3-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">11.865</td>
+<td style="text-align: left;">3.671585</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-8-new-seed-both-smart-init"><code>8xa100m40-lore-8-new-seed-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">11.829</td>
+<td style="text-align: left;">3.698644</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-9-new-seed-output-only"><code>8xa100m40-lore-9-new-seed-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">11.806</td>
+<td style="text-align: left;">3.712537</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-2-both-ordinary-init"><code>8xa100m40-lore-2-both-ordinary-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">无 (none)</td>
+<td style="text-align: left;">10.89</td>
+<td style="text-align: left;">3.723328</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-5-output-only"><code>8xa100m40-lore-5-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">原始版本 (original)</td>
+<td style="text-align: left;">11.817</td>
+<td style="text-align: left;">3.737128</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-10-both-corrected-smart-init"><code>8xa100m40-lore-10-both-corrected-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">修正版本 (corrected)</td>
+<td style="text-align: left;">10.987</td>
+<td style="text-align: left;">3.741209</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-11-output-only-corrected-smart-init"><code>8xa100m40-lore-11-output-only-corrected-smart-init</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">否 (no)</td>
+<td style="text-align: left;">是 (yes)</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">修正版本 (corrected)</td>
+<td style="text-align: left;">10.986</td>
+<td style="text-align: left;">3.785209</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Parameters</th>
+<th style="text-align: left;">Input LoRE</th>
+<th style="text-align: left;">Output LoRE</th>
+<th style="text-align: left;">Seed</th>
+<th style="text-align: left;">Smart Init</th>
+<th style="text-align: left;">Initial Training Loss</th>
+<th style="text-align: left;">Test Loss</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-4-input-only"><code>8xa100m40-lore-4-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">10.978</td>
+<td style="text-align: left;"><strong>3.526610</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-7-new-seed-input-only"><code>8xa100m40-lore-7-new-seed-input-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">10.989</td>
+<td style="text-align: left;"><strong>3.584511</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-6-new-seed-baseline-disabled"><code>8xa100m40-lore-6-new-seed-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">11.006</td>
+<td style="text-align: left;">3.597584</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-1-baseline-disabled"><code>8xa100m40-lore-1-baseline-disabled</code></a></td>
+<td style="text-align: left;">163,009,536</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">10.992</td>
+<td style="text-align: left;">3.599611</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-3-both-smart-init"><code>8xa100m40-lore-3-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">11.865</td>
+<td style="text-align: left;">3.671585</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-8-new-seed-both-smart-init"><code>8xa100m40-lore-8-new-seed-both-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">11.829</td>
+<td style="text-align: left;">3.698644</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-9-new-seed-output-only"><code>8xa100m40-lore-9-new-seed-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">123</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">11.806</td>
+<td style="text-align: left;">3.712537</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-2-both-ordinary-init"><code>8xa100m40-lore-2-both-ordinary-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">none</td>
+<td style="text-align: left;">10.89</td>
+<td style="text-align: left;">3.723328</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-5-output-only"><code>8xa100m40-lore-5-output-only</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">original</td>
+<td style="text-align: left;">11.817</td>
+<td style="text-align: left;">3.737128</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-10-both-corrected-smart-init"><code>8xa100m40-lore-10-both-corrected-smart-init</code></a></td>
+<td style="text-align: left;">98,877,184</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">corrected</td>
+<td style="text-align: left;">10.987</td>
+<td style="text-align: left;">3.741209</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-lore-11-output-only-corrected-smart-init"><code>8xa100m40-lore-11-output-only-corrected-smart-init</code></a></td>
+<td style="text-align: left;">130,943,360</td>
+<td style="text-align: left;">no</td>
+<td style="text-align: left;">yes</td>
+<td style="text-align: left;">42</td>
+<td style="text-align: left;">corrected</td>
+<td style="text-align: left;">10.986</td>
+<td style="text-align: left;">3.785209</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_9">结论与未来展望</h2>
+<blockquote>
+<h2 id="conclusions-future-work">Conclusions &amp; Future Work</h2>
+</blockquote>
+<ol>
+<li><strong>仅在输入端使用 LoRE 极具实用前景 (Input-Only LoRE is Promising) ：</strong> 它在成功削减约 20% 参数的同时，在多个随机数种子下均能维持甚至小幅改善验证集测试损失。</li>
+<li><strong>输出分类头瓶颈会带来性能代价 (Output Head Bottlenecks Cost Performance) ：</strong> 对输出分类头进行低秩分解会不可避免地引入容量惩罚 (Capacity Penalty) 并劣化测试损失，这很可能是受到 Softmax 瓶颈效应 (Softmax Bottleneck) 的制约。</li>
+<li><strong>扩展性边界 (Scaling Limits) ：</strong> 虽然 LoRE 在词表参数占据主导地位的中小规模模型中效果拔群，但对于万亿级参数的前沿超大规模模型而言，词表参数占比甚至不足 0.1%，其实用收益会迅速边际递减。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Input-Only LoRE is Promising:</strong> It successfully reduced parameter counts by ~20% while maintaining or slightly improving validation test loss across multiple seeds.</li>
+<li><strong>Output Head Bottlenecks Cost Performance:</strong> Factorising the output head consistently introduces a capacity penalty that degrades test loss, likely compounded by softmax bottleneck limitations.</li>
+<li><strong>Scaling Limits:</strong> While LoRE is extremely effective for small-to-medium models where vocabularies dominate parameter counts, its utility diminishes rapidly on massive frontier models (e.g., representing &lt;0.1% of parameters in multi-trillion parameter architectures).</li>
+</ol>
+</blockquote>
+<p>未来的后续实验将重点聚焦于<strong>等参数量</strong> (Isoparameter) 评测（即将削减词表省下来的参数重新投资到更深的 Transformer 网络层中），并评估该架构在更大模型尺寸下的扩展特性。</p>
+<blockquote>
+<p>Future experiments should focus on <strong>isoparameter</strong> tests (reinvesting saved parameters into deeper transformer layers) and evaluating scaling behavior across larger model sizes.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">LoRE</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">矩阵分解</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">低秩表示</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型轻量化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">嵌入层优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GPT-2</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">研究解读</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
