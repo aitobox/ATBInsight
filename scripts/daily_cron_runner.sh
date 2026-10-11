@@ -65,7 +65,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running skill: ${SKILL_PATH}" >> "${LOG_FIL
     --effort high   \
     --print-timeout 180m   \
     --output-format stream-json   \
-    -p "Use skill skills/daily-publisher/SKILL.md to fetch recent 30 days good article and publish" \
+    -p "Read and execute the skill defined at /opt/aitobox/ATBInsight/skills/daily-publisher/SKILL.md to fetch recent 1 days good article and publish" \
      >> "${LOG_FILE}" 2>&1
 
 EXIT_CODE=$?
