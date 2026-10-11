@@ -61,7 +61,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running skill: ${SKILL_PATH}" >> "${LOG_FIL
 "${AGY_BIN}" \
     --add-dir /opt/aitobox/ATBInsight \
     --dangerously-skip-permissions   \
-    --model gemini-3.6-flash-high   \
+    --model gemini-3.8-flash-high   \
     --effort high   \
     --print-timeout 180m   \
     --output-format stream-json   \

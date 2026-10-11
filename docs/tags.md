@@ -1391,6 +1391,10 @@ title: 标签浏览
 
 - [Docker Agent 实战指南：像运行容器一样声明与编排 AI 智能体](blog/posts/2026-10-09-Docker-Agent-实战指南-像运行容器一样声明与编排-AI-智能体.md)
 
+## Drex
+
+- [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
+
 ## Dropout
 
 - [别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理](blog/posts/2026-09-08-别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理.md)
@@ -7500,6 +7504,7 @@ title: 标签浏览
 
 - [锚定正则化直接最小二乘法（ARDLS）：整合既有优先级算子以实现层次分析法中的权重提取](blog/posts/2026-08-25-锚定正则化直接最小二乘法（ARDLS）：整合既有优先级算子以实现层次分析法中的权重提取.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
+- [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 
 ## 决策泄漏
 
@@ -12646,6 +12651,7 @@ title: 标签浏览
 - [Perplexity 发布 pplx-embed-v2-context-9b-preview：兼顾直接答案与支撑证据的上下文向量检索模型](blog/posts/2026-10-02-Perplexity-发布-pplx-embed-v2-context-9b-preview-兼顾直接答案与支撑证据的上下文向量检索模型.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+- [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 
 ## 开源治理
 
@@ -15473,6 +15479,7 @@ title: 标签浏览
 - [超越提示词：大语言模型工具智能体外挂框架的度量与优化](blog/posts/2026-09-10-超越提示词：大语言模型工具智能体外挂框架的度量与优化.md)
 - [MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口](blog/posts/2026-09-11-MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口.md)
 - [元认知引导：学习科学判断的内在结构](blog/posts/2026-09-18-元认知引导-学习科学判断的内在结构.md)
+- [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 
 ## 智能体AI
 
