@@ -1,0 +1,672 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-13-ReplaySSM-%E7%BC%93%E5%AD%98-SSM-%E8%BE%93%E5%85%A5%E8%80%8C%E9%9D%9E%E9%9A%90%E7%8A%B6%E6%80%81%E4%BB%A5%E6%8F%90%E5%8D%87%E9%95%BF%E6%96%87%E6%9C%AC%E8%A7%A3%E7%A0%81%E6%95%88%E7%8E%87/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>ReplaySSM：缓存输入而非隐状态，破局 SSM 混合模型解码吞吐瓶颈 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#replayssm-ssm" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ReplaySSM：缓存输入而非隐状态，破局 SSM 混合模型解码吞吐瓶颈
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="replayssm-ssm">ReplaySSM：缓存输入而非隐状态，破局 SSM 混合模型解码吞吐瓶颈</h1>
+<blockquote>
+<h1 id="replayssm-cache-ssm-inputs-not-state">ReplaySSM: Cache SSM Inputs, Not State</h1>
+<p><strong>arXiv:2610.13778</strong> [cs.LG]<br />
+<strong>Submitted:</strong> October 9, 2026<br />
+<strong>Authors:</strong> Ze-Wei Liou, Harris Nover, Amey Naik, Andrii Skliar, Igor Shovkun, Ido Shahaf, Tri Dao<br />
+<strong>Code Repository:</strong> <a href="https://github.com/Johnny-Liou/ReplaySSM">GitHub - ReplaySSM</a>  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>状态空间模型 (State-Space Model, SSM) 凭借恒定的显存占用与线性的长文本推理效率，被视为突破传统 Transformer 架构二次方计算瓶颈的关键方向，以 Mamba-2 为代表的混合架构更是备受学界与工业界瞩目。然而在实际部署中，传统 SSM 每一生成一个 Token 都要频繁读写其庞大的循环隐状态，由此带来的高频显存 I/O 成为制约自回归解码吞吐的核心瓶颈，同时也使投机解码的状态回滚和低比特量化面临严重阻碍。为此，Tri Dao 团队联合推出的 <strong>ReplaySSM</strong> 另辟蹊径，提出“缓存输入而非隐状态”的创新范式：它将连续状态解耦为周期性的检查点与一段极轻量的近期输入缓冲区，在绝大多数解码步中完全免除了高昂的状态写回，将主导显存访存量腰斩。在主流推理系统 vLLM 的实操测试中，ReplaySSM 在 Mamba-2 与 Gated DeltaNet 上带来了 <span class="arithmatex">\(1.20\times \sim 1.47\times\)</span> 的标准解码提速，并在 120B 级大型混合模型上实现了约 <span class="arithmatex">\(1.8\times\)</span> 的投机解码吞吐飞跃，为超长文本的高并发落地提供了全新解题思路。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>传统的状态空间模型 (State-Space Model, SSM) 通常会在推理时维护一个固定尺寸的循环隐状态。然而，在结合了注意力的混合架构大模型中，解码每生成一个 Token 都要对该隐状态进行一次完整的读取与写回，这逐渐演变成了拖累吞吐量的严重瓶颈。这种“步步更新”的急切状态管理策略，不仅引发了极其庞大的显存 I/O 访存流量与极低的计算访存比 (Arithmetic Intensity) ，还使得投机解码 (Speculative Decoding) 中的状态回滚变得异常笨重迟缓，更导致状态量化误差在后续的循环更新中不断累积放大。</p>
+<blockquote>
+<p>State-space models (SSMs) traditionally maintain a fixed-size recurrent state, but frequently reading and writing this state at every decoding step creates a significant bottleneck in hybrid models. This eager state management results in high memory traffic, low arithmetic intensity, inefficient speculative decoding rollbacks, and error accumulation from state quantization. </p>
+</blockquote>
+<p><strong>ReplaySSM</strong> 针对这一难题提出了革命性的解决方案：它通过时间维度上的循环展开，创新性地将状态表征解耦为一个周期性检查点 (Periodic Checkpoint) 与一段近期 SSM 输入轻量缓冲区 (Buffer of Recent SSM Inputs) 的组合。这种解耦架构在绝大多数解码步骤中完全免去了高昂的状态写回，将主导性的隐状态显存访存量直接砍掉近一半；同时，它将复杂的投机回滚简化为极度轻量的缓冲区指针回拨操作，并支持双精度检查点设计以彻底隔绝量化舍入误差对后续状态迭代的污染。在主流大模型推理框架 vLLM 中对 Mamba-2 与 Gated DeltaNet 的实际集成评测显示，ReplaySSM 将标准解码速度提升了 <span class="arithmatex">\(1.20\times \sim 1.47\times\)</span> ，并在 120B 参数级大型混合模型上实现了约 <span class="arithmatex">\(1.8\times\)</span> 于标准投机解码的极致吞吐量提升。</p>
+<blockquote>
+<p><strong>ReplaySSM</strong> solves this by unrolling the recurrence to represent the state as a periodic checkpoint paired with a buffer of recent SSM inputs. This decoupled architecture avoids state writes on most steps, reduces dominant state memory traffic by roughly half, transforms speculative rollback into a simple buffer-pointer operation, and allows dual-precision checkpoints to prevent quantization error from corrupting recurrent updates. Implemented within vLLM for Mamba-2 and Gated DeltaNet, ReplaySSM accelerates standard decoding by <span class="arithmatex">\(1.20\times\)</span> to <span class="arithmatex">\(1.47\times\)</span> and delivers roughly <span class="arithmatex">\(1.8\times\)</span> the throughput of standard speculative decoding on 120B-class models.</p>
+</blockquote>
+<hr />
+<h2 id="_3">论文元数据</h2>
+<blockquote>
+<h2 id="paper-metadata">Paper Metadata</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">属性</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>主要学科</strong></td>
+<td style="text-align: left;">机器学习 (<code>cs.LG</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>次要学科</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>论文备注</strong></td>
+<td style="text-align: left;">正文 11 页 (含参考文献与附录共 35 页) ，6 张图，2 张表</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI 链接</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2610.13778">10.48550/arXiv.2610.13778</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>版权许可</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 (Creative Commons Attribution 4.0)</a> <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"><span>view license</span></a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Subject</strong></td>
+<td style="text-align: left;">Machine Learning (<code>cs.LG</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Secondary Subjects</strong></td>
+<td style="text-align: left;">Artificial Intelligence (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Comments</strong></td>
+<td style="text-align: left;">11 pages (35 pages counting references and appendix), 6 figures, 2 tables</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2610.13778">10.48550/arXiv.2610.13778</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>License</strong></td>
+<td style="text-align: left;"><a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> <a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"><span>view license</span></a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="_4">论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>传统状态空间模型 (SSM) 在自回归解码中维护着固定大小的循环隐状态，然而在注意力机制与 SSM 相融合的混合架构模型中，每一生成步都要频繁读写该隐状态，极易形成制约吞吐量的系统瓶颈。这种“步步更新”的急切状态管理策略造成了庞大的状态显存 I/O 访存开销与偏低的计算访存比 (Arithmetic Intensity) ，使得投机解码 (Speculative Decoding) 缺乏低成本的回滚机制，更会导致状态量化误差无休止地代入并污染后续的循环状态迭代。为此，我们提出了 <strong>ReplaySSM</strong>：它通过在时间维度上展开循环递归，将隐状态巧妙地解耦为“周期性保存的检查点”与“近期 SSM 输入数据的轻量缓冲区”，从而彻底将输出计算与检查点更新相分离。通过仅进行周期性检查点写入，ReplaySSM 在绝大多数解码步中完全免去了状态写回，将主导显存开销的状态访存量大致缩减了一半。与此同时，保留近期输入使得投机解码的回滚退化为极简的缓冲区指针调整，并能直接完成“仅针对输出”的高效验证，无需在显存中实体化展开任何中间隐状态。该解耦架构还支持状态双精度存储方案：绝大部分生成步采用低精度检查点供给输出计算，而底层更新则由高精度检查点维系，确保低精度量化的舍入误差永远不会反噬随后的循环更新。我们在主流服务引擎 vLLM 中为 Mamba-2 与 Gated DeltaNet 实现了 ReplaySSM。在并发服务批次大小 (Batch Size) 为 256 时，面对四款主流混合模型，ReplaySSM 相比精细调优后的 vLLM 基线实现了 <span class="arithmatex">\(1.20\)</span>--<span class="arithmatex">\(1.47\times\)</span> 的标准解码加速；在两款 120B 参数级大型混合模型上，其吞吐量更达到 vLLM 原生投机解码的约 <span class="arithmatex">\(1.8\times\)</span>。此外，相比共享单一低精度检查点，分离式的双精度状态机制显著降低了输出 KL 散度 (KL Divergence) 与下游任务的精度损失。</p>
+<blockquote>
+<p>State-space models (SSMs) maintain a fixed-size recurrent state, but reading and writing it at every decoding step can bottleneck hybrid models. This eager state management causes large state I/O with low arithmetic intensity, leaves speculative decoding no cheap rollback, and feeds state quantization error into subsequent recurrent updates. We introduce ReplaySSM, which unrolls the recurrence to represent the state as a checkpoint and a buffer of recent SSM inputs. This separates output computation from checkpoint updates. By updating the checkpoint periodically, ReplaySSM avoids state writes on most steps and roughly halves the dominant state memory traffic. Keeping recent inputs also makes speculative rollback a buffer-pointer operation and enables output-only verification without materializing intermediate states. The same separation allows a low-precision checkpoint to serve output computation on most steps while a higher-precision checkpoint serves recurrent updates, so rounding error in the low-precision copy never enters later updates. We implement ReplaySSM in vLLM for Mamba-2 and Gated DeltaNet. At serving batch size 256, it accelerates standard decoding by <span class="arithmatex">\(1.20\)</span>--<span class="arithmatex">\(1.47\times\)</span> over a tuned vLLM baseline across four hybrid models, and delivers about <span class="arithmatex">\(1.8\times\)</span> the throughput of vLLM's speculative decoding on the two 120B-class models. Separate state precisions also reduce output KL divergence and downstream accuracy losses compared with a shared low-precision checkpoint.</p>
+</blockquote>
+<hr />
+<h2 id="_5">全文获取与相关资源</h2>
+<blockquote>
+<h2 id="full-text-and-additional-resources">Full-Text and Additional Resources</h2>
+</blockquote>
+<ul>
+<li><strong>论文 PDF：</strong> <a href="https://arxiv.org/pdf/2610.13778">查看 PDF (View PDF)</a></li>
+<li><strong>LaTeX 源码：</strong> <a href="https://arxiv.org/src/2610.13778">TeX 源码 (TeX Source)</a></li>
+<li><strong>在线 HTML 版本：</strong> <a href="https://arxiv.org/html/2610.13778v1">HTML 版本 (HTML Version)</a></li>
+<li><strong>学术引用检索：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.13778">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.13778">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.13778">NASA ADS</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>PDF:</strong> <a href="https://arxiv.org/pdf/2610.13778">View PDF</a></li>
+<li><strong>LaTeX Source:</strong> <a href="https://arxiv.org/src/2610.13778">TeX Source</a></li>
+<li><strong>Experimental HTML:</strong> <a href="https://arxiv.org/html/2610.13778v1">HTML Version</a></li>
+<li><strong>External Citations:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.13778">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.13778">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.13778">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">ReplaySSM</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Mamba-2</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">状态空间模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理加速</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
