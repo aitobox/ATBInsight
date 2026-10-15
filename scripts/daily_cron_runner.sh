@@ -23,9 +23,16 @@ if ! flock -n 200; then
 fi
 
 # 3. 环境变量补全
+export HOME="${HOME:-/home/aitobox}"
+export USER="${USER:-aitobox}"
 export PATH="/home/aitobox/miniconda3/bin:/home/aitobox/.local/bin:/usr/local/bin:$PATH"
 export LANG="en_US.UTF-8"
 export PYTHONUNBUFFERED=1
+
+# 自动绑定用户级 D-Bus 会话（如果存在），确保 Keyring 访问畅通
+if [ -z "${DBUS_SESSION_BUS_ADDRESS}" ] && [ -S "/run/user/$(id -u)/bus" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+fi
 
 echo "==================================================" >> "${LOG_FILE}"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting daily publisher automation..." >> "${LOG_FILE}"
