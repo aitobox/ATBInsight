@@ -1,0 +1,664 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-16-%E6%89%A9%E6%95%A3%E6%A8%A1%E5%9E%8B%E7%9A%84%E4%BF%AE%E6%AD%A3%E8%AE%AD%E7%BB%83-%E6%94%BB%E5%85%8B%E6%9A%B4%E9%9C%B2%E5%81%8F%E5%B7%AE%E4%B8%8E%E5%BC%A5%E5%90%88%E8%AE%AD%E7%BB%83%E6%8E%A8%E7%90%86%E5%B7%AE%E8%B7%9D/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>扩散模型的修正训练：攻克暴露偏差与弥合训练推理差距 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              扩散模型的修正训练：攻克暴露偏差与弥合训练推理差距
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="_1">扩散模型的修正训练：攻克暴露偏差与弥合训练推理差距</h1>
+<blockquote>
+<h1 id="correction-training-for-diffusion-models">Correction Training for Diffusion Models</h1>
+<p><strong>arXiv:2610.14136</strong> [cs.AI]<br />
+<strong>Subject:</strong> Artificial Intelligence (<code>cs.AI</code>)<br />
+<strong>Authors:</strong> Donghoon Ahn, Runqian Wang, Alexei A. Efros, Taesung Park, Yash Belhe<br />
+<strong>Submission Dates:</strong> Submitted on 9 Oct 2026 (v1); Last revised 14 Oct 2026 (v2)<br />
+<strong>Project Resources:</strong> <a href="https://sunovivid.github.io/correction-training/">Project Page</a> | <a href="https://github.com/sunovivid/correction-training">GitHub Repository</a> | <a href="https://arxiv.org/pdf/2610.14136">View PDF</a></p>
+</blockquote>
+<h3 id="_2">文章背景与核心概要</h3>
+<p>在现代生成式人工智能中，扩散模型 (Diffusion Models) 凭借惊艳的图像生成能力成为了核心支柱，但其在逐步去噪生成样本的过程中，一直饱受“暴露偏差” (Exposure Bias) 的困扰——模型在训练时接触的都是掺杂噪声的标准图像，而在实际推理采样时，每一步面对的却是自身前一步并不完美、带有瑕疵的预测结果，导致误差层层累积。这种训练与推理阶段的输入分布鸿沟，往往迫使模型高度依赖无分类器引导 (Classifier-Free Guidance, CFG) 等外部辅助手段，而这又容易引发图像色彩过饱和以及生成多样性受损的问题。来自 UC Berkeley 等机构的学者们创新性地提出了“修正训练” (Correction Training) 框架，通过专门训练一个独立的修正模型来实时诊断并纠正基础去噪器的中间预测，在无需任何额外引导的情况下便大幅刷新了生成质量纪录，甚至能与强引导模式平分秋色。更为巧妙的是，这一修正能力还能通过知识蒸馏 (Knowledge Distillation) 完全无损地融回基础模型，实现零额外计算开销的推理加速与高质量生成。</p>
+<hr />
+<h2 id="_3">执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>本文提出了<strong>修正训练</strong> (Correction Training) ，这是一个旨在解决扩散模型中因“暴露偏差” (Exposure Bias) 所导致的误差累积与训练推理差距的新型框架。该方法的核心思想在于：以真实无噪目标为监督信号，专门训练一个独立的修正器模型来学习修正基础去噪器 (Denoiser) 输出的预测结果；在推理阶段，该修正器能够对去噪过程中生成的纯净样本预测进行多轮迭代精炼与纠偏。</p>
+<blockquote>
+<p>This paper introduces <strong>Correction Training</strong>, a novel framework designed to mitigate error accumulation and the training-inference gap in diffusion models caused by exposure bias. By explicitly training a corrector model on predictions generated by the base denoiser against ground-truth targets, the method allows for iterative refinement of clean-sample predictions during inference. </p>
+</blockquote>
+<p>在 <strong>DiT</strong> (Diffusion Transformer) 、<strong>SiT</strong> (Scalable Interpolant Transformer) 以及 <strong>JiT</strong> (Joint Interpolant Transformer) 等多种主流架构上的评估结果表明，该方法显著提升了无引导与无条件生成的图像质量，大幅刷新了此前的弗雷歇初始距离 (Fréchet Inception Distance, FID) 评分，达到了足以与经典无分类器引导 (Classifier-Free Guidance, CFG) 媲美的生成水平。此外，将修正机制与 CFG 结合使用，不仅能消除 CFG 常见的画面过饱和瑕疵，还能进一步丰富样本的多样性。最终，通过将修正精炼后的预测知识蒸馏 (Knowledge Distillation) 回基础扩散模型，完全抹平了推理阶段的额外计算开销，做到了鱼与熊掌兼得。</p>
+<blockquote>
+<p>Evaluated across architectures like <strong>DiT</strong>, <strong>SiT</strong>, and <strong>JiT</strong>, the approach significantly improves unguided and unconditional generation quality (outperforming previous FID scores) to levels competitive with Classifier-Free Guidance (CFG). Furthermore, combining correction with CFG enhances sample diversity while eliminating oversaturation artifacts. Finally, the inference-time cost can be eliminated entirely by distilling the refined predictions back into the base model.</p>
+</blockquote>
+<hr />
+<h2 id="_4">论文元数据</h2>
+<blockquote>
+<h2 id="paper-metadata">Paper Metadata</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv 编号：</strong> <a href="https://arxiv.org/abs/2610.14136">arXiv:2610.14136</a> [cs.AI]</li>
+<li><strong>研究领域：</strong> 人工智能 (<code>cs.AI</code>)</li>
+<li><strong>论文作者：</strong> </li>
+<li>Donghoon Ahn</li>
+<li>Runqian Wang</li>
+<li>Alexei A. Efros</li>
+<li>Taesung Park</li>
+<li>Yash Belhe</li>
+<li><strong>提交日期：</strong> </li>
+<li>首次提交：2026 年 10 月 9 日 (v1) </li>
+<li>最新修订：2026 年 10 月 14 日 (v2) </li>
+<li><strong>项目资源：</strong></li>
+<li><a href="https://sunovivid.github.io/correction-training/">项目主页</a></li>
+<li><a href="https://github.com/sunovivid/correction-training">GitHub 代码仓库</a></li>
+<li><a href="https://arxiv.org/pdf/2610.14136">查看 PDF 论文</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2610.14136">arXiv:2610.14136</a> [cs.AI]</li>
+<li><strong>Subject:</strong> Artificial Intelligence (<code>cs.AI</code>)</li>
+<li><strong>Authors:</strong> </li>
+<li>Donghoon Ahn</li>
+<li>Runqian Wang</li>
+<li>Alexei A. Efros</li>
+<li>Taesung Park</li>
+<li>Yash Belhe</li>
+<li><strong>Submission Dates:</strong> </li>
+<li>Submitted on 9 Oct 2026 (v1)</li>
+<li>Last revised 14 Oct 2026 (v2)</li>
+<li><strong>Project Resources:</strong></li>
+<li><a href="https://sunovivid.github.io/correction-training/">Project Page</a></li>
+<li><a href="https://github.com/sunovivid/correction-training">GitHub Repository</a></li>
+<li><a href="https://arxiv.org/pdf/2610.14136">View PDF</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>在扩散模型中，逐步迭代采样的生成过程往往会因“暴露偏差” (Exposure Bias) 而导致严重的误差累积。根本原因在于：去噪器在训练阶段接触的都是由真实图像与纯高斯噪声混合插值而成的标准化数据；然而到了实际推理生成阶段，模型每一步的输入却来自于自身在先前时间步中生成的不完美预测——这种带有偏差与噪点的中间状态是模型在训练期从未见过的。这一训练与推理之间的分布断层，很可能是扩散模型在缺乏诸如 CFG 等外部辅助技术时生成效果大打折扣的核心症结。</p>
+<blockquote>
+<p>Iterative sampling in diffusion models can lead to error accumulation due to exposure bias. The denoiser is trained on real images interpolated with noise, but at inference its inputs are constructed from its own imperfect predictions from the earlier steps, something it has never seen at training time. This might be one reason diffusion models often struggle without additional help, such as CFG. </p>
+</blockquote>
+<p>为此，我们为扩散模型设计了一套专门的修正步骤，旨在全力缩小这一训练与推理之间的鸿沟。该方案部署了一个修正器，将基础模型生成的初步预测作为输入，并以相同的真实图像作为监督目标进行端到端训练。如此一来，误差修正便转化为一项目标明确的显式学习任务，而基础模型本身则充当了生成训练输入的“出题人”。在推理采样阶段，去噪器每向前推进一个时间步，修正器就会对生成的纯净样本预测展开迭代精细化打磨。这使模型能够在去噪的中间阶段及时纠错，从而彻底阻断早期生成的画面伪影与结构瑕疵向最终成品画面的蔓延。</p>
+<blockquote>
+<p>We introduce a correction step for diffusion models which attempts to reduce this training-inference gap. The corrector takes the base model's prediction as input and is trained against the same ground-truth target. This makes correction an explicit learning task, with training inputs provided by the base model. During sampling, at each denoising step, we iteratively refine the denoiser's clean-sample prediction. This allows us to correct predictions at intermediate denoising steps, preventing early artifacts from persisting into the final sample. </p>
+</blockquote>
+<p>令人惊喜的是，尽管该修正器在训练阶段仅学习过如何纠正基础去噪器的初步预测，但在推理阶段，它却能够反复对其自身的修正输出进行多轮“自修正”，从而带来更上一层楼的画质飞跃。这一简单直观的框架不仅大幅提升了生成样本的细腻度与画质，同时最大程度地守护了图像内容的多样性。我们跨越 DiT、SiT 和 JiT 等前沿扩散架构进行了深入评估。实验表明，我们的方法全面超越了以往各项基准中报告的无引导生成 FID 分数；尤其是在此前业界公认最具挑战性、脱离任何外部提示词或引导机制便极难生成高质量图像的“无条件生成”任务中，取得了突破性的质量跃升。</p>
+<blockquote>
+<p>Although the corrector is trained only on predictions from the base denoiser, it can be applied repeatedly to its own outputs at inference for better results. This simple framework leads to substantial improvement in sample quality while largely preserving diversity. We evaluate our method across DiT, SiT, and JiT. Our method substantially improves upon previously reported FID scores for unguided generation and, notably, unconditional generation, where producing high-quality samples without guidance has been particularly challenging. </p>
+</blockquote>
+<p>在无需额外引导的纯净模式下，我们的方法展现出了足以媲美无分类器引导 (CFG) 的优秀生成水准；而当我们将修正训练与 CFG 双剑合璧时，不仅有效抑制了 CFG 标志性的色彩过度饱和与画面失真缺陷，还显著拓宽了样本生成的多样性。最后，研究团队证实，修正器引入的额外推理算力成本并非无法避免——通过将多次修正精炼后的预测轨迹直接蒸馏回基础扩散模型中，便能在不引入任何推理延迟与额外计算开销的前提下，完全保留所有的质量增益。</p>
+<blockquote>
+<p>Our method achieves performance competitive with classifier-free guidance (CFG), and combining correction with CFG further improves diversity and reduces oversaturation typical of CFG. Finally, we show that the additional inference cost of correction can be amortized by distilling the refined predictions back into the base diffusion model, retaining the quality gains without additional inference-time overhead.</p>
+</blockquote>
+<hr />
+<h2 id="_6">附加资源与功能</h2>
+<blockquote>
+<h2 id="additional-resources-features">Additional Resources &amp; Features</h2>
+</blockquote>
+<ul>
+<li><strong>全文版本格式：</strong> <a href="https://arxiv.org/src/2610.14136">TeX 源码</a> | <a href="https://arxiv.org/html/2610.14136v2">HTML 网页版</a></li>
+<li><strong>外部学术引用：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.14136">Google 学术搜索 (Google Scholar)</a> | <a href="https://api.semanticscholar.org/arXiv:2610.14136">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.14136">NASA ADS</a></li>
+<li><strong>开源代码与演示：</strong> <a href="https://huggingface.co/huggingface">Hugging Face</a> | <a href="https://replicate.com/docs/arxiv/about">Replicate</a> | <a href="https://www.catalyzex.com">CatalyzeX 论文代码检索器</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text Formats:</strong> <a href="https://arxiv.org/src/2610.14136">TeX Source</a> | <a href="https://arxiv.org/html/2610.14136v2">HTML Version</a></li>
+<li><strong>External Citations:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.14136">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.14136">Semantic Scholar</a> | <a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.14136">NASA ADS</a></li>
+<li><strong>Code &amp; Demos:</strong> <a href="https://huggingface.co/huggingface">Hugging Face</a> | <a href="https://replicate.com/docs/arxiv/about">Replicate</a> | <a href="https://www.catalyzex.com">CatalyzeX Code Finder</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">扩散模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">修正训练</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">暴露偏差</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">CFG</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">图像生成</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

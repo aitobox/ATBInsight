@@ -1,0 +1,637 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-15-SpecFit-%E7%A0%B4%E5%B1%80-MoE-%E7%A6%BB%E7%BA%BF%E6%8E%A8%E7%90%86-%E8%8D%89%E7%A8%BF-Token-%E6%88%90%E6%9C%AC%E5%B7%AE%E5%BC%82%E5%8C%96%E4%B8%8E%E5%AD%90%E6%A8%A1%E4%BC%98%E5%8C%96%E5%8A%A0%E9%80%9F/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#specfit-moe-token" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="specfit-moe-token">SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速</h1>
+<blockquote>
+<h1 id="specfit-not-all-draft-tokens-cost-the-same-in-offloaded-moe-inference">SpecFit: Not All Draft Tokens Cost the Same in Offloaded MoE Inference</h1>
+<p><strong>arXiv:2610.15417</strong> [cs.AI]<br />
+<strong>Authors:</strong> Hongliang Cao, Xiuyu Li, Siqi Wang, Ziming Wang, Jingmin Zhu, Hailong Yang<br />
+<strong>Submitted:</strong> October 11, 2026<br />
+<strong>Paper:</strong> <a href="https://arxiv.org/abs/2610.15417">arXiv:2610.15417</a> | <a href="https://arxiv.org/pdf/2610.15417">View PDF</a> | <a href="https://github.com/Chlience/SpecFit">Source Code</a>  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>混合专家模型 (Mixture-of-Experts, MoE) 凭借“按需激活”的稀疏计算特性，在大模型时代实现了参数规模与计算能效的绝佳平衡；然而，当数百亿的专家参数因显存不足而被卸载 (Offload) 到系统主机内存时，从主机内存到显存 (Host-to-Device, H2D) 的跨设备数据传输便瞬间跃升为拖慢自回归解码的核心瓶颈。虽然业界广泛采用投机解码 (Speculative Decoding) 试图通过单次前向传播同时验证多个草稿 Token (Draft Tokens) 来提速，但在 MoE 架构下，每个待验证的候选 Token 都可能唤醒完全不同的专家网络，盲目扩大草稿树不仅无法提速，反倒会迫使系统搬运海量专家权重，出现投机解码速度甚至反常落后于标准自回归解码的“加速负收益”怪象。为了破解这一困局，来自北京航空航天大学等机构的研究团队提出了 <strong>SpecFit</strong> 框架，首次打破了传统投机解码盲目堆砌候选接受长度的单一指标，开创性地确立了“以最大化预测吞吐量为核心”的草稿树动态剪裁准则。SpecFit 精准捕捉到各层激活专家集合并集天然具备的单调子模覆盖 (Monotone Submodular Coverage) 特性，仅针对每个候选节点带来的边际新增专家进行成本核算，并通过祖先闭包子树上的精确搜索算法，在每一个草稿层级动态决策最佳候选组合与最优终止时机。在 Qwen3-30B-A3B 等前沿开源模型上的评测表明，SpecFit 在相同专家缓存下相比主流方案 EAGLE-3 实现了最高 21.6% 的解码加速，面对原生 EAGLE-3 更是达成了最高 1.97 倍的强劲吞吐跃迁，为低显存环境下超大规模 MoE 模型的高效落地开辟了全新的工程优化范式。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在混合专家模型 (MoE) 中，网络每处理一个 Token 仅需激活所有专家中的一小部分子集。然而，当显存容量告急、不得不将庞大的专家层权重参数卸载 (Offload) 到系统主机内存时，在每次解码迭代中将专家数据从主机搬运至 GPU 显存 (H2D) 的传输开销，便无可避免地成为了卡住整个解码流程的关键瓶颈。</p>
+<blockquote>
+<p>Mixture-of-Experts (MoE) models activate only a subset of experts per token. However, when expert weights are offloaded to host memory, host-to-device (H2D) expert transfers become a critical bottleneck during decoding. </p>
+</blockquote>
+<p>投机解码虽然可以通过单次前向验证同时确认多个草稿 Token 来实现推理加速，但它也给 MoE 架构带来了前所未有的特有难题：每一个待验证的候选 Token 都可能激活一组全然不同的专家网络。这导致草稿树分支越多、规模越大，就越会强迫系统从主机内存中搬运海量的专家权重。在如此巨大的显存通信开销拖累下，传统投机解码在 MoE 卸载环境下非但没有提速，实际性能有时甚至比规规矩矩逐字生成的标准自回归解码还要<em>更差</em>。</p>
+<blockquote>
+<p>While speculative decoding accelerates inference by verifying multiple draft tokens in a single forward pass, it introduces a unique challenge in MoE models: each verified token activates its own distinct set of experts. Consequently, larger draft trees force massive H2D transfers. Due to this high memory transfer overhead, traditional speculative decoding can sometimes perform <em>worse</em> than standard autoregressive decoding.</p>
+</blockquote>
+<p>为了攻克这一痛点，论文作者提出了 <strong>SpecFit</strong> 优化框架。该框架一改传统算法单纯追求最大化接受长度的局限，转为以“最大化预测吞吐量”为核心准则来指导草稿树的构建与裁决：</p>
+<blockquote>
+<p>To address this issue, the authors introduce <strong>SpecFit</strong>, an optimized framework designed to maximize predicted throughput rather than simply maximizing acceptance length:</p>
+</blockquote>
+<ul>
+<li><strong>吞吐量驱动的路径选择 (Throughput-Driven Selection) ：</strong> SpecFit 依据草稿路径的转移概率来精确估算最终被确认的 Token 期望数量，同时综合草稿树的节点规模与各网络层激活专家的并集，精准预测整个验证周期的实际执行耗时。</li>
+<li><strong>子模优化算法 (Submodular Optimization) ：</strong> 鉴于每一层激活专家的并集在数学上天然构成单调子模覆盖函数 (Monotone Submodular Coverage Function) ，系统在评估每一个新增节点时，能够严格且仅为其引入的“边际新增专家”核算传输开销，避免重复计费。</li>
+<li><strong>精确子树搜索 (Exact Subtree Search) ：</strong> 通过在满足祖先闭包 (Ancestor-Closed) 约束的候选子树空间中执行精确搜索算法，SpecFit 能够高效锁定能带来最高预测吞吐量的最优子树，并在草稿生成的每个层级动态决断最佳终止时机。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Throughput-Driven Selection:</strong> SpecFit estimates the expected number of committed tokens using draft path probabilities while predicting cycle time based on node count and the per-layer union of activated experts.</li>
+<li><strong>Submodular Optimization:</strong> Because the per-layer union of experts forms a monotone submodular coverage function, each node is evaluated strictly on the marginal experts it adds.</li>
+<li><strong>Exact Subtree Search:</strong> An exact search algorithm over ancestor-closed subtrees determines the optimal subtree for the highest predicted throughput and dynamically decides when to stop drafting.</li>
+</ul>
+</blockquote>
+<h3 id="_3">性能表现亮点</h3>
+<blockquote>
+<h3 id="performance-highlights">Performance Highlights</h3>
+</blockquote>
+<p>在 Qwen3-30B-A3B 模型上，针对 CNN/DailyMail 文本摘要任务与 GSM8K 数学推理子集的基准测试中，<strong>SpecFit</strong> 取得了显著的推理加速成果：</p>
+<blockquote>
+<p>Tested on the Qwen3-30B-A3B model across CNN/DailyMail summarization and a GSM8K subset, <strong>SpecFit</strong> achieves significant speedups:</p>
+</blockquote>
+<ul>
+<li>在配置相同容量专家缓存的条件下，相比前沿投机解码方案 EAGLE-3 的推理速度分别提升了 <strong>21.6% 与 7.0%</strong>；</li>
+<li>相比未配备专用缓存的原生 EAGLE-3 基线方案，解码速度更是分别达到了后者的 <strong>1.97 倍与 1.72 倍</strong>。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>21.6% and 7.0% faster</strong> than EAGLE-3 when using the same expert cache.</li>
+<li><strong>1.97x and 1.72x as fast</strong> as vanilla EAGLE-3.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>混合专家模型 (MoE) 在推理时每个 Token 仅激活少数几位专家，但当海量专家权重被卸载 (Offload) 到系统主机内存时，从主机到设备 (H2D) 的跨设备专家传输开销便直接挤占了自回归解码的关键执行路径。投机解码虽然能在单次前向传播中同时验证多个草稿 Token ，但在 MoE 架构中，每个待验证的 Token 都会激活其独有的专家网络，导致更为庞大的草稿树必须搬运更多的专家参数。受制于这一沉重的 H2D 通信代价，投机解码尽管在每个验证周期内确实能确认数个 Token ，其实际解码效率在很多场景下甚至反常地慢于标准自回归解码。针对这一关键现象，我们提出了 SpecFit 优化框架，通过精心挑选待验证的草稿子树来最大化预测吞吐量，而非片面追求最长接受长度。SpecFit 利用草稿路径概率来估算被最终采纳的 Token 期望数量，并依据树节点总数以及子树所激活专家的每层并集规模来精准预测单轮执行周期；该专家并集在数学上天然构成单调子模覆盖函数 (Monotone Submodular Coverage Function) ，从而确保每个候选节点仅为其带来的边际新增专家支付传输成本。在满足祖先封闭特性的子树空间中，精确搜索算法能够快速返回预测吞吐量最高的最优子树；该搜索在每一级草稿生成后实时执行，可动态决断何时适时停止草稿生成，并直接交由未经修改的目标大模型完成高效验证。在 Qwen3-30B-A3B 模型针对 CNN/DailyMail 文本摘要任务与 GSM8K 数学推理子集的评测中，SpecFit 在相同专家缓存下比 EAGLE-3 的解码速度分别加快了 21.6% 与 7.0%，与原生 EAGLE-3 相比更是分别实现了高达 1.97 倍和 1.72 倍的加速。</p>
+<blockquote>
+<p>Mixture-of-experts (MoE) models activate only a few experts per token, but when their expert weights are offloaded to host memory, host-to-device (H2D) expert transfers enter the critical path of decoding. Speculative decoding verifies several draft tokens in one forward pass, yet in an MoE model each verified token activates its own experts, so a larger draft tree transfers more experts. Because of this H2D cost, speculative decoding commits several tokens per verification cycle yet is sometimes even slower than autoregressive decoding. Based on this observation, we propose SpecFit, which chooses the verified draft subtree to maximize predicted throughput rather than acceptance length. SpecFit estimates the expected number of committed tokens from draft path probabilities and predicts cycle time from the node count and the per-layer union of the experts the subtree activates; this union is a monotone submodular coverage function, so each node pays only for the experts it adds. An exact search over ancestor-closed subtrees returns the subtree with the highest predicted throughput; run after each draft level, the same search also decides when to stop drafting, and the unmodified target verifies the result. On CNN/DailyMail summarization and a GSM8K subset with Qwen3-30B-A3B, SpecFit decodes 21.6% and 7.0% faster than EAGLE-3 with the same expert cache and 1.97x and 1.72x as fast as vanilla EAGLE-3.</p>
+</blockquote>
+<hr />
+<h2 id="_5">附加资源与元数据</h2>
+<blockquote>
+<h2 id="additional-resources-metadata">Additional Resources &amp; Metadata</h2>
+</blockquote>
+<ul>
+<li><strong>开源许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>数字对象唯一标识符 (DOI) ：</strong> <a href="https://doi.org/10.48550/arXiv.2610.15417">10.48550/arXiv.2610.15417</a></li>
+<li><strong>学术检索与工具：</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.15417">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.15417">Semantic Scholar</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>Digital Object Identifier (DOI):</strong> <a href="https://doi.org/10.48550/arXiv.2610.15417">10.48550/arXiv.2610.15417</a></li>
+<li><strong>External Tools:</strong> <a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.15417">Google Scholar</a> | <a href="https://api.semanticscholar.org/arXiv:2610.15417">Semantic Scholar</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">SpecFit</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">MoE</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">投机解码</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理加速</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
