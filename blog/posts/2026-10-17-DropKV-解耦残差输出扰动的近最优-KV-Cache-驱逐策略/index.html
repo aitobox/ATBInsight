@@ -1,0 +1,734 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-17-DropKV-%E8%A7%A3%E8%80%A6%E6%AE%8B%E5%B7%AE%E8%BE%93%E5%87%BA%E6%89%B0%E5%8A%A8%E7%9A%84%E8%BF%91%E6%9C%80%E4%BC%98-KV-Cache-%E9%A9%B1%E9%80%90%E7%AD%96%E7%95%A5/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dropkv-kv-cache" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="dropkv-kv-cache">DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略</h1>
+<blockquote>
+<h1 id="dropkv-decoupling-residual-output-perturbation-for-near-optimal-kv-cache-eviction">DropKV: Decoupling Residual-Output Perturbation for Near-Optimal KV-Cache Eviction</h1>
+</blockquote>
+<p><img alt="license icon" role="presentation" src=".././images/345c7ad61f1b.png"></p>
+<blockquote>
+<p><strong>arXiv:2610.22130</strong> [cs.AI]<br />
+<strong>Authors:</strong> Aozhong Zhang, Selcuk Gurses, Yanxia Deng, Naigang Wang, Chi-Chun Liu, Davis Wertheimer, Derrick Liu, Xin Li, Zi Yang, Felix X.-F. Ye, Penghang Yin<br />
+<strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>)<br />
+<strong>Accepted Venue:</strong> NeurIPS 2026<br />
+<strong>Submitted:</strong> October 15, 2026<br />
+<strong>DOI / Paper:</strong> <a href="https://doi.org/10.48550/arXiv.2610.22130">10.48550/arXiv.2610.22130</a> | <a href="https://arxiv.org/abs/2610.22130">arXiv:2610.22130</a>  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着大语言模型 (Large Language Model, LLM) 在长文本与长对话任务中的全面铺开，键值缓存 (Key-Value Cache, KV-Cache) 的显存开销随序列长度线性持续增长，成为了卡死模型高效长上下文推理的核心瓶颈。尽管近期的驱逐算法尝试超越传统的单一注意力打分规则，从全局层面最小化丢弃 Token 对最终模型输出的扰动，但该目标的求解在本质上却属于 NP-hard 组合优化难题，致使现有方案要么退化为缺乏理论背书的次优启发式策略，要么其实现架构过度繁复而无法在硬件层面高效算子化 (Kernelize) 。入选 NeurIPS 2026 的 <strong>DropKV</strong> 提出了一套基于“解耦残差输出扰动” (Decoupled Residual-Output Perturbation) 的原则性驱逐框架，创新性地将相互交织的联合驱逐决策拆解为各 Token 的独立打分，在避开组合计算爆炸的同时，在实证成立的锥体条件 (Cone Condition) 下给出了严密的常数因子近似理论保证。得益于深度定制的高性能融合 Triton 算子，DropKV 完全免除了在显存中实体化全量注意力矩阵的沉重负担，斩获了高达 19.8 倍的打分算子提速与 9.9% 的端到端预填充 (Prefill) 性能提升，在 RULER 和 LongBench 等前沿长文本基准测试中以最低的延迟全面刷新了性能上限。</p>
+<hr />
+<h2 id="_2">内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在将大语言模型 (LLM) 扩展到处理长上下文输入的实际应用中，键值缓存 (KV-Cache) 的显存开销构成了极其严峻的系统瓶颈。尽管近期的先进驱逐策略试图超越传统的注意力得分启发式规则，通过端到端考量来最小化驱逐缓存对模型输出带来的扰动，但这类方法通常陷入了求解 NP-hard 组合优化问题的泥潭。这直接导致算法在数学层面只能妥协于次优解，或者演变为流程极其冗杂、难以在 GPU 底层实现高效算子化 (Kernelize) 的复杂方案。</p>
+<blockquote>
+<p>Key-value (KV) cache management presents a significant memory bottleneck when scaling Large Language Models (LLMs) to handle long-context inputs. While advanced eviction strategies attempt to minimize output perturbation by looking beyond traditional attention-score heuristics, they typically struggle with NP-hard combinatorial optimization problems. This leads to mathematical suboptimality or complex implementations that are difficult to kernelize. </p>
+</blockquote>
+<p>为了打破这些局限，<strong>DropKV</strong> 引入了一套基于<strong>解耦残差输出扰动</strong> (Decoupled Residual-Output Perturbation) 的原则性驱逐框架。通过将原本相互耦合的全局联合驱逐决策，解耦为针对各个 Token 的独立打分机制，DropKV 巧妙绕过了棘手的组合计算不可解性，并在经由长上下文大语言模型实证检验的锥体条件 (Cone Condition) 下，提供了可从数学上严格证明的常数因子近似保证。在高性能融合 Triton 算子的强力驱动下，DropKV 显著加快了打分评估与预填充 (Prefill) 阶段的运行速度，并在权威的 RULER 和 LongBench 基准测试中全面超越了现存的最强基线模型。</p>
+<blockquote>
+<p>To overcome these challenges, <strong>DropKV</strong> introduces a principled eviction framework based on <strong>Decoupled Residual-Output Perturbation</strong>. By decoupling joint eviction decisions into independent per-token scoring, DropKV bypasses combinatorial intractability and provides a provable constant-factor approximation guarantee. Backed by high-performance fused Triton kernels, DropKV significantly accelerates scoring and prefill speeds while outperforming state-of-the-art baselines on RULER and LongBench benchmarks.</p>
+</blockquote>
+<hr />
+<h2 id="_3">论文元数据</h2>
+<blockquote>
+<h2 id="paper-metadata">Paper Metadata</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">字段</th>
+<th style="text-align: left;">详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv 编号</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2610.22130">arXiv:2610.22130</a> [cs.AI]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>学科领域</strong></td>
+<td style="text-align: left;">人工智能 (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>入选会议</strong></td>
+<td style="text-align: left;">NeurIPS 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>提交日期</strong></td>
+<td style="text-align: left;">2026 年 10 月 15 日</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2610.22130">10.48550/arXiv.2610.22130</a></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>arXiv ID</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/abs/2610.22130">arXiv:2610.22130</a> [cs.AI]</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Subject</strong></td>
+<td style="text-align: left;">Artificial Intelligence (<code>cs.AI</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Accepted Venue</strong></td>
+<td style="text-align: left;">NeurIPS 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Submission Date</strong></td>
+<td style="text-align: left;">October 15, 2026</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2610.22130">10.48550/arXiv.2610.22130</a></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<h3 id="_4">论文作者</h3>
+<blockquote>
+<h3 id="authors">Authors</h3>
+</blockquote>
+<ul>
+<li>Aozhong Zhang</li>
+<li>Selcuk Gurses</li>
+<li>Yanxia Deng</li>
+<li>Naigang Wang</li>
+<li>Chi-Chun Liu</li>
+<li>Davis Wertheimer</li>
+<li>Derrick Liu</li>
+<li>Xin Li</li>
+<li>Zi Yang</li>
+<li>Felix X.-F. Ye</li>
+<li>Penghang Yin</li>
+</ul>
+<blockquote>
+<ul>
+<li>Aozhong Zhang</li>
+<li>Selcuk Gurses</li>
+<li>Yanxia Deng</li>
+<li>Naigang Wang</li>
+<li>Chi-Chun Liu</li>
+<li>Davis Wertheimer</li>
+<li>Derrick Liu</li>
+<li>Xin Li</li>
+<li>Zi Yang</li>
+<li>Felix X.-F. Ye</li>
+<li>Penghang Yin</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_5">论文摘要</h2>
+<blockquote>
+<h2 id="abstract">Abstract</h2>
+</blockquote>
+<p>由于显存占用随输入长度呈线性持续增长，键值缓存 (KV-Cache) 管理已成为将大语言模型 (LLM) 推向长上下文应用场景的核心瓶颈。虽然近期涌现的缓存驱逐策略已不再局限于传统的单一注意力打分规则，转而将 Value 矩阵表征纳入考量，但它们普遍面临着一个根本性的艰难权衡：用于最小化模型输出扰动的底层优化目标本质上属于 NP-hard 组合难题，这不仅使得算法在数学上容易退化为次优的启发式规则，更会导致相关算法逻辑极为复杂而难以在硬件底层实现深度算子化融合。</p>
+<blockquote>
+<p>Key-value (KV) cache management has become a critical bottleneck for scaling Large Language Models (LLMs) to long-context scenarios due to linear memory growth. While recent eviction methods have moved beyond simple attention-score heuristics to incorporate value representations, they typically face a fundamental trade-off: the underlying optimization for minimizing output perturbation is an NP-hard combinatorial problem, leading to mathematically suboptimal heuristics or implementations that are difficult to kernelize. </p>
+</blockquote>
+<p>在本项研究中，我们提出了 <strong>DropKV</strong>——一套基于解耦残差输出扰动 (Decoupled Residual-Output Perturbation) 的极简且严谨的缓存驱逐框架。通过将各 Token 相互牵扯的联合驱逐决策彻底解耦为各自独立的逐 Token 打分机制，DropKV 成功避开了组合爆炸带来的计算不可行性；同时在特定的锥体条件 (Cone Condition) 下，为算法赋予了具备数学证明的常数因子近似理论保证，我们还在三款主流长上下文大语言模型上通过大量实验充分验证了该条件的成立。</p>
+<blockquote>
+<p>In this work, we propose <strong>DropKV</strong>, a simple principled eviction framework based on Decoupled Residual-Output Perturbation. By decoupling the joint eviction decision into independent per-token scoring, DropKV circumvents combinatorial intractability and admits a provable constant-factor approximation guarantee under a cone condition that we empirically verify on three long-context LLMs. </p>
+</blockquote>
+<p>为了确保算法在工业落地中的实用性与高效率，我们基于融合 Triton 算子提供了一套高性能底层实现。该方案完全避免了在显存中显式实体化 (Materializing) 完整的注意力矩阵，从而带来了惊人的 <strong>19.8 倍打分算子加速</strong>，并在同等批处理条件下直接转化为最高达 <strong>9.9% 的端到端预填充 (Prefill) 加速</strong>。在 RULER 与 LongBench 等权威评测基准上的海量实验结果表明：在相同的 KV-Cache 显存预算约束下，DropKV 的任务准确率持续优于现存的所有前沿基线方案，不仅在全部同类驱逐算法中达成了最低的推理延迟，其整体推理速度甚至超越了传统的动态缓存基线。</p>
+<blockquote>
+<p>To ensure practical viability, we provide a high-performance implementation using fused Triton kernels that avoid materializing the full attention matrix, delivering a <strong>19.8x scoring-kernel speedup</strong> that translates to up to a <strong>9.9% matched-batch end-to-end prefill speedup</strong>. Extensive evaluations on the RULER and LongBench benchmarks demonstrate that DropKV consistently outperforms state-of-the-art baselines at equivalent cache budgets, achieving the lowest inference latency among eviction methods while also remaining faster than the dynamic cache baseline.</p>
+</blockquote>
+<hr />
+<h2 id="_6">全文与资源链接</h2>
+<blockquote>
+<h2 id="full-text-resource-links">Full-Text &amp; Resource Links</h2>
+</blockquote>
+<ul>
+<li><strong>论文获取途径：</strong> </li>
+<li><a href="https://arxiv.org/pdf/2610.22130">查看 PDF 全文</a></li>
+<li><a href="https://arxiv.org/html/2610.22130v1">HTML 网页阅读版 (实验性)</a></li>
+<li><a href="https://arxiv.org/src/2610.22130">TeX 源码包</a></li>
+<li><strong>开源许可协议：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)</a></li>
+<li><strong>外部学术引用与检索：</strong></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.22130">Google 学术搜索 (Google Scholar)</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2610.22130">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.22130">NASA ADS</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Access Options:</strong> </li>
+<li><a href="https://arxiv.org/pdf/2610.22130">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2610.22130v1">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2610.22130">TeX Source</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a></li>
+<li><strong>External Citations &amp; Tools:</strong></li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.22130">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2610.22130">Semantic Scholar</a></li>
+<li><a href="https://ui.adsabs.harvard.edu/abs/arXiv:2610.22130">NASA ADS</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">KV-Cache</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">DropKV</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">显存优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Triton</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
