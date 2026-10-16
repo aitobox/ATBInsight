@@ -226,6 +226,9 @@ title: 标签浏览
 - [Humanize：面向智能体编码的判断力工程与构建者-审查者双模型协同框架](blog/posts/2026-10-09-Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架.md)
 - [StoreBench：面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境](blog/posts/2026-10-10-StoreBench-面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境.md)
 - [扩展代码智能体团队的经验教训：仅用 30% 成本触达前沿能力](blog/posts/2026-10-15-扩展代码智能体团队的经验教训-仅用-30-成本触达前沿能力.md)
+- [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
+- [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 
 ## AI 智能体安全
 
@@ -236,6 +239,7 @@ title: 标签浏览
 
 - [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
 - [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
+- [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
 
 ## AI 编译器
 
@@ -714,6 +718,7 @@ title: 标签浏览
 - [解密 AI 智能体评估体系：从零构建工程化自动化评测全流程指南](blog/posts/2026-10-08-解密-AI-智能体评估体系-从零构建工程化自动化评测全流程指南.md)
 - [扩展托管智能体：解耦大脑与双手的操作系统级架构演进](blog/posts/2026-10-08-扩展托管智能体-解耦大脑与双手的操作系统级架构演进.md)
 - [揭秘 Claude Code 自动模式：在跳过权限审批的同时保障系统安全](blog/posts/2026-10-08-揭秘-Claude-Code-自动模式-在跳过权限审批的同时保障系统安全.md)
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 
 ## Anthropic Labs
 
@@ -761,6 +766,10 @@ title: 标签浏览
 ## Atari Pong
 
 - [在Atari Pong中改进强大智能体背后的弱世界模型](blog/posts/2026-09-08-在Atari Pong中改进强大智能体背后的弱世界模型.md)
+
+## Athanor
+
+- [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 
 ## AtlasNav
 
@@ -1138,6 +1147,7 @@ title: 标签浏览
 - [Claude 如何为 AI 生成的文本添加水印](blog/posts/2026-08-23-Claude 如何为 AI 生成的文本添加水印.md)
 - [使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞](blog/posts/2026-08-25-使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞.md)
 - [修复 NZXT Signal 4K30 采集卡 (第二部分)：攻克绿粉色画面显示异常](blog/posts/2026-09-15-修复-NZXT-Signal-4K30-采集卡-第二部分-攻克绿粉色画面显示异常.md)
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 
 ## Claude 5
 
@@ -1152,6 +1162,7 @@ title: 标签浏览
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 - [为每项任务量身定制 Harness：Claude Code 中的动态工作流实战](blog/posts/2026-10-08-为每项任务量身定制-Harness-Claude-Code-中的动态工作流实战.md)
 - [揭秘 Claude Code 自动模式：在跳过权限审批的同时保障系统安全](blog/posts/2026-10-08-揭秘-Claude-Code-自动模式-在跳过权限审批的同时保障系统安全.md)
+- [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
 
 ## Clef-omni
 
@@ -1416,6 +1427,10 @@ title: 标签浏览
 ## Drex
 
 - [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
+
+## DropKV
+
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 
 ## Dropout
 
@@ -2286,6 +2301,7 @@ title: 标签浏览
 
 - [KVDiagnosis：长文本大语言模型中 KV-Cache 压缩的诊断基准](blog/posts/2026-08-12-KVDiagnosis：长文本大语言模型中 KV-Cache 压缩的诊断基准.md)
 - [Nexus：面向统一内存中智能体大语言模型的深度自适应 KV 缓存拼接与检索解耦工具路由](blog/posts/2026-08-25-Nexus：面向统一内存中智能体大语言模型的深度自适应 KV 缓存拼接与检索解耦工具路由.md)
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 
 ## KV-cache
 
@@ -2779,6 +2795,7 @@ title: 标签浏览
 - [从 SQL 生成到工具选择：一种面向领域的 MCP 服务器模式](blog/posts/2026-08-26-从 SQL 生成到工具选择：一种面向领域的 MCP 服务器模式.md)
 - [企业级MCP网关的混合语义工具发现：架构与实现](blog/posts/2026-08-27-企业级MCP网关的混合语义工具发现：架构与实现.md)
 - [从 MCP 注册表中随机抽取究竟能抽到什么？工具调用基准测试真相剖析](blog/posts/2026-09-13-从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析.md)
+- [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 
 ## MCP 协议
 
@@ -3068,6 +3085,10 @@ title: 标签浏览
 ## NISQ
 
 - [面向测量诱导信息丢失场景的量子传感量子机器学习（QML）研究](blog/posts/2026-08-27-面向测量诱导信息丢失场景的量子传感量子机器学习（QML）研究.md)
+
+## NIST
+
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 
 ## NL-to-SQL
 
@@ -4395,6 +4416,10 @@ title: 标签浏览
 
 - [SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境](blog/posts/2026-08-29-SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境.md)
 
+## Spell语言
+
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
+
 ## Stable Audio Open
 
 - [基于潜空间探针的扩散式音乐生成音高类引导方法](blog/posts/2026-09-08-基于潜空间探针的扩散式音乐生成音高类引导方法.md)
@@ -4756,6 +4781,7 @@ title: 标签浏览
 - [PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP](blog/posts/2026-08-07-PyTorch 性能分析（第二部分）：从 nn.Linear 到融合 MLP.md)
 - [RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准](blog/posts/2026-08-14-RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准.md)
 - [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 
 ## Triton 算子
 
@@ -6305,6 +6331,7 @@ title: 标签浏览
 ## 代码审查
 
 - [SWE-Gate：通过功能测试对软件工程智能体而言远远不够](blog/posts/2026-09-05-SWE-Gate：通过功能测试对软件工程智能体而言远远不够.md)
+- [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
 
 ## 代码审计
 
@@ -6535,6 +6562,10 @@ title: 标签浏览
 ## 企业架构
 
 - [企业级MCP网关的混合语义工具发现：架构与实现](blog/posts/2026-08-27-企业级MCP网关的混合语义工具发现：架构与实现.md)
+
+## 企业系统安全
+
+- [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 
 ## 企业级AI
 
@@ -11249,6 +11280,8 @@ title: 标签浏览
 - [ARC-KV：摊薄锚点搜索开销的重构式 KV Cache 极致压缩技术](blog/posts/2026-10-01-ARC-KV-摊薄锚点搜索开销的重构式-KV-Cache-极致压缩技术.md)
 - [LayerRoPE：深度维度的动态幅值与角度叠加编码架构](blog/posts/2026-10-09-LayerRoPE-深度维度的动态幅值与角度叠加编码架构.md)
 - [尖锐方向与你背道而驰：大语言模型激活引导的曲率分析与方向修正](blog/posts/2026-10-15-尖锐方向与你背道而驰-大语言模型激活引导的曲率分析与方向修正.md)
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 
 ## 大语言模型代理
 
@@ -11868,6 +11901,7 @@ title: 标签浏览
 
 - [针对大型语言模型的Unicode文本水印方法安全性与可检测性分析](blog/posts/2026-08-16-针对大型语言模型的Unicode文本水印方法安全性与可检测性分析.md)
 - [MOSAIC：安全 AI 计算的掩码外包方案](blog/posts/2026-08-27-MOSAIC：安全 AI 计算的掩码外包方案.md)
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 
 ## 密码学与安全
 
@@ -15440,6 +15474,7 @@ title: 标签浏览
 - [量化智能体剖析：代码合成智能体工作负载中的显存稳定性与预测](blog/posts/2026-08-19-量化智能体剖析：代码合成智能体工作负载中的显存稳定性与预测.md)
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](blog/posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 
 ## 显微镜控制
 
@@ -16597,6 +16632,7 @@ title: 标签浏览
 - [线性化二维单纯形注意力机制](blog/posts/2026-08-12-线性化二维单纯形注意力机制.md)
 - [Wiola 13M：面向参数高效小型语言模型的门控螺旋注意力架构](blog/posts/2026-08-19-Wiola 13M：面向参数高效小型语言模型的门控螺旋注意力架构.md)
 - [CoFrGeNet：面向语言生成的连分数架构](blog/posts/2026-09-01-CoFrGeNet：面向语言生成的连分数架构.md)
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
 
 ## 架构对比
 
@@ -16898,6 +16934,10 @@ title: 标签浏览
 
 - [多维空间中随机特征方法的谱收敛性](blog/posts/2026-09-05-多维空间中随机特征方法的谱收敛性.md)
 
+## 椭圆曲线
+
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
+
 ## 概念探测
 
 - [大语言模型的地理空间概念探测：抽象性、组合性与基础性](blog/posts/2026-08-11-大语言模型的地理空间概念探测：抽象性、组合性与基础性.md)
@@ -17022,6 +17062,7 @@ title: 标签浏览
 - [PHMForge：通过基于 MCP 原生、算法扎根的工具评估大模型智能体在工业预测与健康管理（PHM）中的表现](blog/posts/2026-08-27-PHMForge：通过基于 MCP 原生、算法扎根的工具评估大模型智能体在工业预测与健康管理（PHM）中的表现.md)
 - [ProvenanceGuard：基于模型上下文协议（MCP）的大模型智能体源感知事实核查机制](blog/posts/2026-08-29-ProvenanceGuard：基于模型上下文协议（MCP）的大模型智能体源感知事实核查机制.md)
 - [从 MCP 注册表中随机抽取究竟能抽到什么？工具调用基准测试真相剖析](blog/posts/2026-09-13-从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析.md)
+- [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 
 ## 模型不对齐
 
@@ -17358,6 +17399,7 @@ title: 标签浏览
 - [通过训练编译：将自然语言规范转化为本地神经函数](blog/posts/2026-09-05-通过训练编译：将自然语言规范转化为本地神经函数.md)
 - [当金融微调失效：领域适应大模型中数字幻觉的三级可检测性分析](blog/posts/2026-09-08-当金融微调失效：领域适应大模型中数字幻觉的三级可检测性分析.md)
 - [路由器先验偏置：在 MoE 后训练中保持基础路由结构](blog/posts/2026-09-10-路由器先验偏置：在 MoE 后训练中保持基础路由结构.md)
+- [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 
 ## 模型忠实度
 
@@ -20019,6 +20061,10 @@ title: 标签浏览
 
 - [阿hadamard矩阵的压缩存储](blog/posts/2026-08-16-阿hadamard矩阵的压缩存储.md)
 
+## 研发效能
+
+- [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
+
 ## 研究解读
 
 - [软件包管理规范全景图：标准组织、生态提案与碎片化现实](blog/posts/2026-10-08-软件包管理规范全景图-标准组织-生态提案与碎片化现实.md)
@@ -21382,6 +21428,10 @@ title: 标签浏览
 - [ADVERSA：衡量大语言模型中多轮护栏退化与判别器可靠性](blog/posts/2026-08-27-ADVERSA：衡量大语言模型中多轮护栏退化与判别器可靠性.md)
 - [RedEvoAgent：基于经验驱动技能演化的自动化红队测试智能体](blog/posts/2026-08-29-RedEvoAgent：基于经验驱动技能演化的自动化红队测试智能体.md)
 
+## 红队研究
+
+- [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
+
 ## 纤维化定量
 
 - [迈向残余听力损失研究：新型耳蜗OCT数据集中的纤维化定量分析](blog/posts/2026-08-25-迈向残余听力损失研究：新型耳蜗OCT数据集中的纤维化定量分析.md)
@@ -22213,6 +22263,10 @@ title: 标签浏览
 
 - [当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现](blog/posts/2026-08-14-当自一致性适得其反：多数表决损害小型大语言模型在多数硬科学问题上的表现.md)
 
+## 自主后训练
+
+- [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
+
 ## 自主实验者
 
 - [人工实验者：利用自主目标强化学习发现与控制自组织现象](blog/posts/2026-09-03-人工实验者：利用自主目标强化学习发现与控制自组织现象.md)
@@ -22453,6 +22507,7 @@ title: 标签浏览
 - [编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？](blog/posts/2026-08-29-编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？.md)
 - [Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器](blog/posts/2026-09-01-Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器.md)
 - [CodeMidas：直接从源代码构建大规模代码智能体强化学习环境](blog/posts/2026-09-22-CodeMidas-直接从源代码构建大规模代码智能体强化学习环境.md)
+- [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
 
 ## 自动学习
 
@@ -22786,6 +22841,10 @@ title: 标签浏览
 
 - [LiteEvent-AE：面向低延迟、受限能耗边缘设备的事件相机轻量级自编码器](blog/posts/2026-08-26-LiteEvent-AE：面向低延迟、受限能耗边缘设备的事件相机轻量级自编码器.md)
 - [数值数据可解释异常检测的可微区间瓶颈](blog/posts/2026-09-05-数值数据可解释异常检测的可微区间瓶颈.md)
+
+## 自编程执行
+
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
 
 ## 自蒸馏
 
@@ -25111,6 +25170,10 @@ title: 标签浏览
 
 - [稀疏混合专家模型中共享路由几何结构与动态的证据](blog/posts/2026-09-04-稀疏混合专家模型中共享路由几何结构与动态的证据.md)
 
+## 身份授权
+
+- [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
+
 ## 身份识别
 
 - [我在视频中寻找你：面向以人为中心视频推理的身份条件化查询](blog/posts/2026-08-11-我在视频中寻找你：面向以人为中心视频推理的身份条件化查询.md)
@@ -25719,6 +25782,10 @@ title: 标签浏览
 - [朴素提示词优化：重新审视复杂提示词搜索的必要性](blog/posts/2026-08-29-朴素提示词优化：重新审视复杂提示词搜索的必要性.md)
 - [朴素提示词优化：重新审视对复杂提示词搜索的需求](blog/posts/2026-08-29-朴素提示词优化：重新审视对复杂提示词搜索的需求.md)
 - [Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器](blog/posts/2026-09-01-Redwood：由AI从零开始设计、验证并在2周内部署的前沿AI加速器.md)
+
+## 递归自改进
+
+- [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 
 ## 递归训练
 

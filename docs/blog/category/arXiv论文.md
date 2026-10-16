@@ -2043,3 +2043,6 @@ title: arXiv论文
 - [扩散模型的修正训练：攻克暴露偏差与弥合训练推理差距](../posts/2026-10-16-扩散模型的修正训练-攻克暴露偏差与弥合训练推理差距.md)
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](../posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
 - [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](../posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
+- [Athanor：面向自主后训练研究的智能体原生系统](../posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
+- [Self-Programmed Execution：大模型智能体的自编程执行机制](../posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
+- [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](../posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
