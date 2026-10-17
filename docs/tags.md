@@ -235,6 +235,10 @@ title: 标签浏览
 - [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
 - [CounterSteer：利用激活导向抑制大模型智能体中的间接提示词注入攻击](blog/posts/2026-10-01-CounterSteer-利用激活导向抑制大模型智能体中的间接提示词注入攻击.md)
 
+## AI 智能体沙盒
+
+- [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
+
 ## AI 编程
 
 - [使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏](blog/posts/2026-08-06-使用 Claude Fable 5 一次性成功构建浣熊抢劫 3D 游戏.md)
@@ -1622,6 +1626,10 @@ title: 标签浏览
 ## FinalityBench
 
 - [FinalityBench：评估智能体在延迟与冲突金融终局性下决策的效果级基准](blog/posts/2026-09-08-FinalityBench：评估智能体在延迟与冲突金融终局性下决策的效果级基准.md)
+
+## Firecracker
+
+- [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 
 ## Fisher信息矩阵
 
@@ -3507,6 +3515,7 @@ title: 标签浏览
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 - [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 - [Perplexity 发布 pplx-embed-v2-context-9b-preview：兼顾直接答案与支撑证据的上下文向量检索模型](blog/posts/2026-10-02-Perplexity-发布-pplx-embed-v2-context-9b-preview-兼顾直接答案与支撑证据的上下文向量检索模型.md)
+- [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 
 ## Photon
 
@@ -4176,6 +4185,10 @@ title: 标签浏览
 ## SOSP 2026
 
 - [当智能体上下文过时失效：易变环境下的上下文不连贯性与 Concord 同步框架](blog/posts/2026-10-08-当智能体上下文过时失效-易变环境下的上下文不连贯性与-Concord-同步框架.md)
+
+## SPACE
+
+- [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 
 ## SPARSEUP
 
@@ -13338,6 +13351,10 @@ title: 标签浏览
 ## 微模拟
 
 - [代理验证的 LLM 用户体验微模拟：早期决策支持的构件优先协议](blog/posts/2026-08-18-代理验证的 LLM 用户体验微模拟：早期决策支持的构件优先协议.md)
+
+## 微虚拟机
+
+- [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 
 ## 微调
 

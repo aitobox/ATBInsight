@@ -4,6 +4,7 @@
 
 ## 2026-10
 
+- **2026-10-18**: [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 - **2026-10-17**: [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 - **2026-10-17**: [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
 - **2026-10-17**: [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
