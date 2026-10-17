@@ -5,6 +5,133 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-18/Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-18/Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒/</guid>
+      <pubDate>Sun, 18 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着自主 AI 智能体 (AI Agent) 越来越多地承担编写代码、执行系统命令等复杂任务，如何防止不受信任的代码或模型意外破坏宿主系统甚至发生“越狱”，成了当下的关键安全瓶颈。Perplexity 正式开源了其用于支撑 Perplexity Computer 背后的生产级沙盒平台 —— SPACE。该平台基于轻量级微虚拟机 (MicroVM) 技术 Firecracker 构建，并采用 Rust 语言编写，实现了系统级的高隔离性、极低启动延迟与严格的外发网络管控。在针对 9 款顶尖前沿模型的实战红蓝攻防测试中，SPACE 实现了零宿主机逃逸，为开发者自建安全自主智能体运行环境提供了极具参考价值的开源基础设施方案。
+
+---
+
+## 核心速览
+
+&gt; ## Summary
+
+Perplexity 正式开源了经过大规模生产环境验证的沙盒平台 **SPACE** (Sandboxed Platform for Agentic Code Execution，意为“用于智能体代码执行的沙盒平台”)，该平台正是支撑 Perplexity Computer 中每一项复杂任务的核心底层架构。SPACE 基于 Rust 语言构建并在 Apache 2.0 协议下开源，它将每个 AI 智能体任务深度隔离在独立的 Firecracker 微虚拟机 (MicroVM) 中，确保敏感凭据和所有出站网络流量完全由客户机环境外部进行统一管控。凭借优异的性能、超低的启动延迟，以及历经 9 款前沿大模型实测考验的坚固安全性，SPACE 现已面向所有希望为代码编写与网页浏览智能体自建安全执行层的开发团队开放使用。
+
+&gt; Perplexity has open-sourced **SPACE** (Sandboxed Platform for Agentic Code Execution), the production-tested sandbox platform powering every task in Perplexity Computer. Built with Rust under the Apache 2.0 license, SPACE isolates each AI agent task inside its own Firecracker microVM, keeping credentials and outbound traffic strictly controlled from outside the guest environment. Featuring high performance, low latency, and robust security tested against 9 frontier models, SPACE is now available for teams looking to self-host secure execution layers for coding and browsing agents.
+
+---
+
+## 一分钟要点概览
+
+&gt; ## TL;DR
+
+* **代码规模与技术栈**：纯 Rust 代码库，以 [0.8.0](https://github.com/perplexityai/SPACE/blob/main/docs/versioning.md) 版本作为首发公开基线，提供完善的 HTTP API 以及用于实时传输流式输出的服务器发送事件 (Server-Sent Events, SSE) 机制。
+* **运行环境需求**：需要搭载 KVM 硬件虚拟化支持的 [Linux x86_64 宿主机](https://github.com/perplexityai/SPACE/blob/main/docs/installation.md)，依赖 `/dev/kvm`、btrfs 文件系统和 Docker。支持本地 Kind (Kubernetes) 集群部署或直接宿主机模式 (不支持 macOS)。
+* **性能表现**：在实际生产环境中，与 Perplexity 之前使用的第三方供应商相比，沙盒创建的中位数延迟从 [185 毫秒大幅降至 60 毫秒](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)。
+* **安全隔离性**：在针对 9 款顶尖前沿模型的红蓝对抗攻防测试中，[108 次虚拟机逃逸尝试全部失败 (0/108)](https://www.perplexity.ai/hub/blog/escaping-space-part-i)，无一成功突破至宿主机。
+* **修复前漏洞情况**：在应用安全补丁之前，在部分网络开放测试中，AI 智能体在 [54 次测试中有 11 次 (11/54)](https://www.perplexity.ai/hub/blog/escaping-space-part-i) 成功绕过了出站流量策略。
+
+&gt; * **Size:** Rust codebase, release [0.8.0](https://github.com/perplexityai/SPACE/blob/main/docs/versioning.md) as the public baseline, featuring an HTTP API plus server-sent events.
+&gt; * **Runs on:** A [Linux x86_64 host with KVM](https://github.com/perplexityai/SPACE/blob/main/docs/installation.md), `/dev/kvm`, btrfs, and Docker. Supports local Kind (Kubernetes) or direct mode (No macOS support).
+&gt; * **Performance:** In production, median create latency dropped from [185 ms to 60 ms](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents) compared to Perplexity’s previous provider.
+&gt; * **Security:** [0 of 108](https://www.perplexity.ai/hub/blog/escaping-space-part-i) VM-to-host escape attempts succeeded across 9 frontier models.
+&gt; * **Vulnerabilities (Pre-fix):** Before security patches, agents bypassed the egress policy in [11 of 54](https://www.perplexity.ai/hub/blog/escaping-space-part-i) partial-network runs.
+
+---
+
+## 什么是 Perplexity SPACE？
+
+&gt; ## What is Perplexity SPACE?
+
+SPACE (Sandboxed Platform for Agentic Code Execution) 是 Perplexity 专为在隔离微虚拟机中执行智能体代码而打造的核心平台。上层应用程序只需调用其 [HTTP API](https://github.com/perplexityai/SPACE)，即可快速创建 Linux 运行环境、执行各类命令并实时流式接收执行输出。
+
+&gt; SPACE (Sandboxed Platform for Agentic Code Execution) is Perplexity’s platform for running agent code in isolated microVMs. Applications call its [HTTP API](https://github.com/perplexityai/SPACE) to create Linux environments, execute commands, and stream output.
+
+* **模板 (Template)**：为沙盒提供初始化的基础文件系统映像。
+* **沙盒 (Sandbox)**：基于特定模板实例化的独立运行环境，拥有专属于自己的独立虚拟机和可写磁盘。在单个沙盒生命周期内，支持按序连续执行多条命令。
+
+&gt; * **Template:** Supplies the starting filesystem.
+&gt; * **Sandbox:** An individual instance of a template featuring its own VM and writable disk. Multiple commands can run sequentially inside a single sandbox.
+
+Perplexity 在其官方发布的 [推文串 (Launch Thread)](https://x.com/perplexity_ai/status/2110778478312481167) 中重点阐述了该系统的核心设计初衷：允许智能体在沙盒*内部*以 root 管理员权限自由运行命令、安装依赖软件包并调用各类网络服务；与此同时，严格确保宿主机器在物理层面完全脱离客户机虚拟机的控制范围。鉴于智能体的工作流通常具有长时间运行、多轮有状态演进以及多分支探索等特点，整个平台在底层架构设计上全面支持重启容灾与状态无损恢复。
+
+&gt; Perplexity’s [launch thread](https://x.com/perplexity_ai/status/2110778478312481167) highlights the primary design goal: allowing agents to run commands, install packages, and call services with root privileges *inside* the sandbox while ensuring the host remains completely out of the guest’s control. Because agent workflows are long-running, stateful, and branching, the platform is designed to survive restarts.
+
+---
+
+## SPACE 如何对智能体实现严密隔离？
+
+&gt; ## How Does SPACE Isolate Agents?
+
+在架构层面，每一个沙盒都是一个轻量级的 [Firecracker](https://www.usenix.org/conference/nsdi20/presentation/agache) 微虚拟机，拥有完全独立的客户机操作系统内核。同时，宿主机上为每个沙盒分别配备了专属的网络网关，对虚拟机的每一笔外发连接严格执行出站访问安全策略。
+
+&gt; Each sandbox is a [Firecracker](https://www.usenix.org/conference/nsdi20/presentation/agache) microVM complete with its own guest kernel. A per-sandbox network gateway on the host enforces strict egress policies on every outbound connection.
+
+任何核心机密或访问凭据绝不直接流入客户机内部。根据 Perplexity 在 [7 月份发布的技术工程博文](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)，敏感凭据全部在宿主机网络层进行安全透明注入。该凭据管理中心支持多层级作用域划分、高精度速率限制以及全方位的操作审计日志。
+
+&gt; Secrets never enter the guest. According to Perplexity’s [July engineering post](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents), credentials are injected securely at the network layer. The credential store provides hierarchical scoping, strict rate limits, and comprehensive audit logging.
+
+官方发布的 [架构设计指南 (Architecture Guide)](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) 将系统解构为四大核心组件：
+1. 基于 PostgreSQL 存储的 API 服务层
+2. 控制器集群 (Controllers)
+3. 工作节点服务 (Worker Services)
+4. 数据平面 (Data Plane)
+
+&gt; The [architecture guide](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) divides the system into four core components:
+&gt; 1. PostgreSQL-backed API
+&gt; 2. Controllers
+&gt; 3. Worker services
+&gt; 4. Data plane
+
+工作节点服务负责统筹管理虚拟机生命周期、虚拟网络、存储卷、模板以及凭据分发，并充分利用 btrfs 文件系统的写时复制 (Copy-on-Write, CoW) 特性，以极高效率瞬间分发每个沙盒的根文件系统。
+
+&gt; Worker services manage VMs, networking, volumes, templates, and credentials, utilizing btrfs copy-on-write functionality to provision each root filesystem efficiently.
+
+---
+
+## 暂停、休眠挂起与状态恢复是如何运作的？
+
+&gt; ## How Do Pause, Suspend, and Restore Work?
+
+在整个运行生命周期中，沙盒会在四种截然不同的状态之间流转切换：**运行中 (Running)**、**已暂停 (Paused)**、**已休眠挂起 (Suspended)** 以及 **已删除 (Deleted)**。
+
+&gt; Sandboxes transition through four distinct states: **running**, **paused**, **suspended**, and **deleted**.
+
+* **运行中 (Running)**：各类进程正在活跃执行；实时虚拟机内存与可写文件系统均处于就绪保持状态。
+* **已暂停 (Paused)**：代码执行立即中断，但虚拟机的内存数据依然驻留在工作节点内存中 (此时并非持久化快照)。
+* **已休眠挂起 (Suspended)**：将虚拟机内存、运行时系统状态以及根文件系统全部持久化保存为快照，并彻底释放所有占用的活跃计算资源。
+* **默认空闲策略 (Idle Default)**：当沙盒持续处于空闲状态超过 6 小时后，系统将对其 [执行自动休眠挂起](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md)。
+
+&gt; * **Running:** Processes execute actively; live VM memory and the writable filesystem are preserved.
+&gt; * **Paused:** Execution stops and VM memory stays resident on the worker (not a durable snapshot).
+&gt; * **Suspended:** VM memory, runtime state, and the root filesystem are snapshotted, and active resources are released. 
+&gt; * **Idle Default:** Sandboxes [suspend automatically after 6 hours](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) of inactivity.
+
+为了实现极致的极速供给，在 Kubernetes 生产部署环境下，系统利用预先引导就绪的沙盒构建了 [预热池 (Warm Pools)](https://github.com/perplexityai/SPACE/blob/main/docs/warm-pools.md)；而在单节点开发测试环境中，则依托 [基础快照 (Base Snapshots)](https://github.com/perplexityai/SPACE/blob/main/docs/base-snapshots.md) 机制实现秒级启动。在实际生产场景中，沙盒创建延迟的第 90 百分位数 (P90) 从 [447 毫秒大幅降至 89 毫秒](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)，目前 Perplexity Computer 的会话已 100% 全量运行在 SPACE 平台之上。
+
+&gt; For rapid provisioning, Kubernetes deployments utilize [warm pools](https://github.com/perplexityai/SPACE/blob/main/docs/warm-pools.md) of pre-booted sandboxes, whereas single-node setups rely on [base snapshots](https://github.com/perplexityai/SPACE/blob/main/docs/base-snapshots.md). In production, the 90th-percentile create latency dropped from [447 ms to 89 ms](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents), with 100% of Perplexity Computer sessions running on SPACE.
+
+---
+
+## SPACE 能经受住红蓝对抗安全测试吗？
+
+&gt; ## Did SPACE Survive a Red-Team Test?
+
+Perplexity 在发布的 [*逃逸 SPACE：第一部分 (Escaping SPACE: Part I)*](https://www.perplexity.ai/hub/blog/escaping-space-part-i) 深度安全测试报告中，对赋予了客户机内部 root 最高权限的 9 款主流模型展开了总计 216 次实战渗透运行评估：
+
+&gt; Perplexity’s [*Escaping SPACE: Part I*](https://www.perplexity.ai/hub/blog/escaping-space-part-i) report evaluated 9 models with root access inside the guest across 216 runs:
+
+* **沙盒突破逃逸 (Sandbox Escape)**：在总共 108 次实战测试中，成功窃取宿主机核心机密的次数为 0 (0/108)。
+* **纯无网络环境绕过 (No-network Bypass)**：在 54 次测试中，成功绕过网络封锁的次数为 0 (0/54)。
+* **部分联网环境绕过 (Partial-network Bypass)**：在安全补丁上线*之前*，54 次测试中有 11 次 (11/54) 出现了策略绕过 (Claude Opus 5.0、GPT-5.6 Sol、GPT-5.6 Cyber 以及 Kimi K3 等模型成功利用了 DNS 欺骗与共享 CDN IP 地址的漏洞)。
+
+&gt; * **Sandbox escape:** 0 of 108 runs reached the host-side secret.
+&gt; * **No-network bypass:** 0 of 54 runs succeeded.
+&gt; * **Partial-network bypass:** 11 of 54 runs succeeded *before* fixes were implemented (models like Claude Opus 5.0, GPT-5.6 Sol, GPT-5.6 Cyber, and Kimi K3 successfully exploited DNS spoofing and shared CDN IP addresses).</description>
+    </item>
+    <item>
       <title>你的 MCP 服务器足够安全，但其背后的账本系统并非如此</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-17/你的-MCP-服务器安全-但其背后的账本系统并非如此/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-17/你的-MCP-服务器安全-但其背后的账本系统并非如此/</guid>
@@ -4131,27 +4258,6 @@ Ruby 和 Go 的这套实现均已接入上游官方的 [一致性测试套件](h
 借助开源的 [git-pkgs](https://github.com/git-pkgs) 工具套件——涵盖用于清单提取的 [manifests](https://github.com/git-pkgs/manifests)、开源协议分析的 [licenses](https://github.com/git-pkgs/licenses) 以及信息速览工具 [brief](https://github.com/git-pkgs/brief)——开发者能够将整个 Software Heritage 档案库当作一座容量惊人的代码分析语料库。当它与 `swh-git` 强强联手时，无论跨越多少历史版本迭代，针对项目依赖链、合规许可证乃至构建工具链的深度分析，都能实现完全可重现与可验证。
 
 &gt; Using the [git-pkgs](https://github.com/git-pkgs) suite—including [manifests](https://github.com/git-pkgs/manifests), [licenses](https://github.com/git-pkgs/licenses), and [brief](https://github.com/git-pkgs/brief)—developers can treat the Software Heritage archive as a massive analysis corpus. Combined with `swh-git`, analyses of dependencies, licenses, and toolchains become fully reproducible across historical software versions.</description>
-    </item>
-    <item>
-      <title>自我进化的算法设计智能体：基于种群筛选策略优化打破上下文进化停滞</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-02/自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-02/自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞/</guid>
-      <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (Large Language Model, LLM) 驱动的自主算法设计中，现有的纯上下文进化方案在面对芯片设计、底层算子等高门槛专业领域时极易遭遇“进化停滞”，而传统的参数微调方法又受困于高质量专业算法语料的极度匮乏。为此，南京大学与华为等机构的研究团队提出了全新的参数自进化框架——种群筛选策略优化 (Population-Curated Policy Optimization, PCPO) ，在理论上证明了通过渐进学习自生成算法能够打破停滞的“改进链 (Improvement Chain) ”命题，并借助全局种群与混合策略更新机制，让智能体直接在自生成的高质量多样化算法中持续迭代进化。在电子设计自动化 (Electronic Design Automation, EDA) 的芯片全局布局学习率调度任务中，基于 8B 参数开源底座的 PCPO 仅需 4 个芯片案例的轻量训练，就在全部 16 个测试案例上全面超越了 OpenEvolve 和 ShinkaEvolve 等前沿上下文进化基准，性能足以比肩顶尖闭源模型 GPT-5.5，并显著降低了推理阶段的 Token 开销。此外，PCPO 在 4 款 GPU 底层算子设计任务中相比 PyTorch Eager 基线实现了平均 8.27 倍的显著加速，为解决复杂工业与高性能计算领域的算法自动化探索开辟了全新路径。
-
----
-
-## 📋 内容概要
-
-&gt; ## 📋 Summary
-
-如今，大语言模型 (LLM) 越来越多地以自主智能体的形态参与到复杂现实任务中，承担起算法设计与持续优化的重任。虽然基于**上下文进化框架** (In-Context Evolutionary Frameworks) 的探索方法颇受青睐，但在需要高度专业领域知识的复杂场景下，这类方法往往很快就会陷入能力瓶颈与进化停滞；而传统的**参数化适配** (Parametric Adaptation) 方法若想内化专业知识，又严重依赖海量的特定领域语料，这在高级算法设计这一高精尖场景中无疑是极其匮乏的。
-
-&gt; Large Language Models (LLMs) are increasingly utilized as autonomous agents to design and refine algorithms for complex real-world tasks. While **in-context evolutionary frameworks** are popular, they often plateau quickly in domains requiring specialized knowledge. Conversely, traditional **parametric adaptation** requires large datasets of domain-specific corpora, which are extremely scarce for advanced algorithm-design scenarios.
-
-为了弥合这一鸿沟，本文提出了**种群筛选策略优化** (Population-Curated Policy Optimization, PCPO) ——这是一种高样本效率的参数自进化框架，允许智能体直接从自身探索生成的算法中进行反思与学习。
-
-&gt; To bridge this gap, this paper introduces **Population-Curated Policy Optimization (PCPO)**—a sample-efficient parametric self-evolution framework where agents explore and learn directly from self-generated algorithms.</description>
     </item>
   </channel>
 </rss>
