@@ -1,0 +1,642 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-20-Fedora-44-%E4%B8%8B-DKMS-%E4%B8%8E%E5%86%85%E6%A0%B8-Initramfs-%E9%95%9C%E5%83%8F%E9%87%8D%E5%BB%BA%E7%9A%84%E6%80%A7%E8%83%BD%E9%99%B7%E9%98%B1%E4%B8%8E%E8%A7%A3%E5%86%B3/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fedora-44-dkms-initramfs" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="fedora-44-dkms-initramfs">Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决</h1>
+<blockquote>
+<h1 id="an-issue-with-dkms-and-kernel-initramfs-images-in-fedora-44">An Issue with DKMS and Kernel Initramfs Images in Fedora 44</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在 Linux 生态中，DKMS (Dynamic Kernel Module Support) 是第三方内核模块（如 ZFS 或显卡驱动）伴随内核升级自动重新编译的利器，而 Initramfs 则承载着系统引导时早期的必要驱动。然而在 Fedora 44 发行版中，默认的 DKMS 触发机制存在一项隐蔽的性能陷阱：只要执行模块卸载或安装，框架便会无差别地针对系统中“所有已安装的内核”全量重新生成 Initramfs 引导镜像。对于长期保留多个备份内核的开发者和工作站而言，一次常规的小版本更新可能会演变成长达 20 多分钟的漫长等待。本文深入剖析了这一机制背后的配置成因，并提供了一行配置覆盖的极简优化方案，帮助读者轻松解除不必要的重建负担，显著提升系统维护效率。</p>
+<hr />
+<h2 id="_2">内容摘要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在 Fedora 44 系统上通过动态内核模块支持 (Dynamic Kernel Module Support, DKMS) 更新 ZFS 文件系统 (ZFS) 时，整个更新流程变得异常迟缓，耗时竟长达 20 分钟以上。深入排查后发现，Fedora 的 DKMS 默认配置中引入了一个事务后钩子 (post-transaction hook)；只要触发 <code>dkms remove</code> 或 <code>dkms install</code> 命令，即便该模块仅面向某一个特定内核版本，系统也会强行调用 <code>dracut --regenerate-all --force</code>，为机器上安装的“每一个内核”统统重新生成一遍初始化内存盘 (Initramfs) 镜像。幸运的是，我们只需在 <code>/etc/dkms/framework.conf.d/</code> 目录下添加自定义配置并覆盖其 <code>post_transaction</code> 选项，即可轻松绕过这一繁重冗余的重建机制。</p>
+<blockquote>
+<p>When updating ZFS via DKMS on Fedora 44, the update process became frustratingly slow—taking upwards of twenty minutes. By investigating the issue, it was discovered that Fedora's DKMS configuration uses a post-transaction hook to regenerate <em>all</em> initramfs images across every installed kernel (<code>dracut --regenerate-all --force</code>) whenever <code>dkms remove</code> or <code>dkms install</code> is executed, even if the module is only being targeted at a single kernel version. Fortunately, this can be bypassed by overriding the <code>post_transaction</code> setting in <code>/etc/dkms/framework.conf.d/</code>.</p>
+</blockquote>
+<hr />
+<h2 id="initramfs">根本成因：过于激进的 Initramfs 全量重建</h2>
+<blockquote>
+<h2 id="the-root-cause-overzealous-initramfs-regeneration">The Root Cause: Overzealous Initramfs Regeneration</h2>
+</blockquote>
+<p>在日常的桌面工作站环境中，作者维护着一套略显复杂的内核与 ZFS 更新流程，其中便利用了通过 <a href="https://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support">DKMS</a> 管理的 ZFS 开发分支版本。在正常预期下，系统通常只需为最近使用的两个内核编译新模块。然而，每次升级 ZFS 的 DKMS RPM 软件包时，底层都会先后执行旧模块的卸载以及新模块的安装操作，进而导致整个更新流程耗时漫长、令人苦不堪言。</p>
+<blockquote>
+<p>The author runs a convoluted kernel and ZFS update process on desktop systems, utilizing the development version of ZFS managed through <a href="https://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support">DKMS</a>. Normally, modules are only built for the two most recent kernels. However, updating the ZFS DKMS RPM involves both removing old modules and installing new ones, which led to agonizingly slow update times.</p>
+</blockquote>
+<p>经过在 <a href="https://mastodon.social/@cks/117445698531371721">Fediverse</a> 上的交流探讨与 <a href="https://mastodon.social/@cks/117445845905372687">深入排查</a>，这一性能瓶颈的症结所在终于被彻底查明：</p>
+<blockquote>
+<p>Upon investigating via the <a href="https://mastodon.social/@cks/117445698531371721">Fediverse</a> and <a href="https://mastodon.social/@cks/117445845905372687">further debugging</a>, the culprit was uncovered:</p>
+<p>💬 [译文引用]:
+“在我的内核更新流程中，时间究竟都去哪儿了？答案终于水落石出：执行 <code>dkms remove</code> 会为系统中所有已安装的内核重新构建全部 Initramfs 镜像；哪怕你要卸载的模块在某些内核中根本不存在，甚至哪怕你显式加上了 <code>dkms remove ... -k ...</code> 明确限制仅为单一内核卸载，它也依然会毫不留情地全量重建一遍。</p>
+<p>这着实让人十分无奈。我完全不希望系统未经许可就意外重建一堆不相干的 Initramfs 镜像；更何况在我的机器上足足保留了 6 个不同版本的内核，这样一折腾下来耗费的时间可想而知。”</p>
+<p>💬 [原文引用 / Original Quote]:
+The answer to where the time goes [in my kernel update process] is that 'dkms remove' rebuilds all initramfs images for all installed kernels, even if the module you're removing doesn't exist for those kernels and even if you are running 'dkms remove ... -k ...' to only remove the module for one kernel.</p>
+<p>This is my unhappy face. I do not want random initramfs's to be rebuilt by surprise, and it also takes rather a while when you have six kernels, like I do.</p>
+</blockquote>
+<p><em>(注：<code>dkms install</code> 安装命令在执行时同样存在完全一致的激进行为)</em>。</p>
+<blockquote>
+<p><em>(Note: <code>dkms install</code> exhibits the exact same behavior).</em></p>
+</blockquote>
+<h3 id="_3">为什么会发生这种情况？</h3>
+<blockquote>
+<h3 id="why-does-this-happen">Why Does This Happen?</h3>
+</blockquote>
+<p>进一步深入审查 Fedora 44 的 DKMS 默认配置文件，终于找到了导致该问题的根源项。在 <code>/etc/dkms/framework.conf</code> 中，Fedora 预置了如下配置：</p>
+<blockquote>
+<p>Digging into Fedora 44's DKMS configuration revealed the setting responsible. Inside <code>/etc/dkms/framework.conf</code>, Fedora defines:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="na">post_transaction</span><span class="o">=</span><span class="s">&quot;dracut --regenerate-all --force&quot;</span>
+</code></pre></div>
+<p>查阅 <a href="https://man.archlinux.org/man/dkms.8">DKMS 手册页</a> 与 <a href="https://www.man7.org/linux/man-pages/man8/dracut.8.html">dracut(8) 手册页</a> 可知，该配置指令会在系统调用诸如 <code>dkms install</code> 与 <code>dkms remove</code> 等命令后自动触发执行。它会强制将系统中<strong>所有</strong>已安装内核所对应的<strong>全部</strong> Initramfs 镜像，按顺序逐一进行串行化全量重建。</p>
+<blockquote>
+<p>According to <a href="https://man.archlinux.org/man/dkms.8">the DKMS manual page</a> and the <a href="https://www.man7.org/linux/man-pages/man8/dracut.8.html">dracut(8) manual page</a>, this command runs automatically after commands like <code>dkms install</code> and <code>dkms remove</code>. It forces <strong>all</strong> initramfs images for <strong>all</strong> installed kernels to be serially regenerated, one by one.</p>
+</blockquote>
+<p>因此，在升级 <code>zfs-dkms</code> 模块时，DKMS 会先执行旧版本的模块卸载、紧接着再执行新版本的编译安装。对于一台安装了 6 个内核的工作站而言，这相当于在一次更新中被动连续执行了整整两次 <code>dracut --regenerate-all</code> 全量生成命令，直接把一次原本轻松普通的日常维护，变成了长达 20 多分钟的漫长煎熬。</p>
+<blockquote>
+<p>When updating <code>zfs-dkms</code>, DKMS performs a removal of old modules followed by an installation of new ones. With six kernels installed on a work desktop, running <code>dracut --regenerate-all</code> twice turned a routine update into a 20+ minute ordeal.</p>
+</blockquote>
+<hr />
+<h2 id="fedora-dkms">Fedora 如何将 DKMS 钩入内核安装流程</h2>
+<blockquote>
+<h2 id="how-fedora-hooks-dkms-into-kernel-installs">How Fedora Hooks DKMS into Kernel Installs</h2>
+</blockquote>
+<p>与此相对的是，通过 DNF 包管理器 (DNF) 进行常规的内核安装升级时，其表现却十分正常规整。Fedora 是通过 <code>/usr/lib/kernel/install.d/40-dkms.install</code> 脚本将 DKMS 挂钩到内核安装流程中的，该脚本会调用一个官方文档中并未公开说明的 DKMS 子命令：</p>
+<blockquote>
+<p>Conversely, standard DNF kernel installations behave normally. Fedora hooks DKMS into kernel installs via <code>/usr/lib/kernel/install.d/40-dkms.install</code>, which executes an undocumented DKMS subcommand:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>dkms<span class="w"> </span>kernel_postinst<span class="w"> </span>--kernelver<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$KERNEL_VERSION</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>这一命令会触发一种特殊形式的 <code>dkms autoinstall</code> 操作。但在 <code>dkms</code> 内部的 Shell 脚本逻辑中，专门对该子命令做了特殊处理，跳过了 <code>post_transaction</code> 钩子的执行。正因如此，当用户通过 DNF 安装新内核时，系统只会精准地针对当前这个新内核编译模块并生成对应的 Initramfs，一切都完全符合正常预期。</p>
+<blockquote>
+<p>This triggers a form of <code>dkms autoinstall</code>, but the internal <code>dkms</code> shell script specifically skips running the <code>post_transaction</code> command for this subcommand. Therefore, installing a new kernel via DNF only builds the module and creates the initramfs for that specific new kernel, as expected.</p>
+</blockquote>
+<hr />
+<h2 id="_4">解决方案</h2>
+<blockquote>
+<h2 id="the-fix">The Fix</h2>
+</blockquote>
+<p>由于这项机制是 Fedora 维护人员显式打入 <a href="https://src.fedoraproject.org/rpms/dkms/blob/rawhide/f/dkms.spec#_58">Fedora 的 dkms.spec 构建规范</a> 中的补丁行为（最初引入于 <a href="https://src.fedoraproject.org/rpms/dkms/c/11bcc820ca36ce51254d7015bdb18405d5babf3c?branch=rawhide">3.2.0 版本的提交记录</a>），因此仅仅去官方提交常规的 Bug 报告，大概率很难促使其做出改变。</p>
+<blockquote>
+<p>Because Fedora explicitly patches this behavior into <a href="https://src.fedoraproject.org/rpms/dkms/blob/rawhide/f/dkms.spec#_58">the Fedora dkms.spec</a> (added in <a href="https://src.fedoraproject.org/rpms/dkms/c/11bcc820ca36ce51254d7015bdb18405d5babf3c?branch=rawhide">the 3.2.0 commit</a>), filing a traditional bug report is unlikely to yield changes.</p>
+</blockquote>
+<p>不过，如果读者所使用的这类特定内核模块并不需要在系统早期的内核 Initramfs 镜像中加载常驻，解决办法就非常简单优雅：我们只需在 <code>/etc/dkms/framework.conf.d/</code> 目录下创建一个自定义的覆盖配置文件，使默认配置中的 <code>post_transaction</code> 动作失效即可。</p>
+<blockquote>
+<p>However, since these particular kernel modules do not need to reside in the kernel initramfs image, the solution is simple: create an override file in <code>/etc/dkms/framework.conf.d/</code> to neutralize the <code>post_transaction</code> action.</p>
+</blockquote>
+<p>将 <code>post_transaction</code> 的值配置为空或者指定为 <code>/bin/true</code>，即可阻止 DKMS 在每次执行模块卸载和安装时盲目重建所有 Initramfs 镜像，从而立竿见影地让 <code>dkms remove</code> 等命令重新恢复清爽快速的执行体验。</p>
+<blockquote>
+<p>Setting <code>post_transaction</code> to null or <code>/bin/true</code> will prevent DKMS from blindly touching your initramfs images on module removal and installation, instantly restoring fast execution times to commands like <code>dkms remove</code>.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Fedora</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Linux内核</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">DKMS</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">ZFS</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

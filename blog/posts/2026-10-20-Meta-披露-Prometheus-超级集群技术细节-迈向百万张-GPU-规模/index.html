@@ -1,0 +1,716 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-20-Meta-%E6%8A%AB%E9%9C%B2-Prometheus-%E8%B6%85%E7%BA%A7%E9%9B%86%E7%BE%A4%E6%8A%80%E6%9C%AF%E7%BB%86%E8%8A%82-%E8%BF%88%E5%90%91%E7%99%BE%E4%B8%87%E5%BC%A0-GPU-%E8%A7%84%E6%A8%A1/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#meta-prometheus-gpu" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="meta-prometheus-gpu">Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模</h1>
+<blockquote>
+<h1 id="meta-details-prometheus-supercluster-scaling-toward-1-million-gpus">Meta Details Prometheus Supercluster Scaling Toward 1 Million GPUs</h1>
+</blockquote>
+<p><img alt="Meta Prometheus Supercluster" class="attachment- size- wp-post-image webpexpress-processed" decoding="async" fetchpriority="high" height="1080" sizes="(max-width: 1200px) 100vw, 1200px" src=".././images/43dc7fcb6128.jpg" width="1920"/></p>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着前沿大语言模型与多模态智能体参数规模的指数级爆炸，底层 AI 基础设施正迎来前所未有的工程挑战。Meta 首次对外披露了其位于美国俄亥俄州新奥尔巴尼的千兆瓦 (Gigawatt, GW) 级巨型 AI 超级集群 —— Prometheus (普罗米修斯) 的深度技术架构。该集群第一阶段不仅成功支撑了 Meta 新一代前沿基座模型 Muse 家族的预训练与强化学习，更将终极演进目标锚定在惊人的“百万张 GPU”互联规模。通过深度整合 NVIDIA 最新 Blackwell NVL72 机架架构、自研非调度以太网后端 Fabric，以及创新的动态配电削峰与先进液冷技术，Meta 为超大规模分布式 AI 计算提供了极具前瞻性的工业级工程范本。</p>
+<hr />
+<h2 id="_2">执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>Meta 工程团队全面公布了其位于美国俄亥俄州新奥尔巴尼 (New Albany, Ohio) 的千兆瓦级 AI 超级集群 —— <strong>Prometheus</strong> 的深度技术细节。目前已竣工的项目一期工程成功承担了 Meta 核心基座大模型 <strong>Muse</strong> 家族 (包含前沿旗舰模型 <em>Muse Wonder</em>) 的训练任务，并在计算性能和运行稳定性上交出了亮眼答卷。Meta 目前正通过阶段性扩建持续推进该基础设施建设，其终极目标是互联约 <strong>100 万张 GPU</strong>，深度整合了 NVIDIA 先进 GPU 架构、自研专有网络 Fabric，以及前沿的大规模供电与散热创新方案。</p>
+<blockquote>
+<p>Meta's engineering team released a comprehensive technical breakdown of <strong>Prometheus</strong>, a gigawatt-scale AI supercluster located in New Albany, Ohio. The completed first phase of the project successfully trained Meta's foundational <strong>Muse</strong> model family (including the <em>Muse Wonder</em> frontier models), achieving high performance and reliability metrics. Meta is currently scaling the infrastructure through phased developments with an ultimate target of roughly <strong>1 million GPUs</strong>, incorporating advanced NVIDIA GPU architectures, proprietary networking fabrics, and large-scale power and cooling innovations.</p>
+</blockquote>
+<hr />
+<h2 id="prometheus">Prometheus 超级集群全景概览</h2>
+<blockquote>
+<h2 id="overview-of-the-prometheus-supercluster">Overview of the Prometheus Supercluster</h2>
+</blockquote>
+<p>这座位于新奥尔巴尼的计算中心最初只是一座承载传统互联网业务流量的通用数据中心，Meta 对其进行了彻底重构，使其完全具备支撑前沿大模型训练的极限性能。通过分阶段建设，如今的 Prometheus 成功将数十万张 GPU 汇聚分布在传统机房、AI 专属优化结构以及快速部署模块化设施中，让庞大的物理硬件如同一台超大型统一计算机般高效协同运转。</p>
+<blockquote>
+<p>Originally a conventional web-traffic data center, Meta overhauled the New Albany facility to handle frontier-model training. Completed in phases, Prometheus now integrates hundreds of thousands of GPUs across traditional data centers, AI-optimized structures, and rapid-deployment facilities to function as a singular, unified machine.</p>
+</blockquote>
+<p>Prometheus 的第一期工程成功训练了 Muse 基座模型家族，在个人辅助与专业 AI 智能体 (AI Agent) 任务上均展现出顶尖性能。在预训练和强化学习运行过程中，该集群交出了极为优异的工程指标：</p>
+<blockquote>
+<p>The first phase of Prometheus successfully trained the Muse foundational models, delivering state-of-the-art performance for personal and professional agentic tasks. During pre-training and reinforcement learning runs, the cluster achieved:</p>
+</blockquote>
+<ul>
+<li>在 Muse Wonder 预训练任务中，实现了 <strong>&gt;85% 的有效算力吞吐率 (Goodput)</strong>；</li>
+<li>在强化学习 (Reinforcement Learning) 训练流程中，实现了 <strong>&gt;90% 的有效算力吞吐率</strong>；</li>
+<li>平均中断间隔时间 (Mean Time Between Interruptions, MTBI) 达到 <strong>约 4.7 万 GPU 小时</strong>，随后通过全集群工程调优更是突破了 <strong>5.4 万 GPU 小时</strong>。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>&gt;85% goodput</strong> on Muse Wonder pre-training.</li>
+<li><strong>&gt;90% goodput</strong> on reinforcement learning runs.</li>
+<li>A mean time between interruptions (MTBI) of <strong>~47k GPU hours</strong>, which fleet-wide optimizations later boosted beyond <strong>54k GPU hours</strong>.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="nvidia">两款已投入生产的 NVIDIA 硬件平台</h2>
+<blockquote>
+<h2 id="two-nvidia-platforms-in-production">Two NVIDIA Platforms in Production</h2>
+</blockquote>
+<p>Prometheus 深度集成了多种基于 <strong>NVL72 机架架构</strong> 的 NVIDIA GPU 平台，在该架构下一个网络 Fabric 内的 72 张 GPU 可以视作单台巨型加速器协同运行。此外，基于下一代 <strong>NVIDIA Vera Rubin NVL72</strong> 的全新平台也已进入规划蓝图。</p>
+<blockquote>
+<p>Prometheus integrates multiple NVIDIA GPU platforms leveraging the <strong>NVL72 rack architecture</strong>, where 72 GPUs operate as a single accelerator across one network fabric. An upcoming platform based on the <strong>NVIDIA Vera Rubin NVL72</strong> is also on the horizon.</p>
+</blockquote>
+<h3 id="1-catalina-nvidia-gb200-nvl72">1. Catalina 平台 (NVIDIA GB200 NVL72)</h3>
+<blockquote>
+<h3 id="1-catalina-nvidia-gb200-nvl72_1">1. Catalina (NVIDIA GB200 NVL72)</h3>
+</blockquote>
+<ul>
+<li><strong>硬件配置</strong>：采用 Ariel 双机架变体方案 (每机架 36 张 GPU，通过 NVLink 跨机架互联汇聚为一个包含 72 张 GPU 的统一计算域) 。每张 Blackwell GPU 搭配一颗 Grace CPU 以及两张 ConnectX-7 400G 网卡 (NIC) (保持 1:1 的 CPU 与 GPU 配比，每张 GPU 享有 800G 的 I/O 吞吐带宽) ；</li>
+<li><strong>功耗与物理设计</strong>：基于 Meta 自研的 Open Rack V3 高功率规范运行，整套双机架系统的功耗约为 <strong>120 kW</strong>；</li>
+<li><strong>核心规格参数</strong>：</li>
+<li>搭载 72 张 Blackwell GPU，配备 <strong>13.4 TB 的 HBM3e</strong> 高带宽内存 (单卡 192 GB) ；</li>
+<li>具备 720 PFLOPS 的 FP8 训练峰值算力 (FP4 精度下可达 1,440 PFLOPS) ；</li>
+<li>拥有高达 <strong>130 TB/s</strong> 的 NVLink 峰值互联带宽以及 <strong>576 TB/s</strong> 的聚合内存峰值带宽。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Configuration:</strong> Ariel two-rack variant (36 GPUs per rack joined over NVLink into a unified 72-GPU domain). Each Blackwell GPU pairs with a Grace CPU and two ConnectX-7 400G NICs (1:1 CPU-to-GPU ratio, 800G I/O per GPU).</li>
+<li><strong>Power &amp; Design:</strong> Operates on Meta’s Open Rack V3 high-power design, drawing roughly <strong>120 kW</strong> across the two-rack pair.</li>
+<li><strong>Specifications:</strong> </li>
+<li>72 Blackwell GPUs with <strong>13.4 TB of HBM3e</strong> (192 GB per GPU).</li>
+<li>720 peak PFLOPS of FP8 training compute (1,440 PFLOPS at FP4).</li>
+<li><strong>130 TB/s</strong> of peak NVLink bandwidth and <strong>576 TB/s</strong> of peak aggregate memory bandwidth.</li>
+</ul>
+</blockquote>
+<h3 id="2-clemente-nvidia-gb300-nvl72">2. Clemente 平台 (NVIDIA GB300 NVL72)</h3>
+<blockquote>
+<h3 id="2-clemente-nvidia-gb300-nvl72_1">2. Clemente (NVIDIA GB300 NVL72)</h3>
+</blockquote>
+<ul>
+<li><strong>硬件配置</strong>：采用 Blackwell Ultra GPU 并将 GPU 与 CPU 的比例调整为 2:1，成功将完整的 72-GPU 域压缩凝聚至单一机架内。配备 ConnectX-8 SuperNIC 超级网卡，为每张 GPU 提供原生 800G 的超高带宽网络接入；</li>
+<li><strong>功耗与物理设计</strong>：单机架功耗约为 <strong>135 kW</strong>。部署时可根据机房条件灵活采用模块化风冷辅助液冷 (Air-Assisted Liquid Cooling) 或机房级原生直接液冷 (Facility Liquid Cooling) ；</li>
+<li><strong>核心规格参数</strong>：</li>
+<li>搭载 72 张 Blackwell Ultra GPU，配备高达 <strong>20.7 TB 的 HBM3e</strong> 显存 (单卡 288 GB，较前代提升 1.5 倍) ；</li>
+<li>提供超过 <strong>1 EFLOPS (1 exaFLOP)</strong> 的 FP4 峰值算力，注意力机制 (Softmax) 加速性能实现翻倍；</li>
+<li>相比 GB200 NVL72 平台，官方标称可带来 <strong>5% 至 10% 的综合性能提升</strong>。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Configuration:</strong> Utilizes Blackwell Ultra GPUs with a 2:1 GPU-to-CPU ratio, condensing the full 72-GPU domain into a single rack. Features ConnectX-8 SuperNICs delivering native 800G per GPU.</li>
+<li><strong>Power &amp; Design:</strong> Draws about <strong>135 kW</strong> per rack. Deployed using modular Air-Assisted Liquid Cooling or Facility Liquid Cooling.</li>
+<li><strong>Specifications:</strong> </li>
+<li>72 Blackwell Ultra GPUs with <strong>20.7 TB of HBM3e</strong> (288 GB per GPU—a 1.5x increase).</li>
+<li>Over <strong>1 exaFLOP</strong> of peak FP4 compute and roughly double the attention (softmax) acceleration.</li>
+<li>Delivers a stated <strong>5–10% performance improvement</strong> over the GB200 NVL72.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="fabric">楼宇级 Fabric 网络与区域级互联汇聚</h2>
+<blockquote>
+<h2 id="building-fabrics-and-regional-aggregation">Building Fabrics and Regional Aggregation</h2>
+</blockquote>
+<p>为了高效支撑 GPU 之间的直接通信，Meta 量身定制并部署了专门的 <strong>以太网后端网络 (Ethernet Back-End network)</strong>，深度适配超大规模预训练的数据并行层次结构：</p>
+<blockquote>
+<p>To support direct GPU-to-GPU communication, Meta implemented a dedicated <strong>Ethernet Back-End network</strong> tailored to large pre-training data-parallel hierarchies:</p>
+</blockquote>
+<ul>
+<li><strong>楼宇级 Fabric 架构</strong>：每个独立的网络 Fabric 可互联高达 <strong>20,736 张 GPU</strong>。Meta 从最初的解耦调度型 Fabric (Disaggregated Scheduled Fabric) 升级为了基于浅缓冲区 (Shallow-buffer) 51.2T 交换机构建的 <strong>非调度型 Fabric (Non-Scheduled Fabric)</strong> (例如支持动态负载均衡的 Minipack3 交换机，以及搭载 Spectrum-4 芯片、支持自适应路由的 Minipack3N 交换机) ；</li>
+<li><strong>后端汇聚网络 (Backend Aggregation Network)</strong>：采用多层轴辐式 (Hub-and-spoke) 拓扑设计，将跨越 2 公里至 100 多公里物理距离的不同楼宇 Fabric 紧密相连。该网络由搭载 Broadcom Jericho3 芯片的 Arista 7800 系列机箱式交换机强力驱动。整套物理网络设施包含了数百万英里的光纤、数万台交换机，以及数百万套光模块 (覆盖从 2x400G 短距可插拔模块到 800G-ZR 相干光模块的完整矩阵) 。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Building-Level Fabrics:</strong> Each fabric interconnects up to <strong>20,736 GPUs</strong>. Migrating from an initial Disaggregated Scheduled Fabric, Meta upgraded to a <strong>Non-Scheduled Fabric</strong> on shallow-buffer 51.2T switches (such as Minipack3 with Dynamic Load Balancing and Spectrum-4-based Minipack3N with Adaptive Routing).</li>
+<li><strong>Backend Aggregation Network:</strong> A multi-layer hub-and-spoke design linking building fabrics across distances ranging from 2 km to over 100 km, powered by Arista 7800-series chassis with Broadcom Jericho3 silicon. The physical plant spans millions of miles of fiber, tens of thousands of switches, and millions of optics (ranging from 2x400G short-reach pluggables to 800G-ZR coherent optics).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">容错能力与系统可靠性工程</h2>
+<blockquote>
+<h2 id="engineering-for-fault-tolerance-and-reliability">Engineering for Fault Tolerance and Reliability</h2>
+</blockquote>
+<p>从以往的 H100 NVL8 架构迈向 NVL72，意味着单个纵向扩展 (Scale-up) 的故障域从 8 张 GPU 陡增到了 72 张 GPU。为了应对故障影响面 (Blast radius) 成倍扩大的挑战，Meta 采取了一系列精密工程策略：</p>
+<blockquote>
+<p>Scaling from the H100 NVL8 architecture to NVL72 expanded the scale-up fault domain from 8 to 72 GPUs. To address this larger blast radius:</p>
+</blockquote>
+<ul>
+<li><strong>机架拓扑与热备冗余</strong>：每个 NVL72 计算域实际上运行一个 <strong>64 张 GPU 的活跃切片 (Active slice)</strong>，机架内预留 8 张 GPU 作为即时热备，同时全集群维持约 2% 的全局备用资源池；</li>
+<li><strong>多层次故障自愈机制</strong>：</li>
+<li><strong>感知并行的容错技术 (Parallelism-Aware Fault Tolerance)</strong>：当出现单点异常时，能够迅速隔离出现故障的数据并行副本，集群其余健康节点仅需重试当前计算步即可继续；</li>
+<li><strong>分布式异步检查点机制 (Distributed Asynchronous Checkpointing)</strong>：结合增量检查点 (Delta checkpointing) 与内存暂存技术，在故障波及多个副本时能够以极低开销快速恢复模型状态；</li>
+<li><strong>显著的稳定性飞跃</strong>：在 2025 年中期的峰值时期，每 8,000 张 GPU 每天发生的训练中断事件曾一度接近 1,000 次，而经过一系列软硬件联合优化后，中断率 <strong>大幅下降了 99%</strong>。Meta 的长期“北极星”指标是实现每 8,000 张 GPU 每天仅发生 2 次中断 (即达到约 10 万 GPU 小时的 MTBI) 。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Rack Geometry &amp; Spares:</strong> Each NVL72 domain runs a <strong>64-GPU active slice</strong>, keeping 8 GPUs as in-rack spares alongside a ~2% reserve pool.</li>
+<li><strong>Fault Recovery Mechanisms:</strong> </li>
+<li><em>Parallelism-Aware Fault Tolerance</em> isolates faulty data-parallel replicas while the rest of the cluster repeats the step.</li>
+<li><em>Distributed Asynchronous Checkpointing</em> with delta checkpointing and in-memory staging restores states when faults exceed a single replica.</li>
+<li><strong>Reliability Gains:</strong> Interruptions peaked near 1,000 events per 8K GPUs daily in mid-2025, but engineering refinements reduced this by <strong>99%</strong>. Meta's north star is two interruptions per 8K GPUs daily (~100k GPU hours MTBI).</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">电力管理、散热创新与未来蓝图</h2>
+<blockquote>
+<h2 id="power-cooling-and-future-expansion">Power, Cooling, and Future Expansion</h2>
+</blockquote>
+<ul>
+<li><strong>电网功率动态管理</strong>：大模型同步训练时各节点动作高度一致，会在短短数秒内引发高达 30% 至 40% 的瞬态电力波动 (功率突变往往达到数十兆瓦) 。Meta 研发了 <strong>Dynamo Dimmer</strong> 软件框架，通过平滑渐进式动态调整 GPU 功耗上限，并联动电池备用模块 (BBU) 、超级电容托盘以及与外部电网公司的深度调度协同，成功平抑电网冲击；</li>
+<li><strong>高密度散热系统</strong>：在专为 AI 打造的定制化数据中心内，将模块化风冷辅助液冷与机房级芯片直接接触式闭环液冷 (Direct-to-chip closed-loop liquid cooling) 进行了深度统一融合；</li>
+<li><strong>San Miguel 平台与 Hyperion 超级集群</strong>：Meta 即将推出的下一代 <strong>San Miguel</strong> 硬件平台将在单机架内集成 72 张 Vera Rubin GPU (配备 288 GB 的 HBM4 显存、高达 2.52 EFLOPS 的 FP4 峰值算力，以及 216 TB/s 的 NVLink 互联带宽，单机架功耗突破 170 kW) 。与此同时，位于路易斯安那州里奇兰堂区 (Richland Parish, Louisiana) 的全新 <strong>Hyperion</strong> 超级集群正从零开始拔地而起，深度绑定专属电力公用事业合作并全面引入更先进的原生液冷工程设计。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Power Management:</strong> Synchronized training triggers 30–40% power transients (tens of megawatts in seconds). Meta uses the <strong>Dynamo Dimmer</strong> framework to gradually adjust GPU power limits alongside battery backup modules, capacitor trays, and utility coordination.</li>
+<li><strong>Cooling Systems:</strong> Integrates modular air-assisted liquid cooling with facility direct-to-chip closed-loop liquid cooling in purpose-built AI facilities.</li>
+<li><strong>San Miguel &amp; Hyperion:</strong> Meta's upcoming <strong>San Miguel</strong> platform will feature 72 Vera Rubin GPUs per rack (offering 288 GB of HBM4, 2.52 peak EFLOPS FP4 compute, and 216 TB/s NVLink bandwidth at &gt;170 kW per rack). Meanwhile, the upcoming <strong>Hyperion</strong> supercluster in Richland Parish, Louisiana, is being built from the ground up with dedicated utility partnerships and advanced liquid-cooling designs.</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Meta</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">超级集群</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">GPU</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">NVIDIA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">AI算力</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
