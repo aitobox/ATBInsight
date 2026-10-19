@@ -134,6 +134,10 @@ title: 标签浏览
 
 - [我在视频中寻找你：面向以人为中心视频推理的身份条件化查询](blog/posts/2026-08-11-我在视频中寻找你：面向以人为中心视频推理的身份条件化查询.md)
 
+## ADK
+
+- [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
+
 ## ADU框架
 
 - [遗忘不等于简单擦除：基于生成不等式的时序解耦](blog/posts/2026-08-26-遗忘不等于简单擦除：基于生成不等式的时序解耦.md)
@@ -488,6 +492,10 @@ title: 标签浏览
 
 - [ARAC：端到端科研中自动化研究对齐与完整性的基准测试](blog/posts/2026-08-16-ARAC：端到端科研中自动化研究对齐与完整性的基准测试.md)
 
+## AI算力
+
+- [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
+
 ## AI编码代理
 
 - [架构作为代码Agent的能力均衡器](blog/posts/2026-08-26-架构作为代码Agent的能力均衡器.md)
@@ -723,6 +731,7 @@ title: 标签浏览
 - [扩展托管智能体：解耦大脑与双手的操作系统级架构演进](blog/posts/2026-10-08-扩展托管智能体-解耦大脑与双手的操作系统级架构演进.md)
 - [揭秘 Claude Code 自动模式：在跳过权限审批的同时保障系统安全](blog/posts/2026-10-08-揭秘-Claude-Code-自动模式-在跳过权限审批的同时保障系统安全.md)
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
+- [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 
 ## Anthropic Labs
 
@@ -929,6 +938,7 @@ title: 标签浏览
 - [构建仅在宿主套间内起效的伪敏捷包装器（第四部分）](blog/posts/2026-08-07-构建仅在宿主套间内起效的伪敏捷包装器（第四部分）.md)
 - [创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）](blog/posts/2026-08-07-创建一个技术上敏捷但在原公寓外无效的伪敏捷包装器（第四部分）.md)
 - [Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器](blog/posts/2026-10-08-Meta-开源-Rebalancer-日均求解四千万次超大规模资源放置问题的-C++-求解器.md)
+- [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 
 ## C/C++
 
@@ -1152,6 +1162,7 @@ title: 标签浏览
 - [使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞](blog/posts/2026-08-25-使用 Claude 修复 eMachines EL1200 主板 BIOS 漏洞.md)
 - [修复 NZXT Signal 4K30 采集卡 (第二部分)：攻克绿粉色画面显示异常](blog/posts/2026-09-15-修复-NZXT-Signal-4K30-采集卡-第二部分-攻克绿粉色画面显示异常.md)
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
+- [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 
 ## Claude 5
 
@@ -1306,6 +1317,10 @@ title: 标签浏览
 ## DIY
 
 - [介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案](blog/posts/2026-08-22-介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案.md)
+
+## DKMS
+
+- [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
 
 ## DLLM
 
@@ -1611,6 +1626,10 @@ title: 标签浏览
 
 - [FastE：基于读出触发的 LLM 嵌入推理 Token 压缩算法](blog/posts/2026-09-13-FastE-基于读出触发的-LLM-嵌入推理-Token-压缩算法.md)
 
+## Fedora
+
+- [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
+
 ## Few-Shot Learning
 
 - [只需少数几个样本：MedSAM3高标注效率LoRA微调的实证研究](blog/posts/2026-08-21-只需少数几个样本：MedSAM3高标注效率LoRA微调的实证研究.md)
@@ -1733,6 +1752,7 @@ title: 标签浏览
 
 - [DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群](blog/posts/2026-08-19-DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群.md)
 - [更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据](blog/posts/2026-08-26-更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据.md)
+- [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 
 ## GPU 优化
 
@@ -1874,6 +1894,10 @@ title: 标签浏览
 
 - [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
 
+## Gemini
+
+- [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
+
 ## Gemma 3
 
 - [人工智能语言表征中：虚假（Falsehood）与不可能（Impossibility）指向不同的方向](blog/posts/2026-08-20-人工智能语言表征中：虚假（Falsehood）与不可能（Impossibility）指向不同的方向.md)
@@ -1942,6 +1966,10 @@ title: 标签浏览
 ## Go
 
 - [并发服务器：第 8 部分 - Go 语言](blog/posts/2026-08-23-并发服务器：第 8 部分 - Go 语言.md)
+
+## Google
+
+- [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 
 ## Google Discover
 
@@ -2676,6 +2704,7 @@ title: 标签浏览
 - [你应该使用无根容器（Rootless Containers）](blog/posts/2026-09-04-你应该使用无根容器（Rootless Containers）.md)
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
 - [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+- [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 
 ## Linux 系统安全
 
@@ -2693,6 +2722,7 @@ title: 标签浏览
 
 - [如何让初代 Steam Deck 液晶屏在树莓派上完美运行](blog/posts/2026-08-21-如何让初代 Steam Deck 液晶屏在树莓派上完美运行.md)
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
+- [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
 
 ## Linux提权
 
@@ -2713,6 +2743,10 @@ title: 标签浏览
 ## LiquidAI
 
 - [基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布](blog/posts/2026-08-20-基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布.md)
+
+## LiteRT
+
+- [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 
 ## Llama-3.1
 
@@ -2975,6 +3009,7 @@ title: 标签浏览
 - [Meta 如何确保部署安全性：持续变更安全性的健康检查机制](blog/posts/2026-08-25-Meta 如何确保部署安全性：持续变更安全性的健康检查机制.md)
 - [Meta 推出 ZGateway：统一 ZippyDB 流量、每秒处理超 10 亿次请求的无状态代理层](blog/posts/2026-09-16-Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层.md)
 - [Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器](blog/posts/2026-10-08-Meta-开源-Rebalancer-日均求解四千万次超大规模资源放置问题的-C++-求解器.md)
+- [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 
 ## Metal
 
@@ -3042,6 +3077,10 @@ title: 标签浏览
 
 - [Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量](blog/posts/2026-08-07-Granite Embedding Multilingual R2：开源 Apache 2.0 多语言嵌入模型，支持 32K 上下文——百兆参数以下最佳检索质量.md)
 - [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
+
+## Monorepo
+
+- [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 
 ## Mooncake
 
@@ -3145,6 +3184,7 @@ title: 标签浏览
 - [企业级AI安全指南：面向开发者的NeMo Guardrails实践教程](blog/posts/2026-08-24-企业级AI安全指南：面向开发者的NeMo Guardrails实践教程.md)
 - [KernelArc：面向GPU内核优化的多智能体框架](blog/posts/2026-08-25-KernelArc：面向GPU内核优化的多智能体框架.md)
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
+- [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 
 ## NVIDIA A100
 
@@ -3657,6 +3697,7 @@ title: 标签浏览
 - [Python 邮件解析中的字节与 Unicode 混淆问题剖析](blog/posts/2026-08-27-Python 邮件解析中的字节与 Unicode 混淆问题剖析.md)
 - [名字也能伤人：定位本地编码大语言模型中因包名幻觉引发的投毒抢注风险](blog/posts/2026-08-27-名字也能伤人：定位本地编码大语言模型中因包名幻觉引发的投毒抢注风险.md)
 - [计算矩阵秩的下界](blog/posts/2026-09-05-计算矩阵秩的下界.md)
+- [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
 
 ## Python 库
 
@@ -4317,6 +4358,10 @@ title: 标签浏览
 
 - [科学声明能从大语言模型中移除吗？声明级遗忘的系统性评估](blog/posts/2026-08-25-科学声明能从大语言模型中移除吗？声明级遗忘的系统性评估.md)
 
+## Scion
+
+- [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+
 ## SearchTome
 
 - [STAIR (结构感知信息检索器)：用于文档结构增强的新型数据集与大模型检索器](blog/posts/2026-09-05-STAIR -结构感知信息检索器-：用于文档结构增强的新型数据集与大模型检索器.md)
@@ -4572,6 +4617,10 @@ title: 标签浏览
 ## Taste-Bench
 
 - [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
+
+## Tensor API
+
+- [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 
 ## TensorCore
 
@@ -5052,6 +5101,10 @@ title: 标签浏览
 ## Z.ai
 
 - [Z.ai 详解基于 10 万张国产芯片的 GLM-5.3-Flash 推理系统架构构建](blog/posts/2026-09-18-Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建.md)
+
+## ZFS
+
+- [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
 
 ## ZGateway
 
@@ -13530,6 +13583,7 @@ title: 标签浏览
 - [耗时一年：WebAssembly 终于登陆 Anubis](blog/posts/2026-09-08-耗时一年：WebAssembly 终于登陆 Anubis.md)
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
 - [两周提速三倍：Anthropic 团队如何利用 Claude 爬坡优化 claude.ai 核心体验](blog/posts/2026-10-08-两周提速三倍-Anthropic-团队如何利用-Claude-爬坡优化-claude.ai-核心体验.md)
+- [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 
 ## 性能分析
 
@@ -14551,6 +14605,7 @@ title: 标签浏览
 - [在 NTP 诞生之前：Daytime 与 Time 协议的前世今生](blog/posts/2026-09-01-在 NTP 诞生之前：Daytime 与 Time 协议的前世今生.md)
 - [面向高扇出智能体沙箱的内存压缩技术](blog/posts/2026-09-13-面向高扇出智能体沙箱的内存压缩技术.md)
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
+- [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 
 ## 操作系统探索
 
@@ -18156,6 +18211,10 @@ title: 标签浏览
 
 - [Aero Realtime：实现低延迟流式多模态生成的完全对齐输入输出流](blog/posts/2026-08-12-Aero Realtime：实现低延迟流式多模态生成的完全对齐输入输出流.md)
 
+## 流式工具
+
+- [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
+
 ## 流式推理
 
 - [语音大模型会听从自己的观点吗？诊断并缓解流式情感理解中的先验信念污染](blog/posts/2026-08-25-语音大模型会听从自己的观点吗？诊断并缓解流式情感理解中的先验信念污染.md)
@@ -19019,6 +19078,7 @@ title: 标签浏览
 - [StagedWorkspace：面向知识工作智能体的版本化工作空间](blog/posts/2026-08-20-StagedWorkspace：面向知识工作智能体的版本化工作空间.md)
 - [仓库中的问题追踪：探索去中心化基于 Git 的问题追踪系统](blog/posts/2026-08-21-仓库中的问题追踪：探索去中心化基于 Git 的问题追踪系统.md)
 - [Git 子模块作为包管理器](blog/posts/2026-09-02-Git 子模块作为包管理器.md)
+- [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 
 ## 牛顿法
 
@@ -20954,6 +21014,7 @@ title: 标签浏览
 ## 端侧AI
 
 - [自信且错，悄无声息：端侧部署语言模型未遂故障审计](blog/posts/2026-08-27-自信且错，悄无声息：端侧部署语言模型未遂故障审计.md)
+- [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 
 ## 端侧大模型
 
@@ -21423,6 +21484,7 @@ title: 标签浏览
 ## 系统调用
 
 - [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+- [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 
 ## 纠偏机制
 
@@ -24695,6 +24757,7 @@ title: 标签浏览
 
 - [SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境](blog/posts/2026-08-29-SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境.md)
 - [阿里通义发布 Qwen-Audio-3.1-Realtime：具备自主思考、工具调用与话轮决策的全双工语音大模型](blog/posts/2026-09-30-阿里通义发布-Qwen-Audio-3.1-Realtime-具备自主思考-工具调用与话轮决策的全双工语音大模型.md)
+- [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
 
 ## 语音检索
 
@@ -25012,6 +25075,10 @@ title: 标签浏览
 ## 超现实数
 
 - [我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录](blog/posts/2026-09-19-我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录.md)
+
+## 超级集群
+
+- [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 
 ## 超维计算
 

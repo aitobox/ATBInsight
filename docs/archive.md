@@ -4,6 +4,12 @@
 
 ## 2026-10
 
+- **2026-10-20**: [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
+- **2026-10-20**: [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
+- **2026-10-20**: [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
+- **2026-10-20**: [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
+- **2026-10-20**: [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
+- **2026-10-20**: [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 - **2026-10-18**: [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 - **2026-10-17**: [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 - **2026-10-17**: [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)

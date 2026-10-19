@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-10-20**: [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 - **2026-10-18**: [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
 - **2026-10-17**: [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 - **2026-10-16**: [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](blog/posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
