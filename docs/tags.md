@@ -233,6 +233,8 @@ title: 标签浏览
 - [Athanor：面向自主后训练研究的智能体原生系统](blog/posts/2026-10-17-Athanor-面向自主后训练研究的智能体原生系统.md)
 - [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
 - [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
+- [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## AI 智能体安全
 
@@ -732,6 +734,8 @@ title: 标签浏览
 - [揭秘 Claude Code 自动模式：在跳过权限审批的同时保障系统安全](blog/posts/2026-10-08-揭秘-Claude-Code-自动模式-在跳过权限审批的同时保障系统安全.md)
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+- [基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障](blog/posts/2026-10-21-基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## Anthropic Labs
 
@@ -763,6 +767,10 @@ title: 标签浏览
 ## ArUco
 
 - [UltraArUco：一种用于移动端增强现实交互的轻量级多语言低延迟实时标记追踪库与框架](blog/posts/2026-08-20-UltraArUco：一种用于移动端增强现实交互的轻量级多语言低延迟实时标记追踪库与框架.md)
+
+## Arm
+
+- [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
 
 ## AstronOS
 
@@ -852,6 +860,10 @@ title: 标签浏览
 
 - [突破 1.58 比特极限：三值大语言模型的极致压缩与加速](blog/posts/2026-09-18-突破-1.58-比特极限-三值大语言模型的极致压缩与加速.md)
 
+## BLM
+
+- [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
+
 ## BLiMP
 
 - [FreqBLiMP：频率受控的最小对立集揭示了大语言模型在词汇稀缺性下的稳健性与脆弱性](blog/posts/2026-09-10-FreqBLiMP：频率受控的最小对立集揭示了大语言模型在词汇稀缺性下的稳健性与脆弱性.md)
@@ -873,6 +885,10 @@ title: 标签浏览
 ## Batch Size
 
 - [推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失](blog/posts/2026-09-02-推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失.md)
+
+## Bellman Language Models
+
+- [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
 
 ## BenchDrift
 
@@ -955,6 +971,10 @@ title: 标签浏览
 ## CAD
 
 - [CADEngBench：看起来像CAD，但它真的能用吗？评估参数化设计、装配推理与物理仿真](blog/posts/2026-08-12-CADEngBench：看起来像CAD，但它真的能用吗？评估参数化设计、装配推理与物理仿真.md)
+
+## CALIBER
+
+- [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
 
 ## CAP框架
 
@@ -1163,6 +1183,7 @@ title: 标签浏览
 - [修复 NZXT Signal 4K30 采集卡 (第二部分)：攻克绿粉色画面显示异常](blog/posts/2026-09-15-修复-NZXT-Signal-4K30-采集卡-第二部分-攻克绿粉色画面显示异常.md)
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## Claude 5
 
@@ -1186,6 +1207,7 @@ title: 标签浏览
 ## ClickHouse
 
 - [关系核心图分析：以SQL规模查询图数据，以及为什么节点/边模型是性能税而非连接数据的真实写照](blog/posts/2026-09-03-关系核心图分析：以SQL规模查询图数据，以及为什么节点-边模型是性能税而非连接数据的真实写照.md)
+- [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 
 ## Clos架构
 
@@ -1255,6 +1277,10 @@ title: 标签浏览
 ## Copula
 
 - [基于可微分D-vine Copula的局部化异常检测](blog/posts/2026-08-07-基于可微分D-vine Copula的局部化异常检测.md)
+
+## Coral NPU
+
+- [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 
 ## CoreSec
 
@@ -1378,9 +1404,14 @@ title: 标签浏览
 - [DeepPlanner：通过优势塑造扩展深度研究智能体的规划能力](blog/posts/2026-08-29-DeepPlanner：通过优势塑造扩展深度研究智能体的规划能力.md)
 - [从惯性走向客观：通过噪声隔离提升深度研究智能体的性能](blog/posts/2026-08-29-从惯性走向客观：通过噪声隔离提升深度研究智能体的性能.md)
 
+## DeepInfer
+
+- [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+
 ## DeepSeek
 
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
+- [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
 
 ## DeepSeek-V4-Flash
 
@@ -1410,6 +1441,7 @@ title: 标签浏览
 ## Diffusers
 
 - [将 Nunchaku 4-bit 扩散推理引入 Diffusers](blog/posts/2026-08-07-将 Nunchaku 4-bit 扩散推理引入 Diffusers.md)
+- [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 
 ## Diffusion LLM
 
@@ -1662,6 +1694,10 @@ title: 标签浏览
 
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 
+## FlashRT-PAI
+
+- [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
+
 ## Flow Matching
 
 - [利用非绑定自条件机制改进少步语言流模型](blog/posts/2026-08-26-利用非绑定自条件机制改进少步语言流模型.md)
@@ -1791,6 +1827,7 @@ title: 标签浏览
 
 - [Sionna RT：技术报告](blog/posts/2026-09-05-Sionna RT：技术报告.md)
 - [GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速](blog/posts/2026-09-13-GPU-CFR-通过编译为静态数据流与-CUDA-Graph-重放实现-80-倍逆事实遗憾最小化加速.md)
+- [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
 
 ## GPU推理
 
@@ -1970,6 +2007,12 @@ title: 标签浏览
 ## Google
 
 - [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+
+## Google AI Edge
+
+- [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
 
 ## Google Discover
 
@@ -1978,6 +2021,7 @@ title: 标签浏览
 ## Google Research
 
 - [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
+- [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 
 ## Goroutine
 
@@ -1990,6 +2034,10 @@ title: 标签浏览
 ## Gradio
 
 - [gradio.Server：结合 Gradio 后端与任意自定义前端](blog/posts/2026-08-07-gradio.Server：结合 Gradio 后端与任意自定义前端.md)
+
+## Grafana
+
+- [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 
 ## Granite 4.1
 
@@ -2111,6 +2159,7 @@ title: 标签浏览
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
+- [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 
 ## Humanize
 
@@ -2194,6 +2243,10 @@ title: 标签浏览
 ## IP地理定位
 
 - [IPGeoAI：基于Transformer与大语言模型语义融合的IP地理定位技术](blog/posts/2026-09-08-IPGeoAI：基于Transformer与大语言模型语义融合的IP地理定位技术.md)
+
+## IREE
+
+- [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 
 ## ISWC 2026
 
@@ -3010,6 +3063,8 @@ title: 标签浏览
 - [Meta 推出 ZGateway：统一 ZippyDB 流量、每秒处理超 10 亿次请求的无状态代理层](blog/posts/2026-09-16-Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层.md)
 - [Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器](blog/posts/2026-10-08-Meta-开源-Rebalancer-日均求解四千万次超大规模资源放置问题的-C++-求解器.md)
 - [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 
 ## Metal
 
@@ -3069,6 +3124,10 @@ title: 标签浏览
 - [TrustShiftProbe：MCP服务器分阶段信任攻击的特征分析、基准测试与防御](blog/posts/2026-08-27-TrustShiftProbe：MCP服务器分阶段信任攻击的特征分析、基准测试与防御.md)
 - [Octopus 协议：通过“提示词即基础设施”实现面向 AI 代理的一次性硬件发现与控制](blog/posts/2026-09-08-Octopus 协议：通过“提示词即基础设施”实现面向 AI 代理的一次性硬件发现与控制.md)
 
+## Model Explorer
+
+- [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
+
 ## Modelica
 
 - [超越可执行模型：用于物理系统建模的 Pufibara 智能体框架与 Modelica 智能体工作流基准](blog/posts/2026-08-27-超越可执行模型：用于物理系统建模的 Pufibara 智能体框架与 Modelica 智能体工作流基准.md)
@@ -3081,6 +3140,7 @@ title: 标签浏览
 ## Monorepo
 
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## Mooncake
 
@@ -3680,6 +3740,10 @@ title: 标签浏览
 - [可解释架构的图形化设计](blog/posts/2026-08-22-可解释架构的图形化设计.md)
 - [迈向预测性流程挖掘的可复现性：SPICE —— 一个深度学习库](blog/posts/2026-08-27-迈向预测性流程挖掘的可复现性：SPICE —— 一个深度学习库.md)
 - [扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型](blog/posts/2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型.md)
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+- [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
+- [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 
 ## Pythia
 
@@ -3926,6 +3990,7 @@ title: 标签浏览
 ## RISC-V
 
 - [具备权威性的AI：从应用层到硅片](blog/posts/2026-08-25-具备权威性的AI：从应用层到硅片.md)
+- [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 
 ## RLS
 
@@ -4161,6 +4226,7 @@ title: 标签浏览
 - [TEMPO：面向内存与计算受限场景的专家并行负载均衡调度器](blog/posts/2026-08-18-TEMPO：面向内存与计算受限场景的专家并行负载均衡调度器.md)
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
+- [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 
 ## SHACL
 
@@ -4361,6 +4427,7 @@ title: 标签浏览
 ## Scion
 
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## SearchTome
 
@@ -4599,6 +4666,11 @@ title: 标签浏览
 ## TPU
 
 - [MaxKernel：面向 TPU 的智能体内核生成](blog/posts/2026-09-08-MaxKernel：面向 TPU 的智能体内核生成.md)
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+- [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
+- [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 
 ## TRL
 
@@ -4747,6 +4819,17 @@ title: 标签浏览
 
 - [Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-$k$ 选择方法](blog/posts/2026-09-04-Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-k- 选择方法.md)
 
+## TorchTPU
+
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+- [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
+
+## TorchTitan
+
+- [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
+
 ## Touch ID
 
 - [介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案](blog/posts/2026-08-22-介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案.md)
@@ -4823,6 +4906,7 @@ title: 标签浏览
 - [Transformer 难以利用其涌现的世界模型：重探河内塔与思考的错觉](blog/posts/2026-08-11-Transformer 难以利用其涌现的世界模型：重探河内塔与思考的错觉.md)
 - [句法与语义：Transformer如何学习深层依赖](blog/posts/2026-08-29-句法与语义：Transformer如何学习深层依赖.md)
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
+- [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 
 ## Transformers.js
 
@@ -4923,6 +5007,7 @@ title: 标签浏览
 ## VLA
 
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
+- [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
 
 ## VLA模型
 
@@ -5329,6 +5414,10 @@ title: 标签浏览
 
 - [terms.txt：面向智能体网络访问的知情同意与补偿协议](blog/posts/2026-09-13-terms-txt-面向智能体网络访问的知情同意与补偿协议.md)
 
+## torch.compile
+
+- [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
+
 ## vLLM
 
 - [vLLM 原生速度 Transformers 模型后端](blog/posts/2026-08-07-vLLM 原生速度 Transformers 模型后端.md)
@@ -5338,6 +5427,7 @@ title: 标签浏览
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+- [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 
 ## visitation measure
 
@@ -7446,6 +7536,7 @@ title: 标签浏览
 - [NVIDIA 开源 OSMO：一份 YAML 编排物理 AI 训练、仿真与真机测试](blog/posts/2026-09-15-NVIDIA-开源-OSMO-一份-YAML-编排物理-AI-训练-仿真与真机测试.md)
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
 - [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](blog/posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
+- [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
 
 ## 具身自适应
 
@@ -7678,6 +7769,7 @@ title: 标签浏览
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 - [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 - [Cloudflare 正式发布 Clef-omni：支持音视频与图文的全模态 30B 决策大模型](blog/posts/2026-10-13-Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型.md)
+- [如何使用决策模型进行自动化评估：平衡成本、性能与置信度](blog/posts/2026-10-21-如何使用决策模型进行自动化评估.md)
 
 ## 决策泄漏
 
@@ -7864,6 +7956,7 @@ title: 标签浏览
 - [并行与分布式推理语言模型的性能基础](blog/posts/2026-08-29-并行与分布式推理语言模型的性能基础.md)
 - [AsyncFlow：面向高效大模型后训练的异步流式强化学习框架](blog/posts/2026-09-15-AsyncFlow-面向高效大模型后训练的异步流式强化学习框架.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
+- [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 
 ## 分布式验证
 
@@ -10526,6 +10619,8 @@ title: 标签浏览
 - [朴素提示词优化：重新审视对复杂提示词搜索的需求](blog/posts/2026-08-29-朴素提示词优化：重新审视对复杂提示词搜索的需求.md)
 - [OpWeave：面向异构大模型推理服务的灵活算子级解耦框架](blog/posts/2026-09-16-OpWeave-面向异构大模型推理服务的灵活算子级解耦框架.md)
 - [Z.ai 详解基于 10 万张国产芯片的 GLM-5.3-Flash 推理系统架构构建](blog/posts/2026-09-18-Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建.md)
+- [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+- [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 
 ## 大模型智能体
 
@@ -12786,6 +12881,10 @@ title: 标签浏览
 
 - [软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态](blog/posts/2026-10-02-软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态.md)
 
+## 开源后端
+
+- [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+
 ## 开源大模型
 
 - [我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！](blog/posts/2026-08-07-我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！.md)
@@ -12821,6 +12920,7 @@ title: 标签浏览
 - [评估网络安全中大语言模型生成的检测规则](blog/posts/2026-08-14-评估网络安全中大语言模型生成的检测规则.md)
 - [MARC v1：用于临床 AI 推理与协作的开源多智能体框架](blog/posts/2026-08-16-MARC v1：用于临床 AI 推理与协作的开源多智能体框架.md)
 - [谷歌开源 RRSI 框架：让 AI 智能体自主优化 Harness 架构且避免过拟合](blog/posts/2026-09-30-谷歌开源-RRSI-框架-让-AI-智能体自主优化-Harness-架构且避免过拟合.md)
+- [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
 
 ## 开源模型
 
@@ -13584,6 +13684,7 @@ title: 标签浏览
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
 - [两周提速三倍：Anthropic 团队如何利用 Claude 爬坡优化 claude.ai 核心体验](blog/posts/2026-10-08-两周提速三倍-Anthropic-团队如何利用-Claude-爬坡优化-claude.ai-核心体验.md)
 - [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
+- [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 
 ## 性能分析
 
@@ -14245,6 +14346,7 @@ title: 标签浏览
 - [审计多智能体大模型推理树：性能超越多数投票与LLM作为裁判](blog/posts/2026-09-05-审计多智能体大模型推理树：性能超越多数投票与LLM作为裁判.md)
 - [通过幻觉空间投影减少 Whisper 模型中的幻觉转录](blog/posts/2026-09-08-通过幻觉空间投影减少 Whisper 模型中的幻觉转录.md)
 - [在细粒度混合专家模型中免训练将激活专家减半](blog/posts/2026-09-08-在细粒度混合专家模型中免训练将激活专家减半.md)
+- [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
 
 ## 推理加速
 
@@ -14259,6 +14361,7 @@ title: 标签浏览
 - [ReplaySSM：缓存输入而非隐状态，破局 SSM 混合模型解码吞吐瓶颈](blog/posts/2026-10-13-ReplaySSM-缓存-SSM-输入而非隐状态以提升长文本解码效率.md)
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
+- [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
 
 ## 推理图
 
@@ -14325,6 +14428,10 @@ title: 标签浏览
 ## 推理校准
 
 - [在线推理校准：测试时训练赋能可泛化的共形大模型推理](blog/posts/2026-08-07-在线推理校准：测试时训练赋能可泛化的共形大模型推理.md)
+
+## 推理模型
+
+- [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
 
 ## 推理涌现
 
@@ -14520,6 +14627,7 @@ title: 标签浏览
 - [steering 干扰反映了模型的默认倾向，而非行为方向本身](blog/posts/2026-09-10-steering 干扰反映了模型的默认倾向，而非行为方向本身.md)
 - [超越提示词工程：基于对数几率空间融合的语音大模型高效鲁棒上下文偏置 (LOGIC)](blog/posts/2026-09-13-超越提示词工程-基于对数几率空间融合的语音大模型高效鲁棒上下文偏置-LOGIC.md)
 - [Claude 5 时代上下文工程新法则：为新一代大模型解除束缚](blog/posts/2026-10-08-Claude-5-时代上下文工程新法则-为新一代大模型解除束缚.md)
+- [如何使用决策模型进行自动化评估：平衡成本、性能与置信度](blog/posts/2026-10-21-如何使用决策模型进行自动化评估.md)
 
 ## 提示词微调
 
@@ -14971,6 +15079,7 @@ title: 标签浏览
 ## 数据库调优
 
 - [PostgreSQL 表膨胀最小化指南](blog/posts/2026-08-13-PostgreSQL 表膨胀最小化指南.md)
+- [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 
 ## 数据库连接
 
@@ -16516,9 +16625,14 @@ title: 标签浏览
 
 - [一种受QUBO启发的机场陆侧瓶颈诊断与动态调度优化计算框架](blog/posts/2026-08-12-一种受QUBO启发的机场陆侧瓶颈诊断与动态调度优化计算框架.md)
 
+## 机密推理
+
+- [基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障](blog/posts/2026-10-21-基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障.md)
+
 ## 机密计算
 
 - [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
+- [基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障](blog/posts/2026-10-21-基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障.md)
 
 ## 机构声望
 
@@ -17070,6 +17184,10 @@ title: 标签浏览
 
 - [你的概率式JEPA暗中其实是一个隐马尔可夫模型：联合嵌入预测学习的状态空间解释](blog/posts/2026-08-18-你的概率式JEPA暗中其实是一个隐马尔可夫模型：联合嵌入预测学习的状态空间解释.md)
 
+## 概率校准
+
+- [如何使用决策模型进行自动化评估：平衡成本、性能与置信度](blog/posts/2026-10-21-如何使用决策模型进行自动化评估.md)
+
 ## 概率电路
 
 - [大概率近似正确最大后验推断](blog/posts/2026-08-14-大概率近似正确最大后验推断.md)
@@ -17560,6 +17678,10 @@ title: 标签浏览
 
 - [漂移自适应ICU干预预测：冻结生理编码器以实现可审计的模型更新](blog/posts/2026-08-29-漂移自适应ICU干预预测：冻结生理编码器以实现可审计的模型更新.md)
 
+## 模型权重安全
+
+- [基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障](blog/posts/2026-10-21-基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障.md)
+
 ## 模型架构
 
 - [HELIX：面向递归自我提升的模型与运行壳协同演化](blog/posts/2026-08-18-HELIX：面向递归自我提升的模型与运行壳协同演化.md)
@@ -17728,6 +17850,7 @@ title: 标签浏览
 - [FLY-EVAL++：面向大语言模型安全约束飞行预测的证据驱动评估协议](blog/posts/2026-09-05-FLY-EVAL++：面向大语言模型安全约束飞行预测的证据驱动评估协议.md)
 - [清洁工程，不稳定测量：黑盒大语言模型观察者在共享端点上预注册的可靠性失效](blog/posts/2026-09-05-清洁工程，不稳定测量：黑盒大语言模型观察者在共享端点上预注册的可靠性失效.md)
 - [LightEMMA：视觉语言模型自动驾驶能力的纵向评估](blog/posts/2026-09-05-LightEMMA：视觉语言模型自动驾驶能力的纵向评估.md)
+- [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
 
 ## 模型评测
 
@@ -18543,6 +18666,7 @@ title: 标签浏览
 - [扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型](blog/posts/2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型.md)
 - [基于循环流的思考：通过动态计算分配提升深度推理能力](blog/posts/2026-09-13-基于循环流的思考-通过动态计算分配提升深度推理能力.md)
 - [连续扩散语言模型在规模化扩展上可媲美离散扩散](blog/posts/2026-09-13-连续扩散语言模型在规模化扩展上可媲美离散扩散.md)
+- [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
 
 ## 深度学习优化
 
@@ -19079,6 +19203,7 @@ title: 标签浏览
 - [仓库中的问题追踪：探索去中心化基于 Git 的问题追踪系统](blog/posts/2026-08-21-仓库中的问题追踪：探索去中心化基于 Git 的问题追踪系统.md)
 - [Git 子模块作为包管理器](blog/posts/2026-09-02-Git 子模块作为包管理器.md)
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
+- [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 
 ## 牛顿法
 
@@ -19095,6 +19220,10 @@ title: 标签浏览
 ## 物流配送
 
 - [基于边的连续型 p-中值问题及其在物流区划中的应用](blog/posts/2026-08-14-基于边的连续型 p-中值问题及其在物流区划中的应用.md)
+
+## 物理 AI
+
+- [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
 
 ## 物理AI
 
@@ -21011,10 +21140,15 @@ title: 标签浏览
 
 - [人工智能作为打击童工的工具：用于儿童检测与年龄估计的实时边缘视觉流水线](blog/posts/2026-08-19-人工智能作为打击童工的工具：用于儿童检测与年龄估计的实时边缘视觉流水线.md)
 
+## 端侧 AI
+
+- [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
+
 ## 端侧AI
 
 - [自信且错，悄无声息：端侧部署语言模型未遂故障审计](blog/posts/2026-08-27-自信且错，悄无声息：端侧部署语言模型未遂故障审计.md)
 - [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
+- [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 
 ## 端侧大模型
 
@@ -22046,6 +22180,7 @@ title: 标签浏览
 ## 编译器优化
 
 - [在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）](blog/posts/2026-08-15-在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）.md)
+- [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
 
 ## 编译验证
 
@@ -22146,6 +22281,10 @@ title: 标签浏览
 ## 罗马乌尔都语
 
 - [罗马乌尔都语仇恨言论分类：参数高效微调与提示工程的比较研究](blog/posts/2026-08-26-罗马乌尔都语仇恨言论分类：参数高效微调与提示工程的比较研究.md)
+
+## 置信度校准
+
+- [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
 
 ## 群体极化
 
@@ -22558,6 +22697,7 @@ title: 标签浏览
 - [移动智能体评估中大模型裁判的基准测试](blog/posts/2026-08-14-移动智能体评估中大模型裁判的基准测试.md)
 - [评估网络安全中大语言模型生成的检测规则](blog/posts/2026-08-14-评估网络安全中大语言模型生成的检测规则.md)
 - [评估大模型裁判：大模型自动化文本生成评估中令人担忧的评分标准伪影](blog/posts/2026-09-05-评估大模型裁判：大模型自动化文本生成评估中令人担忧的评分标准伪影.md)
+- [如何使用决策模型进行自动化评估：平衡成本、性能与置信度](blog/posts/2026-10-21-如何使用决策模型进行自动化评估.md)
 
 ## 自动化调试
 
@@ -26679,6 +26819,7 @@ title: 标签浏览
 - [匿名化而非消除：保留实用性的语音匿名化](blog/posts/2026-09-05-匿名化而非消除：保留实用性的语音匿名化.md)
 - [反词元化泄漏：从缓存痕迹重建本地大模型输出](blog/posts/2026-09-10-反词元化泄漏：从缓存痕迹重建本地大模型输出.md)
 - [AI 监管能否实现零知识？兼顾机密隐私与可验证性的密码学监督边界](blog/posts/2026-10-03-AI-监管能否实现零知识-兼顾机密隐私与可验证性的密码学监督边界.md)
+- [基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障](blog/posts/2026-10-21-基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障.md)
 
 ## 隐私安全
 
@@ -27099,6 +27240,7 @@ title: 标签浏览
 - [通过建议渠道实现的个人赋权剥夺：内生影响力下的控制权丧失](blog/posts/2026-08-19-通过建议渠道实现的个人赋权剥夺：内生影响力下的控制权丧失.md)
 - [通过组合边界与安全性持久性实现大模型安全性的认证多轮鲁棒性](blog/posts/2026-08-25-通过组合边界与安全性持久性实现大模型安全性的认证多轮鲁棒性.md)
 - [折扣和收益的分类自动机](blog/posts/2026-08-29-折扣和收益的分类自动机.md)
+- [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
 
 ## 马尔可夫奖励
 
