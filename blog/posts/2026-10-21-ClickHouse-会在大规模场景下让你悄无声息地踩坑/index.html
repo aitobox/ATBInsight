@@ -1,0 +1,1086 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-21-ClickHouse-%E4%BC%9A%E5%9C%A8%E5%A4%A7%E8%A7%84%E6%A8%A1%E5%9C%BA%E6%99%AF%E4%B8%8B%E8%AE%A9%E4%BD%A0%E6%82%84%E6%97%A0%E5%A3%B0%E6%81%AF%E5%9C%B0%E8%B8%A9%E5%9D%91/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#clickhouse" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        测试环境与架构配置
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        经验教训一：切忌手写防御性过滤条件
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lesson-1-dont-handwrite-the-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lesson 1: Don't Handwrite the Filters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        经验教训二：排序列至关重要……但有玄机
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lesson-2-sort-keys-matter-sorta" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lesson 2: Sort Keys Matter... Sorta
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lesson 2: Sort Keys Matter... Sorta">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clickhouse-order-by" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ClickHouse 中 <code>ORDER BY</code> 的物理运作原理
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-order-by-works-in-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How <code>ORDER BY</code> Works in ClickHouse
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么时间戳字段需要出现两次
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-timestamp-appeared-twice" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Why Timestamp Appeared Twice
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        经验教训三：物化投影远比想象的更棘手
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lesson-3-projections-are-trickier-than-i-thought" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lesson 3: Projections are Trickier Than I Thought
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafana-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        经验教训四：Grafana 的 ClickHouse 插件暗藏暗礁
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lesson-4-grafana-clickhouse-plugin-has-sharp-edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Lesson 4: Grafana ClickHouse Plugin Has Sharp Edges
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        总结
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="clickhouse">ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南</h1>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>ClickHouse 以其极致的查询速度在标准可观测性领域（如指标与常规日志）广受赞誉，然而当面对每日 20 亿行网络防火墙系统日志这种非典型超大规模场景时，其最致命的弱点便暴露无遗——<strong>静默失效 (Fail Silently)</strong>。ClickHouse 从不会主动提醒你查询语句写得有多糟糕或索引配置有多离谱，而是任由系统多读取 84 倍的数据、跳过主键剪枝，甚至悄无声息地退化为全表扫描。本文基于真实的生产级压测实操，深度剖析了手写过滤条件、排序列设计、物化投影 (Projections) 以及 Grafana 插件中的四大经典陷阱，并给出了基于 <code>system.query_log</code> 与 <code>EXPLAIN</code> 的严谨验证指南。</p>
+<hr />
+<p><strong>核心摘要</strong>：虽然 ClickHouse 在标准的可观测性工作流（如 OTel 指标和日志）中开箱即用、速度极快，但当面对非典型的大规模工作负载——比如每天 20 亿行的网络防火墙 syslog 日志时，它最危险的特性就会显现出来：<strong>它总是静默失效</strong>。ClickHouse 绝不会主动警告你的查询或配置效率低下；相反，它会若无其事地让你多读取 84 倍的数据、执行错误配置的过滤器，或者悄然退化为全表扫描。因此，在编写任何查询之前，养成借助 <code>system.query_log</code> 和 <code>EXPLAIN</code> 进行严格验证的习惯是不可妥协的底线。</p>
+<blockquote>
+<p>💬 [原文引用 / Original Quote]:
+<strong>Summary:</strong> While ClickHouse is famously fast and efficient out of the box for standard observability workflows (like OTel metrics and logs), pushing it into atypical, high-volume workloads—such as 2 billion rows a day of network firewall syslog—reveals its most dangerous trait: <strong>it fails silently</strong>. ClickHouse will never tell you your query or configuration is inefficient; instead, it gracefully lets you read 84x more rows than necessary, execute misconfigured filters, or silently fallback to raw table scans. Building strict verification habits (<code>system.query_log</code> and <code>EXPLAIN</code>) before writing any queries is non-negotiable.</p>
+</blockquote>
+<hr />
+<h2 id="_2">测试环境与架构配置</h2>
+<blockquote>
+<h2 id="setup">Setup</h2>
+</blockquote>
+<p>在这项极限压力测试中，底层基础设施保持了清晰直接的架构设计：</p>
+<blockquote>
+<p>For this torture test, the infrastructure stayed straightforward:</p>
+</blockquote>
+<ul>
+<li><strong>ClickHouse</strong>：通过 Altinity 算子 (Altinity Operator) 部署了 2 分片 × 3 副本的集群。每张底表均为 <code>ReplicatedMergeTree</code>，并通过 <code>Distributed</code> 分布式表对外提供统一访问，Grafana 仅针对分布式封装表发起查询。</li>
+<li><strong>Grafana</strong>：采用官方 <code>grafana-clickhouse-datasource</code> 插件，面板包含 25 个图表组件，并在顶部配置了同时作用于所有图表组件的动态即席过滤器 (Ad-hoc Filters)。</li>
+<li><strong>硬性防护底线 (Hard Guardrails)</strong>：设置了 <code>max_rows_to_read</code> = 10 亿行，<code>max_bytes_to_read</code> = 100 GB，<code>max_execution_time</code> = 60 秒，且全部配置为 <code>throw</code> 阻断模式（即超限立即抛出异常熔断）。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>ClickHouse:</strong> 2 shard x 3 replicas via the Altinity operator. Every table is a <code>ReplicatedMergeTree</code> wrapped in <code>Distributed</code> tables, with Grafana exclusively querying the wrapper.</li>
+<li><strong>Grafana:</strong> Using the official <code>grafana-clickhouse-datasource</code> plugin with 25 panels and top-level ad-hoc filters affecting every panel simultaneously.</li>
+<li><strong>Hard Guardrails:</strong> <code>max_rows_to_read</code> = 1 billion, <code>max_bytes_to_read</code> = 100 GB, <code>max_execution_time</code> = 60s, all set to <code>throw</code> mode. </li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">经验教训一：切忌手写防御性过滤条件</h2>
+<blockquote>
+<h2 id="lesson-1-dont-handwrite-the-filters">Lesson 1: Don't Handwrite the Filters</h2>
+</blockquote>
+<p>在最初的草稿中，我编写过滤条件时采用了标准的 SQL 防御性守卫语句，以确保在用户未做输入时查询依然合法：</p>
+<blockquote>
+<p>My first draft wrote filters using standard SQL guards to keep queries valid regardless of user input:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">empty</span><span class="p">(</span><span class="err">{{</span><span class="n">observer</span><span class="err">}}</span><span class="p">)</span><span class="w"> </span><span class="k">OR</span><span class="w"> </span><span class="n">observer</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="err">{{</span><span class="n">observer</span><span class="err">}}</span><span class="p">)</span>
+</code></pre></div>
+<p>这个看似稳妥的决定却对查询性能造成了灾难性的打击：</p>
+<blockquote>
+<p>This decision severely impacted performance:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">谓词表达式</th>
+<th style="text-align: left;">读取行数</th>
+<th style="text-align: left;">执行耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>observer = 'one-device'</code>（直接过滤）</td>
+<td style="text-align: left;">305 万行</td>
+<td style="text-align: left;">115 毫秒</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>(empty(...) OR col IN ...)</code> 守卫语法</td>
+<td style="text-align: left;"><strong>2.5764 亿行</strong></td>
+<td style="text-align: left;">1,134 毫秒</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Predicate</th>
+<th style="text-align: left;">Rows Read</th>
+<th style="text-align: left;">Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>observer = 'one-device'</code> (direct)</td>
+<td style="text-align: left;">3.05M</td>
+<td style="text-align: left;">115 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>(empty(...) OR col IN ...)</code> guard</td>
+<td style="text-align: left;"><strong>257.64M</strong></td>
+<td style="text-align: left;">1,134 ms</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>这种守卫语法直接破坏了 ClickHouse 的主键剪枝 (Primary-Key Pruning) 机制，迫使引擎触发全分区数据扫描，然后再逐行执行后置过滤。</p>
+<blockquote>
+<p>The guard prevented primary-key pruning, triggering a full partition scan with post-filtering. </p>
+</blockquote>
+<p><strong>解决方案</strong>：改用 Grafana 自带的即席过滤机制 (Ad-hoc Filtering)。该插件并不会重写 <code>WHERE</code> 子句，而是将过滤条件以 ClickHouse 查询设置 (<code>additional_table_filters</code>) 的形式进行追加，直接在查询规划阶段生效，从而完美保留索引剪枝能力。</p>
+<blockquote>
+<p><strong>The Fix:</strong> Use Grafana's ad-hoc filtering mechanism. Rather than rewriting the <code>WHERE</code> clause, the plugin appends the filter as a ClickHouse query setting (<code>additional_table_filters</code>), applying it at <em>planning</em> time for proper pruning.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">过滤形式</th>
+<th style="text-align: left;">读取行数</th>
+<th style="text-align: left;">执行耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">无任何过滤</td>
+<td style="text-align: left;">2.5690 亿行</td>
+<td style="text-align: left;">1,265 毫秒</td>
+</tr>
+<tr>
+<td style="text-align: left;">手写 <code>WHERE observer = '...'</code></td>
+<td style="text-align: left;">467 万行</td>
+<td style="text-align: left;">170 毫秒</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Grafana 即席过滤</strong></td>
+<td style="text-align: left;"><strong>467 万行</strong></td>
+<td style="text-align: left;"><strong>284 毫秒</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Form</th>
+<th style="text-align: left;">Rows Read</th>
+<th style="text-align: left;">Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">No filter</td>
+<td style="text-align: left;">256.90M</td>
+<td style="text-align: left;">1,265 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;">Hand-written <code>WHERE observer = '...'</code></td>
+<td style="text-align: left;">4.67M</td>
+<td style="text-align: left;">170 ms</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ad-hoc filter</strong></td>
+<td style="text-align: left;"><strong>4.67M</strong></td>
+<td style="text-align: left;"><strong>284 ms</strong></td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><img alt="Grafana Ad-Hoc Filter Example" src=".././images/8c1f1a7c3547.png" /></p>
+<hr />
+<h2 id="_4">经验教训二：排序列至关重要……但有玄机</h2>
+<blockquote>
+<h2 id="lesson-2-sort-keys-matter-sorta">Lesson 2: Sort Keys Matter... Sorta</h2>
+</blockquote>
+<p>我最初设定的 <code>ORDER BY</code> 排序子句看起来合情合理——优先按照基数 (Cardinality) 最低的网络设备列进行排序：</p>
+<blockquote>
+<p>My initial <code>ORDER BY</code> clause seemed logical—sorting by the lowest cardinality column (network device) first:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="p">(</span><span class="n">observer</span><span class="p">,</span><span class="w"> </span><span class="n">action</span><span class="p">,</span><span class="w"> </span><span class="n">application</span><span class="p">,</span><span class="w"> </span><span class="n">toStartOfHour</span><span class="p">(</span><span class="k">Timestamp</span><span class="p">),</span><span class="w"> </span><span class="k">Timestamp</span><span class="p">)</span>
+</code></pre></div>
+<p>然而，由于 Grafana 面板天然带有时间范围约束，这个设计反而弄巧成拙。在 ClickHouse 中，<strong>只有排在排序列最前端的字段，才能真正走上快速查找的高速公路。</strong></p>
+<blockquote>
+<p>However, because Grafana panels are inherently time-bound, this backfired. In ClickHouse, <strong>only the front of the sort key gets the fast lookup path.</strong></p>
+</blockquote>
+<h3 id="clickhouse-order-by">ClickHouse 中 <code>ORDER BY</code> 的物理运作原理</h3>
+<blockquote>
+<h3 id="how-order-by-works-in-clickhouse">How <code>ORDER BY</code> Works in ClickHouse</h3>
+</blockquote>
+<p>与传统 MySQL 等关系型数据库不同，ClickHouse 中的排序索引直接决定了数据在磁盘上的物理布局（就像一本先按姓氏再按名字排序的电话簿）。ClickHouse 每隔 8,192 行数据（称为一个数据颗粒 / Granule）记录一次排序键的值，从而构建出一张主键索引书签表：</p>
+<blockquote>
+<p>Unlike MySQL, the index defines physical layout on disk (like a phone book sorted by last name, then first name). ClickHouse writes sort-key values every 8,192 rows (a <em>granule</em>), forming a primary key bookmark list:</p>
+</blockquote>
+<ul>
+<li><strong>查找“所有姓史密斯 (Smith) 的人”</strong>：可以直接精准跳到 <strong>S</strong> 字母所在的物理存储区间（速度极快）。</li>
+<li><strong>查找“所有名字叫约翰 (John) 的人”</strong>：约翰分散在每一个不同的姓氏区间中，因此必须翻遍整本电话簿进行全盘扫描（速度极慢）。</li>
+</ul>
+<blockquote>
+<ul>
+<li><em>"All the Smiths"</em> → Jump straight to the <strong>S</strong> section (Fast).</li>
+<li><em>"Everyone named John"</em> → Johns are scattered across every last-name section, requiring a full read (Slow).</li>
+</ul>
+</blockquote>
+<h3 id="_5">为什么时间戳字段需要出现两次</h3>
+<blockquote>
+<h3 id="why-timestamp-appeared-twice">Why Timestamp Appeared Twice</h3>
+</blockquote>
+<p>我的排序键中同时包含了 <code>toStartOfHour(Timestamp)</code>（按整小时对齐的时间分桶）以及精确到微秒的 <code>Timestamp</code>。在任意固定的设备分组内，先按小时排序再按精确时间排序，能够完全保持原始的先后顺序，而不会发生行数据的交错重排。</p>
+<blockquote>
+<p>My key included <code>toStartOfHour(Timestamp)</code> (the hour bucket cutoff) followed by <code>Timestamp</code> (the exact time). Within any fixed group, sorting by hour then exact time preserves the exact same sequential order without re-ordering rows.</p>
+</blockquote>
+<ul>
+<li><strong>原排序键</strong>：<code>(observer, action, application, hour, Timestamp)</code> → 时间字段埋得太深，导致在查询最新 N 条末尾日志（<code>ORDER BY Timestamp DESC LIMIT 1000</code>）时，引擎不得不遍历每个设备对应的数据块。</li>
+<li><strong>新排序键</strong>：<code>(toStartOfHour(Timestamp), observer, action, application, Timestamp)</code> → 将小时时间桶提到最前面，使得指定时间范围内的数据在磁盘上形成单块连续区间。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Old Key:</strong> <code>(observer, action, application, hour, Timestamp)</code> → Time sat too deep, forcing newest-N tail-log queries (<code>ORDER BY Timestamp DESC LIMIT 1000</code>) to walk every device's block.</li>
+<li><strong>New Key:</strong> <code>(toStartOfHour(Timestamp), observer, action, application, Timestamp)</code> → Puts the time bucket first, making an hour range a single contiguous block.</li>
+</ul>
+</blockquote>
+<p><img alt="All the Smiths Together" src=".././images/41d6c9c74ac5.png" /></p>
+<blockquote>
+<p>⚠️ <strong>警告</strong>：ClickHouse 的 <code>MODIFY ORDER BY</code> 无法对已有字段进行重新排序、前置插入或合并；它仅仅支持在末尾追加新列。如果项目第一天建表时选错了排序键，后续必须新建一张表，在承载实时数据写入的同时为每个分片回填约 520 GiB 的历史数据，最后再执行原子性表切换 (Atomic Swap)。</p>
+<p>💬 [原文引用 / Original Quote]:
+<strong>Warning:</strong> <code>MODIFY ORDER BY</code> cannot reorder, prepend, or absorb existing columns; it only appends new ones. Getting the key wrong on day one requires creating a new table, backfilling ~520 GiB per shard under live ingest, and executing an atomic swap.</p>
+</blockquote>
+<hr />
+<h2 id="_6">经验教训三：物化投影远比想象的更棘手</h2>
+<blockquote>
+<h2 id="lesson-3-projections-are-trickier-than-i-thought">Lesson 3: Projections are Trickier Than I Thought</h2>
+</blockquote>
+<p><a href="https://clickhouse.com/docs/data-modeling/projections">物化投影 (Projections)</a> 相当于在同一张表内部按另一套物理顺序维护一份备用数据副本，并且会在每次执行 <code>INSERT</code> 时自动同步增量更新。</p>
+<blockquote>
+<p>A <a href="https://clickhouse.com/docs/data-modeling/projections">projection</a> acts as an alternative physical ordering of data stored directly inside the same table, updating automatically on <code>INSERT</code>. </p>
+</blockquote>
+<p>然而，ClickHouse 对物化投影的表达式匹配要求极其苛刻且毫无容错空间：</p>
+<blockquote>
+<p>However, expression matching is strict and unforgiving:</p>
+</blockquote>
+<ol>
+<li><strong>聚合函数必须完全对齐</strong>：若投影中只定义了 <code>count()</code> 和 <code>sum(duration)</code>，则对于请求 <code>avg(duration)</code> 的查询，该投影<em>完全无法</em>被复用。</li>
+<li><strong>过滤列必须包含在 <code>GROUP BY</code> 中</strong>：遗漏过滤列会导致引擎悄无声息地放弃投影，直接退化为开销巨大的原始底表全量扫描。</li>
+<li><strong>谓词表达式必须精准字面匹配</strong>：使用 <code>toStartOfHour(Timestamp) &gt;= X</code> 能被正确路由命中；但如果写成 <code>toStartOfInterval(Timestamp, INTERVAL 1 HOUR) &gt;= X</code>（即便两者在数学和业务逻辑上完全等价），也会静默引发全表扫描降级。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Aggregates must match:</strong> <code>count()</code> and <code>sum(duration)</code> will <em>not</em> be used by a query asking for <code>avg(duration)</code>.</li>
+<li><strong>Filter columns must be in the <code>GROUP BY</code>:</strong> Omitting them causes a silent, costly fallback to raw tables.</li>
+<li><strong>Exact predicate matching is required:</strong> Using <code>toStartOfInterval(Timestamp, INTERVAL 1 HOUR) &gt;= X</code> (even with identical logical values) triggers a silent full fallback.</li>
+</ol>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">WHERE 子句形式</th>
+<th style="text-align: left;">是否命中投影路由？</th>
+<th style="text-align: left;">读取数据行数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>(无)</em></td>
+<td style="text-align: left;">是</td>
+<td style="text-align: left;">2,022 行</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>toStartOfHour(Timestamp) &gt;= X</code></td>
+<td style="text-align: left;">是</td>
+<td style="text-align: left;">2,022 行</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>toStartOfInterval(Timestamp, INTERVAL 1 HOUR) &gt;= X</code></td>
+<td style="text-align: left;"><strong>否</strong></td>
+<td style="text-align: left;">12,373,248 行</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Timestamp &gt;= X</code>（直接查原始字段）</td>
+<td style="text-align: left;"><strong>否</strong></td>
+<td style="text-align: left;">12,373,248 行</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">WHERE Clause</th>
+<th style="text-align: left;">Routed?</th>
+<th style="text-align: left;">Rows Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><em>(none)</em></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">2,022</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>toStartOfHour(Timestamp) &gt;= X</code></td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">2,022</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>toStartOfInterval(Timestamp, INTERVAL 1 HOUR) &gt;= X</code></td>
+<td style="text-align: left;"><strong>No</strong></td>
+<td style="text-align: left;">12,373,248</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Timestamp &gt;= X</code> (raw)</td>
+<td style="text-align: left;"><strong>No</strong></td>
+<td style="text-align: left;">12,373,248</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="grafana-clickhouse">经验教训四：Grafana 的 ClickHouse 插件暗藏暗礁</h2>
+<blockquote>
+<h2 id="lesson-4-grafana-clickhouse-plugin-has-sharp-edges">Lesson 4: Grafana ClickHouse Plugin Has Sharp Edges</h2>
+</blockquote>
+<p>Grafana 官方的 ClickHouse 插件虽然功能强大，但在实际使用中也存在不少隐秘的踩坑点：</p>
+<blockquote>
+<p>While the Grafana plugin is powerful, it contains hidden failure modes:</p>
+</blockquote>
+<ol>
+<li><strong>静默忽略拼写错误</strong>：在即席过滤配置中，若未填写包含数据库 schema 的全限定表名而仅填了裸表名，安全过滤条件会被静默忽略，从而导致查询意外返回千万级无用数据。</li>
+<li><strong>布尔逻辑表达受限</strong>：其图形交互界面限制每个键只能绑定单一操作符和取值，这导致类似 <code>observer = A OR observer = B</code> 这样的多选或逻辑条件无法以优雅直观的方式表达。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Silently Ignored Typos:</strong> An unqualified table key instead of a schema-qualified one in ad-hoc filter configs silently bypasses safety filters, returning tens of millions of unexpected rows.</li>
+<li><strong>Boolean Limits:</strong> The UI offers one operator and value per key, making expressions like <code>observer = A OR observer = B</code> impossible to express cleanly.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="_7">总结</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>ClickHouse 无疑是一款性能强悍的分析利器，但一旦将其推向海量规模，其缺乏防护机制与静默失效的特质就会被急剧放大。正因为引擎在出错或降级时从不报错示警，工程师必须在日常开发中主动建立深度的验证习惯——深度结合 <code>system.query_log</code>、<code>EXPLAIN</code> 以及严苛的抽样校验，时刻确保每一条查询都切实跑在预想的极速路径之上。</p>
+<blockquote>
+<p>ClickHouse is an incredible tool, but scale exposes its lack of guardrails. Because it fails silently, developers must proactively build verification habits—relying heavily on <code>system.query_log</code>, <code>EXPLAIN</code>, and exhaustive sanity checks to ensure queries are actually hitting their optimized paths.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">ClickHouse</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Grafana</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">数据库调优</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
