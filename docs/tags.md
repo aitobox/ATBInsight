@@ -235,6 +235,8 @@ title: 标签浏览
 - [你的 MCP 服务器足够安全，但其背后的账本系统并非如此](blog/posts/2026-10-17-你的-MCP-服务器安全-但其背后的账本系统并非如此.md)
 - [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
 - [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 
 ## AI 智能体安全
 
@@ -626,6 +628,10 @@ title: 标签浏览
 - [AWS 上的基础模型训练与推理构建模块](blog/posts/2026-08-07-AWS 上的基础模型训练与推理构建模块.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 
+## AWS Trainium
+
+- [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
+
 ## ActivityPub
 
 - [PHP 验证 ActivityPub 的 RFC 9421 HTTP 签名实用指南](blog/posts/2026-09-04-PHP 验证 ActivityPub 的 RFC 9421 HTTP 签名实用指南.md)
@@ -683,6 +689,10 @@ title: 标签浏览
 ## Agent技能
 
 - [揭秘智能体技能（Agent Skills）：它们为何奏效——以及何时会失效](blog/posts/2026-08-18-揭秘智能体技能（Agent Skills）：它们为何奏效——以及何时会失效.md)
+
+## Airlock
+
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 
 ## AkasicDB
 
@@ -1789,10 +1799,15 @@ title: 标签浏览
 - [DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群](blog/posts/2026-08-19-DumpsterCluster：从“垃圾堆”到运行 LLaMA-70B 的 60 美元 GPU 集群.md)
 - [更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据](blog/posts/2026-08-26-更多计算资源无法确保更高的学术影响力：来自自然语言处理顶会论文的证据.md)
 - [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 
 ## GPU 优化
 
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
+
+## GPU 内核
+
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
 
 ## GPU 算子
 
@@ -2013,6 +2028,10 @@ title: 标签浏览
 ## Google AI Edge
 
 - [借助 Model Explorer 为定制端侧编译器引入可视化计算图调试](blog/posts/2026-10-21-借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试.md)
+
+## Google Cloud
+
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 
 ## Google Discover
 
@@ -3571,6 +3590,7 @@ title: 标签浏览
 
 - [手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究](blog/posts/2026-08-14-手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究.md)
 - [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
 
 ## PTXBench
 
@@ -3744,6 +3764,7 @@ title: 标签浏览
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
 
 ## Pythia
 
@@ -4204,6 +4225,7 @@ title: 标签浏览
 ## SBOM
 
 - [软件包管理规范全景图：标准组织、生态提案与碎片化现实](blog/posts/2026-10-08-软件包管理规范全景图-标准组织-生态提案与碎片化现实.md)
+- [根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区](blog/posts/2026-10-22-根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区.md)
 
 ## SCPI
 
@@ -4267,6 +4289,10 @@ title: 标签浏览
 ## SMT
 
 - [基于 SMT 的 HTN-SAT 编码实现数值型完全有序 HTN 规划](blog/posts/2026-09-05-基于 SMT 的 HTN-SAT 编码实现数值型完全有序 HTN 规划.md)
+
+## SMT 求解器
+
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
 
 ## SMT求解器
 
@@ -4659,6 +4685,10 @@ title: 标签浏览
 
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 
+## TLS/SSL
+
+- [根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区](blog/posts/2026-10-22-根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区.md)
+
 ## TOP-Align
 
 - [Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略](blog/posts/2026-09-04-Agent Tools Orchestration 泄露更多：数据集、基准测试与缓解策略.md)
@@ -4671,6 +4701,7 @@ title: 标签浏览
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 
 ## TRL
 
@@ -4818,6 +4849,10 @@ title: 标签浏览
 ## Top-k 选择
 
 - [Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-$k$ 选择方法](blog/posts/2026-09-04-Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-k- 选择方法.md)
+
+## TorchNeuron
+
+- [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
 
 ## TorchTPU
 
@@ -5318,6 +5353,10 @@ title: 标签浏览
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 
+## llm-d
+
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
+
 ## loginctl
 
 - [使用 Polkit 阻止用户运行 `loginctl enable-linger`](blog/posts/2026-09-02-使用 Polkit 阻止用户运行 `loginctl enable-linger`.md)
@@ -5428,6 +5467,7 @@ title: 标签浏览
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 
 ## visitation measure
 
@@ -6955,6 +6995,7 @@ title: 标签浏览
 - [CONTINUITY：面向可组合大模型智能体控制的安全上下文契约](blog/posts/2026-09-08-CONTINUITY：面向可组合大模型智能体控制的安全上下文契约.md)
 - [AI编程助手在安装前会进行安全检查吗？针对研究软件供应链中信任信号的预注册需求侧审计](blog/posts/2026-09-10-AI编程助手在安装前会进行安全检查吗？针对研究软件供应链中信任信号的预注册需求侧审计.md)
 - [包管理器沙盒化演进：操作系统级隔离、代码移除与 AI 智能体供应链安全](blog/posts/2026-09-25-包管理器沙盒化演进-操作系统级隔离-代码移除与-AI-智能体供应链安全.md)
+- [根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区](blog/posts/2026-10-22-根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区.md)
 
 ## 供应链攻击
 
@@ -6975,6 +7016,10 @@ title: 标签浏览
 ## 依赖图谱
 
 - [Comprendia：AI 增强的代码理解工具](blog/posts/2026-08-14-Comprendia：AI 增强的代码理解工具.md)
+
+## 依赖安全
+
+- [根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区](blog/posts/2026-10-22-根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区.md)
 
 ## 依赖鸿沟
 
@@ -7925,6 +7970,7 @@ title: 标签浏览
 - [EasyBalance：分布式 MoE 推理中的跨层负载均衡](blog/posts/2026-08-12-EasyBalance：分布式 MoE 推理中的跨层负载均衡.md)
 - [面向英特尔 AI PC 集群的分布式大模型推理预编译流水线分片技术](blog/posts/2026-08-21-面向英特尔 AI PC 集群的分布式大模型推理预编译流水线分片技术.md)
 - [位置至关重要：带有Token裁剪与重排的ViT分布式推理中的特征反演攻击](blog/posts/2026-09-03-位置至关重要：带有Token裁剪与重排的ViT分布式推理中的特征反演攻击.md)
+- [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 
 ## 分布式算法
 
@@ -11458,6 +11504,7 @@ title: 标签浏览
 - [面向低资源非洲语言的潜空间拒绝锚定：无需重新训练的机械式安全恢复](blog/posts/2026-08-21-面向低资源非洲语言的潜空间拒绝锚定：无需重新训练的机械式安全恢复.md)
 - [打破假设：针对语义攻击对输入侧越狱防御机制的审计](blog/posts/2026-08-26-打破假设：针对语义攻击对输入侧越狱防御机制的审计.md)
 - [语义叠加：超越Token与控制向量的提示词注入防御技术](blog/posts/2026-08-27-语义叠加：超越Token与控制向量的提示词注入防御技术.md)
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
 
 ## 大语言模型微调
 
@@ -12320,6 +12367,10 @@ title: 标签浏览
 ## 小米
 
 - [小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标](blog/posts/2026-08-13-小米 MiLM Plus 发布 PROVE：面向感知对齐的对象移除评估指标.md)
+
+## 小语言模型
+
+- [专精化小语言模型词表：实际应用中如何削减 77% 推理成本](blog/posts/2026-10-22-专精化小语言模型词表-实际应用中如何削减-77-推理成本.md)
 
 ## 少样本学习
 
@@ -13420,6 +13471,9 @@ title: 标签浏览
 - [FormalFlow：面向 MIP* = RE 核心定理的长程自动化形式化证明](blog/posts/2026-09-19-FormalFlow-面向-MIP-RE-核心定理的长程自动化形式化证明.md)
 - [超越自然语言：专为自主科学研究打造的智能体原生形式化语言 Lara](blog/posts/2026-09-24-超越自然语言-专为自主科学研究打造的智能体原生形式化语言-Lara.md)
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 
 ## 形式语言学
 
@@ -13689,6 +13743,7 @@ title: 标签浏览
 ## 性能分析
 
 - [服务掩码扩散大语言模型：来自真实硬件的特征分析与设计原则](blog/posts/2026-08-27-服务掩码扩散大语言模型：来自真实硬件的特征分析与设计原则.md)
+- [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
 
 ## 性能剖析
 
@@ -14698,6 +14753,10 @@ title: 标签浏览
 ## 搜索重排
 
 - [在线蒸馏相遇离线GRPO：训练紧凑型指令遵循重排器](blog/posts/2026-09-04-在线蒸馏相遇离线GRPO：训练紧凑型指令遵循重排器.md)
+
+## 携带证明合约
+
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 
 ## 操作模型
 
@@ -15866,6 +15925,7 @@ title: 标签浏览
 - [大模型作为裁判并非全知全能：为什么自我进化智能体需要确定性防护栏](blog/posts/2026-09-04-大模型作为裁判并非全知全能：为什么自我进化智能体需要确定性防护栏.md)
 - [多模态GUI智能体是否知道何时停止操作？实现具备冲突意识的终止机制](blog/posts/2026-09-05-多模态GUI智能体是否知道何时停止操作？实现具备冲突意识的终止机制.md)
 - [将间接提示词注入重新构想为测试时搜索问题](blog/posts/2026-09-08-将间接提示词注入重新构想为测试时搜索问题.md)
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 
 ## 智能体审计
 
@@ -16970,6 +17030,10 @@ title: 标签浏览
 
 - [弃权协议：Clos 网络架构的根本原因分析 (RCA)](blog/posts/2026-08-26-弃权协议：Clos 网络架构的根本原因分析 -RCA.md)
 
+## 根证书信任库
+
+- [根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区](blog/posts/2026-10-22-根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区.md)
+
 ## 格罗滕迪克常数
 
 - [面向格罗滕迪克常数的长周期AI研究：人机数学协作案例研究](blog/posts/2026-08-16-面向格罗滕迪克常数的长周期AI研究：人机数学协作案例研究.md)
@@ -17642,6 +17706,7 @@ title: 标签浏览
 - [GraniKV：针对具有长共享前缀的多智能体系统的非对称粒度KV缓存分页](blog/posts/2026-08-19-GraniKV：针对具有长共享前缀的多智能体系统的非对称粒度KV缓存分页.md)
 - [Sigmoid Attention：构建学习型 KV 缓存淘汰的更优底层架构](blog/posts/2026-08-26-Sigmoid Attention：构建学习型 KV 缓存淘汰的更优底层架构.md)
 - [ST-Lite：面向长程 GUI 智能体的免训练空间轨迹引导 KV Cache 压缩框架](blog/posts/2026-08-27-ST-Lite：面向长程 GUI 智能体的免训练空间轨迹引导 KV Cache 压缩框架.md)
+- [专精化小语言模型词表：实际应用中如何削减 77% 推理成本](blog/posts/2026-10-22-专精化小语言模型词表-实际应用中如何削减-77-推理成本.md)
 
 ## 模型推理加速
 
@@ -18951,6 +19016,7 @@ title: 标签浏览
 
 - [RedEvoAgent：基于经验驱动技能演化的自动化红队测试智能体](blog/posts/2026-08-29-RedEvoAgent：基于经验驱动技能演化的自动化红队测试智能体.md)
 - [SoK：AI 增强型二进制逆向工程知识系统化研究](blog/posts/2026-09-08-SoK：AI 增强型二进制逆向工程知识系统化研究.md)
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
 
 ## 漏洞检测
 
@@ -21197,6 +21263,10 @@ title: 标签浏览
 - [A-SR：基于分层协同的自进化智能体大模型符号回归](blog/posts/2026-08-07-A-SR：基于分层协同的自进化智能体大模型符号回归.md)
 - [看见、假设与验证：用于发现控制偏微分方程的多模态智能体框架](blog/posts/2026-09-01-看见、假设与验证：用于发现控制偏微分方程的多模态智能体框架.md)
 
+## 符号等价性检查
+
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
+
 ## 符号表示
 
 - [可解释架构的图形化设计](blog/posts/2026-08-22-可解释架构的图形化设计.md)
@@ -21352,6 +21422,7 @@ title: 标签浏览
 - [PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析](blog/posts/2026-08-07-PyTorch 性能剖析（第三篇）：注意力机制（Attention）全解析.md)
 - [Nova：面向深度学习的端到端 MLIR 编译器](blog/posts/2026-08-26-Nova：面向深度学习的端到端 MLIR 编译器.md)
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
+- [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
 
 ## 算子解耦
 
@@ -24375,6 +24446,7 @@ title: 标签浏览
 - [Agent libOS：面向受能力控制的自进化大模型智能体的运行时底层架构](blog/posts/2026-08-20-Agent libOS：面向受能力控制的自进化大模型智能体的运行时底层架构.md)
 - [能力门控语言模型：安全性具备组合性，而效用则不然](blog/posts/2026-09-03-能力门控语言模型：安全性具备组合性，而效用则不然.md)
 - [思考模型：授权与能力](blog/posts/2026-09-09-思考模型：授权与能力.md)
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
 
 ## 证据依赖
 
@@ -24581,6 +24653,10 @@ title: 标签浏览
 ## 词表优化
 
 - [嵌套字节级词表部署成本低但共享代价高：一项预注册的否定性结果](blog/posts/2026-09-01-嵌套字节级词表部署成本低但共享代价高：一项预注册的否定性结果.md)
+
+## 词表定制
+
+- [专精化小语言模型词表：实际应用中如何削减 77% 推理成本](blog/posts/2026-10-22-专精化小语言模型词表-实际应用中如何削减-77-推理成本.md)
 
 ## 词表掩码
 

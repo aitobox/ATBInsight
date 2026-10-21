@@ -2052,3 +2052,7 @@ title: arXiv论文
 - [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](../posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](../posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](../posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](../posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
+- [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](../posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
+- [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](../posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
+- [专精化小语言模型词表：实际应用中如何削减 77% 推理成本](../posts/2026-10-22-专精化小语言模型词表-实际应用中如何削减-77-推理成本.md)
