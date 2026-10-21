@@ -5,6 +5,794 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在现代互联网安全体系中，数字证书是建立安全加密连接 (TLS/SSL) 的信任基石，而操作系统与浏览器通常负责集中动态维护并吊销存在风险的根证书。然而，近期曝光的 eMudhra 私钥生成漏洞事件揭开了开源软件供应链中一条鲜为人知的阴暗面：大量编程语言、开发工具和第三方依赖库为了方便分发，普遍在安装包内自带静态的根证书信任库 (Trust Stores) 副本，使得系统级的安全修补彻底失效。安全团队通过对近 7000 个核心开源包的深度扫描发现，这种“幽灵二进制依赖”不仅长期未随主流标准更新，甚至还暗藏着数年前就被全网封杀的失陷证书。更为严峻的是，当前通用的软件物料清单 (Software Bill of Materials, SBOM) 与漏洞扫描工具仅按版本号比对源码依赖，对此类静态硬编码资产完全“失明”，为整个数字世界的软件供应链安全敲响了警钟。
+
+---
+
+## 核心内容摘要
+
+&gt; ## Summary
+
+当权威数字证书机构 eMudhra 因生成算法失误导致中间证书颁发机构 (Intermediate Certificate Authorities, CAs) 的私钥可被直接逆向破解时，全球主流操作系统与浏览器在第一时间做出了响应，迅速吊销了对相关证书的信任。然而，我们赖以构建软件的各种客户端库、包管理器及编程语言运行时，往往在自身内部硬编码打包了独立的根证书信任库 (Trust Stores) 副本，使得系统的安全拦截彻底失效。一项针对近 7000 个核心开源软件包的安全审计揭示了一个令人震惊的现实：数十个广泛使用的开源包依然捆绑着早已被废弃、不再安全甚至已被攻陷的陈旧根证书。这形成了一类隐蔽的“幽灵二进制依赖 (Phantom Binary Dependencies)”，完美躲过了现有的标准漏洞扫描器与软件物料清单 (Software Bill of Materials, SBOM) 的审查雷达。
+
+&gt; When eMudhra incorrectly generated intermediate certificate authorities (CAs)—allowing private keys to be recovered directly from the certificates—major operating systems and browsers quickly revoked trust. However, many client libraries, package managers, and programming language runtimes bundle their own static copies of root trust stores, completely bypassing system updates. A security audit of nearly 7,000 critical packages revealed that dozens ship outdated Certificate Authority (CA) bundles containing long-removed, insecure, or compromised roots, exposing an invisible class of "phantom binary dependencies" that evade standard vulnerability scanners and SBOMs.
+
+---
+
+## 捆绑式根证书信任库的蔓延范围
+
+&gt; ## The Reach of Bundled Trust Stores
+
+在 eMudhra 安全事件爆发后，Firefox、Chrome、Apple 和 Microsoft 于 10 月 17 日至 20 日期间，通过系统内置的信任列表自动更新机制，迅速封禁了受影响的中间证书。但安全披露公告同时指出，由于许多客户端和开发环境依赖自身内置的硬编码根证书，它们必须依赖手动发布软件更新才能修复安全风险。受此波及的工具生态包括：
+
+&gt; Following the eMudhra incident, Firefox, Chrome, Apple, and Microsoft blocked the compromised intermediates through automatic trust list updates between October 17 and 20. However, the disclosure noted that many clients require manual software updates because they rely on embedded roots. The affected ecosystem included:
+
+*   `certifi` (截至 2026.10.19 的多个版本) 与 `pip` (26.2.2)
+*   `uv` (0.13.4) 与 `pixi` (0.82.1)
+*   `webpki-roots`、`webpki-root-certs`、`rustls-webpki` 以及 `rustup`
+*   Node.js、Go、Composer (`ca-bundle`)、Elixir (`castore`) 以及 Perl (`Mozilla::CA`)
+*   cURL CA 证书包、NSS、多个 Linux 发行版以及 macOS 原生自带的 `pip3`
+
+&gt; *   `certifi` (versions through 2026.10.19) and `pip` (26.2.2)
+&gt; *   `uv` (0.13.4) and `pixi` (0.82.1)
+&gt; *   `webpki-roots`, `webpki-root-certs`, `rustls-webpki`, and `rustup`
+&gt; *   Node.js, Go, Composer (`ca-bundle`), Elixir (`castore`), and Perl (`Mozilla::CA`)
+&gt; *   The cURL CA bundle, NSS, various Linux distributions, and macOS's native `pip3`
+
+正如 Gentoo 维护者 Michał Górny 所指出的，单纯更新操作系统层面的信任库往往远远不够。Python 虚拟环境、内嵌捆绑的第三方依赖包 (例如 Python 标准库 `ensurepip` 中附带的 `pip`)、包管理器锁定文件的冻结策略、静态编译的 Rust 二进制可执行文件，以及层层嵌套的 Flatpak 沙箱运行时，都在私自保留这些证书的独立副本，必须逐一独立更新才能消除隐患。
+
+&gt; As Gentoo maintainer Michał Górny observed, updating system-level trust stores is often insufficient. Virtual environments, vendored package dependencies (such as `pip` inside `ensurepip`), lockfile cooldown policies, statically compiled Rust binaries, and nested Flatpak runtimes all maintain isolated copies of these certificates that must be updated independently.
+
+## 关键开源包中的内置证书现状
+
+&gt; ## Bundles in Critical Packages
+
+为了进一步评估在常用开发工具之外，整个软件生态中内置信任库的扩散广度，安全团队使用审计工具 [git-pkgs/certs](https://github.com/git-pkgs/certs) 对来自 PyPI、npm、crates.io、Go、Maven Central、Packagist、NuGet 和 RubyGems 的 6877 个核心关键开源包进行了全方位扫描。
+
+&gt; To understand the scale of embedded trust stores beyond well-known tools, an audit using [git-pkgs/certs](https://github.com/git-pkgs/certs) scanned 6,877 critical packages across PyPI, npm, crates.io, Go, Maven Central, Packagist, NuGet, and RubyGems. 
+
+扫描结果显示：
+* **1.7%** (共 116 个软件包) 包含 X.509 格式证书 (多数为测试用例夹具或代码签名证书)。
+* **28 个软件包** 直接打包并分发了具备完整功能的 CA 证书包 (此外，在单独抽样的 RubyGems 样本中还发现了第 29 个，即 *Honeybadger*)。
+
+&gt; Out of these:
+&gt; * **1.7%** (116 packages) contained X.509 certificates (mostly test fixtures or signing certs).
+&gt; * **28 packages** shipped functional CA bundles (with a 29th, *Honeybadger*, found in a separate RubyGems sample).
+
+这些内置证书包与系统安全体系的交互方式五花八门，大致可分为以下几类：
+* **系统叠加型 (System Overlay)**：例如 `excon`、`pip` 和 `redshift-connector` 等库，它们会将内置证书包与系统根证书“并行加载”，这意味着即便操作系统已经吊销了某个危险根证书，应用程序依旧会盲目信任它。
+* **隔离信任库 (Isolated Stores)**：Stripe 的 Ruby 客户端库和 `httpclient` 直接利用自带的证书包构建独立的 `OpenSSL::X509::Store` 实例，与系统信任库彻底割裂。
+* **回退与覆盖策略 (Fallbacks &amp; Overrides)**：诸如 `botocore`、`httplib2` 和 Google 的 Java 客户端等工具，仅在检测不到系统信任库时才会回退使用自带的密钥库，这导致实际安全防御水位严重依赖具体的部署环境。
+* **深度潜伏文件 (Deeply Embedded Files)**：`libv8` 将证书打包在 `depot_tools` 内部，而 Google App Engine 的 API 桩代码也为本地开发服务器携带了证书文件。
+
+&gt; These bundles interact with system security in varied ways:
+&gt; * **System Overlay:** Libraries like `excon`, `pip`, and `redshift-connector` load their bundles *alongside* system roots, meaning a revoked OS-level root remains trusted.
+&gt; * **Isolated Stores:** Stripe’s Ruby library and `httpclient` build independent `OpenSSL::X509::Store` instances from their bundles.
+&gt; * **Fallbacks &amp; Overrides:** Tools like `botocore`, `httplib2`, and Google’s Java clients fall back to bundled keystores only when system stores are missing, creating deployment-dependent security postures.
+&gt; * **Deeply Embedded Files:** `libv8` bundles certificates inside `depot_tools`, and Google App Engine API stubs carry them for local development servers.
+
+## 早被移除与失陷的危险根证书
+
+&gt; ## Removed and Compromised Roots
+
+安全人员将这些软件包中的证书与 Mozilla 历年发布的官方证书库进行历史比对，发现大量内置证书包存在令人咋舌的严重滞后现象：
+* **严重陈旧的证书包 (Stale Bundles)**：*Honeybadger* 和 `httpclient` 分发自带的根证书列表居然分别停留在 2011 年和 2014–2015 年；令人费解的是，这些开源包的业务代码直到 2026 年底都在频繁维护更新。
+* **被遗弃的 StartCom 根证书 (Orphaned StartCom Roots)**：诸如 `algoliasearch`、`aws-sdk-v1` 和 `Guzzle 3` 等软件包，依然包含早在 2017 年就被 Mozilla 在 Firefox 58 中彻底移除的 StartCom 根证书；更可怕的是，这些不受信任的证书在密码学有效期限上竟然能一直维持到 2036 年和 2039 年。
+* **eMudhra 泄露风险波及 (The eMudhra Exposure)**：在被扫描的软件包中，有 10 个项目 (包括 Stripe、gRPC、Composer 和 `virtualenv`) 包含交叉签名根证书 `emSign ECC Root CA - G3`，该证书正是通往已被攻陷的 eMudhra 中间证书的信任桥梁。由于大多数内置证书库缺乏在线吊销检查机制且无条件信任该根证书，在发布针对性代码补丁之前，它们始终处于易受攻击的危险状态。
+* **Comodo AAA 证书服务风险 (Comodo AAA Certificate Services)**：尽管 Mozilla 早在 2025 年就终止了对 Comodo AAA 根证书在 TLS 领域的信任，但在本次审计中仍有 17 个关键软件包 (包括 `honeybadger`、`httpclient`、`aws-sdk-v1` 和 `httplib2`) 依然将其作为默认信任锚点或回退信任源。
+
+&gt; Historical matching against Mozilla releases revealed severe staleness in package bundles:
+&gt; * **Stale Bundles:** *Honeybadger* and `httpclient` shipped root lists dating back to 2011 and 2014–2015, respectively, despite receiving regular code maintenance up to late 2026.
+&gt; * **Orphaned StartCom Roots:** Packages such as `algoliasearch`, `aws-sdk-v1`, and `Guzzle 3` still contain StartCom roots removed by Mozilla in Firefox 58 (2017), which remain cryptographically valid until 2036 and 2039.
+&gt; * **The eMudhra Exposure:** Ten of the scanned packages (including Stripe, gRPC, Composer, and `virtualenv`) contained the cross-signing root `emSign ECC Root CA - G3`, which bridged traffic to the compromised eMudhra intermediates. Because many bundles lacked revocation checking and trusted this root, they remained vulnerable until explicitly patched.
+&gt; * **Comodo AAA Certificate Services:** Though Mozilla ended TLS trust for Comodo's AAA root in 2025, it was still found in 17 scanned packages (including `honeybadger`, `httpclient`, `aws-sdk-v1`, and `httplib2`) acting as a default trust anchor or fallback.
+
+尽管在 10 月份的安全事件披露后，诸如 `botocore`、AWS SDKs 和 `excon` 等高知名度工具的维护者迅速推送了安全补丁，但大量下游项目、嵌套依赖项以及长期锁死固定版本的 lockfile，依然在悄无声息地分发和运行着这些包含安全隐患的证书资产。
+
+&gt; While maintainers rapidly patched high-profile tools (such as `botocore`, AWS SDKs, and `excon`) following the October disclosures, many downstream dependencies and pinned lockfiles continue to distribute these vulnerable assets.
+
+## 软件包元数据与 SBOM 的监控盲区
+
+&gt; ## Package Metadata and the SBOM Blind Spot
+
+要发现这些深埋在软件包内部的根证书信任库，安全研究人员必须对压缩归档文件的实际内容进行逐文件静态深度解析，因为**目前没有任何现行的软件包元数据标准或 SBOM 格式能够追踪它们**。
+
+&gt; Discovering these embedded trust stores required statically parsing archive file contents because **no standard package metadata or SBOM format tracks them**. 
+
+标准的依赖关系图谱和 lockfile 仅记录软件包的包名和版本号 (例如 `pkg:gem/httpclient@2.9.0`)，对包内是否静态硬编码了某个历史年份的根证书库完全处于“失明”状态。CA 证书包本质上充当了一种**幽灵二进制依赖 (Phantom Binary Dependency)**——它们原本是由上游 Mozilla 动态维护的第三方敏感数据，却被开发者手动复制粘贴到了源码仓库中，随后在一次次的版本迭代中被悄然继承并固化。
+
+&gt; Standard dependency graphs and lockfiles record packages by name and version (e.g., `pkg:gem/httpclient@2.9.0`), remaining completely blind to the fact that the package embeds a statically compiled trust store from a specific historical year. A CA bundle functions as a **phantom binary dependency**—third-party data maintained upstream by Mozilla, manually copied into source trees, and silently inherited across releases. 
+
+虽然 Debian 发行版的 `Built-Using` 元数据字段以及 CycloneDX 的 `pedigree` 规格规范在理论上提供了追踪静态打包依赖的机制，但绝大多数标准 SBOM 生成工具目前仍严格只读取 lockfile 声明。其直接后果是，现有的自动化漏洞扫描器在机制上根本无法察觉：某款应用在其庞杂的依赖树深处，其实正默默信任着一整套早已被吊销或废弃的危险 CA 根证书。
+
+&gt; While Debian's `Built-Using` field and CycloneDX's `pedigree` specification offer theoretical mechanisms to track static inclusions, standard SBOM generators rely strictly on lockfiles. Consequently, vulnerability scanners remain fundamentally unequipped to detect when an application is silently trusting revoked or outdated Certificate Authorities hidden deep within its dependency tree.</description>
+    </item>
+    <item>
+      <title>携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/携带证明合约-PC2-AI-智能体无法违背的硬性承诺/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/携带证明合约-PC2-AI-智能体无法违背的硬性承诺/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着自主 AI 智能体 (AI Agent) 逐渐深入人类社会的方方面面，它们开始代表用户自主购买服务、交换核心信息并委派协作任务。然而，目前业界仅依靠自然语言指令或静态文本策略来约束智能体行为，存在严重的可靠性隐患——智能体既可能产生逻辑失误或目标偏离，也容易沦陷于提示词注入 (Prompt Injection) 攻击。针对这一协作信任瓶颈，研究团队开创性地提出了“携带证明合约 (Proof-Carrying Contracts, PC2)”体系，将模糊的行为准则升华为机器可严格检验的数学约束。任何智能体在执行关键动作前，都必须出具一份完备的数学证明，并经由名为“气闸 (Airlock)”的系统核验放行，从而在赋予智能体充分策略自由度的同时，筑牢了坚不可摧的底层安全防线。
+
+---
+
+## 📌 内容概要
+
+&gt; ## 📌 Summary
+
+随着 AI 智能体 (AI Agent) 越来越普遍地代表用户自主行动——从采购各类服务、交换关键数据到委托分派工作——单纯依靠文本形式的指令或规则策略，根本无法确保其行为绝对合规。智能体随时可能产生失误、受到提示词注入 (Prompt Injection) 攻击而被恶意诱导，甚至转而追求与用户冲突的其他目标。
+
+&gt; As AI agents increasingly act autonomously on behalf of users—purchasing services, exchanging information, and delegating work—relying solely on textual instructions or policies is insufficient to guarantee compliance. Agents can make mistakes, be manipulated by prompt injection, or pursue conflicting interests. 
+
+为了彻底破局，论文作者提出了**携带证明合约 (Proof-Carrying Contracts, PC2)**：这是一种全新的系统框架，能够在智能体与外部系统的交互全生命周期中，以严谨的数学手段强制执行既定约束。在执行任何请求的操作之前，智能体必须先提供一份机器可自动核验的数学证明，以确保该操作在任何可能的情境下均能严格维持既定约束。名为**气闸 (Airlock)** 的底层执行系统会在放行该操作前对证明进行快速核查；这种机制既能让智能体灵活地自适应调整求解策略，又能为规则底线的绝对守序提供确定性保障。
+
+&gt; To solve this, the authors introduce **Proof-Carrying Contracts (PC2)**: a novel framework that makes agreed constraints mathematically enforceable throughout an agent's interactions. Before executing any requested operation, the agent must supply a machine-checkable proof confirming that the operation preserves all agreed-upon constraints. An execution system called the **Airlock** verifies this proof before granting access, freeing the agent to adapt its strategy while ensuring absolute constraint adherence.
+
+---
+
+## 📋 论文摘要
+
+&gt; ## 📋 Abstract
+
+AI 智能体正日益代表人类或其他智能体独立行动，参与购买服务、互通信息以及委派工作。智能体必须恪守的底线通常写在指令、规则策略或协议条款中，但光凭冰冷的文字本身并不能强制其完全顺从。智能体可能在执行中犯错、被读取的恶意输入篡改意图，或是追求与委托方相背离的利益。若想让这类智能体构成的协作经济生态真正运转起来，各参与方亟需一种坚实可靠的契约形式，即便无需费力审查对方智能体的内部实现或盲目托付信任，也能安心建立协作。
+
+&gt; AI agents increasingly act on behalf of people or other agents, purchasing services, exchanging information and delegating work. What an agent must respect is written in instructions, policies or agreements, but text alone cannot make it comply. It may make mistakes, be redirected by what it reads, or pursue different interests. For an economy of such agents to function, parties need agreements they can rely on without inspecting or trusting one another's agents. 
+
+我们在此提出**携带证明合约 (Proof-Carrying Contracts, PC2)**，这是一个能够让约定的约束条件在智能体与系统交互全过程中具备强制执行效力的架构。在任何被请求的操作得以运行之前，智能体必须主动递交一份机器可自动检验的数学证明，证明提议的操作在其行为模型所允许的每一种可能情况下，均能严格保留既定约束。名为**气闸 (Airlock)** 的执行系统将对该证明展开严格校验，并以此掌控对底层操作权限的开放与拦截。
+
+&gt; We introduce **Proof-Carrying Contracts (PC2)**, a framework for making agreed constraints enforceable throughout an agent's interactions with a system. Before a requested operation can run, the agent must supply a machine-checkable proof that it preserves the agreed constraints in every case allowed by its model. An execution system called the **Airlock** checks the proof and controls access to the operation. 
+
+在这一体系中，协作各方只需专注明确需要保留的安全条件，而智能体自身则负责提供证明其决策合法性所需的推理逻辑，同时享有自如调整策略的充分空间。这避免了为系统费力设计繁复的静态权限策略，并逐项证明其允许的每个决策都安全可靠的工程负担。我们在理论上证明，即便面对恶意对抗的智能体，这些约束在运行周期的每一个瞬间都能严格成立，并厘清了何时能将该数学安全性平移至现实世界的实际安全。此外，可复用的能力模块为合约的组装提供了现成的工具库与理论保障。PC2 框架为未来的智能体经济打下了可信基石，使达成的协议既能有效保护委派工作的发起方，也能切实保障具体承担任务的智能体本身。
+
+&gt; The parties specify the conditions to preserve, while the agent supplies the reasoning needed to justify its decisions and remains free to adapt its strategy. This avoids having to design a separate permission policy and prove that every decision it permits is safe. We prove that the constraints hold at every instant during execution, even for an adversarial agent, and identify when this implies safety in the world. Reusable capability modules provide tools and guarantees from which contracts can be constructed. PC2 provides a foundation for an agent economy whose agreements protect both those delegating work and those carrying it out.
+
+---
+
+## 🔗 全文与相关资源
+
+&gt; ## 🔗 Full-Text &amp; Resources
+
+* **阅读 PDF 论文：** [arXiv:2610.28484 PDF](https://arxiv.org/pdf/2610.28484)
+* **网页 HTML 版：** [arXiv HTML (Experimental)](https://arxiv.org/html/2610.28484v1)
+* **数字对象唯一标识符 (DOI)：** [10.48550/arXiv.2610.28484](https://doi.org/10.48550/arXiv.2610.28484)
+* **许可协议：** [知识共享署名 4.0 国际许可 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/)  
+  &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="30"&gt;
+
+&gt; * **View PDF:** [arXiv:2610.28484 PDF](https://arxiv.org/pdf/2610.28484)
+&gt; * **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2610.28484v1)
+&gt; * **DOI:** [10.48550/arXiv.2610.28484](https://doi.org/10.48550/arXiv.2610.28484)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/)  
+&gt;   &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="30"&gt;</description>
+    </item>
+    <item>
+      <title>局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在让 AI 智能体 (AI Agent) 自主调用工具、收发邮件和查询数据库时，主流业界普遍采用“单动作授权 (Per-Action Authorization)”护栏——即每当智能体发起一次工具调用，安全守卫就孤立地审查这一步是否违规并决定放行与否。然而，本论文揭示了一个颠覆性的安全盲区：“局部安全放行，绝不等于全局安全”，这种孤立审查机制在组合场景下必然失效。研究团队在理论上严格证明，跨越多次执行的意图与合规违规属于“2-安全超属性 (2-Safety Hyperproperties)”，在单条执行轨迹中根本无法归咎于任何单独一步动作；同时，基于 SAT/SMT 形式化方法研发的 **AL-SYNTH** 综合器成功合成了能够完全避开 9 种顶尖大语言模型审查的最小攻击反例。这一突破性研究敲响了警钟：现有的单一工具拦截护栏在架构上存在根本性缺陷，智能体安全防御必须从“单步排查”全面跃升至“跨执行轨迹的全局动态关联比对”。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+当今的自主大语言模型 (Large Language Model, LLM) 智能体在与现实世界交互时，绝大多数依赖所谓的“单动作授权 (Per-Action Authorization)”机制——这就像是在智能体的每个工具调用前派驻了一位本地保安，孤立地盘查当前这一步操作是否越界。然而，本研究深刻地指出：**局部的合规放行，根本无法自然组合成全局的安全保障**。
+
+&gt; Autonomous Large Language Model (LLM) agents typically rely on "per-action authorization"—a local security guard that screens each individual tool call in isolation. This paper demonstrates that **local authorization does not compose into global authorization**.
+
+作者团队将这种现象形式化定义为**组合式授权失效 (Compositional Authorization Failure, CAF)**：智能体在单次或成对的执行轨迹中，每一步工具调用都能顺利通过局部安全审查，但整体行为却粗暴违反了涵盖真实意图、使用目的、数据溯源、用户知情同意与权限委托的全局安全策略。论文引入了一款名为 **AL-SYNTH** 的 SAT/SMT 形式化综合器 (Synthesizer)，并在数学上证明了关系型目的违规本质上属于“2-安全超属性 (2-Safety Hyperproperties)”，在孤立的单条轨迹中根本找不到任何一个能单独“背锅”的责任点。其致命结论是：如果监视器不追踪跨执行的关联信息，那么它要么对这类越权违规彻底失明，要么就只能以大量“捕风捉影”的误报为代价。
+
+&gt; The authors define a **Compositional Authorization Failure (CAF)** as an execution (or pair of executions) that passes local checks while violating a broader global policy (covering intent, purpose, provenance, consent, and delegation). Through the introduction of **AL-SYNTH**—a SAT/SMT synthesizer—the study proves that relational purpose violations form 2-safety hyperproperties that lack any per-trace locus of blame. Consequently, single-action monitors cannot detect them without cross-execution tracking or accepting false alarms.
+
+---
+
+## 元数据与参考信息
+
+&gt; ## Metadata &amp; Reference Information
+
+* **arXiv 编号：** [arXiv:2610.27620](https://arxiv.org/abs/2610.27620) [cs.CR]
+* **论文作者：** Anmol Pandey, Aditya Jain, Liang Chen, Carsten Maple
+* **提交时间：** 2026 年 10 月 20 日
+* **主要学科领域：** 密码学与安全 (`cs.CR`)
+* **交叉学科领域：** 人工智能 (`cs.AI`)、计算机科学中的逻辑学 (`cs.LO`)
+* **ACM 分类号：** D.4.6; F.3.1; I.2.11
+* **会议收录背景：** 本文为第 8 届 IEEE 智能系统与应用中的信任、隐私与安全国际会议 (IEEE TPS 2026) 录用论文的扩展版本。
+* **相关资源：** [GitHub 仓库 (AL-SYNTH)](https://github.com/anmolpandey299/al-synth) | [论文 PDF 原文](https://arxiv.org/pdf/2610.27620)
+
+&gt; * **arXiv Identifier:** [arXiv:2610.27620](https://arxiv.org/abs/2610.27620) [cs.CR]
+&gt; * **Authors:** Anmol Pandey, Aditya Jain, Liang Chen, Carsten Maple
+&gt; * **Submitted:** 20 October 2026
+&gt; * **Primary Subject:** Cryptography and Security (`cs.CR`)
+&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Logic in Computer Science (`cs.LO`)
+&gt; * **ACM Classifications:** D.4.6; F.3.1; I.2.11
+&gt; * **Conference Context:** Extended version of a paper accepted at the 8th IEEE International Conference on Trust, Privacy and Security in Intelligent Systems and Applications (IEEE TPS 2026).
+&gt; * **Resources:** [GitHub Repository (AL-SYNTH)](https://github.com/anmolpandey299/al-synth) | [View PDF](https://arxiv.org/pdf/2610.27620)
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+自主大语言模型智能体通常在单动作授权的保护下通过工具行使权力：局部安全守卫会逐一且孤立地审查每一次工具调用。我们在本文中证明，局部授权无法自动组合为全局授权。所谓组合式授权失效 (Compositional Authorization Failure, CAF)，是指这样一种执行轨迹（或成对的执行轨迹）：其中的每一次工具调用都能被局部防护判定为合法，但整体执行组合起来后，却违背了涵盖意图、目的、数据溯源、知情同意以及权限委托的全局策略。
+
+&gt; Autonomous LLM agents act through tools under per-action authorization: a local guard screens each tool call in isolation. We show that local authorization does not compose into global authorization. A compositional authorization failure (CAF) is a locally authorized execution, or a pair of locally authorized executions, that violates a global policy spanning intent, purpose, provenance, consent, and delegation.
+
+我们从两个维度对 CAF 进行了系统刻画：其一是表达能力（单轨迹安全性对比关系型 k-安全性），其二是可观测性（从低到高的监视器能力层级阶梯）。我们的核心研究结论是一个形式化的不可行定理：关系型目的违规在数学形式上构成一种“2-安全超属性”，在单条执行轨迹内部没有任何一个动作可以被单独定罪为违规原因。因此，任何力求做到“零误报”的单动作监视器，无论底层换用多么强大的模型或决策判定算法，都必定对这类违规彻底失灵；唯有引入跨执行轨迹的比对监视，这类漏洞才可能被捕获——然而，在我们调研的现存六大主流安全护栏框架中，竟无一具备这种跨执行追踪能力。
+
+&gt; We characterize CAFs along two axes, expressiveness (single-trace safety versus relational k-safety) and observability (a ladder of monitor profiles). Our central result is an impossibility: relational purpose violations form a 2-safety hyperproperty with no per-trace locus of blame, so a per-action monitor that never raises a false alarm detects none of them, independent of the underlying model or decision procedure; they become visible only under cross-execution monitoring, which none of the six guardrails we survey implements.
+
+为了将这一理论缺陷具象化，我们构建了 **AL-SYNTH**——一款完全不依赖语言模型、基于可满足性求解 (SAT/SMT) 的形式化综合器，它能够精准自动化生成触发 CAF 的最小反例见证 (Witness)，并通过穷举基准预言机完成严格校验。实验暴露出的表征极具讽刺意味：在 9 种主流大语言模型担任安全评判者的测试中，只要采用单动作视角，这些模型几乎无一例外地批准了被合成的反例动作，其拦截率低得与完全无害的良性对照组毫无二致；然而，一旦把两段执行轨迹合并展示给同一个模型时，它却能立刻准确识别并发出警报。由此可见，对于无法降维规约为单轨迹安全性的关系型安全策略而言，单动作授权在架构上存在不可弥补的先天的结构性缺陷：若要防范此类威胁，监视系统要么必须具备跨执行轨迹的比对分析能力，要么就只能全盘忍受误杀良性操作的高误报率。
+
+&gt; We make this constructive with **AL-SYNTH**, a SAT/SMT synthesizer (using no language model) that emits minimal CAF witnesses, each checked against an exhaustive oracle. The empirical signature is sharp: across nine LLM judges the per-action view approves the synthesized witness almost without exception, blocking it at a rate comparable to a benign control, yet the same models flag it when shown the two executions together. Per-action authorization is therefore structurally insufficient for relational policy conjuncts not reducible to single-trace safety: to bound them, a monitor must compare executions or accept false alarms.</description>
+    </item>
+    <item>
+      <title>专精化小语言模型词表：实际应用中如何削减 77% 推理成本</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/专精化小语言模型词表-实际应用中如何削减-77-推理成本/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/专精化小语言模型词表-实际应用中如何削减-77-推理成本/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>通用开源大模型通常配备覆盖全领域与多语言的庞大分词器 (Tokenizer)，但在具体的垂直业务落地中，这种“大而全”的通用词表不仅会导致领域高频短语被切碎成过多微小 Token，更会在解码阶段浪费宝贵的显存带宽去为数十万个毫不相干的词条计算概率。来自 Dharma-AI 的团队推出了创新的小语言模型 (Small Language Model, SLM) 词表定制技术 VocabX，打破了以往单纯依据词频统计的传统思路，首次以底层硬件的“实际 Token 生成成本”为导向重构与裁剪词表。在完全不改动基础模型权重与训练配方的前提下，VocabX 不仅使葡萄牙语作文批改模型的输出 Token 数量压缩超 70%，更将端到端实测推理成本骤降 77%，同时基准测试准确率逆势提升了 15%。这项技术突破向业界证明：领域专精化不必拘泥于模型参数与微调数据，在分词器阶段对词表进行精准“量体裁衣”，同样能以极低代价释放惊人的能效红利。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+通用开源模型（如 Qwen 和 Gemma）通常依赖面向全领域和跨语言文本构建的分词器。但当它们被微调用于单一垂直任务（例如自动化作文阅卷）时，这种通用词表就会暴露出巨大的能效短板：特定领域的常用词组被生硬地切碎为过多微小的 Token，模型更被迫浪费宝贵的显存带宽，在每一次生成时为数十万个毫不相干的无效 Token 计算概率分布。
+
+&gt; General open-source models (such as Qwen and Gemma) rely on tokenizers built for universal domains and cross-lingual text. When fine-tuned for a single task—such as an automated essay grader—this general vocabulary leads to massive inefficiencies: domain-specific phrases are fragmented into excessive tokens, and the model wastes memory calculating probabilities for hundreds of thousands of irrelevant tokens.
+
+本文介绍了 **VocabX**，这是一种用于专精化小语言模型词表的新方法。与以往单纯依据原始词频统计的做法不同，它开创性地以**实际 Token 生成成本**作为核心优化指标。在完全不改动基础模型权重的前提下，VocabX 围绕子词 (Sub-word) 合并与宏 Token (Macro Token) 重新重塑了词表结构，在实际测试中**成功将实测推理成本降低高达 77%**，同时在基准测试 (Benchmark) 中的综合表现反而实现了提升。
+
+&gt; This article previews **VocabX**, a novel method for specializing a Small Language Model's (SLM) vocabulary based on *token generation cost* rather than mere raw frequency. By reshaping the vocabulary around sub-word merging and macro tokens without modifying the base model's weights, VocabX **cuts measured inference costs by up to 77%** while simultaneously *increasing* benchmark performance.
+
+---
+
+## 引言
+
+&gt; ## Introduction
+
+```
+[Base Tokenizer]  -&gt; 14 tokens for a standard phrase
+[VocabX Tokenizer]-&gt;  4 tokens for the same phrase
+```
+
+[![Same sentence, fewer tokens: 14 tokens with the base tokenizer, 4 with VocabX](./images/09e935c19314.png)](./images/09e935c19314.png)
+
+通常情况下，人们普遍将分词器视为预训练基础模型不可分割的固有属性。然而在面向特定领域的专用模型中，分词器却是一个至关重要的成本杠杆——而且这个杠杆在模型正式开始训练之前就已经完全定型了。
+
+&gt; Typically, tokenizers are viewed as fixed properties of a pre-trained base model. However, for a domain-specific model, the tokenizer is one of the largest cost levers, set entirely before training begins.
+
+以基于 Qwen3-4B 构建的葡萄牙语自动化作文批改系统为例。尽管该模型体积小巧且经过了针对性微调，但它依然沿用了原生包含 151,669 个词条的分词器——而这个庞大的词表最初是为通用的多语言应用场景设计的。这种“水土不服”带来了两大结构性瓶颈：
+
+&gt; Consider an automated Portuguese essay grader built on Qwen3-4B. While the model is compact and fine-tuned, it retained its original 151,669-entry tokenizer meant for general multi-lingual applications. This introduced two structural bottlenecks:
+
+1. **领域常用文本消耗了过多的 Token**；
+2. **每次生成一个 Token 时，模型都必须在庞大的词表中进行概率计算**，即便其中绝大部分词条在阅卷任务中永远不会被用到。
+
+&gt; 1. Frequent domain text required excessive tokens.
+&gt; 2. The model evaluated a massive vocabulary for every single generated token, even though many entries were never used.
+
+在保持训练数据、基础模型和微调策略完全一致的前提下，我们仅仅通过 VocabX 重建了词表，就让整个模型架构获得了立竿见影的能效飞跃。
+
+&gt; By rebuilding the vocabulary using VocabX while keeping the data, base model, and training recipe identical, we achieved dramatic architectural efficiencies.
+
+---
+
+## 为通用大众设计的词表：专精领域的隐形负担
+
+&gt; ## A Vocabulary Built for Everyone
+
+通用基础模型的分词器通常是在覆盖代码、法律合同以及数十种语言的海量互联网文本上训练而成的。对于无所不包的通用聊天机器人而言，这种设计自然无可挑剔；但当模型被落地部署在特定垂直领域时，这种“面面俱到”的做法就会引发两类严重的算力浪费：
+
+&gt; General-purpose model tokenizers are trained on massive, broad web text collections spanning code, contracts, and multiple languages. While ideal for universal chatbots, this approach causes two major types of waste when deployed in specialized domains:
+
+* **碎片化 (Fragmentation)**：分词器会将领域内高频重复的固定句式生硬地拆解成大量微小的子词。例如在我们批改作文的场景中，固定的 JSON 包装外壳、能力维度名称以及评价术语，都被无端切碎成了若干个零散的 Token。
+* **冗余冗繁 (Excess)**：词表中保留了成千万个永远用不到的多余条目。例如一个批改生物考试的模型，在每生成一步时居然都要为生僻的汉字计算一次概率分布，白白耗费了巨大的显存带宽。
+
+&gt; * **Fragmentation:** The tokenizer breaks down repetitive domain phrasing into tiny sub-words. In our essay grader, boilerplate JSON envelopes, competency names, and evaluation phrases were shattered into multiple tokens. 
+&gt; * **Excess:** The vocabulary retains tens of thousands of unused entries. A biology exam grader computes probabilities for Chinese characters at every step, wasting memory bandwidth.
+
+[![The span the grader writes in every response takes 12 tokens with the base tokenizer and 1 with VocabX](./images/bf09d7c55b11.png)](./images/bf09d7c55b11.png)
+
+*左图：基础分词器需要占用 12 个 Token。右图：VocabX 仅需 1 个 Token。*
+
+&gt; *Left: 12 tokens with base tokenizer. Right: 1 token with VocabX.*
+
+[![151,669 vocabulary entries in the base tokenizer, 64,767 with VocabX](./images/4e119eca29d9.png)](./images/4e119eca29d9.png)
+
+*大幅缩减词表体积，可显著降低模型在解码过程中的显存开销。*
+
+&gt; *Reducing vocabulary size lowers memory overhead during decoding.*
+
+---
+
+## 读便宜，写昂贵：拆解大模型的生成成本
+
+&gt; ## Reading Is Cheap, Writing Is Expensive
+
+想要理解为什么生成不同 Token 的成本会有天壤之别，我们必须深入剖析大语言模型推理 (Inference) 的两个阶段：
+
+&gt; To understand why token generation costs scale disproportionately, examine inference phases:
+
+* **预填充阶段 (Prefill)**：一次性并行处理所有输入的 Prompt Token，属于典型的算力受限 (Compute-bound) 阶段。
+* **解码阶段 (Decode)**：逐字串行生成回复，属于典型的显存带宽受限 (Memory-bandwidth bound) 阶段。
+
+&gt; * **Prefill:** Processes input tokens in a single pass; compute-bound.
+&gt; * **Decode:** Generates responses sequentially; memory-bandwidth bound. 
+
+[![In the case we measured, writing a token cost 7.4 times reading one](./images/66c0eef7445b.png)](./images/66c0eef7445b.png)
+
+在我们的作文批改模型实测中，**“写”一个 Token（解码输出）的硬件开销，竟是“读”一个 Token（预填充输入）的 7.4 倍之多**！此外，负责将隐藏状态映射到词表概率得分的语言模型头 (Language Modeling Head, LM Head) 层，占据了一个 4B 模型约 10% 的总参数量。词表矩阵中每多出一行，都会在解码的每一步带来额外的显存数据搬运开销。而 VocabX 将该批改模型的输出层从约 152,000 行大刀阔斧地精简到了约 65,000 行。
+
+&gt; In our essay grader configuration, **writing a single token cost 7.4 times more than reading one**. Furthermore, the Language Modeling (LM) head layer (which maps hidden states to vocabulary scores) accounts for roughly 10% of a 4B model's parameters. Every extra row in the vocabulary matrix adds memory movement overhead at every decode step. VocabX shrinks the grader's output layer from ~152,000 rows to ~65,000 rows.
+
+---
+
+## 为何现有解决方案功亏一篑
+
+&gt; ## Why Existing Solutions Fell Short
+
+此前业界探索的基准方法——如快速词表迁移 (Fast Vocabulary Transfer, FVT)、多词分词 (Multi-Word Tokenization, MWT) 以及 Liquid AI 提出的就地分词器扩展方案，主要存在两大硬伤：
+
+&gt; Prior reference methods like Fast Vocabulary Transfer (FVT), Multi-Word Tokenization (MWT), and Liquid AI's in-place tokenizer expansion exhibit two main weaknesses:
+
+1. **基于词频而非成本进行筛选 (Frequency-based rather than cost-based selection)**：这些方法仅仅根据 Token 出现的绝对频率进行优化，却完全忽视了该 Token 究竟是处于低成本的“输入阶段”，还是高成本的“生成阶段”。
+2. **单层优化的局限性 (Single-layer limitation)**：它们要么仅专注于子词的切分调整，要么仅针对短语层面的合并，极少能在统一的优化框架下兼顾两者。
+
+&gt; 1. **Frequency-based rather than cost-based selection:** They optimize for how often a token appears, ignoring whether it is part of a high-cost generation phase.
+&gt; 2. **Single-layer limitation:** They handle either sub-word segmentation or phrase merging, but rarely both under a unified optimization scheme.
+
+---
+
+## 破局之道：VocabX 的技术实现
+
+&gt; ## How We Solved It: VocabX
+
+VocabX 通过三大核心机制精准化解了上述难题：
+
+&gt; VocabX resolves these issues through three core mechanisms:</description>
+    </item>
+    <item>
+      <title>TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在机器学习与大模型工业化落地的过程中，仅仅让模型成功跑通代码只是打下了地基，要想真正压榨硬件算力、降低推理与训练成本，就必须建立系统化的性能分析 (Profiling) 能力以探查瓶颈根因。本文作为系列实战教程的第一篇，深入讲解了如何在 AWS 自研 AI 加速芯片 Trainium 上，借助其开源原生 PyTorch 后端 TorchNeuron 开展系统级性能剖析。文章完整演示了如何通过标准 `torch.profiler` 捕获设备级耗时、利用 `key_averages()` 表格定位热点算子，并在可视化分析套件 Neuron Explorer 中层层穿透从上层框架调度、运行时管理到物理硬件执行的完整流转轨迹。最后，文章以 RMSNorm 算子为例进行基准测试，揭示了从普通即时执行到内置融合算子与 `torch.compile` 图优化带来的约 6 倍性能飞跃，为云端定制芯片上的深度性能调优提供了坚实可依的实践指南。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+想方设法让机器学习模型跑得飞快往往只是优化工作的一半；更关键的是在模型变慢时，能够清晰洞察其背后的根因，而这离不开系统化的性能剖析。在本文作为该系列的第一部分中，我们将探索如何借助 **TorchNeuron**（**AWS Trainium** 芯片的原生开源 PyTorch 后端）来深入分析模型推理性能。本指南将带你完整实践：如何正确配置 `torch.profiler`、如何通过 `key_averages()` 表格快速揪出执行瓶颈、如何在 **Neuron Explorer** 中直观审查执行轨迹 (Traces)，并横向对比未经优化的朴素即时模式 (Eager) 算子、原生内置融合算子 (`torch.rms_norm`) 与基于计算图编译 (`torch.compile`) 三者之间的显著性能差异。
+
+&gt; Understanding how to make machine learning models run fast is only half the battle; knowing *why* a model is slow requires systematic profiling. In Part 1 of this series, we explore how to analyze inference performance on **AWS Trainium** using **TorchNeuron** (its native open-source PyTorch backend). This guide walks you through configuring `torch.profiler`, analyzing execution bottlenecks via `key_averages()`, visualizing traces in **Neuron Explorer**, and comparing the performance differences between naive eager operations, built-in fused operators (`torch.rms_norm`), and compiled graphs (`torch.compile`).
+
+---
+
+## Neuron 作为 PyTorch 后端
+
+&gt; ## Neuron as a PyTorch Backend
+
+在正式开始对工作负载进行性能分析之前，先理清 [Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html) 与 PyTorch 之间的整合机制大有裨益。
+
+&gt; Before profiling workloads, it helps to understand how [Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html) integrates with PyTorch. 
+
+Neuron 后端充分借助了 PyTorch 官方提供的 `PrivateUse1` 扩展机制。该机制允许第三方硬件加速芯片原生无缝地融入 PyTorch 生态，而无需在上游框架内核中硬编码专有的分发调度键 (Dispatch Key，如传统针对 GPU 的 `cuda`)。`torch_neuronx` 扩展包与上游 PyTorch 紧密配合，将 Neuron 正式注册为一个原生的执行目标设备。欲深入了解这一扩展机制的实现细节，可参阅 PyTorch 官方教程：[借助 PrivateUse1 简化新后端集成 (Facilitating New Backend Integration by PrivateUse1)](https://docs.pytorch.org/tutorials/advanced/privateuseone.html)。
+
+&gt; The Neuron backend leverages PyTorch's `PrivateUse1` extension point. This mechanism allows accelerators to integrate natively into the framework without requiring a dedicated dispatch key (such as `cuda`). The `torch_neuronx` package works alongside upstream PyTorch to register Neuron as a native execution target. For more information on this extension mechanism, refer to the official PyTorch guide on [Facilitating New Backend Integration by PrivateUse1](https://docs.pytorch.org/tutorials/advanced/privateuseone.html).
+
+---
+
+## 配置性能分析器
+
+&gt; ## Set Up the Profiler
+
+对 Neuron 计算任务进行性能采样与分析主要依赖两个核心模块：
+
+&gt; Profiling a Neuron workload relies on two primary components:
+
+1. **`NeuronConfig`**：负责精细控制所需采集的数据流与具体的 NeuronCore 核心，并指定分析结果的输出存储路径。该配置对象通过 `experimental_config` 参数传递给 `torch.profiler.profile`。
+2. **`NeuronProfiler`**：接收并解析 `NeuronConfig` 配置，对外暴露 `export_trace` 回调函数，以便在导出上层深度学习框架跟踪数据 (`trace.json`) 的同时，同步写出底层的系统硬件级跟踪轨迹。
+
+&gt; 1. **`NeuronConfig`**: Controls which data streams and NeuronCores to capture, specifying the output destination. Passed to `torch.profiler.profile` via `experimental_config`.
+&gt; 2. **`NeuronProfiler`**: Consumes the `NeuronConfig` and exposes an `export_trace` callback to write out the framework trace (`trace.json`) alongside low-level system traces.
+
+```python
+nc = NeuronConfig(
+    modes=[ProfileMode.DEVICE, ProfileMode.RUNTIME],
+    profile_output_dir=OUTPUT_DIR,
+    capture_enabled_for_nc='0',
+    correlate_device_time=True,
+)
+exporter = NeuronProfiler(nc)
+```
+
+将 `correlate_device_time=True` 启用后，分析器会自动把设备端的实际底层执行耗时直接关联映射到 `key_averages()` 统计表中，从而让开发者能够一目了然地横向对比 CPU 端调度与 Neuron 硬件设备端计算的各自开销。关于所有可配置参数的详细说明，可查阅 [NeuronConfig 分析模式文档 (NeuronConfig Profile Modes documentation)](http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes)。
+
+&gt; Setting `correlate_device_time=True` correlates the device-level time directly into the `key_averages()` table, enabling side-by-side comparison of CPU and Neuron device execution costs. For comprehensive parameter details, consult the [NeuronConfig Profile Modes documentation](http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes).
+
+---
+
+## 可视化分析利器：Neuron Explorer
+
+&gt; ## Tooling: Neuron Explorer
+
+**Neuron Explorer** 是一款可通过浏览器进行交互的可视化效能诊断工具，专为审查系统级执行轨迹、硬件设备时间线以及底层执行引擎瓶颈而设计。开发者不仅可以通过 SSH 端口转发直接在本地浏览器中打开它，也可以通过专属的 VS Code 扩展进行集成查看。
+
+&gt; **Neuron Explorer** is a browser-accessible utility designed to inspect system traces, device timelines, and engine-level bottlenecks. It can be accessed via an SSH tunnel or a VS Code extension.
+
+在完成性能分析之后，输出目录中会生成系统级跟踪数据，以及通过统一哈希特征关联配对的 `.neff` (Neuron 可执行文件格式，Neuron Executable File Format) 和 `.ntff` (硬件底层指令跟踪文件，Hardware Instruction Trace) 文件。有关如何在 Web 界面中启动工具及上传分析文件的图文步骤，请参阅 [步骤 5：在 Neuron Explorer 中上传您的分析文件 (Step 5: Upload your profile in Neuron Explorer)](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile)。
+
+&gt; After profiling, the output directory includes system traces and matching `.neff` (Neuron Executable File Format) and `.ntff` (hardware instruction trace) files linked by a shared hash. For detailed instructions on launching and uploading files to the UI, see [Step 5: Upload your profile in Neuron Explorer](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile).
+
+---
+
+## 实战分析案例：RMSNorm 算子
+
+&gt; ## Profile RMSNorm
+
+为了生动形象地演示系统级性能分析流程，我们选取了 **RMSNorm** 作为切入点——这是一个计算结构极为轻量且规整的算子，包含了一段规律非常明确的规约计算与逐元素 (Element-wise) 算术运算。我们在基准测试中对比了三种截然不同的实现方式：
+
+&gt; To demonstrate system-level profiling, we examine **RMSNorm**—a lightweight operation containing a predictable sequence of reductions and element-wise arithmetic. We test three distinct implementations:
+
+1. **朴素 RMSNorm 实现 (Naive RMSNorm)**：完全由离散的 PyTorch 基础算子手动拼装实现 (包括乘法、求均值、加法和平方根倒数)。
+2. **`torch.rms_norm()`**：PyTorch 原生提供的内置标准函数，在 Neuron 硬件平台下会自动下沉为单个高度融合、高度优化的设备端内核 (Kernel)。
+3. **结合 `torch.compile` 的朴素 RMSNorm**：依然采用由离散算子拼装的代码逻辑，但通过声明 `@torch.compile(backend="neuron")` 由编译器自动进行计算图追踪与内核融合优化。
+
+&gt; 1. **Naive RMSNorm**: Written with discrete PyTorch operations (multiplication, mean, addition, reciprocal square root).
+&gt; 2. **`torch.rms_norm()`**: PyTorch’s built-in function lowered to a single optimized, fused kernel on Neuron.
+&gt; 3. **Naive RMSNorm with `torch.compile`**: The discrete sequence compiled automatically using `@torch.compile(backend="neuron")`.
+
+所有评测脚本均使用完全一致的输入张量维度形状与分析器配置。可供复现的完整代码均已归档于 [torch-neuronx 官方示例仓库 (torch-neuronx examples directory)](https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1)。
+
+&gt; All scripts use identical shapes and profiler configurations. Reproducible code can be found in the [torch-neuronx examples directory](https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1).
+
+---
+
+## 分析场景 1：朴素 PyTorch 基础算子拼装
+
+&gt; ## Profile 1: Naive PyTorch Operations
+
+使用基础的 PyTorch 离散算子拼装 RMSNorm 计算逻辑，会在运行时产生大量不必要的中间张量，并反复触发昂贵的框架级调度与分发事件：
+
+&gt; Writing RMSNorm out using primitive PyTorch operations creates intermediate tensors and multiple dispatch events:
+
+```python
+device = torch.device('neuron')
+
+x = torch.randn(4, 512, dtype=torch.bfloat16, device=device)
+weight = torch.ones(512, dtype=torch.bfloat16, device=device)
+
+def rms_norm_fn(t):
+    x_sq = t * t                                    # square
+    mean_sq = x_sq.mean(dim=-1, keepdim=True)       # mean of squares
+    rms = torch.rsqrt(mean_sq + 1e-6)               # 1 / sqrt(mean_sq + eps)
+    return t * rms * weight                         # normalize + scale
+```
+
+我们通过配置 `ProfilerActivity.PrivateUse1` 这一活动类型，并将预先初始化的 `NeuronConfig` 实例传入分析器：
+
+&gt; We configure the profiler using `ProfilerActivity.PrivateUse1` and pass `NeuronConfig`:
+
+```python
+with torch.profiler.profile(
+    activities=[ProfilerActivity.CPU, ProfilerActivity.PrivateUse1],
+    experimental_config=nc,
+    record_shapes=False,
+    on_trace_ready=exporter.export_trace,
+    schedule=torch.profiler.schedule(wait=2, warmup=1, active=1),
+) as prof:
+    for step in range(4):
+        with torch.no_grad():
+            _ = rms_norm_fn(x)
+        torch.neuron.synchronize()
+        prof.step()
+```
+
+*(注：在循环中显式加入 `torch.neuron.synchronize()` 能够确保硬件设备在导出轨迹数据之前彻底完成所有运算排队，从而避免分析报表中出现设备耗时列全为空白的情况。)*
+
+&gt; *(Note: Including `torch.neuron.synchronize()` ensures the device completes operations before trace export, avoiding empty device time columns.)*
+
+将分析生成的汇总表按照设备端执行总耗时进行降序排序，主要的性能瓶颈便立刻浮出水面：
+
+&gt; Sorting the summary table by device time highlights the performance bottlenecks:
+
+```python
+print(prof.key_averages().table(sort_by="self_privateuse1_time_total", row_limit=4))
+```
+
+[![核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。](./images/af39c8c42d9a.png)](./images/af39c8c42d9a.png)
+
+*核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。*
+
+&gt; *The key averages table shows that three aten::mul calls account for the largest share of Neuron device time.*
+
+| 算子名称 (Name) | 调用次数 (# Calls) | 自身 CPU 耗时 (Self CPU) | 自身 NEURON 耗时 (Self NEURON) | NEURON 耗时占比 (% NEURON) |
+| :--- | :--- | :--- | :--- | :--- |
+| `aten::mul` | 3 | 60.9 μs | 1,164.5 μs | 49.5% |
+| `aten::add` | 1 | 26.6 μs | 434.6 μs | 18.5% |
+| `aten::rsqrt` | 1 | 15.6 μs | 415.0 μs | 17.6% |
+| `aten::mean` | 1 | 21.1 μs | 340.8 μs | 14.5% |
+
+&gt; | Name | # Calls | Self CPU | Self NEURON | % NEURON |
+&gt; | :--- | :--- | :--- | :--- | :--- |
+&gt; | `aten::mul` | 3 | 60.9 μs | 1,164.5 μs | 49.5% |
+&gt; | `aten::add` | 1 | 26.6 μs | 434.6 μs | 18.5% |
+&gt; | `aten::rsqrt` | 1 | 15.6 μs | 415.0 μs | 17.6% |
+&gt; | `aten::mean` | 1 | 21.1 μs | 340.8 μs | 14.5% |
+
+*自身 NEURON 设备端总执行耗时：2.355 ms*
+
+&gt; *Self NEURON total: 2.355 ms*
+
+[![Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。](./images/09da1436bc0c.png)](./images/09da1436bc0c.png)
+
+*Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。*
+
+&gt; *Neuron Explorer follows an aten::mul operation from framework dispatch through runtime scheduling to execution on the Neuron hardware lanes.*</description>
+    </item>
+    <item>
+      <title>Racer：利用符号等价性检查捕获 GPU 算子内核漏洞</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/Racer-利用符号等价性检查捕获-GPU-算子内核漏洞/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/Racer-利用符号等价性检查捕获-GPU-算子内核漏洞/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在现代人工智能计算体系中，GPU 算子内核 (GPU Kernel) 是支撑深度学习超高算力的基石，然而面对硬件架构演进、新型低精度数据格式普及与多种编程语言重写，确保算子功能的绝对正确性极为艰难。传统上工业界主要依赖随机张量的差分测试，但这往往存在严重的致命盲区——那些引发微小数值偏差的代码逻辑漏洞很容易被误当成正常的浮点舍入误差而漏检。为攻克这一行业顽疾，研究团队推出了名为 **Racer** 的创新验证引擎，开创性地在 PTX (Parallel Thread Execution) 指令级引入**符号等价性检查 (Symbolic Equivalence Checking)**，通过符号推演将输出转化为精确代数表达式，并借助形状缩减、锁步 CTA 调度与惯用模版反驳三大技术攻克状态爆炸难题。在对 41 个生产级算子集合中 2,408 个内核的全面排查中，Racer 成功揪出了 23 个知名开源库中的 **82 个真实漏洞**（含 76 个此前未知的隐蔽缺陷），为大模型时代高可靠底层算子的开发构筑了坚实的形式化护城河。
+
+---
+
+## 📋 内容概要
+
+&gt; ## Summary
+
+GPU 算子内核是现代人工智能实现极致计算性能的心脏。然而，随着底层硬件架构快速迭代、新型数值格式（如 FP8、INT4）层出不穷以及新兴编程语言（如 Triton、CUDA）的演进，开发者需要频繁重写这些底层算子。长期以来，工业界为了确保新重写的算子在功能上与原版完全一致，主要依赖**差分测试 (Differential Testing)**——即生成一批随机张量，让新算子和经过验证的基准参考算子同时运行，并在允许的数值误差容限 (Tolerance) 内比对两者的输出结果。然而，这种测试方法存在致命的盲区：由于浮点运算天然存在舍入误差，差分测试不得不放宽比对阈值；一旦内核中潜藏的代码逻辑漏洞所引发的输出偏差恰好落在这个容限范围内，就会悄无声息地逃过检测，给后续的大模型训练和推理埋下难以排查的“暗雷”。
+
+&gt; GPU kernels are fundamental to modern AI performance, but operators are constantly rewritten across hardware generations, numeric formats, and languages. Traditionally, ensuring these rewrites preserve functional correctness relies on *differential testing*—running a new kernel against a trusted reference on random tensors and comparing outputs within a tolerance. However, differential testing has severe blind spots, such as logical bugs that produce errors smaller than the required tolerance. 
+
+为了从根源上化解这一难题，研究团队提出了**符号等价性检查**的新范式。该方法不再喂入具体的随机数值，而是将张量作为抽象的代数符号输入并执行内核，最终将算子的输出转化为覆盖整个输入空间的精确代数表达式。这样一来，系统便能在数学层面上彻底隔绝并清晰区分浮点舍入误差与真正的代码逻辑缺陷。基于这一思路，本研究推出了名为 **Racer** 的验证引擎，它直接工作在 NVIDIA GPU 的 PTX 汇编中间指令级别，并由以下三项核心技术创新驱动：
+
+&gt; To solve this, the authors propose **symbolic equivalence checking**. By executing kernels on symbolic inputs, outputs are turned into exact algebraic expressions that cover the entire input space and cleanly distinguish floating-point errors from logical bugs. The paper introduces **Racer**, a PTX-level symbolic equivalence checking engine powered by three key innovations:
+
+1. **形状缩减 (Shape Reduction)**：大幅压缩张量维度与执行规模，从而精准控制符号推演的计算复杂度；
+2. **锁步 CTA 调度器 (Lockstep CTA Scheduler)**：高效模拟和管控 GPU 协同线程阵列 (Cooperative Thread Array, CTA) 的硬件级并发行为；
+3. **惯用模版反驳机制 (Idiom Templates with Exact Numeric Refutation)**：针对符号推演难以直接给出定论的边界情况，结合精确数值反例进行强力反驳与判定。
+
+&gt; 1. **Shape Reduction** to control computational cost.
+&gt; 2. **Lockstep CTA Scheduler** to manage hardware concurrency.
+&gt; 3. **Idiom Templates** with exact numeric refutation for handling otherwise inconclusive results.
+
+在涵盖 41 个常用代码集合、共计 2,408 个生产级 GPU 内核的严苛实测中，Racer 成功在 23 个知名开源算子库中挖掘出 **82 个真实存在的代码漏洞**（其中包括 76 个此前从未被发现的未知 Bug，且已有 41 个获得了库维护者的官方确认）。
+
+&gt; Tested across 2,408 production kernels from 41 collections, Racer uncovered **82 real bugs** across 23 libraries (including 76 previously unknown bugs and 41 confirmed).
+
+---
+
+## 📌 论文元数据
+
+&gt; ## Metadata
+
+* **arXiv 编号 (arXiv ID)：** [`arXiv:2610.28429`](https://arxiv.org/abs/2610.28429) [cs.SC]
+* **研究领域 (Subjects)：** 符号计算 (`cs.SC`)；人工智能 (`cs.AI`)
+* **论文作者 (Authors)：** Tuan Truong Vu, Cheng Tan
+* **提交时间 (Submitted)：** 2026 年 10 月 20 日
+* **数字对象唯一标识 (DOI)：** [10.48550/arXiv.2610.28429](https://doi.org/10.48550/arXiv.2610.28429)
+
+&gt; * **arXiv ID:** [arXiv:2610.28429](https://arxiv.org/abs/2610.28429) [cs.SC]
+&gt; * **Subjects:** Symbolic Computation (`cs.SC`); Artificial Intelligence (`cs.AI`)
+&gt; * **Authors:** Tuan Truong Vu, Cheng Tan
+&gt; * **Submitted:** October 20, 2026
+&gt; * **DOI:** [10.48550/arXiv.2610.28429](https://doi.org/10.48550/arXiv.2610.28429)
+
+---
+
+## 🔗 相关链接与资源
+
+&gt; ## Links &amp; Resources
+
+* **全文阅读与下载 (Full-Text Access)：** 
+  * [阅读 PDF 论文 (View PDF)](https://arxiv.org/pdf/2610.28429)
+  * [HTML 网页预览版本 (实验性) (HTML Version - Experimental)](https://arxiv.org/html/2610.28429v1)
+  * [下载 TeX 论文排版源码 (TeX Source)](https://arxiv.org/src/2610.28429)
+* **版权许可 (License)：** [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+* **学术引用与文献检索 (Citations &amp; References)：** 
+  * [Google 学术检索 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429)
+  * [Semantic Scholar 词条 (Semantic Scholar)](https://api.semanticscholar.org/arXiv:2610.28429)
+  * [SciX 词条 (SciX)](https://scixplorer.org/abs/arXiv:2610.28429)
+
+&gt; * **Full-Text Access:** 
+&gt;   * [View PDF](https://arxiv.org/pdf/2610.28429)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2610.28429v1)
+&gt;   * [TeX Source](https://arxiv.org/src/2610.28429)
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
+&gt; * **Citations &amp; References:** 
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.28429)
+&gt;   * [SciX](https://scixplorer.org/abs/arXiv:2610.28429)</description>
+    </item>
+    <item>
+      <title>Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-22/Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈/</guid>
+      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 智能体与复杂强化学习 (Reinforcement Learning, RL) 任务的兴起，传统的轮询负载均衡策略在面对极度依赖上下文缓存的复杂请求时显得捉襟见肘，极易导致严重的显存浪费与高延迟。为了攻克这一工业界普遍痛点，Google Cloud 联合 Red Hat、IBM、CoreWeave 以及 NVIDIA 等行业巨头，正式推出了首个开源且云原生 (Kubernetes-native) 的分布式推理框架 llm-d 1.0。llm-d 打破了过去 vLLM 与 SGLang 等模型服务端各自为政的碎片化局面，创新性地引入了前缀感知智能路由、多级分层缓存解耦以及预填充/解码分离编排机制，将模型服务器统一纳管为协同工作的资源池。在高达 17,000 节点的 Google Kubernetes Engine (GKE) 超大规模集群测试中，llm-d 将总体吞吐量提升了 2.9 倍，并在 Ironwood 等新一代 TPU 芯片上将首字延迟削减逾 85%，标志着面向 AI 智能体时代的企业级分布式推理迈向了高可靠、超弹性的生产就绪阶段。
+
+---
+
+## 📌 执行摘要
+
+&gt; ## Executive Summary
+
+Google Cloud 携手 Red Hat、IBM、CoreWeave 以及 NVIDIA，正式联合发布了 **llm-d 1.0**——这是其开源、云原生 (Kubernetes-native) 分布式推理技术栈的首个正式稳定版本。在北美 PyTorch 开发者大会 (PyTorch Conference North America) 上亮相的 llm-d，能够将碎片化的 vLLM 与 SGLang 模型服务器整合为一个统一协调的弹性资源池。传统轮询负载均衡在应对苛刻的私有化部署 AI 智能体 (AI Agent) 与强化学习工作负载时往往捉襟见肘，而 llm-d 专为此类场景量身打造，1.0 版本不仅带来了生产级别的稳定性，还引入了前沿的多租户流控机制以及跨多集群的企业级卓越性能。
+
+&gt; Google Cloud, in collaboration with Red Hat, IBM, CoreWeave, and NVIDIA, has officially released **llm-d 1.0**—the first stable version of its open-source, Kubernetes-native distributed inference stack. Announced at the PyTorch Conference North America, llm-d unifies fragmented vLLM and SGLang model servers into a single coordinated pool. Designed specifically to handle demanding self-hosted agent and reinforcement learning (RL) workloads where traditional round-robin load balancing fails, version 1.0 introduces production-grade reliability, advanced multi-tenant flow control, and enterprise-scale multi-cluster performance.
+
+---
+
+## 什么是 llm-d 1.0？
+
+&gt; ## What is llm-d 1.0?
+
+**llm-d** 诞生于 2025 年，由 Red Hat、IBM 和 Google 联合主导发起，目前已迅速成长为一个蓬勃发展的开源生态，汇聚了来自 25 家以上机构的 500 多名贡献者。该项目于 2026 年 3 月 12 日被正式接纳为 **云原生计算基金会 (CNCF) 沙箱项目 (Sandbox project)**，并严格遵循 **Apache 2.0 开源许可协议**。
+
+&gt; Founded in 2025 and led jointly by Red Hat, IBM, and Google, **llm-d** has grown into a thriving ecosystem featuring over 500 contributors from 25+ organizations. It was accepted as a **CNCF Sandbox project** on March 12, 2026, and is licensed under the **Apache 2.0 license**.
+
+尽管在早期的迭代版本中，团队已经陆续探索并引入了诸如前缀感知路由 (Prefix-Aware Routing)、键值缓存 (KV Cache) 卸载转储、预填充/解码分离解耦 (Prefill/Decode Disaggregation)、超宽专家并行 (Wide Expert Parallelism) 以及批量推理等基石特性，但 **1.0 正式版本** 的核心焦点在于对这些模块进行工业级加固，全面支撑企业在日常生产环境下的持续运维管理 (Day-2 Operations)。
+
+&gt; While earlier iterations introduced foundational features—such as prefix-aware routing, KV cache offloading, prefill/decode disaggregation, wide expert parallelism, and batch inference—**Version 1.0** focuses heavily on hardening these components for production environments (Day-2 operations).
+
+---
+
+## llm-d 1.0 带来哪些全新突破？
+
+&gt; ## What's New in llm-d 1.0?
+
+* **多租户服务质量保障 (QoS)**：兼具优先级与公平感知的 [流量控制机制 (Flow Control)](https://llm-d.ai/docs/well-lit-paths/foundations/flow-control)，有效杜绝了偶发性迸发的智能体循环调用抢占算力、导致对延迟敏感的普通用户请求发生饥饿的现象。
+* **稳固的 v1 核心基石**：全链路加固的请求调用路径与标准化的稳定 API，已在多种云平台环境以及异构硬件加速芯片上完成全方位生产验证。
+* **零宕机平滑升级**：由热备方案保障的高可用路由网关，辅以创新的 [DisaggregatedSet](https://llm-d.ai/docs/dev/architecture/model-server-orchestration/disaggregatedset) 资源编排机制，支持预填充 (Prefill) 与解码 (Decode) 服务池的安全协同滚动更新。
+* **智能体感知服务体系**：具备会话感知的路由策略、话轮优先级调度机制，以及原生的 Responses API 状态管理能力。
+* **异步推理处理架构**：通过 [llm-d-async-processor](https://github.com/llm-d/llm-d-async) 处理器，能够自动从 Google Cloud Pub/Sub 或 Redis 中无缝拉取批处理作业，充分压榨集群中的闲置潮汐算力。
+* **扩展的 TPU 原生支持**：深度集成 [TorchTPU](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/)，让 PyTorch 模型能够在 Google TPU 上的上游 vLLM 与 SGLang 实例中原生高能效运行。
+
+&gt; * **Multi-Tenant Quality of Service (QoS):** Priority and fairness-aware [flow control](https://llm-d.ai/docs/well-lit-paths/foundations/flow-control) prevents bursty agent loops from starving latency-sensitive user requests.
+&gt; * **Stable v1 Foundation:** Hardened request paths and stable APIs validated across multiple cloud environments and diverse hardware accelerators.
+&gt; * **Zero-Downtime Upgrades:** Router high availability backed by hot standby options, alongside the [DisaggregatedSet](https://llm-d.ai/docs/dev/architecture/model-server-orchestration/disaggregatedset) mechanism, which safely rolls prefill and decode pools together.
+&gt; * **Agent-Aware Serving:** Session-aware routing, turn-priority scheduling, and native Responses API state management.
+&gt; * **Asynchronous Inference:** The [llm-d-async-processor](https://github.com/llm-d/llm-d-async) pulls jobs seamlessly from Google Cloud Pub/Sub or Redis into available slack capacity.
+&gt; * **Expanded TPU Support:** [TorchTPU](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/) integration enables PyTorch models to run natively inside upstream vLLM and SGLang instances on Google TPUs.
+
+---
+
+## llm-d 如何进行智能请求路由？
+
+&gt; ## How Does llm-d Route Requests?
+
+llm-d 路由器基于 Kubernetes Gateway API 推理扩展 (Inference Extension) 深度构建。它能够动态追踪并掌握各个副本节点分别缓存了哪些特定的上下文提示词前缀，结合当前各服务器的实际负载水线与预估延迟，将新传入的请求毫秒级精准投递至已驻留对应上下文的节点上。
+
+&gt; The llm-d router builds on top of the Kubernetes Gateway API Inference Extension. It dynamically tracks which replicas hold specific cached prefixes, factors in current server loads and predicted latencies, and routes requests precisely where the necessary context already lives. 
+
+当硬件加速芯片的高带宽内存 (High Bandwidth Memory, HBM) 接近饱和时，KV Cache 会通过专用连接组件——如 vLLM 的 `OffloadingConnector`、`Mooncake` 或是 SGLang 的 `HiCache`——平滑转储至宿主机 CPU 内存、本地高速 NVMe SSD 乃至托管的 Lustre (Managed Lustre) 分布式存储中。此外，架构将算力密集的 **预填充 (Prefill)** 任务与显存带宽受限的 **解码 (Decode)** 任务进行彻底物理分离，分别部署在相互独立的优化资源池中，互不干扰。
+
+&gt; When accelerator HBM (High Bandwidth Memory) fills up, the KV cache seamlessly migrates to host CPU memory, local SSDs, or Managed Lustre storage using connectors like vLLM’s `OffloadingConnector`, `Mooncake`, or SGLang’s `HiCache`. Furthermore, compute-heavy **prefill** operations and memory-bound **decode** operations are split into distinct, optimized pools.
+
+---
+
+## 性能基准测试亮点
+
+&gt; ## Benchmark Highlights
+
+已公布的基准测试结果（由 Google、Snap 以及 Zenteiq 官方实测披露）展现了惊人的性能跃升：
+
+&gt; Published benchmarks (self-reported by Google, Snap, and Zenteiq) highlight massive performance gains:
+
+* **Ironwood TPU (TPU 7x)**：前缀感知路由与宿主机内存卸载技术的双剑合璧，将中位数首字延迟 (Time to First Token, TTFT) 大幅削减了 **85% 以上**；与标准 Kubernetes 服务相比，总体吞吐量实现了 **2.4 倍** 的飞跃。
+* **Gemini 平台**：提示词前缀缓存命中率直接翻倍，从 **35% 飙升至 70%**。在代码编程智能体场景下，首字延迟降低了超过 35%；在突发高并发对话流量冲击下，P95 首字延迟更是下降了 **50% 以上**。
+* **17,000 节点 GKE 超大集群部署**：在跨越 3 个独立计算集群的超大规模部署中，聚合吞吐量提升了 **2.9 倍**，在额外系统开销低于 1% 的前提下始终保持 **99.9% 的请求成功率**。
+* **A3 Mega 服务器集群 (70B 模型实测)**：借助托管 Lustre 与宿主机 CPU RAM 内存卸载技术，在处理 50k 超长 Token 提示词时将 TTFT 缩短了 **约 40%**，端到端延迟降低 30%，整体 GPU 机时成本缩减近 60%。
+* **强化学习时间片复用 (RL Time-Slicing)**：将推理任务巧妙穿插进强化学习训练的空闲周期中，使硬件加速芯片的有效占空比 (Duty Cycle) 从约 40% **跃升至 70% 以上**。
+
+&gt; * **Ironwood TPU (TPU 7x):** Prefix-aware routing combined with host memory offloading slashed median TTFT (Time to First Token) by **over 85%**, while boosting total throughput **2.4x** compared to standard Kubernetes services.
+&gt; * **Gemini Platform:** Prefix cache hit rates doubled from **35% to 70%**. TTFT dropped by over 35% for coding agents, and P95 TTFT fell **over 50%** under bursty chat traffic.
+&gt; * **17,000-Node GKE Deployment:** Scaled aggregate throughput **2.9x** across 3 distinct clusters, maintaining a **99.9% success rate** with under 1% overhead.
+&gt; * **A3 Mega (70B Model):** Managed Lustre and CPU RAM offloading improved TTFT by **~40%** on 50k-token prompts, reducing end-to-end latency by 30% and GPU-hours by nearly 60%.
+&gt; * **RL Time-Slicing:** Interleaving inference into idle reinforcement learning cycles lifted the accelerator duty cycle **above 70%** (up from ~40%).
+
+早期采用者的实测数据同样印证了这些里程碑式的提升：**Snap** 报告其前缀缓存命中率攀升至 75%～80%；**Zenteiq** 实现了超过 **4 倍的吞吐量暴涨**（每 1,000 颗 TPU v6e 芯片的日处理 Token 量从 14.7 亿狂飙至 59.7 亿）；而 IBM 的一项实际演示更是成功并发支撑了 **3,000 个编程智能体** 同时高效运行，成本仅为传统标准商业 API 调用的极小一部分。
+
+&gt; Adopter results mirror these milestones: **Snap** reports prefix cache hit rates reaching 75–80%, **Zenteiq** achieved over **4x throughput** (surging from 1.47B to 5.97B daily tokens per 1,000 TPU v6e chips), and an IBM demonstration successfully served **3,000 concurrent coding agents** at a fraction of standard API pricing.
+
+---
+
+## 方案横向对比：llm-d vs. NVIDIA Dynamo vs. AIBrix
+
+&gt; ## Comparative Analysis: llm-d vs. NVIDIA Dynamo vs. AIBrix
+
+| 特性维度 | llm-d 1.0 | NVIDIA Dynamo | AIBrix |
+| :--- | :--- | :--- | :--- |
+| **最新版本** | 1.0 (2026 年 10 月 20 日) | [v1.5.1 (2026 年 10 月 6 日)](https://docs.nvidia.com/dynamo/reference/compatibility) | [v0.7.0 (2026 年 6 月 16 日)](https://github.com/vllm-project/aibrix/releases/tag/v0.7.0) |
+| **开源协议** | Apache 2.0 | Apache 2.0 | Apache 2.0 |
+| **治理模式** | CNCF 沙箱项目 | NVIDIA 主导 (`ai-dynamo` 组织) | vLLM 项目组织 (源自 ByteDance) |
+| **支持引擎** | vLLM, SGLang | SGLang, TensorRT-LLM, vLLM | vLLM, SGLang, TensorRT-LLM |
+| **适配芯片** | [NVIDIA, AMD, Intel GPU 与 Google TPU](https://presentations.cncf.io/projects/llm-d/) | NVIDIA GPU (Blackwell, Hopper, Ada, Ampere) | 异构/混合 GPU 算力 |
+| **缓存感知路由** | 支持 (前缀与负载联合感知) | 支持 (KV 感知) | 支持 (网关级路由) |
+| **分层缓存体系** | HBM, CPU, SSD, Managed Lustre | GPU 显存, CPU, SSD, 远端存储 (KVBM) | 分布式 KV 缓存 |
+| **P/D 预填充与解码解耦** | 支持 (`DisaggregatedSet`) | 支持 | 支持 |
+| **代表性基准成果** | 17,000 节点下吞吐量提升 2.9 倍 (官方实测) | Qwen3-Coder 480B 首字延迟减半 ([Baseten](https://www.baseten.co/blog/how-baseten-achieved-2x-faster-inference-with-nvidia-dynamo/)) | 未披露 |
+
+&gt; | Feature | llm-d 1.0 | NVIDIA Dynamo | AIBrix |
+&gt; | :--- | :--- | :--- | :--- |
+&gt; | **Latest Version** | 1.0 (Oct 20, 2026) | [v1.5.1 (Oct 6, 2026)](https://docs.nvidia.com/dynamo/reference/compatibility) | [v0.7.0 (Jun 16, 2026)](https://github.com/vllm-project/aibrix/releases/tag/v0.7.0) |
+&gt; | **License** | Apache 2.0 | Apache 2.0 | Apache 2.0 |
+&gt; | **Governance** | CNCF Sandbox | NVIDIA-led (`ai-dynamo` org) | vLLM project org (ByteDance origin) |
+&gt; | **Engines** | vLLM, SGLang | SGLang, TensorRT-LLM, vLLM | vLLM, SGLang, TensorRT-LLM |
+&gt; | **Accelerators** | [NVIDIA, AMD, Intel GPUs, Google TPU](https://presentations.cncf.io/projects/llm-d/) | NVIDIA GPUs (Blackwell, Hopper, Ada, Ampere) | Mixed/Heterogeneous GPUs |
+&gt; | **Cache-Aware Routing** | Yes (Prefix &amp; load-aware) | Yes (KV-aware) | Yes (Gateway routing) |
+&gt; | **KV Cache Tiers** | HBM, CPU, SSD, Managed Lustre | GPU, CPU, SSD, remote storage (KVBM) | Distributed KV cache |
+&gt; | **P/D Disaggregation** | Yes (`DisaggregatedSet`) | Yes | Yes |
+&gt; | **Headline Result** | 2.9x throughput, 17k nodes (self-reported) | 2x faster TTFT, Qwen3-Coder 480B ([Baseten](https://www.baseten.co/blog/how-baseten-achieved-2x-faster-inference-with-nvidia-dynamo/)) | Not disclosed |
+
+*注：这些分布式推理框架之间是相互补充而非互斥割裂的关系。例如，像 CoreWeave 这样的 AI 云基础设施提供商已将 llm-d 与 Dynamo 协同部署，而 NVIDIA 也在积极将 Dynamo 中的优秀组件反哺贡献至 llm-d 开源生态中。*
+
+&gt; *Note: These tools are complementary rather than mutually exclusive. For instance, infrastructure providers like CoreWeave deploy llm-d alongside Dynamo, and NVIDIA actively contributes Dynamo components back into the llm-d ecosystem.*
+
+---
+
+## 如何上手部署 llm-d 1.0？
+
+&gt; ## How to Deploy llm-d 1.0
+
+在 Google Cloud 平台上，[GKE 推理网关 (GKE Inference Gateway)](https://cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway#llm-d-router) 将 llm-d 路由能力包装为全托管云服务，原生支持跨越 [多个集群与不同可用区 (Multiple Clusters and Regions)](https://cloud.google.com/kubernetes-engine/docs/how-to/setup-multicluster-inference-gateway) 运行并提供全球故障转移容灾。系统结合 KEDA 与 HPA，根据任务排队深度与预估响应延迟动态弹性伸缩工作节点池，同时借助 Kueue 精细化管控每个具体模型的配额。
+
+&gt; On Google Cloud, the [GKE Inference Gateway](https://cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway#llm-d-router) provides the llm-d router as a fully managed service capable of spanning [multiple clusters and regions](https://cloud.google.com/kubernetes-engine/docs/how-to/setup-multicluster-inference-gateway) with global failover. KEDA and HPA scale worker pools based on queue depth and predicted latency, while Kueue manages granular per-model quotas. 
+
+对于私有或自定义的 Kubernetes 基础架构环境，官方提供的经过生产验证的 Helm Charts 允许工程团队在统一接入端点后方，轻松快速拉起混合部署的 TPU 与 GPU 算力集群。Google 官方推荐采用循序渐进的分阶段落地策略：
+1. **起步阶段**：首先在现有的 vLLM 或 SGLang 部署前端引入前缀感知路由层；
+2. **深化阶段**：按需逐步叠加多租户流量控制、[多级分层 KV 缓存卸载转储](https://llm-d.ai/docs/well-lit-paths/foundations/tiered-prefix-cache) 以及预填充与解码解耦架构。
+
+&gt; For custom Kubernetes environments, verified Helm charts allow teams to spin up mixed TPU and GPU fleets behind a unified endpoint. Google recommends a staged adoption path:
+&gt; 1. Begin by placing prefix-aware routing in front of an existing vLLM deployment.
+&gt; 2. Incrementally layer in flow control, [tiered KV offloading](https://llm-d.ai/docs/well-lit-paths/foundations/tiered-prefix-cache), and prefill/decode disaggregation.
+
+---
+
+## 核心要点总结
+
+&gt; ## Key Takeaways
+
+* **生产就绪的工业级基石**：llm-d 1.0 带来稳定的 v1 核心 API，专为应对复杂企业级 AI 智能体与大规模强化学习管线进行了深度优化。
+* **高阶算力与服务编排**：全面解锁多租户流控保障、路由器高可用热备以及 `DisaggregatedSet` 预填充与解码协同滚动发布等关键架构能力。
+* **超大规模实战验证**：在工业级海量负载中久经淬炼——成功将 Google Gemini 平台的提示词前缀缓存命中率翻倍至 70%，并在 17,000 个节点的 GKE 超大集群中斩获了 2.9 倍的吞吐量跃升。
+
+&gt; * **Production-Ready Foundation:** llm-d 1.0 delivers stable v1 APIs optimized for complex enterprise agent and RL pipelines.
+&gt; * **Advanced Orchestration:** Features new capabilities like multi-tenant flow control, router high availability, and `DisaggregatedSet` rollouts.
+&gt; * **Proven Scale:** Validated on massive deployments—doubling Gemini prefix cache hit rates to 70% and scaling a 17,000-node GKE cluster by 2.9x.
+
+---
+
+## 参考资料与相关链接
+
+&gt; ## References &amp; Resources
+
+* 阅读官方发布公告：[Google Cloud 官方博客](https://cloud.google.com/blog/topics/ai-infrastructure/llm-d-1-0-an-open-source-stack-for-distributed-inference) | [IBM Research 官方专栏](https://research.ibm.com/blog/llmd-1-0-is-ready-for-production-inference-serving)
+* 探索开源代码：[GitHub 代码仓库](https://github.com/llm-d/llm-d)
+* 查阅官方文档：[GKE 架构文档](https://llm-d.ai/docs/infrastructure/providers/gke) | [Prism 基准测试横向对比](https://prism.llm-d.ai/)
+
+&gt; * Read the official announcements: [Google Cloud Blog](https://cloud.google.com/blog/topics/ai-infrastructure/llm-d-1-0-an-open-source-stack-for-distributed-inference) | [IBM Research Post](https://research.ibm.com/blog/llmd-1-0-is-ready-for-production-inference-serving)
+&gt; * Explore the code: [GitHub Repository](https://github.com/llm-d/llm-d)
+&gt; * Official documentation: [GKE Docs](https://llm-d.ai/docs/infrastructure/providers/gke) | [Prism Benchmark Comparison](https://prism.llm-d.ai/)
+
+*(原始报道发布于 [MarkTechPost](https://www.marktechpost.com/2026/10/20/llm-d-1-0-open-source-distributed-inference-stack/)。)*
+
+&gt; *(Original coverage published by [MarkTechPost](https://www.marktechpost.com/2026/10/20/llm-d-1-0-open-source-distributed-inference-stack/).)*</description>
+    </item>
+    <item>
       <title>重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-21/重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-21/重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性/</guid>
@@ -3346,433 +4134,6 @@ Drex 1.5 的基座骨干网络采用了 **MiMo-V2.6-Distill-Qwen-9B** (源自 Qw
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.11504)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.11504)
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.11504)</description>
-    </item>
-    <item>
-      <title>低秩词表矩阵的探索之旅：LoRE 架构在削减 20% 参数的同时如何意外降低测试损失</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-10/低秩词表矩阵的探索之旅-LoRE-架构在削减-20-参数的同时如何意外降低测试损失/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-10/低秩词表矩阵的探索之旅-LoRE-架构在削减-20-参数的同时如何意外降低测试损失/</guid>
-      <pubDate>Sat, 10 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在以 GPT-2 为代表的中小规模语言模型中，由于网络隐藏层维度与深度较为适中，负责处理输入和输出的词表嵌入矩阵通常会吞噬掉整个模型高达 50% 的参数配额，构成了极为沉重的内存与算力负担。受 ALBERT 嵌入分解与低秩微调 (LoRA) 思想的启发，这项工程探索提出了 LoRE (Low-Rank Embeddings) 架构，尝试将词表输入嵌入层与输出分类头矩阵分解为低秩瓶颈矩阵 ($r=128$) ，以期大幅精简参数并加速训练。在基于 8 张 A100 GPU、涵盖 11 轮训练运行的严格消融实验中，作者发现了一个出人意料的现象：仅在输入端应用 LoRE (Input-only LoRE) 时，不仅成功砍掉了约 3,200 万参数 (相当于整体参数削减近 20%) ，而且在多个随机数种子下均稳定超越了基线模型，意外降低了测试损失 (Test Loss) ；而输出分类头分解则会引入严重的表达瓶颈。这一发现颠覆了“压缩嵌入矩阵必然损害表征能力”的传统直觉，为中小规模垂直专用模型和端侧模型的极致轻量化设计提供了极具工程价值的实践范式与非对称设计启示。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-受到近期关于词表嵌入矩阵分解 (Factorised Embeddings) 讨论的启发——这是一种类似于将 LoRA 思想应用于词表矩阵以削减参数总量的技巧，此前在 ALBERT 和 Maba 等模型架构中已有实践——本文深入探索了使用低秩瓶颈结构全面替换全秩 (Full-Rank) 输入嵌入层与输出分类头的可行性，并将这一改进方案命名为 **LoRE** (Low-Rank Embeddings) 。
-
-&gt; Inspired by a discussion on factorised embeddings (a trick similar to LoRA applied to vocabulary matrices to reduce parameter counts, as seen in ALBERT and Maba), this post explores replacing full-rank input embeddings and output heads with low-rank bottlenecks—dubbed **LoRE** (Low-Rank Embeddings). 
-
-对于千亿、万亿参数的超大规模模型而言，词表嵌入层所占的参数比例微乎其微；然而在中小规模模型中（例如拥有 1.63 亿 / 163M 参数的 GPT-2 架构），多达 50% 的模型参数竟然仅仅耗费在负责数据的“读入与输出”上。通过将这些庞大的词表矩阵分解为秩为 $r=128$ 的两个低秩因子矩阵 ($A$ 与 $B$) ，我们能够大幅压缩参数总量，并显著加快训练迭代速度。
-
-&gt; While large models spend a tiny fraction of parameters on embeddings, smaller models (like 163M parameter GPT-2 architectures) spend up to 50% of their parameters just getting data in and out. By factorizing these matrices into low-rank factors ($A$ and $B$) with rank $r=128$, we can drastically reduce parameter counts and speed up training. 
-
-在 8 张 A100 GPU 上开展了涵盖 11 轮独立训练的系统性消融实验后，研究团队得出了以下几项核心发现：
-
-&gt; Through rigorous ablation studies across 11 training runs using 8x A100 GPUs, the following key findings emerged:
-
-1. **仅在输入端使用 LoRE (Input-only LoRE) ：** 在成功削减约 3,200 万 (~32M) 参数的同时，竟然意外地**改善**了最终的测试损失 (Test Loss) 。
-2. **在输出分类头使用 LoRE (Output-head LoRE) ：** 始终会导致验证集测试损失不可逆地出现上升。
-3. **精妙初始化策略 (Smart Initialisation) ：** 调整瓶颈投影矩阵的方差尺度会显著影响训练初期的收敛动态与起始损失；但令人称奇的是，在这些具体的实验运行中，被数学理论证明“存在偏差”的初始设置反而在下游测试损失上取得了更优的表现。
-
-&gt; 1. **Input-only LoRE** unexpectedly *improved* test loss while reducing the parameter count by ~32M.
-&gt; 2. **Output-head LoRE** caused a consistent increase in validation test loss.
-&gt; 3. **Smart initialisation** (scaling bottleneck projection variance) heavily impacts training dynamics and initial loss, though incorrect initialisations surprisingly led to better downstream test loss in these specific runs.
-
----
-
-## 低秩因子：理论基础与工程实现
-
-&gt; ## Low-Rank Factors: Theory and Implementation
-
-在传统的神经网络中，庞大的权重矩阵可以通过矩阵分解 (Matrix Factorisation) 技术进行瘦身。假设存在一个维度为 $m \times n$ 的权重矩阵 $W$，我们能够将其分解为一个 $m \times r$ 的矩阵 $A$ 与一个 $r \times n$ 的矩阵 $B$，其中 $r$ 代表分解后的**秩** (Rank) 。只要 $r$ 取得足够小，矩阵 $A$ 与 $B$ 所包含的参数总量就会远远少于原始的全秩矩阵。
-
-&gt; Standard neural network matrices can be downscaled using matrix factorisation. Given an $m \times n$ weight matrix $W$, we can factorise it into an $m \times r$ matrix $A$ and an $r \times n$ matrix $B$, where $r$ is the **rank** of the factorisation. If $r$ is sufficiently small, the combination of $A$ and $B$ contains far fewer parameters than the full matrix.
-
-![LoRE 矩阵低秩分解原理](./images/4054e9e718cc.svg)
-
-以 GPT-2 Small 模型为例：
-
-&gt; For a GPT-2 small model:
-
-* **全秩输出分类头 (Output Head, Full) ：** $768 \times 50,257 = 38,597,376$ 个参数。
-* **低秩输出分类头 (Output Head, LoRE, $r=128$) ：** $(768 \times 128) + (50,257 \times 128) = 6,531,200$ 个参数 (参数量缩减为原本的约六分之一) 。
-
-&gt; * **Output Head (Full):** $768 \times 50,257 = 38,597,376$ parameters.
-&gt; * **Output Head (LoRE, $r=128$):** $(768 \times 128) + (50,257 \times 128) = 6,531,200$ parameters (~6x smaller).
-
-得益于矩阵乘法的结合律 ($Z = X(AB) = (XA)B$) ，在 PyTorch 中实现这一结构非常直接简便：
-
-&gt; Thanks to the associativity of matrix multiplication ($Z = X(AB) = (XA)B$), implementation in PyTorch is straightforward:
-
-```python
-out_head_A = nn.Linear(d_emb, r, bias=False)
-out_head_B = nn.Linear(r, vocab_size, bias=False)
-...
-intermediate = out_head_A(embeddings)
-logits = out_head_B(intermediate)
-```
-
----
-
-## 深入探索 LoRE
-
-&gt; ## Introducing LoRE
-
-作者在 PyTorch 训练代码库中集成了 LoRE 的配置选项，支持对输入嵌入层和输出分类头进行独立的开关控制，同时引入了名为 `smart_initialize` 的控制标志，用于调控内部瓶颈投影矩阵的方差尺度 ($std = 1.0 / \sqrt{r}$) 。
-
-&gt; I implemented LoRE configurations into my PyTorch training codebase, allowing independent toggling for input embeddings and output heads, alongside a `smart_initialize` flag to control the variance of the inner projection matrices ($std = 1.0 / \sqrt{r}$).</description>
-    </item>
-    <item>
-      <title>StoreBench：面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-10/StoreBench-面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-10/StoreBench-面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境/</guid>
-      <pubDate>Sat, 10 Oct 2026 00:00:00 GMT</pubDate>
-      <description>评估自主运营智能体在真实商业环境中的实战能力一直面临严峻挑战：传统的静态基准测试通常只有在智能体产生动作时时间才会步进，难以还原现实中时间持续流逝与高度不确定的市场动态。为此，研究团队构建了 **StoreBench**——一个依托工业生产级电商后台运转、实现 24/7 全天候实时模拟的动态电商仿真评测环境，真实再现了顾客昼夜下单、供应链价格剧烈波动以及偶发市场冲击等复杂运营工况。研究团队在跨度从 30 天到 1 整年的长程模拟周期中系统评测了包括 *DeepSeek-V4-Pro* 在内的 7 款前沿大语言模型 (Large Language Models, LLMs) ，发现前沿模型在平均表现上全面落后于基于启发式规则编写的脚本策略，同时也逊色于拥有相同预算的人类专家。然而令人瞩目的是，仅使用 5 个互不重叠的任务进行群体相对策略优化 (Group Relative Policy Optimization, GRPO) 后训练，便使 *Qwen3.5-27B* 在未见评测任务上的综合得分从 0.136 跃升至 0.373 ，展现了强化学习在赋能长程经济决策智能体上的巨大潜力。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-**StoreBench** 是一款专为评估与训练自主运营智能体 (Autonomous Operator Agents) 而打造的动态实时电商仿真评测环境，重点考察智能体在面对不确定性时的长程规划与经济决策能力。与以往那些“智能体不采取行动、时间就停滞不前”的静态基准测试不同，StoreBench 依托工业生产级电商后端，逼真模拟了一家 24/7 全天候持续运转的线上服装店铺。
-
-&gt; **StoreBench** is a dynamic, live-commerce simulation environment designed to evaluate and train autonomous operator agents on long-horizon planning and economic decision-making under uncertainty. Unlike static benchmarks where time only advances alongside agent actions, StoreBench simulates a continuous 24/7 online apparel store powered by a production-grade commerce backend. 
-
-该仿真环境的核心特性包括：
-
-&gt; Key features of the environment include:
-
-* **实时动态性 (Real-time Dynamics) ：** 顾客全天候不间断下单，供应商可能遭遇价格波动或供货中断，同时环境还会随机出现意料之外的市场冲击。
-* **受控延迟与预算约束 (Controlled Latency &amp; Budgeting) ：** 智能体使用与人类运营专家完全相同的 29 种商家工具进行操作；系统引入了窗口化运营预算机制，将仿真推进时间与模型的推理延迟彻底解耦。
-* **严谨的验证机制 (Rigorous Verification) ：** 所有性能评估指标均经过脚本化基准策略的严格校准，并对奖励机制进行了加固以防止作弊 (“奖励黑客” / Reward Hacking) 。在给定的动作序列下，每个测试回合 (Episode) 均可实现完全确定性的精准重现。
-
-&gt; * **Real-time Dynamics:** Customers place orders around the clock, suppliers experience pricing fluctuations and failures, and unexpected market shocks occur.
-&gt; * **Controlled Latency &amp; Budgeting:** Agents operate using the exact same 29 merchant tools available to human operators, bound by a windowed operational budget that decouples simulated time from model inference latency.
-&gt; * **Rigorous Verification:** Performance metrics are calibrated against scripted anchor policies, and rewards are hardened against exploitation ("reward hacking"). Every episode is deterministically reproducible given a fixed action sequence.</description>
-    </item>
-    <item>
-      <title>Mooncake：面向大模型服务的 KVCache 中心化分离架构设计与 Kimi 生产实战</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-10/Mooncake-面向大模型服务的-KVCache-中心化分离架构设计与-Kimi-生产实战/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-10/Mooncake-面向大模型服务的-KVCache-中心化分离架构设计与-Kimi-生产实战/</guid>
-      <pubDate>Sat, 10 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (Large Language Model, LLM) 迈向超长文本与高并发服务的演进过程中，传统的单体推理架构受限于 Prefill 计算密集与 Decoding 访存受限两者之间的资源争抢，难以在保证极致吞吐量的同时守住严苛的延迟服务等级目标 (Service Level Objectives, SLOs) 。作为支撑 Moonshot AI 旗下旗舰产品 Kimi 的核心服务系统，Mooncake 突破性地提出了以 KVCache 为中心的分离式架构 (KVCache-Centric Disaggregated Architecture) ，将首字填充预处理集群与自回归解码集群进行物理隔离。该平台创新性地盘活了 GPU 服务器中原本闲置的主机 CPU、DRAM 内存与本地 SSD 固态硬盘，构建起超大容量的分离式 KVCache 共享存储层与自适应调度中心，并配合前瞻性的过载早期拒绝机制确保流量洪峰下的系统鲁棒性。在生产实践中，Mooncake 不仅在模拟评测中取得了高达 525% 的有效吞吐量飞跃，更直接赋能 Kimi 在真实高负载业务中提升了 75% 的并发请求承载能力，为全球大模型工业级工程化部署提供了标杆范式。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-**Mooncake** 是支撑由 Moonshot AI 研发的知名大语言模型 (Large Language Model, LLM) 服务 **Kimi** 的底层推理平台。该平台创新性地引入了全新的**以 KVCache 为中心的分离式架构 (KVCache-Centric Disaggregated Architecture)** ，专为高效应对高并发、长上下文的大模型业务负载而量身打造。通过将 Prefill (首字填充预处理) 与 Decoding (自回归生成解码) 集群进行物理拆分，并充分调用 GPU 集群中闲置的 CPU、DRAM 内存与本地 SSD 固态硬盘资源构建分离式 KVCache 存储层，Mooncake 在严守延迟服务等级目标 (Service Level Objectives, SLOs) 的前提下，将系统的整体有效吞吐量推向了极致。此外，它还配备了基于预测的过载请求早拒策略，从容应对超高负载流量洪峰。实验结果表明，在模拟场景下 Mooncake 的系统吞吐量提升高达 **525%** ，在真实生产负载中更是将系统的并发请求承载能力提升了 **75%** 。
-
-&gt; **Mooncake** is the serving platform powering **Kimi**, a prominent Large Language Model (LLM) service developed by Moonshot AI. The platform introduces a novel, **KVCache-centric disaggregated architecture** designed specifically to handle high-load, long-context LLM workloads efficiently. By separating prefill and decoding clusters and utilizing underutilized CPU, DRAM, and SSD resources across the GPU cluster as a disaggregated KVCache layer, Mooncake maximizes effective throughput while strictly adhering to latency Service Level Objectives (SLOs). Additionally, it features a prediction-based early rejection policy to gracefully manage severely overloaded scenarios. Experimental results demonstrate up to a **525% increase in throughput** in simulated scenarios and a **75% increase in request capacity** under real-world workloads.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2407.00079](https://arxiv.org/abs/2407.00079) [cs.DC]
-* **主要学科分类：** 分布式、并行与集群计算 (`cs.DC`)
-* **其他学科分类：** 人工智能 (`cs.AI`) 、计算机硬件架构 (`cs.AR`)
-* **提交日期：** 2024年6月24日 (最新修订：2026年10月8日) 
-* **论文作者：** 
-  * Ruoyu Qin
-  * Zheming Li
-  * Weiran He
-  * Mingxing Zhang
-  * Yongwei Wu
-  * Weimin Zheng
-  * Xinran Xu
-
-&gt; * **arXiv Identifier:** [arXiv:2407.00079](https://arxiv.org/abs/2407.00079) [cs.DC]
-&gt; * **Primary Subject:** Distributed, Parallel, and Cluster Computing (`cs.DC`)
-&gt; * **Other Subjects:** Artificial Intelligence (`cs.AI`), Hardware Architecture (`cs.AR`)
-&gt; * **Submission Date:** June 24, 2024 (Last revised: October 8, 2026)
-&gt; * **Authors:** 
-&gt;   * Ruoyu Qin
-&gt;   * Zheming Li
-&gt;   * Weiran He
-&gt;   * Mingxing Zhang
-&gt;   * Yongwei Wu
-&gt;   * Weimin Zheng
-&gt;   * Xinran Xu
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-Mooncake 是为 Moonshot AI 旗下的前沿大模型服务 Kimi 量身定制的高性能推理服务平台。它采用了以 KVCache 为中心的分离式架构，将计算密集型的 Prefill 集群与访存密集型的 Decoding 集群进行了解耦拆分；同时，它充分挖掘并复用了 GPU 集群中常态化闲置的 CPU、DRAM 以及本地 SSD 资源，构建起分布式的 KVCache 共享缓存池。Mooncake 的技术核心在于其以 KVCache 为中心的自适应调度器，能够在严格满足延迟相关的服务等级目标 (SLOs) 的同时，最大化系统的整体有效吞吐量。与以往假设所有请求都能够被完全处理的传统学术研究不同，Mooncake 在工业界真实落地中必须直面极端的高并发过载冲击。为此，我们设计了一套基于预测的过载早拒策略以从容化解雪崩风险。实验表明，Mooncake 在超长上下文场景下表现尤为亮眼：相比基线方案，Mooncake 在满足 SLOs 的约束下，特定仿真场景中的吞吐量提升高达 525%；而在真实的生产环境流量下，这一创新架构帮助 Kimi 额外承载了 75% 的用户请求量。
-
-&gt; Mooncake is the serving platform for Kimi, a leading LLM service provided by Moonshot AI. It features a KVCache-centric disaggregated architecture that separates the prefill and decoding clusters. It also leverages the underutilized CPU, DRAM, and SSD resources of the GPU cluster to implement a disaggregated cache of KVCache. The core of Mooncake is its KVCache-centric scheduler, which balances maximizing overall effective throughput while meeting latency-related Service Level Objectives (SLOs). Unlike traditional studies that assume all requests will be processed, Mooncake faces challenges due to highly overloaded scenarios. To mitigate these, we developed a prediction-based early rejection policy. Experiments show that Mooncake excels in long-context scenarios. Compared to the baseline method, Mooncake can achieve up to a 525% increase in throughput in certain simulated scenarios while adhering to SLOs. Under real workloads, Mooncake's innovative architecture enables Kimi to handle 75% more requests.
-
----
-
-## 核心特性与架构亮点
-
-&gt; ## Key Features &amp; Architecture Highlights
-
-1. **Prefill 与 Decoding 分离架构 (Disaggregated Prefill and Decoding) ：**
-   将计算密集型的首字填充 (Prefill) 阶段与显存带宽受限的自回归解码 (Decoding) 阶段彻底解耦部署到独立的计算集群中，从而实现硬件资源利用率的最优配置。
-2. **分离式 KVCache 存储层 (Disaggregated KVCache Layer) ：**
-   全面盘活并复用 GPU 机器节点内部未充分利用的辅助硬件资源 (包括主机 CPU、DRAM 内存和本地 SSD 硬盘) ，构建起超大规模、高效流转的分布式 KVCache 缓存体系。
-3. **以 KVCache 为核心的智能调度器 (KVCache-Centric Scheduler) ：**
-   全局感知长文本 KVCache 的分布与网络传输开销，在严格保障端到端延迟服务等级目标 (SLOs) 的底线之上，智能最大化集群的实际有效吞吐量。
-4. **基于预测的过载早拒策略 (Prediction-Based Early Rejection Policy) ：**
-   在突发流量洪峰与极端过载场景下，提前预测请求能否在满足 SLOs 的前提下顺利完成；对注定超时的请求果断执行早期拒绝，避免算力资源被无谓浪费与系统雪崩。
-
-&gt; 1. **Disaggregated Prefill and Decoding:**
-&gt;    Separates compute-heavy prefill phases from memory-bound decoding phases into distinct clusters, optimizing hardware utilization.
-&gt; 2. **Disaggregated KVCache Layer:**
-&gt;    Leverages underutilized hardware resources (CPU, DRAM, and SSD) within the GPU cluster to store and manage KVCache efficiently.
-&gt; 3. **KVCache-Centric Scheduler:**
-&gt;    Intelligently balances overall effective throughput while respecting strict latency-related SLOs.
-&gt; 4. **Prediction-Based Early Rejection Policy:**
-&gt;    Gracefully handles extreme, overloaded traffic scenarios by predicting feasibility and rejecting requests early rather than failing under resource exhaustion.</description>
-    </item>
-    <item>
-      <title>打破空间壁垒：亚对数空间计算理论在大模型结构化推理中的突破与应用</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-09/打破空间壁垒-亚对数空间计算理论在大模型结构化推理中的突破与应用/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/打破空间壁垒-亚对数空间计算理论在大模型结构化推理中的突破与应用/</guid>
-      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 在实际工业场景中的深度应用，各类系统越来越依赖模型生成严格符合模式规范的结构化输出 (如 JSON Schema 或强类型工具调用) 。然而，传统的约束解码机制通常依赖庞大的自动机状态跳转表与预计算掩码，在处理复杂语法规则时往往消耗高达数 GB 的显存开销，构成了高并发推理与端侧部署的严峻瓶颈。本文作者另辟蹊径，从计算复杂性理论 (Computational Complexity Theory) 的经典难题入手，敏锐捕捉到约束解码自动机中“从任意给定状态出发每个 Token 仅有一条有效路径”的独特拓扑性质，成功将该特定图结构上的可达性验证空间复杂度打破了经典 Savitch's theorem 的理论下界，实现了亚对数空间 (Sublogarithmic Space) $\mathcal{O}(\log^2 n / \log \log n)$ 级别。将该理论成果落地为实际推理引擎后，不仅将语法规则内存占用从 1.5 GB 骤降至 3 MB，更在并发工具调用场景下实现了 2.5 倍的速度跃升，为兼顾严格输出规范与极致计算效率的大模型结构化推理提供了开创性的理论基石与工程范式。
-
----
-
-## 📋 内容总结
-
-&gt; ## 📋 Summary
-
-现代大语言模型在实际业务场景中，正越来越频繁地被要求输出格式严整的结构化内容——例如严格遵循特定模式 (Schema) 的 JSON 数据或强类型的工具调用。为了确保输出结果百分之百合规，主流推理系统通常会在底层运行轻量级的自动机 (Automata) 机制，动态拦截并禁止任何不符合语法规则的非法 Token。
-
-&gt; Modern language models are increasingly required to generate structured outputs—such as schema-constrained JSON or typed tool calls. This is typically enforced by small automation machines that forbid unauthorized tokens.
-
-本文深入挖掘了此类自动机中一个极其独特却长期被忽视的性质：从任意给定的当前状态出发，每个候选 Token 所引导的转移路径都是完全唯一且确定的。借助这一特性，作者攻克了计算复杂性理论中关于“少路径图”的一道经典公开难题，从数学上严格证明了在此类特殊图结构中，验证节点之间的可达性 (Reachability) 仅需占用极低的内存空间 ($\mathcal{O}(\log^2 n / \log \log n)$ 空间复杂度) ，一举打破了计算机科学史上著名的 Savitch's theorem 所确立的 $\mathcal{O}(\log^2 n)$ 经典空间下界。
-
-&gt; This paper highlights a rare property of these machines: from any given state, each token leads along precisely one path. By resolving an open question in complexity theory regarding graphs with few paths between points, the author proves that reachability in such structures can be verified with remarkably low memory ($\mathcal{O}(\log^2 n / \log \log n)$ space), falling below the classical $\mathcal{O}(\log^2 n)$ bound of Savitch's theorem.
-
-将这些精妙的理论建构落地转化为面向实际生产的推理引擎，带来了极其显著的性能飞跃：
-
-&gt; Leveraging these theoretical constructions into a practical inference engine yields significant performance improvements:
-
-* **前置预计算 (Pre-computation) ：** 对于输出格式中固定的模板文本，无需调用大模型进行实际推理即可直接生成。
-* **GPU 动态掩码 (GPU Masking) ：** Token 掩码直接在 GPU 上实时动态重新计算，彻底摆脱了对内存中庞大状态跳转表的依赖。
-* **极致执行效率 (Efficiency) ：** 递归嵌套格式仅占用微小的调用栈，彼此独立的字段支持并行并发解码与校验，且在 Token 上限截断等极端情况下仍能确保所有输出严格符合语法规则。
-* **基准评测表现 (Benchmarks) ：** 在配备 16 GB 统一内存的 Apple M2 Pro 芯片设备上，使用 Qwen3.5 (包含 2B 与 4B 规格) 对比集成 `llguidance` 的标准 MLX 推理方案：
-  * 在保证输出内容完全一致的前提下，Schema 约束抽取任务的完成速度提升了 **1.2 倍至 1.3 倍**。
-  * 语法规则所占用的内存开销从最高 **1.5 GB 骤降至 3 MB**。
-  * 在传统方案因掩码表过大而耗尽内存的极限场景下，单台服务器可轻松并发承载 **16 种不同语法**。
-  * 在 16 个并发调用外部工具的智能体协同执行任务时，完成速度提升了 **2.5 倍**。
-
-&gt; * **Pre-computation:** Format-mandated text is generated without running the model.
-&gt; * **GPU Masking:** Masks are dynamically recomputed on the GPU without memory tables.
-&gt; * **Efficiency:** Recursive formats utilize a small stack, independent fields are decoded in parallel and verified, and all outputs remain valid under token limits.
-&gt; * **Benchmarks:** Tested on a 16 GB Apple M2 Pro using Qwen3.5 (2B and 4B models) against standard MLX setups with `llguidance`:
-&gt;   * Schema-constrained extraction finishes **1.2x–1.3x faster** while maintaining identical outputs.
-&gt;   * Grammar memory footprint drops from up to **1.5 GB down to 3 MB**.
-&gt;   * A single server can host **sixteen grammars** in scenarios where traditional tables exhaust memory.
-&gt;   * Sixteen simultaneous tool-calling agents finish **2.5x faster**.
-
----
-
-## 🔗 全文与资源链接
-
-&gt; ## 🔗 Full-Text &amp; Resources
-
-* [查看论文 PDF (View PDF)](https://arxiv.org/pdf/2610.09139)
-* [HTML 网页版本 (实验性 / Experimental)](https://arxiv.org/html/2610.09139v1)
-* [TeX 源码 (TeX Source)](https://arxiv.org/src/2610.09139)
-* [授权许可 (License)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2610.09139)
-&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2610.09139v1)
-&gt; * [TeX Source](https://arxiv.org/src/2610.09139)
-&gt; * [License](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
-    </item>
-    <item>
-      <title>LayerRoPE：深度维度的动态幅值与角度叠加编码架构</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-09/LayerRoPE-深度维度的动态幅值与角度叠加编码架构/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/LayerRoPE-深度维度的动态幅值与角度叠加编码架构/</guid>
-      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代 Transformer 架构中，随着网络深度不断增加，隐藏状态的特征范数往往呈数量级剧烈膨胀，这种长期困扰深度网络训练的现象被学界称为“深度诅咒” (Curse of Depth) ，并普遍被视作阻碍深层模型稳定训练的病态缺陷而加以压制。然而，Shikhar Srivastava 与 Christopher Kanan 深入剖析了跨越 9 个模型家族的 16 款主流预训练大语言模型 (Large Language Models, LLMs) ，颠覆性地发现这种范数膨胀并非有害缺陷，而是网络为了区分不同层信息而自发演化出的“涌现式深度位置编码” (Emergent Depth-Positional Encoding) ——它主要由残差流上唯一的逐层可学习增益参数 $\gamma$ 所承载，通过幅值增长与方向旋转协同记录网络层索引。基于这一深刻洞见，作者团队提出了创新的 **LayerRoPE** 架构，将旋转位置编码 (Rotary Position Embedding, RoPE) 思想巧妙迁移至深度维度，仅用单个共享向量搭配深度条件标量全面替换原本冗余的逐层参数，在计算量 (FLOPs) 变动不足 $0.02\%$ 的同时显著精简了参数量。实验证明，LayerRoPE 不仅以节省 $3.4\times$ 的算力达到了与传统 Pre-Norm 相当的损失水平，更首次在 512 层极深网络中展现出强劲收敛性与近乎单调的性能提升，同时具备极高的学习率鲁棒性，并能无缝迁移至循环潜变量模型与视觉 Transformer (ViTs) 中，为下一代超深层模型架构的设计开辟了全新路径。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-在现代 Transformer 架构中，随着特征在网络深度方向逐层传递，隐藏状态的范数通常会出现数个数量级的剧烈膨胀——这一现象被学界广泛称为“深度诅咒” (Curse of Depth) ，且长期以来都被视作一种亟待抑制的训练病态。然而，本文的研究彻底颠覆了这一固有假设。通过对涵盖稠密模型、混合专家模型 (Mixture-of-Experts) 、混合架构以及 Pre-Norm、Peri-Norm 和 Post-Norm 归一化设计的 9 大模型家族、共 16 款主流预训练大语言模型 (Large Language Models, LLMs) 进行系统性探究，作者团队发现：这一数值膨胀根本不是有害的系统缺陷，而是网络在训练过程中自发演化出的**涌现式深度位置编码** (Emergent Depth-Positional Encoding) 。
-
-&gt; In modern Transformer architectures, the norm of hidden states typically grows by orders of magnitude as data propagates through depth—a phenomenon widely known as the "curse of depth" and generally treated as a pathology that requires suppression. This paper challenges that premise. Investigating 16 pre-trained Large Language Models (LLMs) across 9 families (spanning dense, mixture-of-experts, hybrid, and Pre-, Peri-, and Post-Norm designs), the authors discover that this growth is actually an **emergent depth-positional encoding**. 
-
-这项深度编码主要由归一化权重 $\gamma$ (残差流上唯一逐层可学习的增益参数) 负责承载：它不仅在幅值上逐步变大，还在空间方向上动态旋转，两者巧妙配合，共同完成了对网络层索引的精确编码。基于这一深刻洞见，作者团队正式推出了 **LayerRoPE**——一种在网络深度轴向上对标旋转位置编码 (Rotary Position Embedding, RoPE) 的隐式深度编码方案。LayerRoPE 巧妙地用单个全局共享向量结合深度条件标量，全面替换掉了原本各层独立的 $\gamma$ 向量；在有效精简模型参数量的同时，对整体计算量 (FLOPs) 的影响不足 $0.02\%$ 。
-
-&gt; This encoding is carried by the normalization weight $\gamma$ (the sole learned per-layer gain on the residual stream), which grows in magnitude and rotates in direction to jointly encode the layer index. Building on this insight, the authors introduce **LayerRoPE**—an implicit depth-axis analog to Rotary Position Embedding (RoPE). LayerRoPE replaces all layerwise $\gamma$ vectors with a single shared vector and depth-conditioned scalars, simultaneously reducing parameters and incurring $&lt;0.02\%$ change in FLOPs.</description>
-    </item>
-    <item>
-      <title>Humanize：面向智能体编码的判断力工程与构建者-审查者双模型协同框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-09/Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架/</guid>
-      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着智能体编程 (Agentic Coding) 技术的普及，自动生成代码的门槛与成本大幅降低，但要让 AI 智能体 (AI Agent) 稳定、可靠地交付端到端完整工程，依然存在一道难以逾越的鸿沟——负责写代码的智能体往往极度缺乏对自身工作质量的客观评判能力，容易陷入“自审自查必然失效”的盲目自信。针对这一固有困境，来自学术界与业界的联合研究团队提出了全新的多智能体编排框架 **Humanize**，开创性地确立了**判断力工程** (Judgement Engineering) 理念：在规划、实现、审查与经验沉淀等关键阶段边界处，引入明确且由程序硬性执行的机械门控规则。该框架通过确定性路由钩子强制执行 72 道机械校验门，并引入异构大模型的“构建者-审查者”交替协同机制，确保软件缺陷只有在两个独立模型同时漏检的极罕见情况下才会留存。在经历 108 天、68 个迭代版本的实战演进中，Humanize 在 GitHub 斩获 1,468 颗星，不仅高水准完成了 567 个文件的 `gem5` 复杂底层系统重构，更在 MLSys 2026 FlashInfer 算子大赛、国际五大学科奥林匹克竞赛以及顶尖形式化数学评测 (PutnamBench 与 Lean-Eval) 中刷新了权威记录。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-尽管基于 AI 智能体的代码生成技术让编写代码变得前所未有地廉价，但要想让其真正可靠地交付可用的软件系统，依然面临着严峻的技术瓶颈——负责写代码的智能体往往是一个极不称职的“自我裁判”，极难察觉自身的逻辑缺陷与漏洞。**Humanize** 正是为此而生的一种全新多智能体编排工作流，它紧紧围绕**判断力工程** (Judgement Engineering) 这一核心支柱展开：在任务规划、代码实现、独立审查以及经验学习的关键阶段分界线上，建立起明确、不可妥协且由程序机械化强制执行的决策约束。
-
-&gt; While agentic coding makes code generation inexpensive, reliable completion remains a critical bottleneck because the coding agent is typically a poor judge of its own work. **Humanize** is a novel multi-agent orchestration workflow built around **judgement engineering**—explicit, mechanically enforced decisions at the boundaries of planning, implementation, review, and learning. 
-
-通过引入确定性路由钩子 (严格强制执行 72 道机械校验门) 并巧妙地在“构建者” (Builder) 模型与“审查者” (Reviewer) 模型之间进行交替接力，Humanize 从机制上保证了代码缺陷只有在*两个模型同时漏检*的极端情况下才会存留。在历时 108 天、经过 68 个版本的持续打磨迭代中，该框架在开源社区获得了广泛关注 (在 GitHub 上斩获 1,468 颗星) ，并在高复杂度系统工程重构、标准基准测试集以及国际顶级奥林匹克竞赛中展现出了顶尖水平的实测战果。
-
-&gt; By utilizing deterministic routing hooks (enforcing 72 mechanical gates) and alternating between builder and reviewer models, Humanize ensures that defects survive only if *both* models miss them. Across 68 versions over 108 days, the framework gained significant traction (1,468 GitHub stars) and demonstrated state-of-the-art results across complex systems engineering, benchmark datasets, and international Olympiads.
-
----
-
-## 核心工作流机制
-
-&gt; ## Key Workflow Mechanics
-
-* **规划契约 (Plan Contract) ：** 在进入具体的代码执行之前，必须先制定明确的行动方案，并由人类专家进行手动审核与批准；
-* **构建者-审查者交替机制 (Builder-Reviewer Alternation) ：** 负责实现的构建者智能体分轮次推进计划，而负责验收的审查者智能体则来自完全不同的模型厂商，专门对完成度与代码质量进行独立把关；
-* **确定性路由 (Deterministic Routing) ：** 智能体之间的工作流流转与角色切换完全由硬编码的程序化钩子强力约束，而非交由模型自行主观决定，其中内嵌了 **72 道机械门控**；
-* **马尔可夫链动力学 (Markov Chain Dynamics) ：** 若将代码仓库的状态演化视作一个马尔可夫链 (Markov Chain) ，通过两个独立模型联合采样交替推进，能够最大程度消除单模型的监督盲区。
-
-&gt; * **Plan Contract:** A human manually approves an explicit plan before execution begins.
-&gt; * **Builder-Reviewer Alternation:** A builder agent implements the plan in rounds, while a reviewer agent from a separate vendor evaluates completion.
-&gt; * **Deterministic Routing:** Workflows and transitions between roles are enforced via programmatic hooks rather than model discretion, incorporating **72 mechanical gates**.
-&gt; * **Markov Chain Dynamics:** Viewed as a Markov chain over repository states, alternating agent samples jointly from two models to minimize oversight blind spots.
-
----
-
-## 实际应用与技术成果
-
-&gt; ## Applications &amp; Achievements
-
-Humanize 框架已成功落地于多项高难度的重工业级软件工程实战与权威基准评测之中：
-
-&gt; Humanize has been successfully applied to heavy-duty software engineering tasks and benchmark evaluations:
-
-* **系统软件工程 (Systems Engineering) ：** 在上游社区维护者的严格审查下，成功完成了涉及 567 个代码文件的 `gem5` 构建系统全量迁移；
-* **算子设计智能体 (Kernel Design Agents) ：** 深度整合算子专用知识库与性能分析 (Profiling) 反馈回路，在 **MLSys 2026 FlashInfer 竞赛**中一举斩获全部三个全智能体 (Full-Agent) 赛道的前三名；
-* **奥林匹克竞赛智能体 (Humanize Olympiad Agents, HOA) ：** 在 **IOI 2026**、**IMO 2026**、**IPhO 2026** 与 **IBO 2024** 中均斩获满分，并在 **IChO 2026** 中取得了高达 **418.5/437 分的金牌战绩**；
-* **形式化推理与高等数学 (Formal Reasoning &amp; Mathematics) ：** 在 **PutnamBench** 上拿下了无可挑剔的 **672/672 全满分**，并在 **Lean-Eval 排行榜上以 251/303 位列全球第一**，在极高难度的数学定理证明中直接与专业数学家同台竞技。
-
-&gt; * **Systems Engineering:** Successfully completed a 567-file `gem5` build-system migration under upstream review.
-&gt; * **Kernel Design Agents:** Integrated a kernel knowledge base and profiling feedback loop, placing in the top three of all three Full-Agent tracks at the **MLSys 2026 FlashInfer contest**.
-&gt; * **Humanize Olympiad Agents (HOA):** Achieved full scores in **IOI 2026**, **IMO 2026**, **IPhO 2026**, and **IBO 2024**, alongside a gold-medal score of **418.5/437 in IChO 2026**.
-&gt; * **Formal Reasoning &amp; Mathematics:** Scored a flawless **672/672 on PutnamBench** and ranked **first (251/303) on the Lean-Eval leaderboard**, competing directly alongside professional mathematicians.
-
----
-
-## 复盘洞察与关键发现
-
-&gt; ## Postmortem Insights &amp; Observations
-
-通过对 118 份公开任务复盘报告的深入剖析，研究团队总结出了以下关键运行洞察：
-
-&gt; An analysis of 118 public postmortems revealed key operational insights:
-
-* **核心优势 (Strengths) ：** 引入独立的跨厂商多模型审查机制，能够极其有效地识别并拦截构建者智能体提出的缺乏依据的主观论断；
-* **现存脆弱点 (Vulnerabilities) ：** 判定何时停止迭代的停机可靠性依然是系统的核心薄弱点。在按阶段区分轮次的报告中，**多达三分之二的迭代轮次居然发生在代码实现已经被验收通过*之后***；
-* **说明 (Note) ：** 当前收集到的证据属于实际运行中的观察性总结，而非严格控制变量的工作流对照实验研究。
-
-&gt; * **Strengths:** Independent multi-vendor review effectively catches unsupported claims made by builder agents.
-&gt; * **Vulnerabilities:** Stopping reliability remains a primary weakness. In reports separating rounds by phase, **two-thirds of all rounds occurred *after* implementation was already accepted**. 
-&gt; * *Note:* Evidence gathered is observational rather than a controlled comparative study of workflows.
-
----
-
-## 获取方式与相关资源
-
-&gt; ## Access &amp; Resources
-
-* **论文 PDF 全文 (Full-Text PDF) ：** [arXiv:2610.08900 PDF](https://arxiv.org/pdf/2610.08900)
-* **论文源码与 TeX 资源 (Source Code &amp; TeX) ：** [arXiv Source](https://arxiv.org/src/2610.08900)
-* **许可协议 (License) ：** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"/&gt;
-
-&gt; * **Full-Text PDF:** [arXiv:2610.08900 PDF](https://arxiv.org/pdf/2610.08900)
-&gt; * **Source Code &amp; TeX:** [arXiv Source](https://arxiv.org/src/2610.08900)
-&gt; * **License:** [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/) &lt;img alt="license icon" role="presentation" src="./images/fb423b2203a9.png"/&gt;</description>
-    </item>
-    <item>
-      <title>用 Docker Agent 构建 AI 智能体 (AI Agent)</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-09/Docker-Agent-实战指南-像运行容器一样声明与编排-AI-智能体/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-09/Docker-Agent-实战指南-像运行容器一样声明与编排-AI-智能体/</guid>
-      <pubDate>Fri, 09 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着 AI 智能体架构的演进，如何像管理微服务一样对智能体进行统一打包、分发与编排，成为了工程落地的核心挑战。Docker Agent 沿袭了 Docker“一次构建，到处运行”的经典哲学，将大语言模型、提示词指令、工具集及协作关系抽象为声明式的 YAML 配置文件，消除了繁琐的代码胶水层。它不仅天然解耦底层模型供应商，还深度集成了模型上下文协议 (Model Context Protocol, MCP)，能够将各类扩展工具安全隔离在独立容器中运行。最终成型的智能体团队可以直接推送到标准 OCI 镜像仓库进行版本化管理与无缝分发，真正实现了 AI 智能体从开发到生产的标准化容器化交付。
-
----
-
-## 内容摘要
-
-&gt; ## Summary
-
-Docker Agent 是一款基于 Apache 2.0 开源协议的命令行 (CLI) 插件，旨在像运行传统容器一样运行 AI 智能体。开发者只需编写声明式 YAML 配置文件，就能定义、版本化管理并编排单智能体或多智能体团队。这些智能体完全解耦模型供应商 (支持 OpenAI、Anthropic 以及通过 Docker Model Runner 驱动的本地模型等)，可无缝集成模型上下文协议 (Model Context Protocol, MCP)，并能够利用标准的 OCI 镜像仓库完成打包、共享与分发。本篇实战指南将全面带你走过环境安装、构建单智能体与多智能体工作流、挂载工具以及最终打包部署的全流程。
-
-&gt; Docker Agent is an open-source, Apache 2.0-licensed CLI plugin designed to run AI agents like traditional containers. By using declarative YAML configurations, developers can define, version, and orchestrate single or multi-agent teams. These agents are provider-agnostic (supporting OpenAI, Anthropic, local models via Docker Model Runner, etc.), integrate seamlessly with the Model Context Protocol (MCP), and can be packaged, shared, and distributed using standard OCI registries. This comprehensive guide walks through installation, building single and multi-agent workflows, utilizing tools, and packaging agents for deployment.
-
----
-
-&lt;img alt="Building AI Agents with Docker Agent" class="article-hero perfmatters-lazy" data-src="https://www.kdnuggets.com/wp-content/uploads/KDN-Shittu-Building-AI-Agents-with-Docker-Agent-scaled.png" decoding="async" height="1429" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='2560'%20height='1429'%20viewBox='0%200 2560 1429'%3E%3C/svg%3E" width="2560"/&gt;
-
-Docker 当年声名鹊起的核心理念其实非常简单：一次打包，到处运行，且每次运行表现始终如一。[Docker Agent 将同样的理念延伸到了 AI 智能体领域](https://docker.github.io/docker-agent/)：不再需要编写繁杂的胶水代码，而是通过声明式配置定义智能体，借助 CLI 插件启动运行，并直接复用托管容器镜像的现成 OCI 仓库进行分发。如果你曾设想过像管理容器一样去定义、版本化控制并分享 AI 智能体，那么这款工具正是为你填补这一空白的利器。
-
-&gt; Docker built its reputation on one idea: package software once, run it anywhere, the same way, every time. [Docker Agent applies that same idea to AI agents](https://docker.github.io/docker-agent/): describe them in a declarative config instead of code, run them through a CLI plugin, and distribute them through the same OCI registries that already store your container images. If you've ever wished an AI agent could be defined, versioned, and shared like a container, that's the gap this tool fills.
-
-这是一篇详尽的实战教程，将带你从零开始完成全新安装，一步步搭建出能够协同运转的多智能体团队。
-
-&gt; This is a full, hands-on tutorial, from a completely bare install to a real, working multi-agent team.
-
----
-
-## 什么是 Docker Agent？
-
-&gt; ## What Is Docker Agent?
-
-Docker Agent 是一款由 Docker 工程团队打造的开源命令行插件，采用 [Apache 2.0 许可证](https://github.com/docker/docker-agent/blob/main/LICENSE)，以 **docker agent** 命令的形式安装与运行。它的官方宣传语非常直截了当：[像运行容器一样运行 AI 智能体](https://docker.github.io/docker-agent/)。从 pkg.go.dev 上的 Go 模块发布历史来看，它在 2026 年 3 月就打上了最初的发布标签，并在随后迅猛发展；目前该项目在 GitHub 上已收获超 [3,300 颗 Star](https://github.com/docker/docker-agent)，代码提交量接近 10,000 次。
-
-&gt; Docker Agent is an open-source, [Apache 2.0-licensed](https://github.com/docker/docker-agent/blob/main/LICENSE) CLI plugin built by Docker Engineering, installed and run as **docker agent**. Its own tagline states the goal plainly: [run AI agents like containers](https://docker.github.io/docker-agent/). Its Go module history on pkg.go.dev shows early tagged releases from March 2026, and it's grown quickly since; the project has already passed [3,300 GitHub stars](https://github.com/docker/docker-agent) and nearly 10,000 commits.
-
-它的诞生并非凭空出现。早在 2025 年，Docker 就一直在为此铺路：[2025 年 7 月发布的一项声明便扩展了 Docker Compose，使其能够直接支持智能体与 AI 模型](https://www.docker.com/press-release/agentic-apps-to-life-with-new-compose-support-cloud-offload-and-partner-integrations/)，随后推出的 Docker Model Runner 也让开发者无需云端 API 密钥即可在本地运行模型。Docker Agent 正是这些前期技术积淀结出的果实——它成为了一个独立的专属工具，而不是硬塞在 Compose 中的某个附属功能。
-
-&gt; It didn't appear out of nowhere. Docker spent 2025 building toward exactly this: [a July 2025 announcement extended Docker Compose to support agents and AI models directly](https://www.docker.com/press-release/agentic-apps-to-life-with-new-compose-support-cloud-offload-and-partner-integrations/), and Docker Model Runner shipped as a way to run models locally without a cloud API key. Docker Agent is the product of that groundwork landing in one dedicated tool, rather than a single feature bolted onto Compose.
-
-它的核心独特优势体现在以下几个方面：
-
-&gt; What actually makes it distinctive: 
-
-* **YAML 声明驱动**：智能体通过 **YAML** (或 HCL) 文件进行定义，这意味着无需深厚的软件工程背景也能轻松构建智能体。
-* **解耦模型供应商**：支持 OpenAI、Anthropic、Gemini、AWS Bedrock、Mistral、xAI，并且能借助 Docker Model Runner 纯本地运行开源模型。
-* **多智能体协同编排**：原生支持构建专业分工的智能体团队，并在彼此之间灵活委派任务。
-* **灵活的工具生态**：除了内置工具外，还支持挂载任意 [MCP 服务端](https://modelcontextprotocol.io/)，工具既可以在本地或远程运行，也可以安全运行在隔离的 Docker 容器中。
-* **基于 OCI 标准分发**：构建好的智能体可以直接推送至任何兼容 OCI 的镜像仓库，亦可从中拉取——分发机制与大家熟知的 Docker 镜像完全一致。
-
-&gt; * **YAML-Driven:** Agents are defined in **YAML** (or HCL), meaning no deep software engineering background is required to build one.
-&gt; * **Provider-Agnostic:** Works with OpenAI, Anthropic, Gemini, AWS Bedrock, Mistral, xAI, and fully local models through Docker Model Runner.
-&gt; * **Multi-Agent Orchestration:** Supports genuine teams of specialized agents that delegate work to each other.
-&gt; * **Flexible Tool Ecosystem:** Includes built-in tools plus any [MCP server](https://modelcontextprotocol.io/), run locally, remotely, or inside an isolated Docker container.
-&gt; * **OCI Distribution:** Finished agents can be pushed to and pulled from any OCI-compatible registry—the same distribution mechanism Docker images use.
-
----
-
-## 前提条件与安装 Docker Agent
-
-&gt; ## Prerequisites and Installing Docker Agent
-
-开始前你需要准备三样东西：机器上已安装 Docker、能够正常运行该插件的安装方式，以及至少可访问一个语言模型。
-
-&gt; You need three things: Docker installed on your machine, a way to actually run it, and access to at least one language model.</description>
     </item>
   </channel>
 </rss>

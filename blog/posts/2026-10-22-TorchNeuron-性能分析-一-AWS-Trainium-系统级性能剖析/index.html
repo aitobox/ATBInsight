@@ -1,0 +1,1124 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-22-TorchNeuron-%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90-%E4%B8%80-AWS-Trainium-%E7%B3%BB%E7%BB%9F%E7%BA%A7%E6%80%A7%E8%83%BD%E5%89%96%E6%9E%90/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#torchneuron-aws-trainium" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="torchneuron-aws-trainium">TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析</h1>
+<blockquote>
+<h1 id="profiling-torchneuron-part-1-system-level-profiling-on-aws-trainium">Profiling TorchNeuron (Part 1): System-level profiling on AWS Trainium</h1>
+</blockquote>
+<p><strong>发布日期：</strong> 2026 年 10 月 21 日<br />
+<strong>作者：</strong> Josh Longenecker (Amazon)</p>
+<blockquote>
+<p><strong>Published:</strong> October 21, 2026<br />
+<strong>Author:</strong> Josh Longenecker (Amazon)</p>
+</blockquote>
+<hr />
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在机器学习与大模型工业化落地的过程中，仅仅让模型成功跑通代码只是打下了地基，要想真正压榨硬件算力、降低推理与训练成本，就必须建立系统化的性能分析 (Profiling) 能力以探查瓶颈根因。本文作为系列实战教程的第一篇，深入讲解了如何在 AWS 自研 AI 加速芯片 Trainium 上，借助其开源原生 PyTorch 后端 TorchNeuron 开展系统级性能剖析。文章完整演示了如何通过标准 <code>torch.profiler</code> 捕获设备级耗时、利用 <code>key_averages()</code> 表格定位热点算子，并在可视化分析套件 Neuron Explorer 中层层穿透从上层框架调度、运行时管理到物理硬件执行的完整流转轨迹。最后，文章以 RMSNorm 算子为例进行基准测试，揭示了从普通即时执行到内置融合算子与 <code>torch.compile</code> 图优化带来的约 6 倍性能飞跃，为云端定制芯片上的深度性能调优提供了坚实可依的实践指南。</p>
+<hr />
+<h2 id="_2">执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>想方设法让机器学习模型跑得飞快往往只是优化工作的一半；更关键的是在模型变慢时，能够清晰洞察其背后的根因，而这离不开系统化的性能剖析。在本文作为该系列的第一部分中，我们将探索如何借助 <strong>TorchNeuron</strong>（<strong>AWS Trainium</strong> 芯片的原生开源 PyTorch 后端）来深入分析模型推理性能。本指南将带你完整实践：如何正确配置 <code>torch.profiler</code>、如何通过 <code>key_averages()</code> 表格快速揪出执行瓶颈、如何在 <strong>Neuron Explorer</strong> 中直观审查执行轨迹 (Traces)，并横向对比未经优化的朴素即时模式 (Eager) 算子、原生内置融合算子 (<code>torch.rms_norm</code>) 与基于计算图编译 (<code>torch.compile</code>) 三者之间的显著性能差异。</p>
+<blockquote>
+<p>Understanding how to make machine learning models run fast is only half the battle; knowing <em>why</em> a model is slow requires systematic profiling. In Part 1 of this series, we explore how to analyze inference performance on <strong>AWS Trainium</strong> using <strong>TorchNeuron</strong> (its native open-source PyTorch backend). This guide walks you through configuring <code>torch.profiler</code>, analyzing execution bottlenecks via <code>key_averages()</code>, visualizing traces in <strong>Neuron Explorer</strong>, and comparing the performance differences between naive eager operations, built-in fused operators (<code>torch.rms_norm</code>), and compiled graphs (<code>torch.compile</code>).</p>
+</blockquote>
+<hr />
+<h2 id="neuron-pytorch">Neuron 作为 PyTorch 后端</h2>
+<blockquote>
+<h2 id="neuron-as-a-pytorch-backend">Neuron as a PyTorch Backend</h2>
+</blockquote>
+<p>在正式开始对工作负载进行性能分析之前，先理清 <a href="https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html">Neuron</a> 与 PyTorch 之间的整合机制大有裨益。</p>
+<blockquote>
+<p>Before profiling workloads, it helps to understand how <a href="https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html">Neuron</a> integrates with PyTorch. </p>
+</blockquote>
+<p>Neuron 后端充分借助了 PyTorch 官方提供的 <code>PrivateUse1</code> 扩展机制。该机制允许第三方硬件加速芯片原生无缝地融入 PyTorch 生态，而无需在上游框架内核中硬编码专有的分发调度键 (Dispatch Key，如传统针对 GPU 的 <code>cuda</code>)。<code>torch_neuronx</code> 扩展包与上游 PyTorch 紧密配合，将 Neuron 正式注册为一个原生的执行目标设备。欲深入了解这一扩展机制的实现细节，可参阅 PyTorch 官方教程：<a href="https://docs.pytorch.org/tutorials/advanced/privateuseone.html">借助 PrivateUse1 简化新后端集成 (Facilitating New Backend Integration by PrivateUse1)</a>。</p>
+<blockquote>
+<p>The Neuron backend leverages PyTorch's <code>PrivateUse1</code> extension point. This mechanism allows accelerators to integrate natively into the framework without requiring a dedicated dispatch key (such as <code>cuda</code>). The <code>torch_neuronx</code> package works alongside upstream PyTorch to register Neuron as a native execution target. For more information on this extension mechanism, refer to the official PyTorch guide on <a href="https://docs.pytorch.org/tutorials/advanced/privateuseone.html">Facilitating New Backend Integration by PrivateUse1</a>.</p>
+</blockquote>
+<hr />
+<h2 id="_3">配置性能分析器</h2>
+<blockquote>
+<h2 id="set-up-the-profiler">Set Up the Profiler</h2>
+</blockquote>
+<p>对 Neuron 计算任务进行性能采样与分析主要依赖两个核心模块：</p>
+<blockquote>
+<p>Profiling a Neuron workload relies on two primary components:</p>
+</blockquote>
+<ol>
+<li><strong><code>NeuronConfig</code></strong>：负责精细控制所需采集的数据流与具体的 NeuronCore 核心，并指定分析结果的输出存储路径。该配置对象通过 <code>experimental_config</code> 参数传递给 <code>torch.profiler.profile</code>。</li>
+<li><strong><code>NeuronProfiler</code></strong>：接收并解析 <code>NeuronConfig</code> 配置，对外暴露 <code>export_trace</code> 回调函数，以便在导出上层深度学习框架跟踪数据 (<code>trace.json</code>) 的同时，同步写出底层的系统硬件级跟踪轨迹。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong><code>NeuronConfig</code></strong>: Controls which data streams and NeuronCores to capture, specifying the output destination. Passed to <code>torch.profiler.profile</code> via <code>experimental_config</code>.</li>
+<li><strong><code>NeuronProfiler</code></strong>: Consumes the <code>NeuronConfig</code> and exposes an <code>export_trace</code> callback to write out the framework trace (<code>trace.json</code>) alongside low-level system traces.</li>
+</ol>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">nc</span> <span class="o">=</span> <span class="n">NeuronConfig</span><span class="p">(</span>
+    <span class="n">modes</span><span class="o">=</span><span class="p">[</span><span class="n">ProfileMode</span><span class="o">.</span><span class="n">DEVICE</span><span class="p">,</span> <span class="n">ProfileMode</span><span class="o">.</span><span class="n">RUNTIME</span><span class="p">],</span>
+    <span class="n">profile_output_dir</span><span class="o">=</span><span class="n">OUTPUT_DIR</span><span class="p">,</span>
+    <span class="n">capture_enabled_for_nc</span><span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="p">,</span>
+    <span class="n">correlate_device_time</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">NeuronProfiler</span><span class="p">(</span><span class="n">nc</span><span class="p">)</span>
+</code></pre></div>
+<p>将 <code>correlate_device_time=True</code> 启用后，分析器会自动把设备端的实际底层执行耗时直接关联映射到 <code>key_averages()</code> 统计表中，从而让开发者能够一目了然地横向对比 CPU 端调度与 Neuron 硬件设备端计算的各自开销。关于所有可配置参数的详细说明，可查阅 <a href="http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes">NeuronConfig 分析模式文档 (NeuronConfig Profile Modes documentation)</a>。</p>
+<blockquote>
+<p>Setting <code>correlate_device_time=True</code> correlates the device-level time directly into the <code>key_averages()</code> table, enabling side-by-side comparison of CPU and Neuron device execution costs. For comprehensive parameter details, consult the <a href="http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes">NeuronConfig Profile Modes documentation</a>.</p>
+</blockquote>
+<hr />
+<h2 id="neuron-explorer">可视化分析利器：Neuron Explorer</h2>
+<blockquote>
+<h2 id="tooling-neuron-explorer">Tooling: Neuron Explorer</h2>
+</blockquote>
+<p><strong>Neuron Explorer</strong> 是一款可通过浏览器进行交互的可视化效能诊断工具，专为审查系统级执行轨迹、硬件设备时间线以及底层执行引擎瓶颈而设计。开发者不仅可以通过 SSH 端口转发直接在本地浏览器中打开它，也可以通过专属的 VS Code 扩展进行集成查看。</p>
+<blockquote>
+<p><strong>Neuron Explorer</strong> is a browser-accessible utility designed to inspect system traces, device timelines, and engine-level bottlenecks. It can be accessed via an SSH tunnel or a VS Code extension.</p>
+</blockquote>
+<p>在完成性能分析之后，输出目录中会生成系统级跟踪数据，以及通过统一哈希特征关联配对的 <code>.neff</code> (Neuron 可执行文件格式，Neuron Executable File Format) 和 <code>.ntff</code> (硬件底层指令跟踪文件，Hardware Instruction Trace) 文件。有关如何在 Web 界面中启动工具及上传分析文件的图文步骤，请参阅 <a href="https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile">步骤 5：在 Neuron Explorer 中上传您的分析文件 (Step 5: Upload your profile in Neuron Explorer)</a>。</p>
+<blockquote>
+<p>After profiling, the output directory includes system traces and matching <code>.neff</code> (Neuron Executable File Format) and <code>.ntff</code> (hardware instruction trace) files linked by a shared hash. For detailed instructions on launching and uploading files to the UI, see <a href="https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile">Step 5: Upload your profile in Neuron Explorer</a>.</p>
+</blockquote>
+<hr />
+<h2 id="rmsnorm">实战分析案例：RMSNorm 算子</h2>
+<blockquote>
+<h2 id="profile-rmsnorm">Profile RMSNorm</h2>
+</blockquote>
+<p>为了生动形象地演示系统级性能分析流程，我们选取了 <strong>RMSNorm</strong> 作为切入点——这是一个计算结构极为轻量且规整的算子，包含了一段规律非常明确的规约计算与逐元素 (Element-wise) 算术运算。我们在基准测试中对比了三种截然不同的实现方式：</p>
+<blockquote>
+<p>To demonstrate system-level profiling, we examine <strong>RMSNorm</strong>—a lightweight operation containing a predictable sequence of reductions and element-wise arithmetic. We test three distinct implementations:</p>
+</blockquote>
+<ol>
+<li><strong>朴素 RMSNorm 实现 (Naive RMSNorm)</strong>：完全由离散的 PyTorch 基础算子手动拼装实现 (包括乘法、求均值、加法和平方根倒数)。</li>
+<li><strong><code>torch.rms_norm()</code></strong>：PyTorch 原生提供的内置标准函数，在 Neuron 硬件平台下会自动下沉为单个高度融合、高度优化的设备端内核 (Kernel)。</li>
+<li><strong>结合 <code>torch.compile</code> 的朴素 RMSNorm</strong>：依然采用由离散算子拼装的代码逻辑，但通过声明 <code>@torch.compile(backend="neuron")</code> 由编译器自动进行计算图追踪与内核融合优化。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Naive RMSNorm</strong>: Written with discrete PyTorch operations (multiplication, mean, addition, reciprocal square root).</li>
+<li><strong><code>torch.rms_norm()</code></strong>: PyTorch’s built-in function lowered to a single optimized, fused kernel on Neuron.</li>
+<li><strong>Naive RMSNorm with <code>torch.compile</code></strong>: The discrete sequence compiled automatically using <code>@torch.compile(backend="neuron")</code>.</li>
+</ol>
+</blockquote>
+<p>所有评测脚本均使用完全一致的输入张量维度形状与分析器配置。可供复现的完整代码均已归档于 <a href="https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1">torch-neuronx 官方示例仓库 (torch-neuronx examples directory)</a>。</p>
+<blockquote>
+<p>All scripts use identical shapes and profiler configurations. Reproducible code can be found in the <a href="https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1">torch-neuronx examples directory</a>.</p>
+</blockquote>
+<hr />
+<h2 id="1-pytorch">分析场景 1：朴素 PyTorch 基础算子拼装</h2>
+<blockquote>
+<h2 id="profile-1-naive-pytorch-operations">Profile 1: Naive PyTorch Operations</h2>
+</blockquote>
+<p>使用基础的 PyTorch 离散算子拼装 RMSNorm 计算逻辑，会在运行时产生大量不必要的中间张量，并反复触发昂贵的框架级调度与分发事件：</p>
+<blockquote>
+<p>Writing RMSNorm out using primitive PyTorch operations creates intermediate tensors and multiple dispatch events:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;neuron&#39;</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">rms_norm_fn</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+    <span class="n">x_sq</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="n">t</span>                                    <span class="c1"># square</span>
+    <span class="n">mean_sq</span> <span class="o">=</span> <span class="n">x_sq</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>       <span class="c1"># mean of squares</span>
+    <span class="n">rms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rsqrt</span><span class="p">(</span><span class="n">mean_sq</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>               <span class="c1"># 1 / sqrt(mean_sq + eps)</span>
+    <span class="k">return</span> <span class="n">t</span> <span class="o">*</span> <span class="n">rms</span> <span class="o">*</span> <span class="n">weight</span>                         <span class="c1"># normalize + scale</span>
+</code></pre></div>
+<p>我们通过配置 <code>ProfilerActivity.PrivateUse1</code> 这一活动类型，并将预先初始化的 <code>NeuronConfig</code> 实例传入分析器：</p>
+<blockquote>
+<p>We configure the profiler using <code>ProfilerActivity.PrivateUse1</code> and pass <code>NeuronConfig</code>:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span>
+    <span class="n">activities</span><span class="o">=</span><span class="p">[</span><span class="n">ProfilerActivity</span><span class="o">.</span><span class="n">CPU</span><span class="p">,</span> <span class="n">ProfilerActivity</span><span class="o">.</span><span class="n">PrivateUse1</span><span class="p">],</span>
+    <span class="n">experimental_config</span><span class="o">=</span><span class="n">nc</span><span class="p">,</span>
+    <span class="n">record_shapes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">on_trace_ready</span><span class="o">=</span><span class="n">exporter</span><span class="o">.</span><span class="n">export_trace</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">warmup</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">active</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">prof</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">rms_norm_fn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">neuron</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+        <span class="n">prof</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</code></pre></div>
+<p><em>(注：在循环中显式加入 <code>torch.neuron.synchronize()</code> 能够确保硬件设备在导出轨迹数据之前彻底完成所有运算排队，从而避免分析报表中出现设备耗时列全为空白的情况。)</em></p>
+<blockquote>
+<p><em>(Note: Including <code>torch.neuron.synchronize()</code> ensures the device completes operations before trace export, avoiding empty device time columns.)</em></p>
+</blockquote>
+<p>将分析生成的汇总表按照设备端执行总耗时进行降序排序，主要的性能瓶颈便立刻浮出水面：</p>
+<blockquote>
+<p>Sorting the summary table by device time highlights the performance bottlenecks:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nb">print</span><span class="p">(</span><span class="n">prof</span><span class="o">.</span><span class="n">key_averages</span><span class="p">()</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">sort_by</span><span class="o">=</span><span class="s2">&quot;self_privateuse1_time_total&quot;</span><span class="p">,</span> <span class="n">row_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+</code></pre></div>
+<p><a href=".././images/af39c8c42d9a.png"><img alt="核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。" src=".././images/af39c8c42d9a.png" /></a></p>
+<p><em>核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。</em></p>
+<blockquote>
+<p><em>The key averages table shows that three aten::mul calls account for the largest share of Neuron device time.</em></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">算子名称 (Name)</th>
+<th style="text-align: left;">调用次数 (# Calls)</th>
+<th style="text-align: left;">自身 CPU 耗时 (Self CPU)</th>
+<th style="text-align: left;">自身 NEURON 耗时 (Self NEURON)</th>
+<th style="text-align: left;">NEURON 耗时占比 (% NEURON)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>aten::mul</code></td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">60.9 μs</td>
+<td style="text-align: left;">1,164.5 μs</td>
+<td style="text-align: left;">49.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::add</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">26.6 μs</td>
+<td style="text-align: left;">434.6 μs</td>
+<td style="text-align: left;">18.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::rsqrt</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">15.6 μs</td>
+<td style="text-align: left;">415.0 μs</td>
+<td style="text-align: left;">17.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::mean</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">21.1 μs</td>
+<td style="text-align: left;">340.8 μs</td>
+<td style="text-align: left;">14.5%</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;"># Calls</th>
+<th style="text-align: left;">Self CPU</th>
+<th style="text-align: left;">Self NEURON</th>
+<th style="text-align: left;">% NEURON</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>aten::mul</code></td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">60.9 μs</td>
+<td style="text-align: left;">1,164.5 μs</td>
+<td style="text-align: left;">49.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::add</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">26.6 μs</td>
+<td style="text-align: left;">434.6 μs</td>
+<td style="text-align: left;">18.5%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::rsqrt</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">15.6 μs</td>
+<td style="text-align: left;">415.0 μs</td>
+<td style="text-align: left;">17.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aten::mean</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">21.1 μs</td>
+<td style="text-align: left;">340.8 μs</td>
+<td style="text-align: left;">14.5%</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><em>自身 NEURON 设备端总执行耗时：2.355 ms</em></p>
+<blockquote>
+<p><em>Self NEURON total: 2.355 ms</em></p>
+</blockquote>
+<p><a href=".././images/09da1436bc0c.png"><img alt="Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。" src=".././images/09da1436bc0c.png" /></a></p>
+<p><em>Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。</em></p>
+<blockquote>
+<p><em>Neuron Explorer follows an aten::mul operation from framework dispatch through runtime scheduling to execution on the Neuron hardware lanes.</em></p>
+</blockquote>
+<h3 id="explorer">在 Explorer 中解读执行轨迹</h3>
+<blockquote>
+<h3 id="read-the-trace-in-explorer">Read the Trace in Explorer</h3>
+</blockquote>
+<p>在 Neuron Explorer 的时间线视图中，每个具体算子的生命周期均遵循从上到下、自左往右的时序，依次跨越以下四个专属系统泳道 (Lanes)：</p>
+<blockquote>
+<p>In Neuron Explorer, individual operations travel from top to bottom and left to right across specific system lanes:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">系统泳道 (Lane)</th>
+<th style="text-align: left;">标签后缀 (Label Suffix)</th>
+<th style="text-align: left;">功能描述 (Description)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>框架调度泳道 (Framework Dispatch)</strong></td>
+<td style="text-align: left;"><code>framework/TID:&lt;id&gt;</code></td>
+<td style="text-align: left;">按线程 ID 分组展示的 ATen 算子分发事件。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>框架设备交互泳道 (Framework Device)</strong></td>
+<td style="text-align: left;"><code>framework/Stream:&lt;n&gt;</code></td>
+<td style="text-align: left;">按流 (Stream) 分组呈现的设备驱动交互事件。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Neuron 运行时泳道 (Neuron Runtime)</strong></td>
+<td style="text-align: left;"><code>neuron_rt/NC:&lt;n&gt;</code></td>
+<td style="text-align: left;">针对每个逻辑 NeuronCore 核心所发起的运行时 API 调度。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Neuron 硬件执行泳道 (Neuron Hardware)</strong></td>
+<td style="text-align: left;"><code>neuron_hw/NC&lt;n&gt;:&lt;id&gt;</code></td>
+<td style="text-align: left;">芯片物理计算核心上的真实硬件执行时间线 (<code>nc_exec_running</code>)。</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lane</th>
+<th style="text-align: left;">Label Suffix</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Framework Dispatch</strong></td>
+<td style="text-align: left;"><code>framework/TID:&lt;id&gt;</code></td>
+<td style="text-align: left;">ATen operator dispatch events grouped by thread ID.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framework Device</strong></td>
+<td style="text-align: left;"><code>framework/Stream:&lt;n&gt;</code></td>
+<td style="text-align: left;">Device interaction/driver events grouped by stream.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Neuron Runtime</strong></td>
+<td style="text-align: left;"><code>neuron_rt/NC:&lt;n&gt;</code></td>
+<td style="text-align: left;">Runtime API invocation per logical NeuronCore.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Neuron Hardware</strong></td>
+<td style="text-align: left;"><code>neuron_hw/NC&lt;n&gt;:&lt;id&gt;</code></td>
+<td style="text-align: left;">Physical core execution tracks (<code>nc_exec_running</code>).</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><a href=".././images/69a21700cf3c.gif"><img alt="依赖链透视视图生动展示了单个计算算子在框架层、运行时层和物理硬件泳道上的完整生命周期。" src=".././images/69a21700cf3c.gif" /></a></p>
+<p><em>依赖链透视视图生动展示了单个计算算子在框架层、运行时层和物理硬件泳道上的完整生命周期。</em></p>
+<blockquote>
+<p><em>The dependency chain viewer highlights the lifecycle of one operation across the framework, runtime, and hardware lanes.</em></p>
+</blockquote>
+<hr />
+<h2 id="2-torchrms_norm">分析场景 2：原生内置算子 torch.rms_norm</h2>
+<blockquote>
+<h2 id="profile-2-torchrms_norm">Profile 2: torch.rms_norm</h2>
+</blockquote>
+<p>改用 PyTorch 原生内置的 <code>torch.rms_norm</code> 替代手动拼凑的算子，可以将整段归一化逻辑下沉 (Lowering) 为单个在硬件设备端一体化执行的融合内核：</p>
+<blockquote>
+<p>Replacing manual operators with PyTorch's native <code>torch.rms_norm</code> lowers the routine into a single fused device execution:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rms_norm_fn</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">rms_norm</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">[</span><span class="mi">512</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
+</code></pre></div>
+<p><a href=".././images/4d09216611cf.png"><img alt="在核心平均值汇总表中，融合 RMSNorm 仅作为单独一个设备端算子出现。" src=".././images/4d09216611cf.png" /></a></p>
+<p><em>在核心平均值汇总表中，融合 RMSNorm 仅作为单独一个设备端算子出现。</em></p>
+<blockquote>
+<p><em>The fused RMSNorm appears as one device operation in the key averages table.</em></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">算子名称 (Name)</th>
+<th style="text-align: left;">调用次数 (# Calls)</th>
+<th style="text-align: left;">自身 CPU 耗时 (Self CPU)</th>
+<th style="text-align: left;">自身 NEURON 耗时 (Self NEURON)</th>
+<th style="text-align: left;">NEURON 耗时占比 (% NEURON)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>aten::_fused_rms_norm</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">47.6 μs</td>
+<td style="text-align: left;">403.3 μs</td>
+<td style="text-align: left;">100%</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;"># Calls</th>
+<th style="text-align: left;">Self CPU</th>
+<th style="text-align: left;">Self NEURON</th>
+<th style="text-align: left;">% NEURON</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>aten::_fused_rms_norm</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">47.6 μs</td>
+<td style="text-align: left;">403.3 μs</td>
+<td style="text-align: left;">100%</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><em>自身 NEURON 设备端总执行耗时：403.3 μs</em></p>
+<blockquote>
+<p><em>Self NEURON total: 403.3 μs</em></p>
+</blockquote>
+<p><a href=".././images/14b89d454511.png"><img alt="融合后的 RMSNorm 只需穿透一次框架到硬件的调度路径，彻底告别了对各个基础算术算子逐一分发的繁琐流程。" src=".././images/14b89d454511.png" /></a></p>
+<p><em>融合后的 RMSNorm 只需穿透一次框架到硬件的调度路径，彻底告别了对各个基础算术算子逐一分发的繁琐流程。</em></p>
+<blockquote>
+<p><em>The fused RMSNorm follows one framework-to-hardware path instead of dispatching each arithmetic operation separately.</em></p>
+</blockquote>
+<h3 id="_4">对比算子下沉路径</h3>
+<blockquote>
+<h3 id="compare-the-lowering-path">Compare the Lowering Path</h3>
+</blockquote>
+<p>在原始朴素实现中，每个算子都必须各自跨越上层框架与底层硬件之间的分界线；而融合内核则截然不同，它将整组计算逻辑一次性打包封装为单个综合图实体进行分发，从而彻底根除了相邻内核之间因调度排队产生的延迟空档。</p>
+<blockquote>
+<p>Unlike the naive approach—where each operation individually crosses the framework-to-hardware boundary—the fused kernel dispatches a single comprehensive graph entity, entirely eliminating inter-kernel latency gaps.</p>
+</blockquote>
+<hr />
+<h2 id="3-torchcompile">分析场景 3：结合 torch.compile 优化朴素实现</h2>
+<blockquote>
+<h2 id="profile-3-naive-pytorch-with-torchcompile">Profile 3: Naive PyTorch with torch.compile</h2>
+</blockquote>
+<p>直接对最初手动编写的朴素 Python 函数应用 <code>torch.compile</code>，能让 PyTorch 与底层的 Neuron 编译器自动侦测计算图依赖并自动生成融合优化路径：</p>
+<blockquote>
+<p>Using <code>torch.compile</code> on the original naive Python function allows PyTorch to automatically detect and fuse optimization paths:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nd">@torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s1">&#39;neuron&#39;</span><span class="p">,</span> <span class="n">fullgraph</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">naive_compiled</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+    <span class="n">x_sq</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="n">t</span>
+    <span class="n">mean_sq</span> <span class="o">=</span> <span class="n">x_sq</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">rms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rsqrt</span><span class="p">(</span><span class="n">mean_sq</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">t</span> <span class="o">*</span> <span class="n">rms</span> <span class="o">*</span> <span class="n">weight</span>
+</code></pre></div>
+<p><a href=".././images/fd5a93af4644.png"><img alt="在核心平均值汇总表中，编译后的函数聚合呈现为一个统一的 Torch-Compiled Region 编译区域。" src=".././images/fd5a93af4644.png" /></a></p>
+<p><em>在核心平均值汇总表中，编译后的函数聚合呈现为一个统一的 Torch-Compiled Region 编译区域。</em></p>
+<blockquote>
+<p><em>The compiled function appears as one Torch-Compiled Region in the key averages table.</em></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">算子名称 (Name)</th>
+<th style="text-align: left;">调用次数 (# Calls)</th>
+<th style="text-align: left;">自身 CPU 耗时 (Self CPU)</th>
+<th style="text-align: left;">自身 NEURON 耗时 (Self NEURON)</th>
+<th style="text-align: left;">NEURON 耗时占比 (% NEURON)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Torch-Compiled Region: 0/0</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">98.4 μs</td>
+<td style="text-align: left;">375.5 μs</td>
+<td style="text-align: left;">100%</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;"># Calls</th>
+<th style="text-align: left;">Self CPU</th>
+<th style="text-align: left;">Self NEURON</th>
+<th style="text-align: left;">% NEURON</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Torch-Compiled Region: 0/0</code></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">98.4 μs</td>
+<td style="text-align: left;">375.5 μs</td>
+<td style="text-align: left;">100%</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p><em>自身 NEURON 设备端总执行耗时：375.5 μs</em></p>
+<blockquote>
+<p><em>Self NEURON total: 375.5 μs</em></p>
+</blockquote>
+<p><a href=".././images/a32167b9bcec.png"><img alt="编译后的计算图在运行时调度与硬件实际执行中均沿着单一清晰的流水线高效行进。" src=".././images/a32167b9bcec.png" /></a></p>
+<p><em>编译后的计算图在运行时调度与硬件实际执行中均沿着单一清晰的流水线高效行进。</em></p>
+<blockquote>
+<p><em>The compiled graph follows one path through runtime scheduling and hardware execution.</em></p>
+</blockquote>
+<hr />
+<h2 id="_5">横向对比与性能汇总</h2>
+<blockquote>
+<h2 id="side-by-side-summary">Side-by-Side Summary</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">实现方案 (Variant)</th>
+<th style="text-align: left;">NEURON 设备耗时 (NEURON Time)</th>
+<th style="text-align: left;">自身 CPU 耗时 (Self CPU Time)</th>
+<th style="text-align: left;">算子调用次数 (Operator Calls)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>朴素基础算子 (Naive ops)</strong></td>
+<td style="text-align: left;">2,355 µs</td>
+<td style="text-align: left;">~125 µs</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>内置算子 <code>torch.rms_norm</code></strong></td>
+<td style="text-align: left;">403 µs</td>
+<td style="text-align: left;">~48 µs</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>朴素实现 + <code>torch.compile</code></strong></td>
+<td style="text-align: left;">376 µs</td>
+<td style="text-align: left;">~98 µs</td>
+<td style="text-align: left;">1</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variant</th>
+<th style="text-align: left;">NEURON Time</th>
+<th style="text-align: left;">Self CPU Time</th>
+<th style="text-align: left;">Operator Calls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Naive ops</strong></td>
+<td style="text-align: left;">2,355 µs</td>
+<td style="text-align: left;">~125 µs</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>torch.rms_norm</code></strong></td>
+<td style="text-align: left;">403 µs</td>
+<td style="text-align: left;">~48 µs</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Naive + <code>torch.compile</code></strong></td>
+<td style="text-align: left;">376 µs</td>
+<td style="text-align: left;">~98 µs</td>
+<td style="text-align: left;">1</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>相较于未经优化的即时执行模式，无论是通过内置算子 <code>torch.rms_norm</code> 还是声明 <code>torch.compile</code> 引入内核融合，均能带来接近 <strong>6 倍</strong> 的显著性能提速。这一飞跃的奥秘在于：融合内核彻底消除了在片外内存与缓存之间频繁申请、搬运中间张量的高昂开销，并抹平了内核之间漫长的调度等待间隙。</p>
+<blockquote>
+<p>Kernel fusion via <code>torch.rms_norm</code> or <code>torch.compile</code> accelerates execution roughly <strong>6x</strong> compared to unoptimized eager implementations by avoiding intermediate tensor memory allocations and execution gaps.</p>
+</blockquote>
+<hr />
+<h2 id="_6">总结与展望</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>借助 <code>key_averages()</code> 统计表与 <strong>Neuron Explorer</strong> 可视化工具所构建的系统级性能分析能力，完美弥合了高层模型代码与底层硬件芯片实际执行之间的信息鸿沟。</p>
+<blockquote>
+<p>System-level profiling via <code>key_averages()</code> and <strong>Neuron Explorer</strong> bridges the gap between high-level code and hardware execution. </p>
+</blockquote>
+<p>在接下来的<strong>第二篇</strong>中，我们将把剖析视角进一步推进到芯片设备级底层：深入解剖编译后的 NEFF 结构文件、细致分析张量引擎 (TensorEngine)、向量引擎 (VectorEngine) 和直接内存访问 (Direct Memory Access, DMA) 引擎的实际利用率，并引入屋顶模型 (Roofline Model) 精确定位模型在物理核心上到底属于显存带宽受限 (Memory-bound) 还是算力瓶颈 (Compute-bound)。</p>
+<blockquote>
+<p>In <strong>Part 2</strong>, we will shift focus to device-level profiles: opening the compiled NEFF, analyzing the TensorEngine, VectorEngine, and DMA engine utilization, and applying roofline modeling to diagnose memory- vs. compute-bound characteristics.</p>
+</blockquote>
+<hr />
+<p><em>特别鸣谢 Aritra Roy Gosthipaty 为本系列内容带来的灵感启发，并衷心感谢 Pinak Panigrahi、Samir Araujo、Akhil Azhikodan 与 Esha Lakhotia 诸位专家在技术内容审阅上的宝贵贡献。</em></p>
+<blockquote>
+<p><em>Special thanks to Aritra Roy Gosthipaty for inspiring this series, and to reviewers Pinak Panigrahi, Samir Araujo, Akhil Azhikodan, and Esha Lakhotia.</em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">TorchNeuron</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">AWS Trainium</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">性能分析</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PyTorch</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">算子融合</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

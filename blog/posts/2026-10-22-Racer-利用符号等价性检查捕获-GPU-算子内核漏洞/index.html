@@ -1,0 +1,651 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-22-Racer-%E5%88%A9%E7%94%A8%E7%AC%A6%E5%8F%B7%E7%AD%89%E4%BB%B7%E6%80%A7%E6%A3%80%E6%9F%A5%E6%8D%95%E8%8E%B7-GPU-%E7%AE%97%E5%AD%90%E5%86%85%E6%A0%B8%E6%BC%8F%E6%B4%9E/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Racer：利用符号等价性检查捕获 GPU 算子内核漏洞 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#racer-gpu" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Racer：利用符号等价性检查捕获 GPU 算子内核漏洞
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="racer-gpu">Racer：利用符号等价性检查捕获 GPU 算子内核漏洞</h1>
+<blockquote>
+<h1 id="racer-hunting-gpu-kernel-bugs-with-symbolic-equivalence-checking">Racer: Hunting GPU Kernel Bugs with Symbolic Equivalence Checking</h1>
+<p><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2610.28429">arXiv:2610.28429</a> [cs.SC]<br />
+<strong>Subjects:</strong> Symbolic Computation (<code>cs.SC</code>); Artificial Intelligence (<code>cs.AI</code>)<br />
+<strong>Authors:</strong> Tuan Truong Vu, Cheng Tan<br />
+<strong>Submitted:</strong> October 20, 2026<br />
+<strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2610.28429">10.48550/arXiv.2610.28429</a>  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在现代人工智能计算体系中，GPU 算子内核 (GPU Kernel) 是支撑深度学习超高算力的基石，然而面对硬件架构演进、新型低精度数据格式普及与多种编程语言重写，确保算子功能的绝对正确性极为艰难。传统上工业界主要依赖随机张量的差分测试，但这往往存在严重的致命盲区——那些引发微小数值偏差的代码逻辑漏洞很容易被误当成正常的浮点舍入误差而漏检。为攻克这一行业顽疾，研究团队推出了名为 <strong>Racer</strong> 的创新验证引擎，开创性地在 PTX (Parallel Thread Execution) 指令级引入<strong>符号等价性检查 (Symbolic Equivalence Checking)</strong>，通过符号推演将输出转化为精确代数表达式，并借助形状缩减、锁步 CTA 调度与惯用模版反驳三大技术攻克状态爆炸难题。在对 41 个生产级算子集合中 2,408 个内核的全面排查中，Racer 成功揪出了 23 个知名开源库中的 <strong>82 个真实漏洞</strong>（含 76 个此前未知的隐蔽缺陷），为大模型时代高可靠底层算子的开发构筑了坚实的形式化护城河。</p>
+<hr />
+<h2 id="_2">📋 内容概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>GPU 算子内核是现代人工智能实现极致计算性能的心脏。然而，随着底层硬件架构快速迭代、新型数值格式（如 FP8、INT4）层出不穷以及新兴编程语言（如 Triton、CUDA）的演进，开发者需要频繁重写这些底层算子。长期以来，工业界为了确保新重写的算子在功能上与原版完全一致，主要依赖<strong>差分测试 (Differential Testing)</strong>——即生成一批随机张量，让新算子和经过验证的基准参考算子同时运行，并在允许的数值误差容限 (Tolerance) 内比对两者的输出结果。然而，这种测试方法存在致命的盲区：由于浮点运算天然存在舍入误差，差分测试不得不放宽比对阈值；一旦内核中潜藏的代码逻辑漏洞所引发的输出偏差恰好落在这个容限范围内，就会悄无声息地逃过检测，给后续的大模型训练和推理埋下难以排查的“暗雷”。</p>
+<blockquote>
+<p>GPU kernels are fundamental to modern AI performance, but operators are constantly rewritten across hardware generations, numeric formats, and languages. Traditionally, ensuring these rewrites preserve functional correctness relies on <em>differential testing</em>—running a new kernel against a trusted reference on random tensors and comparing outputs within a tolerance. However, differential testing has severe blind spots, such as logical bugs that produce errors smaller than the required tolerance. </p>
+</blockquote>
+<p>为了从根源上化解这一难题，研究团队提出了<strong>符号等价性检查</strong>的新范式。该方法不再喂入具体的随机数值，而是将张量作为抽象的代数符号输入并执行内核，最终将算子的输出转化为覆盖整个输入空间的精确代数表达式。这样一来，系统便能在数学层面上彻底隔绝并清晰区分浮点舍入误差与真正的代码逻辑缺陷。基于这一思路，本研究推出了名为 <strong>Racer</strong> 的验证引擎，它直接工作在 NVIDIA GPU 的 PTX 汇编中间指令级别，并由以下三项核心技术创新驱动：</p>
+<blockquote>
+<p>To solve this, the authors propose <strong>symbolic equivalence checking</strong>. By executing kernels on symbolic inputs, outputs are turned into exact algebraic expressions that cover the entire input space and cleanly distinguish floating-point errors from logical bugs. The paper introduces <strong>Racer</strong>, a PTX-level symbolic equivalence checking engine powered by three key innovations:</p>
+</blockquote>
+<ol>
+<li><strong>形状缩减 (Shape Reduction)</strong>：大幅压缩张量维度与执行规模，从而精准控制符号推演的计算复杂度；</li>
+<li><strong>锁步 CTA 调度器 (Lockstep CTA Scheduler)</strong>：高效模拟和管控 GPU 协同线程阵列 (Cooperative Thread Array, CTA) 的硬件级并发行为；</li>
+<li><strong>惯用模版反驳机制 (Idiom Templates with Exact Numeric Refutation)</strong>：针对符号推演难以直接给出定论的边界情况，结合精确数值反例进行强力反驳与判定。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Shape Reduction</strong> to control computational cost.</li>
+<li><strong>Lockstep CTA Scheduler</strong> to manage hardware concurrency.</li>
+<li><strong>Idiom Templates</strong> with exact numeric refutation for handling otherwise inconclusive results.</li>
+</ol>
+</blockquote>
+<p>在涵盖 41 个常用代码集合、共计 2,408 个生产级 GPU 内核的严苛实测中，Racer 成功在 23 个知名开源算子库中挖掘出 <strong>82 个真实存在的代码漏洞</strong>（其中包括 76 个此前从未被发现的未知 Bug，且已有 41 个获得了库维护者的官方确认）。</p>
+<blockquote>
+<p>Tested across 2,408 production kernels from 41 collections, Racer uncovered <strong>82 real bugs</strong> across 23 libraries (including 76 previously unknown bugs and 41 confirmed).</p>
+</blockquote>
+<hr />
+<h2 id="_3">📌 论文元数据</h2>
+<blockquote>
+<h2 id="metadata">Metadata</h2>
+</blockquote>
+<ul>
+<li><strong>arXiv 编号 (arXiv ID)：</strong> <a href="https://arxiv.org/abs/2610.28429"><code>arXiv:2610.28429</code></a> [cs.SC]</li>
+<li><strong>研究领域 (Subjects)：</strong> 符号计算 (<code>cs.SC</code>)；人工智能 (<code>cs.AI</code>)</li>
+<li><strong>论文作者 (Authors)：</strong> Tuan Truong Vu, Cheng Tan</li>
+<li><strong>提交时间 (Submitted)：</strong> 2026 年 10 月 20 日</li>
+<li><strong>数字对象唯一标识 (DOI)：</strong> <a href="https://doi.org/10.48550/arXiv.2610.28429">10.48550/arXiv.2610.28429</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2610.28429">arXiv:2610.28429</a> [cs.SC]</li>
+<li><strong>Subjects:</strong> Symbolic Computation (<code>cs.SC</code>); Artificial Intelligence (<code>cs.AI</code>)</li>
+<li><strong>Authors:</strong> Tuan Truong Vu, Cheng Tan</li>
+<li><strong>Submitted:</strong> October 20, 2026</li>
+<li><strong>DOI:</strong> <a href="https://doi.org/10.48550/arXiv.2610.28429">10.48550/arXiv.2610.28429</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_4">🔗 相关链接与资源</h2>
+<blockquote>
+<h2 id="links-resources">Links &amp; Resources</h2>
+</blockquote>
+<ul>
+<li><strong>全文阅读与下载 (Full-Text Access)：</strong> </li>
+<li><a href="https://arxiv.org/pdf/2610.28429">阅读 PDF 论文 (View PDF)</a></li>
+<li><a href="https://arxiv.org/html/2610.28429v1">HTML 网页预览版本 (实验性) (HTML Version - Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2610.28429">下载 TeX 论文排版源码 (TeX Source)</a></li>
+<li><strong>版权许可 (License)：</strong> <a href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>学术引用与文献检索 (Citations &amp; References)：</strong> </li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429">Google 学术检索 (Google Scholar)</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2610.28429">Semantic Scholar 词条 (Semantic Scholar)</a></li>
+<li><a href="https://scixplorer.org/abs/arXiv:2610.28429">SciX 词条 (SciX)</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Full-Text Access:</strong> </li>
+<li><a href="https://arxiv.org/pdf/2610.28429">View PDF</a></li>
+<li><a href="https://arxiv.org/html/2610.28429v1">HTML Version (Experimental)</a></li>
+<li><a href="https://arxiv.org/src/2610.28429">TeX Source</a></li>
+<li><strong>License:</strong> <a href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International</a> <img alt="license icon" src=".././images/345c7ad61f1b.png" /></li>
+<li><strong>Citations &amp; References:</strong> </li>
+<li><a href="https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429">Google Scholar</a></li>
+<li><a href="https://api.semanticscholar.org/arXiv:2610.28429">Semantic Scholar</a></li>
+<li><a href="https://scixplorer.org/abs/arXiv:2610.28429">SciX</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">GPU 内核</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">符号等价性检查</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PTX</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">形式化验证</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">漏洞挖掘</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
