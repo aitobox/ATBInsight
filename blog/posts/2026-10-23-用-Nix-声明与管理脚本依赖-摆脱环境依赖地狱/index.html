@@ -1,0 +1,818 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-23-%E7%94%A8-Nix-%E5%A3%B0%E6%98%8E%E4%B8%8E%E7%AE%A1%E7%90%86%E8%84%9A%E6%9C%AC%E4%BE%9D%E8%B5%96-%E6%91%86%E8%84%B1%E7%8E%AF%E5%A2%83%E4%BE%9D%E8%B5%96%E5%9C%B0%E7%8B%B1/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>用 Nix 声明与管理脚本依赖：摆脱环境依赖地狱 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#nix" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              用 Nix 声明与管理脚本依赖：摆脱环境依赖地狱
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="nix">用 Nix 声明与管理脚本依赖：摆脱环境依赖地狱</h1>
+<blockquote>
+<h1 id="script-dependencies-with-nix">Script dependencies with Nix</h1>
+</blockquote>
+<p><img alt="python-dependencies-with-nix.jpg" src=".././images/3c36a962131a.jpg" /></p>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在日常开发与自动化运维中，很多开发者习惯编写轻量级脚本来处理日常任务，但这些脚本往往既依赖特定编程语言的第三方库（例如 Python 的 PyPI 包），又依赖系统层面的可执行工具（例如 Linux 下的音频播放或网络工具）。随着时间推移，跨机器迁移、全局系统升级或者包管理器的一次回车，极容易让脚本陷入“依赖缺失”或“环境冲突”的瘫痪境地。本文深入浅出地介绍了一种基于 Nix 的脚本依赖管理方案：即使不在 NixOS 上，仅在常规的 Linux 发行版中，也能通过轻量的 <code>flake.nix</code> 声明文件与 Nix 原生提供的“脚本编写器 (writers)”，将解释器、语言包和底层系统依赖严密打包为独立、自给自足的可执行文件。该方案不仅完美适用于 Python，还能轻松推广至 Emacs Lisp 等解释型语言以及 Ada 等编译型语言，彻底终结脚本环境的“依赖地狱”，实现跨系统、跨时间的无缝可复现执行。</p>
+<hr />
+<h2 id="_2">内容总结</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>本文演示了如何在任意 Linux 发行版上运用 <strong>Nix</strong> 高度可靠地管理轻量脚本的各项依赖，确保它们能够长久保持可正常运行的状态，并彻底免受底层系统升级与环境变更引发的兼容性故障。本指南以一个 Python 文本转语音 (Text-to-Speech) 脚本为切入点，逐步带领读者构建一个可复用的 <code>flake.nix</code> 模板，利用 Nix 的“脚本编写器 (writers)”功能将解释器与系统级原生依赖（如 <code>alsa-utils</code> 与 Python 第三方库）严密打包封装；随后更进一步展示了如何将这套思路拓展至 Emacs Lisp 等解释型脚本以及 Ada 等编译型语言中。</p>
+<blockquote>
+<p>This article demonstrates how to use <strong>Nix</strong> on any Linux distribution to reliably manage the dependencies of simple scripts, ensuring they remain runnable and isolated from system-wide breakage over time. Using a Python text-to-speech script as an example, the guide walks through creating a reusable <code>flake.nix</code> template, leveraging Nix "writers" to bundle interpreter and system dependencies (<code>alsa-utils</code>, Python packages), and adapting the approach to other languages such as Emacs Lisp and compiled languages like Ada.</p>
+</blockquote>
+<hr />
+<h2 id="nix_1">用 Nix 管理脚本依赖</h2>
+<blockquote>
+<h2 id="managing-script-dependencies-with-nix">Managing Script Dependencies with Nix</h2>
+</blockquote>
+<p>延续我之前关于 <a href="../nixos-is-making-me-less-afraid">NixOS 让人从容无畏</a> 的分享，这里介绍一种我在<em>其他</em>常规 Linux 发行版上使用 Nix 的绝佳技巧，它能让我晚上睡得格外踏实：那就是用它来精确管理轻量脚本的各种依赖项。</p>
+<blockquote>
+<p>In the theme of <a href="../nixos-is-making-me-less-afraid">NixOS enabling fearlessness</a>, here’s a way I use Nix on <em>other</em> Linux distributions to sleep better at night: managing dependencies of simple scripts.</p>
+</blockquote>
+<p>这种使用 Nix 的方式面向所有人，而不仅仅局限于那些愿意折腾并尝鲜 NixOS 的极客玩家。在接下来的内容中，我们首先会以一个 Python 脚本为例展开拆解，然后再看看如何将这套模式通用化适配到其他任何编程语言中。</p>
+<blockquote>
+<p>This way of using Nix is for everyone, not just those willing to try NixOS. We’ll look at it first for a Python script, and then see how it can be adapted to any other language.</p>
+</blockquote>
+<p>我此前打算写一个自动化脚本，能够用合成语音将我写的博文逐字逐句朗读给我听 [^1]。实现这一功能最便利的途径之一是选用 Python，而且我早就听说 <a href="https://trafilatura.readthedocs.io/en/latest/">Trafilatura</a> 是一款极具口碑的正文提取库，它能高效抓取网页正文，并精准过滤各类非核心杂质内容。</p>
+<blockquote>
+<p>I wanted to create a script that would read the verbatim content of my articles out loud to me with a synthesised voice.[^1] One of the more convenient ways to do this is with Python, where I’ve heard good things about <a href="https://trafilatura.readthedocs.io/en/latest/">Trafilatura</a> for extracting the contents out of a web page, filtering on types of content, etc.</p>
+</blockquote>
+<p>[^1]: 这与最近的 AI 语音旁白实验完全无关。把写好的文章大声朗读出来是我进行自我内容审校的关键环节之一，主要用来敏锐捕捉行文的卡顿与语句的晦涩。我发现听别人 (哪怕是机器合成音) 朗读文章，效果要比自己亲自大声读出来稍微更好一些，尽管两者都很有帮助。当我自己朗读时，往往下意识地读出自己“原本想表达的内容”，而非屏幕上白纸黑字实际写出的字句。</p>
+<blockquote>
+<p>[^1]: This is entirely separate from the recent ai narration experiment. Reading the article out loud is one of my self-editing steps, to detect flow problems and awkward phrasings. I’ve discovered that hearing someone else read the article is slightly more effective than reading it out loud myself, though both are useful. When I read it out loud myself, I tend to read what I intended to say, not the words that are actually on the page.</p>
+</blockquote>
+<p>然而，Trafilatura 属于第三方 Python 依赖库。这类依赖常常让人叫苦不迭——只要你稍不留神用 <code>pip</code> 更新或触碰了环境，脚本随时可能莫名瘫痪。不仅如此，脚本底层还依赖了系统原生工具 <code>aplay</code>（用于播放音频），这意味着同时存在语言级和操作系统级两类未来极易暴雷的潜在破坏源。要是放在几年前，我大概率会觉得维护成本太高而直接放弃写这个脚本。所幸的是，我现在掌握了 Nix。</p>
+<blockquote>
+<p>But Trafilatura is a third-party Python dependency. Those suck because they break your scripts when you so much as glance sideways at <code>pip</code>. The code also ended up depending on <code>aplay</code>, which is a system dependency, making it two different sources of future breakage. A couple of years ago, I would probably have judged that to be too much maintenance, so I wouldn’t have created the script. Fortunately, now I know about Nix.</p>
+</blockquote>
+<h3 id="nix-flake">Nix Flake 的基本骨架</h3>
+<blockquote>
+<h3 id="general-outline-of-a-nix-flake">General outline of a Nix flake</h3>
+</blockquote>
+<p>现在我们手里有一个 Python 脚本，并希望它在任何机器上都能极其轻巧地开箱即跑，完全不必操心依赖配置的问题。要达成这种理想状态，我们首先在与该 Python 脚本相同的目录下创建一个名为 <code>flake.nix</code> 的文件，并填入基础骨架代码：</p>
+<blockquote>
+<p>We have a Python script, and we want to make it trivially runnable anywhere, without having to worry about dependencies. To get to that position, we first create a file called <code>flake.nix</code> in the same directory as the Python script, and we start to fill it in:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+  <span class="c1"># Pick the package versions of the most recent NixOS.</span>
+  <span class="c1"># Change these numbers to upgrade later if desired.</span>
+  <span class="c1"># If the upgrade breaks, it can be rolled back by</span>
+  <span class="c1"># decrementing these numbers again.</span>
+  inputs<span class="o">.</span>nixpkgs<span class="o">.</span><span class="ss">url</span> <span class="o">=</span> <span class="s2">&quot;github:NixOS/nixpkgs/nixos-26.05&quot;</span><span class="p">;</span>
+
+  <span class="ss">outputs</span> <span class="o">=</span> <span class="p">{</span> nixpkgs<span class="p">,</span> <span class="o">...</span> <span class="p">}:</span>
+    <span class="k">let</span>
+      <span class="c1"># Generate outputs for both Intel and ARM. In this</span>
+      <span class="c1"># case, I do not include macOS among the supported</span>
+      <span class="c1"># systems because aplay is linux-only.</span>
+      <span class="c1">#</span>
+      <span class="c1"># This references &quot;legacyPackages&quot; which might sound</span>
+      <span class="c1"># odd, but in Nix flake contexts, the entire nixpkgs</span>
+      <span class="c1"># package set is called &quot;legacy&quot; because it uses an</span>
+      <span class="c1"># older structure for organisation.</span>
+      <span class="ss">forAllSystems</span> <span class="o">=</span> f<span class="p">:</span> nixpkgs<span class="o">.</span>lib<span class="o">.</span>genAttrs
+        <span class="p">[</span> <span class="s2">&quot;x86_64-linux&quot;</span> <span class="s2">&quot;aarch64-linux&quot;</span> <span class="p">]</span>
+        <span class="p">(</span>system<span class="p">:</span> f nixpkgs<span class="o">.</span>legacyPackages<span class="o">.</span><span class="si">${</span>system<span class="si">}</span><span class="p">);</span>
+    <span class="k">in</span> <span class="p">{</span>
+      <span class="c1"># The default entry point of a Nix flake are the</span>
+      <span class="c1"># derivations named &quot;packages.&lt;system&gt;.default&quot;. Here</span>
+      <span class="c1"># they are defined for the two Linux architectures.</span>
+      <span class="ss">packages</span> <span class="o">=</span> forAllSystems <span class="p">(</span>pkgs<span class="p">:</span> <span class="p">{</span>
+        <span class="ss">default</span> <span class="o">=</span>
+          <span class="c1"># Default package definition to be filled in!</span>
+      <span class="p">});</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>无论我们使用哪种编程语言、挑选了何种依赖库，只要使用 Nix 来管理程序依赖，这个骨架模板都是完全通用的。唯一会因项目而异的具体细节，仅仅体现在 <code>default</code> 软件包的定义当中。</p>
+<blockquote>
+<p>This outline is the same every time we use Nix to manage the dependencies of a program, regardless of language, choice of dependencies, etc. The specifics that differ are those in the definition of the <code>default</code> package.</p>
+</blockquote>
+<h3 id="python">从 Python 脚本构建可执行文件</h3>
+<blockquote>
+<h3 id="creating-a-binary-from-a-python-script">Creating a binary from a Python script</h3>
+</blockquote>
+<p>既然我们面对的是一个 Python 脚本，就可以利用 <code>writePython3Bin</code> 这一辅助函数，将其打包为一个内置 Nix 依赖纳管的可执行程序。它接收两个关键参数：</p>
+<blockquote>
+<p>Since we have a Python script, we’ll use the <code>writePython3Bin</code> helper function to turn that into an executable with Nix-managed dependencies. It takes two arguments we need:</p>
+</blockquote>
+<ul>
+<li><code>makeWrapperArgs</code>：用一个微型包装器脚本 (wrapper script) 替代直接调用主脚本。该包装脚本负责预先配齐正确的运行时环境变量，随后通过 <code>execve</code> 切换调用实际的主脚本。我们利用该参数配置 <code>PATH</code> 环境变量，使其精准指向由 Nix 托管的系统原生依赖项 <a href="../这可能是该参数最常见的用法，但它实际上还可以用来以各种其他灵活方式微调和修饰运行环境变量。">^2</a>。这意味着，我们在编写 Python 脚本时压根不需要考虑 Nix 的存在。就脚本本身而言，它完全认为自己运行在一个标准的普通环境中，但实际上它所调用的所有系统命令都源自隔离的 Nix Store，并且版本与我们声明的完全一致。</li>
+<li><code>libraries</code>：允许我们精确声明当 Python 解释器执行该脚本时，哪些 Python 第三方依赖库应该处于可用状态。</li>
+</ul>
+<blockquote>
+<ul>
+<li><code>makeWrapperArgs</code> replaces the main script with a small wrapper script that sets up the right environment and then <code>execve</code>s into the main script. We will use it to set up the <code>PATH</code> variable to point at Nix-managed versions of system dependencies.<a href="../这可能是该参数最常见的用法，但它实际上还可以用来以各种其他灵活方式微调和修饰运行环境变量。">^2</a> This means the Python script doesn’t have to be written with Nix-managed dependencies in mind. As far as the script cares, it thinks it’s running in a normal environment. But the commands it runs come from the Nix store, and are of the specific versions we requested.</li>
+<li><code>libraries</code> lets us specify which Python dependencies should be available to the Python interpreter when it runs our script.</li>
+</ul>
+<p><a href="../这可能是该参数最常见的用法，但它实际上还可以用来以各种其他灵活方式微调和修饰运行环境变量。">^2</a>: This may be the most common way to use it, but it can be used to fix up the environment in any number of other ways.</p>
+</blockquote>
+<p>为这些参数填入具体的对应值后，我们的 <code>flake.nix</code> 最终会呈现如下结构：</p>
+<blockquote>
+<p>Filling in the right values for these arguments, our <code>flake.nix</code> will look something like the following.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+  inputs<span class="o">.</span>nixpkgs<span class="o">.</span><span class="ss">url</span> <span class="o">=</span> <span class="s2">&quot;github:NixOS/nixpkgs/nixos-26.05&quot;</span><span class="p">;</span>
+
+  <span class="ss">outputs</span> <span class="o">=</span> <span class="p">{</span> nixpkgs<span class="p">,</span> <span class="o">...</span> <span class="p">}:</span>
+    <span class="k">let</span>
+      <span class="ss">forAllSystems</span> <span class="o">=</span> f<span class="p">:</span> nixpkgs<span class="o">.</span>lib<span class="o">.</span>genAttrs
+        <span class="p">[</span> <span class="s2">&quot;x86_64-linux&quot;</span> <span class="s2">&quot;aarch64-linux&quot;</span> <span class="p">]</span>
+        <span class="p">(</span>system<span class="p">:</span> f nixpkgs<span class="o">.</span>legacyPackages<span class="o">.</span><span class="si">${</span>system<span class="si">}</span><span class="p">);</span>
+    <span class="k">in</span> <span class="p">{</span>
+      <span class="ss">packages</span> <span class="o">=</span> forAllSystems <span class="p">(</span>pkgs<span class="p">:</span> <span class="p">{</span>
+        <span class="c1"># Create executable from Python script.</span>
+        <span class="ss">default</span> <span class="o">=</span> pkgs<span class="o">.</span>writers<span class="o">.</span>writePython3Bin <span class="s2">&quot;readarticle&quot;</span> <span class="p">{</span>
+          <span class="c1"># Make system dependencies available.</span>
+          <span class="ss">makeWrapperArgs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;--prefix&quot;</span> <span class="s2">&quot;PATH&quot;</span> <span class="s2">&quot;:&quot;</span> <span class="p">(</span>pkgs<span class="o">.</span>lib<span class="o">.</span>makeBinPath <span class="p">[</span>
+              pkgs<span class="o">.</span>alsa-utils
+            <span class="p">])</span>
+          <span class="p">];</span>
+          <span class="c1"># Make libraries available.</span>
+          <span class="ss">libraries</span> <span class="o">=</span> <span class="p">[</span>
+            pkgs<span class="o">.</span>python3Packages<span class="o">.</span>requests
+            pkgs<span class="o">.</span>python3Packages<span class="o">.</span>trafilatura
+          <span class="p">];</span>
+        <span class="p">}</span> <span class="p">(</span><span class="nb">builtins</span><span class="o">.</span>readFile <span class="l">./main.py</span><span class="p">);</span>
+      <span class="p">});</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>大功告成！配置完成后，我们只需在终端执行 <code>nix run .</code> 即可运行脚本。在初次执行时，Nix 会自动在后台拉取并配置好所有必需的依赖，随后立即唤起脚本；而在后续的执行中，Nix 会识别出所有依赖均已就绪，从而瞬间毫秒级启动运行 [^3]。</p>
+<blockquote>
+<p>And that’s it. After this, we can run the script with <code>nix run .</code> and the first time we do it, Nix is going to set up all the dependencies and then run the script. On subsequent runs, Nix recognises that everything is in place and runs the script right away.[^3]</p>
+</blockquote>
+<p>[^3]: 实际上，<code>writePython3Bin</code> 函数还附带了一个功能：它会在构建时自动对脚本执行代码静态检查 (linting)。这一行为可以手动禁用，但我通常喜欢保留默认设置。例如对应的 <code>writeBashBin</code> 函数会自动通过 ShellCheck 对脚本进行严格静态语法分析，如果无法通过 ShellCheck 检查，构建会直接中断报错而绝不盲目运行。<em>这一点</em>在工程实践中极其珍贵！</p>
+<blockquote>
+<p>[^3]: Actually, the <code>writePython3Bin</code> function does one more thing: it runs the script through a linting pass. This can be disabled, but I generally like keeping the default behaviour. The corresponding writeBashBin it runs the script through ShellCheck and fails the build before running the script if it doesn’t ShellCheck cleanly. <em>That</em> is very valuable!</p>
+</blockquote>
+<p>如果我们把这个脚本连同目录完整拷贝到另一台计算机上，它的运行表现依然会与第一台机器毫厘不差，因为 Nix 会在拉起脚本前以完全相同的方式严密构建所有依赖。哪怕我们把这个脚本彻底抛在脑后，一年之后再次运行它，它依然能够像第一天那样稳健执行——因为 Nix 生成的可执行文件硬编码引用着完全一致的确定性依赖集合，不论这期间主机的底层操作系统发生了怎样天翻地覆的升级变化。</p>
+<blockquote>
+<p>If we copy this script to another computer, it will continue to work exactly the same as on the first computer, because Nix will set up all the same dependencies the same way before running the script. If we forget about it and run it a year later, it will continue to run just the same as before, because the executable created by Nix refers to the exact same set of dependencies regardless of what else has changed on the system.</p>
+</blockquote>
+<hr />
+<h2 id="_3">推广与适配到其他编程语言</h2>
+<blockquote>
+<h2 id="adapting-to-other-languages">Adapting to Other Languages</h2>
+</blockquote>
+<p>我猜看到这里，读者中肯定会有人小声嘀咕起 <code>uv</code>。据我所知，<code>uv</code> 确实极大地缓解了 Python 依赖管理的痛点 [^4]。但它仅仅局限于 Python 生态。<em>而 Nix 能够管理任何编程语言的任何软硬件依赖。</em> 比如我们想为一个 R 语言脚本纳管依赖，做法如出一辙，只需将对应的函数替换为 <code>writeRscriptBin</code> 即可。</p>
+<blockquote>
+<p>I imagine that of those reading this article, a small crowd starts murmuring about <code>uv</code>. From what I understand, <code>uv</code> does take a lot of the headache out of managing Python dependencies.[^4] But it is only for Python. <em>Nix works for any dependency, with any language.</em> If we have an R script we want to manage the dependencies for, we’d do the exact same thing and use <code>writeRscriptBin</code> instead.</p>
+</blockquote>
+<p>[^4]: 说实话我也不是特别了解它。它兴起的时候我已经不再全职从事 Python 开发了，因此要学习理解它得占用我本就不多的业余闲暇时间；而现在既然我已经熟练掌握了 Nix，我觉得我有更值得探索和深挖的技术天地。</p>
+<blockquote>
+<p>[^4]: I don’t know, honestly. It came around after I stopped working professionally with Python, so learning and understanding it would happen in my limited spare time, and now that I have Nix, I think I have better things to learn and understand.</p>
+</blockquote>
+<p>寻找适用的辅助函数的诀窍在于：在 Nix 生态中它们被统称为“脚本编写器 (writers)”，你可以直接在 <a href="https://noogle.dev/q/?term=writers+python">Noogle 搜索它们</a>。如果在检索词中拿掉具体的语言名称，你就会惊喜地发现 Nix 还为 C、JavaScript、Shell、Haskell、Perl 等诸多语言提供了现成的专属 writers。</p>
+<blockquote>
+<p>The way to find the right helper function is by knowing that they are called <em>writers</em>, and then <a href="https://noogle.dev/q/?term=writers+python">searching Noogle for them</a>. By excluding the language from that search, we can see there are writers for other languages too, like C, JavaScript, Shell, Haskell, Perl, and more.</p>
+</blockquote>
+<p>不过，官方生态中并没有专门为 Emacs Lisp 量身定制现成的 writer 函数。如果我们恰好想用 Nix 来管理一个 Emacs Lisp 脚本的依赖，该怎么办呢？此时我们依然可以调用底层更通用的 <code>makeScriptWriter</code> 函数。下面是一个通用示例：</p>
+<blockquote>
+<p>But there’s no writer helper function specifically for Emacs Lisp. What if we have an Emacs Lisp script we want Nix to manage the dependencies of? Then we can still use the lower level <code>makeScriptWriter</code> function. Here’s a generic example of that:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="ss">default</span> <span class="o">=</span> pkgs<span class="o">.</span>writers<span class="o">.</span>makeScriptWriter
+  <span class="p">{</span>
+    <span class="c1"># System dependencies work the same as before.</span>
+    <span class="ss">makeWrapperArgs</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s2">&quot;--prefix&quot;</span> <span class="s2">&quot;PATH&quot;</span> <span class="s2">&quot;:&quot;</span> <span class="p">(</span>pkgs<span class="o">.</span>lib<span class="o">.</span>makeBinPath <span class="p">[</span>
+        pkgs<span class="o">.</span>some-package-with-executable
+      <span class="p">])</span>
+    <span class="p">];</span>
+
+    <span class="c1"># Make sure the interpreter is produced with the</span>
+    <span class="c1"># necessary run-time dependencies. Most packaged</span>
+    <span class="c1"># scripting languages support the &quot;withPackages&quot;</span>
+    <span class="c1"># convention for this.</span>
+    <span class="ss">interpreter</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">${</span><span class="p">(</span>pkgs<span class="o">.</span>interpreter<span class="o">.</span>withPackages <span class="p">(</span>ps<span class="p">:</span> <span class="p">[</span>
+      ps<span class="o">.</span>dependency-1
+      ps<span class="o">.</span>dependency-2
+    <span class="p">]))</span><span class="si">}</span><span class="s2">/bin/interpreter-binary&quot;</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="s2">&quot;/bin/our-executable-name&quot;</span>
+  <span class="p">(</span><span class="nb">builtins</span><span class="o">.</span>readFile <span class="l">./source-file-path</span><span class="p">);</span>
+</code></pre></div>
+<p>对于 Emacs Lisp 而言，我们使用的解释器软件包就是 Emacs 本身。这里指定的目标输出路径（<code>/bin/our-executable-name</code>）是相对于该派生包内部的局部路径，因此完全不必担心它会污染或覆盖宿主机的根文件系统。</p>
+<blockquote>
+<p>For Emacs Lisp, the interpreter package we’d use would be Emacs. The output path (<code>/bin/our-executable-name</code>) is package relative, so we don’t have to worry about it clobbering the file system.</p>
+</blockquote>
+<p>当然，我们日常还会接触编译型语言，比如 Ada。Ada 同样没有现成的快捷 writer 函数，因此我们可以使用通用的 <code>makeBinWriter</code> 辅助工具。它接受一个 <code>compileScript</code> 参数，允许我们在其中自由指定完整的编译命令：</p>
+<blockquote>
+<p>Of course, we also have compiled languages, like Ada. Ada also doesn’t have a ready-made writer function, so we’d use the generic <code>makeBinWriter</code> helper, which takes a <code>compileScript</code> argument where we specify how to compile.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="ss">default</span> <span class="o">=</span> pkgs<span class="o">.</span>writers<span class="o">.</span>makeBinWriter
+  <span class="p">{</span>
+    <span class="c1"># System dependencies work the same again.</span>
+    <span class="ss">makeWrapperArgs</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="s2">&quot;--prefix&quot;</span> <span class="s2">&quot;PATH&quot;</span> <span class="s2">&quot;:&quot;</span> <span class="p">(</span>pkgs<span class="o">.</span>lib<span class="o">.</span>makeBinPath <span class="p">[</span>
+        pkgs<span class="o">.</span>some-package-with-executable
+      <span class="p">])</span>
+    <span class="p">];</span>
+
+    <span class="c1"># The compilation script can reference any compiler and</span>
+    <span class="c1"># any libraries in nixpkgs, and they will be managed by</span>
+    <span class="c1"># Nix during the build. Any runtime dependencies will be</span>
+    <span class="c1"># managed by Nix automatically too.</span>
+    <span class="c1">#</span>
+    <span class="c1"># The file we read with readFile is called $contentPath</span>
+    <span class="c1"># in this script, and the output must be written to the</span>
+    <span class="c1"># path in the $out variable.</span>
+    <span class="ss">compileScript</span> <span class="o">=</span> <span class="s s-Multiline">&#39;&#39;</span>
+<span class="s s-Multiline">      </span><span class="si">${</span>pkgs<span class="o">.</span>some-compiler<span class="si">}</span><span class="s s-Multiline">/bin/compiler-binary \</span>
+<span class="s s-Multiline">        -o $out $contentPath</span>
+<span class="s s-Multiline">    &#39;&#39;</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="s2">&quot;/bin/our-binary-name&quot;</span>
+  <span class="p">(</span><span class="nb">builtins</span><span class="o">.</span>readFile <span class="l">./source-file-path</span><span class="p">);</span>
+</code></pre></div>
+<p>尽管这段配置看起来颇有一番晦涩深奥的黑魔法味道，但它骨子里绝非玄学。Nix 最为优雅和精妙的魅力就在于：它完全依赖最标准的 Unix 文件路径、标准的 Unix 环境变量以及内容寻址哈希 (Content Hashing) 机制，来清晰判定组件之间的依赖关系，并自动推导输入源是否发生变化、是否需要重新触发构建。</p>
+<blockquote>
+<p>Although this looks like deep, black magic, it’s not. What’s so neat about Nix is that it uses regular Unix paths, regular Unix environment variables, and content hashing to figure out what depends on what and whether an input has changed, necessitating rebuilding.</p>
+</blockquote>
+<hr />
+<h2 id="_4">深入进阶与学习路径</h2>
+<blockquote>
+<h2 id="learning-more">Learning More</h2>
+</blockquote>
+<p>还有一个极其关键的问题我尚未回答：“你是怎么掌握这套完整知识的？”</p>
+<blockquote>
+<p>The important question I haven’t yet answered is “How do you know all this?”</p>
+</blockquote>
+<p>我也很希望能回答“我把官方文档通读了一遍”，但现实并非如此。掌握 Nix 的知识体系其实包含两大部分，并且它们的学习路径截然不同：</p>
+<blockquote>
+<p>I wish I could answer “I have read the documentation” but that’s not it. There are two parts to the knowledge, and the learning paths are different for them:</p>
+</blockquote>
+<ul>
+<li>其核心本质是：“系统层面的 Nix”是一台逻辑精巧简洁的机器，花上几个小时的阅读即可融会贯通；而“语言层面的 Nix”本身也足够轻量，一两天之内便可熟练上手。这两部分都可以直接从 Eelco Dolstra 的博士毕业论文中领略其精髓。那是一篇行文极其优美且阅读体验非常愉悦的论文，即便你最终并不打算在生产中使用 Nix，我也由衷推荐一读 [^5]。</li>
+<li>另一部分则是被称为 nixpkgs 的庞大代码库生态。我们在本文中所用到的各类脚本编写器 (writers) 就深藏于此，而它们在任何公开文档中都鲜有详尽记录。想要彻底摸清例如 writers 这类工具的工作原理，唯一的途径就是<a href="https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/writers/scripts.nix">直接研读其源码实现</a>。nixpkgs 中的大量实用功能都只能靠阅读源码来掌握。虽然 Nix 是一门小巧易懂的语言，读源码听起来不算难事，但不巧的是，nixpkgs 内部充斥着环环相扣的依赖关系，且非常习惯通过属性集 (attribute sets, 即键值字典) 隐式透传具名参数，因此有时很难直观一眼看出究竟哪些参数被有意透传、又是如何被消费的。这往往会让你不得不顺藤摸瓜阅读浩瀚的代码。</li>
+</ul>
+<blockquote>
+<ul>
+<li>At its core, Nix-the-system is a simple machine that can be grasped in few hours of reading. Similarly, Nix-the-language is small enough to be learned in a day or two. Both of these can be learned from Eelco Dolstra’s PhD thesis, which is a pleasant read and highly recommended, even if you end up not using Nix.[^5]</li>
+<li>Then there’s the huge library of code called nixpkgs. That’s where we find the writers we’ve used in this article, and it’s not well documented anywhere. The way to learn how e.g. writers work is to <a href="https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/writers/scripts.nix">read their source code</a>. A lot of what’s in nixpkgs is only learnable by reading the code. That might not sound like a big deal, since Nix is a small and easy language. Unfortunately, plenty of what’s in nixpkgs depends on other things in nixpkgs, and it is common to pass named arguments implicitly through attribute sets (key–value dictionaries), so it’s not always obvious which things are actually passed down intentionally and which are not, nor how they are used. It’s easy to end up reading a lot of code.</li>
+</ul>
+</blockquote>
+<p>[^5]: 不过我实在很难想象，有谁读完那篇博士论文后会忍得住不去动手试用 Nix。</p>
+<blockquote>
+<p>[^5]: Though I have a hard time imagining how anyone could read the thesis and not end up with a desire to use Nix.</p>
+</blockquote>
+<p>不过好在，只要你编写脚本所用的编程语言已经在 nixpkgs 中拥有现成的 writer 函数，你几乎可以直接复用同一套模板，唯一要做的仅仅是按需替换具体调用的 writer 函数即可。</p>
+<blockquote>
+<p>But as long as the scripts you write are in languages that already have writers in nixpkgs, you can mostly use the same template for all of them except replace the specific writer you use.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Nix</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">脚本依赖管理</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">开发环境</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">包管理器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">可复现性</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

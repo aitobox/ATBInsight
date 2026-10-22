@@ -5,6 +5,1783 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>用 Nix 声明与管理脚本依赖：摆脱环境依赖地狱</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/用-Nix-声明与管理脚本依赖-摆脱环境依赖地狱/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/用-Nix-声明与管理脚本依赖-摆脱环境依赖地狱/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在日常开发与自动化运维中，很多开发者习惯编写轻量级脚本来处理日常任务，但这些脚本往往既依赖特定编程语言的第三方库（例如 Python 的 PyPI 包），又依赖系统层面的可执行工具（例如 Linux 下的音频播放或网络工具）。随着时间推移，跨机器迁移、全局系统升级或者包管理器的一次回车，极容易让脚本陷入“依赖缺失”或“环境冲突”的瘫痪境地。本文深入浅出地介绍了一种基于 Nix 的脚本依赖管理方案：即使不在 NixOS 上，仅在常规的 Linux 发行版中，也能通过轻量的 `flake.nix` 声明文件与 Nix 原生提供的“脚本编写器 (writers)”，将解释器、语言包和底层系统依赖严密打包为独立、自给自足的可执行文件。该方案不仅完美适用于 Python，还能轻松推广至 Emacs Lisp 等解释型语言以及 Ada 等编译型语言，彻底终结脚本环境的“依赖地狱”，实现跨系统、跨时间的无缝可复现执行。
+
+---
+
+## 内容总结
+
+&gt; ## Summary
+
+本文演示了如何在任意 Linux 发行版上运用 **Nix** 高度可靠地管理轻量脚本的各项依赖，确保它们能够长久保持可正常运行的状态，并彻底免受底层系统升级与环境变更引发的兼容性故障。本指南以一个 Python 文本转语音 (Text-to-Speech) 脚本为切入点，逐步带领读者构建一个可复用的 `flake.nix` 模板，利用 Nix 的“脚本编写器 (writers)”功能将解释器与系统级原生依赖（如 `alsa-utils` 与 Python 第三方库）严密打包封装；随后更进一步展示了如何将这套思路拓展至 Emacs Lisp 等解释型脚本以及 Ada 等编译型语言中。
+
+&gt; This article demonstrates how to use **Nix** on any Linux distribution to reliably manage the dependencies of simple scripts, ensuring they remain runnable and isolated from system-wide breakage over time. Using a Python text-to-speech script as an example, the guide walks through creating a reusable `flake.nix` template, leveraging Nix "writers" to bundle interpreter and system dependencies (`alsa-utils`, Python packages), and adapting the approach to other languages such as Emacs Lisp and compiled languages like Ada.
+
+---
+
+## 用 Nix 管理脚本依赖
+
+&gt; ## Managing Script Dependencies with Nix
+
+延续我之前关于 [NixOS 让人从容无畏](nixos-is-making-me-less-afraid) 的分享，这里介绍一种我在*其他*常规 Linux 发行版上使用 Nix 的绝佳技巧，它能让我晚上睡得格外踏实：那就是用它来精确管理轻量脚本的各种依赖项。
+
+&gt; In the theme of [NixOS enabling fearlessness](nixos-is-making-me-less-afraid), here’s a way I use Nix on *other* Linux distributions to sleep better at night: managing dependencies of simple scripts.
+
+这种使用 Nix 的方式面向所有人，而不仅仅局限于那些愿意折腾并尝鲜 NixOS 的极客玩家。在接下来的内容中，我们首先会以一个 Python 脚本为例展开拆解，然后再看看如何将这套模式通用化适配到其他任何编程语言中。
+
+&gt; This way of using Nix is for everyone, not just those willing to try NixOS. We’ll look at it first for a Python script, and then see how it can be adapted to any other language.
+
+我此前打算写一个自动化脚本，能够用合成语音将我写的博文逐字逐句朗读给我听 [^1]。实现这一功能最便利的途径之一是选用 Python，而且我早就听说 [Trafilatura](https://trafilatura.readthedocs.io/en/latest/) 是一款极具口碑的正文提取库，它能高效抓取网页正文，并精准过滤各类非核心杂质内容。
+
+&gt; I wanted to create a script that would read the verbatim content of my articles out loud to me with a synthesised voice.[^1] One of the more convenient ways to do this is with Python, where I’ve heard good things about [Trafilatura](https://trafilatura.readthedocs.io/en/latest/) for extracting the contents out of a web page, filtering on types of content, etc.
+
+[^1]: 这与最近的 AI 语音旁白实验完全无关。把写好的文章大声朗读出来是我进行自我内容审校的关键环节之一，主要用来敏锐捕捉行文的卡顿与语句的晦涩。我发现听别人 (哪怕是机器合成音) 朗读文章，效果要比自己亲自大声读出来稍微更好一些，尽管两者都很有帮助。当我自己朗读时，往往下意识地读出自己“原本想表达的内容”，而非屏幕上白纸黑字实际写出的字句。
+
+&gt; [^1]: This is entirely separate from the recent ai narration experiment. Reading the article out loud is one of my self-editing steps, to detect flow problems and awkward phrasings. I’ve discovered that hearing someone else read the article is slightly more effective than reading it out loud myself, though both are useful. When I read it out loud myself, I tend to read what I intended to say, not the words that are actually on the page.
+
+然而，Trafilatura 属于第三方 Python 依赖库。这类依赖常常让人叫苦不迭——只要你稍不留神用 `pip` 更新或触碰了环境，脚本随时可能莫名瘫痪。不仅如此，脚本底层还依赖了系统原生工具 `aplay`（用于播放音频），这意味着同时存在语言级和操作系统级两类未来极易暴雷的潜在破坏源。要是放在几年前，我大概率会觉得维护成本太高而直接放弃写这个脚本。所幸的是，我现在掌握了 Nix。
+
+&gt; But Trafilatura is a third-party Python dependency. Those suck because they break your scripts when you so much as glance sideways at `pip`. The code also ended up depending on `aplay`, which is a system dependency, making it two different sources of future breakage. A couple of years ago, I would probably have judged that to be too much maintenance, so I wouldn’t have created the script. Fortunately, now I know about Nix.</description>
+    </item>
+    <item>
+      <title>深入 Cohere Model Vault：构建可验证的机密 AI 推理技术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/深入-Cohere-Model-Vault-构建可验证的机密-AI-推理技术/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/深入-Cohere-Model-Vault-构建可验证的机密-AI-推理技术/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着企业与开发者将越来越多的核心业务逻辑与高价值私有数据接入云端大模型，数据隐私泄露与越权访问成为了阻碍 AI 规模化落地的核心顾虑。传统的加密手段主要保护“静态存储”与“网络传输”阶段的数据，然而一旦数据进入服务器内存被模型推理调用，便不可避免地暴露在云厂商、底层操作系统以及运维人员面前。Cohere 联合 Microsoft Azure 与 NVIDIA 推出的 Model Vault，开创性地将机密计算 (Confidential Computing) 拓展至现代 GPU 加速推理场景，通过硬件级隔离、不透明 HTTP (Oblivious HTTP, OHTTP) 载荷加密以及远程证明 (Remote Attestation) 机制，建立起“先验证、后信任”的密码学防护屏障。这一技术突破消除了用户对托管云基础设施的盲目信任依赖，在确保极致推理性能的同时实现了敏感数据的全程机密隔离，为医疗、金融等合规严苛领域的云端 AI 应用树立了全新的安全标杆。
+
+---
+
+## 核心内容摘要
+
+&gt; ## Summary
+
+Cohere 推出的 Model Vault (目前在 Microsoft Azure 平台上结合 NVIDIA GPU 处于公开测试阶段) 为 AI 推理任务打造了一个高安全性的执行环境。与以往仅仅对传输中的数据实施加密不同，Model Vault 旨在通过硬件级物理隔离、针对 GPU 的 NVIDIA 机密计算 (Confidential Computing) 、保护请求数据载荷的不透明 HTTP (Oblivious HTTP, OHTTP) 以及远程证明 (Remote Attestation) 等技术，最大限度降低企业客户对底层云基础设施的信任依赖。这在业内构建起一套基于密码学的“先验证、后信任”机制，在完全不牺牲云端全托管服务极致性能的前提下，确保了数据在被模型计算处理全过程中的绝对安全。
+
+&gt; Cohere's Model Vault (currently in public beta with NVIDIA GPUs on Microsoft Azure) provides a secure environment for AI inference. Rather than simply encrypting data in transit, Model Vault aims to minimize the infrastructure trust required by customers by leveraging hardware isolation, NVIDIA confidential computing on GPUs, Oblivious HTTP (OHTTP) for request payload protection, and remote attestation. This creates a cryptographic "verify-before-you-trust" mechanism that ensures data safety during processing without sacrificing managed platform performance.
+
+---
+
+## 从机密硬件迈向机密推理
+
+&gt; ## From Confidential Hardware to Confidential Inference
+
+机密计算的核心使命，是在应用程序或模型主动处理数据时，严密保护处于**使用中 (data in use)** 的数据。这套安全体系建立在两大核心基石之上：
+
+&gt; Confidential computing protects **data in use** while an application or model actively processes it. At its foundation are two core properties:
+
+* **硬件隔离 (Isolation)**：利用硬件层面的强制访问控制技术，严密阻隔外部基础设施对计算工作负载内存的窥探；
+* **环境证明 (Attestation)**：生成带有密码学数字签名的真实环境凭据，使外部机构能够在放行敏感数据之前，对计算环境的安全状态进行严格评估与审计。
+
+&gt; * **Isolation:** Uses hardware-enforced controls to protect workload memory from external infrastructure.
+&gt; * **Attestation:** Produces cryptographically signed evidence regarding the environment so that external parties can evaluate it before releasing sensitive data.
+
+在 AI 推理场景下，单纯对 CPU 实施机密防护是远远不够的，因为现代大模型的大量矩阵运算都发生在专用加速硬件上。**NVIDIA GPU 机密计算 (Confidential Computing on NVIDIA GPUs)** 不仅牢牢锁定了 GPU 高速显存，还对 CPU 与 GPU 之间的高速通信总线进行了端到端加密，确保机密计算的安全边界完整贯穿了从数据输入到模型计算的整条推理流水线。
+
+&gt; For AI inference, CPU-only protection is insufficient because substantial model computation occurs on accelerators. **Confidential Computing on NVIDIA GPUs** secures GPU memory and encrypts communication between the CPU and GPU, ensuring the confidential boundary successfully spans the entire inference pipeline.
+
+---
+
+## 深入机密 Model Vault 内部架构
+
+&gt; ## Inside a Confidential Model Vault
+
+Model Vault 围绕专属的模型部署实例，构建了多重纵深防御控制机制：
+
+&gt; Model Vault integrates several controls around a dedicated model deployment:
+
+* **CPU 与 GPU 的全栈机密执行 (Confidential CPU and GPU Execution)**：模型服务软件栈整体运行在机密虚拟机 (Confidential VM) 之内。依托硬件级隔离，操作系统、底层驱动程序以及推理服务器内存都得到了硬件级安全防护，严密的安全策略更是从根源上杜绝了云平台运维人员发起任何交互式登录与访问操作。
+* **请求载荷加密 (Request Payload Encryption, OHTTP)**：为了杜绝任何网络中间人或代理节点在数据传输过程中截获明文，Model Vault 采用了**不透明 HTTP (Oblivious HTTP, OHTTP)** 协议。敏感的请求内容会使用与经认证机密环境直接绑定的公钥进行加密，整个网络链路中只有机密环境内部的 OHTTP 网关才有权解密。
+* **主动式远程证明 (Remote Attestation)**：机密环境会自动生成包含密码学数字签名的测量凭证，详细列明当前硬件、固件以及软件运行栈的真实指纹配置。客户端在发出受保护的业务数据载荷**之前**，必须先对照预先批准的安全基准策略对该凭据进行严格核验——从而将远程证明转化为一道主动生效的前置安全拦截机制。
+
+&gt; * **Confidential CPU and GPU Execution:** The serving stack operates inside a confidential virtual machine. Hardware-backed isolation safeguards the OS, drivers, and inference server memory, while policy constraints prevent interactive operator access.
+&gt; * **Request Payload Encryption (OHTTP):** To prevent intermediaries from accessing plaintext data in transit, Model Vault uses **Oblivious HTTP (OHTTP)**. Sensitive request contents are encrypted using a public key associated with the attested environment, allowing only the internal OHTTP gateway to decrypt them.
+&gt; * **Remote Attestation:** The confidential environment generates cryptographically signed evidence detailing its hardware, firmware, and software configuration. Clients check this evidence against an approved policy **before** sending protected payloads—turning attestation into an active security enforcement mechanism.
+
+---
+
+## 信任边界与威胁模型
+
+&gt; ## The Trust Boundary and Threat Model</description>
+    </item>
+    <item>
+      <title>构建智能体：何时应当将子智能体合并回主智能体循环</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/构建智能体-何时应当将子智能体合并回主智能体循环/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/构建智能体-何时应当将子智能体合并回主智能体循环/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在构建复杂的 AI 智能体 (AI Agent) 系统时，开发者和企业往往习惯于模仿人类团队架构，将任务拆散并分派给大量各司其职的独立子智能体 (Subagents)。然而，随着以 Anthropic Claude 为代表的前沿大语言模型推理与自我纠错能力突飞猛进，多智能体系统在工业落地的实战中逐渐暴露出信息有损传递、交互延迟翻倍、提示词规则冲突以及治理失控等严峻瓶颈。为此，Anthropic 提出了反直觉但极具前瞻性的极简架构范式：将分流器、规划器及细分领域的子智能体重新收敛合并为“单智能体循环 (Single Agent Loop)”，配合基于技能 (Skills) 与工具搜索 (Tool Search) 的渐进式上下文披露 (Progressive Disclosure) 机制。实践评估表明，精炼的单循环架构不仅在任务质量与完成度上显著领跑，还能将端到端延迟降低高达 50%，为高可靠、易维护的企业级智能体工程落地提供了切实可行的演进路线图。
+
+---
+
+&gt; 💡 **迁移工具包现已发布：** 如果您已在 Claude Platform 中构建了包含多个子智能体的系统，可以借助我们的 [迁移工具包 (Migration Kit)](https://github.com/anthropics/single-agent-loop-kit) 来评估将哪些子智能体合并回主智能体循环最为合理。该工具包提供了一套引导式工作流，能够识别现有的架构模式、评估替代方案并验证最佳解法，同时还附带了针对模拟系统的完整演示示例。
+
+&gt; &gt; **Migration Kit Available:** If you’ve built an agent in Claude Platform that includes multiple subagents, see which may make sense to fold into the main agent loop using our [migration kit](https://github.com/anthropics/single-agent-loop-kit). It runs a guided workflow to identify your patterns, evaluate alternatives, and verify the best approach, complete with a demo for mock systems.
+
+---
+
+## 📌 执行摘要
+
+&gt; ## Executive Summary
+
+尽管由中央协调器统一编排调度的子智能体（即拥有独立上下文窗口、专有工具集和专属指令的智能体）在结果交叉验证、高度并行任务以及模块化权限隔离方面表现出众，但近期的企业级实际部署却揭示了一个深刻的技术转变。将分流路由器 (Routers)、规划器 (Planners) 和细分领域的专精子智能体重新合并到**单智能体循环 (Single Agent Loop)** 中，往往在输出质量、成本效益以及端到端响应延迟方面全面超越复杂的多智能体架构。
+
+&gt; While subagents (agents with isolated context windows, tools, and instructions orchestrated by a coordinator) are powerful for verification, parallel workloads, and modular permissions, recent enterprise deployments reveal a major shift. Folding routers, planners, and domain subagents into a **single agent loop** frequently outperforms complex multi-agent architectures in output quality, cost efficiency, and latency.
+
+与其生搬硬套人类企业的组织架构图去堆砌脆弱易碎的多智能体系统，现代智能体架构设计更倾向于顺应基础模型日益强大的推理与通用能力，依托**技能 (Skills)**、**工具 (Tools)** 以及共享上下文循环，采用精巧的“渐进式披露 (Progressive Disclosure)”机制。
+
+&gt; Rather than copying organizational charts into brittle multi-agent systems, modern development favors leveraging increasingly capable models through progressive disclosure via **skills**, **tools**, and shared context loops.
+
+---
+
+## 深入理解子智能体及其技术局限
+
+&gt; ## Understanding Subagents and Their Limitations
+
+在探索前沿技术的研究阶段，子智能体依然具备无可替代的独特价值，特别是在以下特定场景中仍是首选方案：
+
+&gt; Subagents remain effective at the research frontier and should be used specifically when:
+
+* **上下文膨胀引发性能下降**：当单智能体循环因上下文体积过大而出现可测量的性能衰减时；
+* **需要高度并行的纯净上下文**：多项独立任务需要以全新、一次性的隔离上下文窗口实现并行并发执行；
+* **工具选择困难或指令冲突**：单个智能体在面对海量工具时难以精准筛选，或者面临相互冲突的系统指令。
+
+&gt; * A single agent loop suffers measurable performance degradation from context bloat.
+&gt; * Multiple tasks require parallel execution with fresh, disposable context windows.
+&gt; * A single agent struggles to select appropriate tools or faces conflicting system instructions.
+
+然而在企业级应用中，团队往往极易陷入康威定律 (Conway's Law) 的陷阱：将现实中盘根错节的组织部门层级，机械化地映射为一张庞杂臃肿、四处蔓延的子智能体协作网络。
+
+&gt; However, enterprises frequently fall into the trap of Conway’s Law: mapping their exact organizational chart into a sprawling network of subagents.</description>
+    </item>
+    <item>
+      <title>接口引发的轨迹审查：揭秘模型 Agent 评测中的隐性静默失败</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/接口引发的轨迹审查-揭秘模型-Agent-评测中的隐性静默失败/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/接口引发的轨迹审查-揭秘模型-Agent-评测中的隐性静默失败/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在当今大语言模型 (Large Language Model, LLM) 与 AI 智能体 (AI Agent) 飞速发展的浪潮中，工具调用能力已成为衡量模型能否胜任现实复杂任务的关键试金石。然而，来自学术界的最新研究揭示了一个此前被广泛忽视的评测黑洞：许多在基准测试中得分惨淡的模型，并非其自身推理逻辑存在缺陷，而是在底层推理服务栈的接口环节遭遇了“静默审查”，导致生成的有效工具调用轨迹在送达下游环境前便被无声过滤或吞没。这种因适配器与对话模板格式脱节引发的“隐性静默失败”，使得各大评测榜单所反映的往往是工程接口的技术栈缺陷，而非模型真正的智能上限。本文不仅在主流评测框架（如 BFCL v4 和 tau-bench）上深度剖析了这一交互缺陷，还开源了一段仅有 98 行的轻量级预检代码，为整肃智能体评测基准与强化学习训练闭环提供了至关重要的工程准绳。
+
+---
+
+## 📋 内容概要
+
+&gt; ## Summary
+
+由 Wenbo Wang 与 Di Sang 撰写的学术论文**《接口引发的轨迹审查》 (Interface-Induced Trajectory Censoring) **，深入剖析了当前 AI 智能体评测体系中存在的一个致命盲区：在许多测试场景下，大语言模型本身明明已经成功生成了合规有效的工具调用指令，但在被送往外部环境或下游系统执行之前，底层的模型推理服务栈接口却悄无声息地将这些调用轨迹直接“审查”过滤或丢弃了。其直接后果是，人们在各大公开榜单或评测系统中所观测到的工具调用成功率，反映的往往只是“模型-接口技术栈”在工程适配上的偶发瑕疵，而非模型真实的智能与调用上限。研究人员在多个业界权威基准框架（例如 Berkeley 函数调用基准 BFCL v4 和 tau-bench）以及多种规模的主流模型（如 Qwen2.5-Coder 和 Llama-3.1 系列）上充分证实了这一反常现象，指出单纯由于服务适配器 (Adapter) 或对话模板 (Chat Template) 的细微格式冲突，便足以在模型核心运行完美无暇的前提下致使工具执行彻底崩溃。为了帮助开发者彻底避开这一工程暗礁，作者团队还随论文公开发布了一段仅有 98 行的轻量级预检代码 (Preflight Check) ，用于在启动评测前精准捕获并排查这类致命的静默失败。
+
+&gt; The paper **"Interface-Induced Trajectory Censoring"** by Wenbo Wang and Di Sang explores a critical blind spot in AI agent evaluations: models may successfully generate valid tool calls, but the serving stack's interface secretly censors or drops these trajectories before downstream systems ever see them. Consequently, the observed tool-call rate reflects the quirks of the model-interface stack rather than the model's true capabilities. The authors demonstrate this phenomenon across multiple frameworks (such as BFCL v4 and tau-bench) and model scales (like Qwen2.5-Coder and Llama-3.1), showing how specific adapter or chat template mismatches completely break tool execution even when the core model is functioning perfectly. They also release a 98-line preflight check to catch these silent failures.
+
+---
+
+## 📌 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 编号 (arXiv ID)：** [arXiv:2609.03966](https://arxiv.org/abs/2609.03966) [cs.AI]
+* **研究领域 (Subjects)：** 人工智能 (`cs.AI`)；机器学习 (`cs.LG`)
+* **论文作者 (Authors)：** Wenbo Wang, Di Sang
+* **版本提交记录 (Submission History)：** 
+  * [v1] 2026 年 9 月 3 日 (周四)
+  * [v2] 2026 年 10 月 21 日 (周三) (当前版本)
+* **相关资源与代码 (Resources &amp; Code)：** [GitHub 仓库](https://github.com/nebula-1999/Interface-Induced-Trajectory-Censoring)
+
+&gt; * **arXiv ID:** [arXiv:2609.03966](https://arxiv.org/abs/2609.03966) [cs.AI]
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`)
+&gt; * **Authors:** Wenbo Wang, Di Sang
+&gt; * **Submission History:** 
+&gt;   * [v1] Thu, 3 Sep 2026
+&gt;   * [v2] Wed, 21 Oct 2026 (this version)
+&gt; * **Resources &amp; Code:** [GitHub Repository](https://github.com/nebula-1999/Interface-Induced-Trajectory-Censoring)
+
+---
+
+## 🔬 论文摘要
+
+&gt; ## Abstract
+
+在当前的智能体基准评测中，业界所依据的“工具调用率”指标通常直接取自底层推理服务栈的解析日志。然而，这个统计数字极可能暗藏严重假象——哪怕模型自身已经稳定生成了格式完全合规的工具调用，评测得到的成功率依然可能直接显示为零；这是因为位于中间层的服务接口赶在任何下游系统接收之前，就已经悄悄把这段交互轨迹“审查”过滤并无声吞没了。
+
+&gt; Agent evaluations report a tool-call rate read off the serving stack. That number can be zero while the model is emitting well-formed calls: the interface censors the trajectory before anything downstream sees it.
+
+在伯克利函数调用基准 (BFCL v4) 原生提供的数据集、执行器和评分器上，在严格固定模型权重、测试用例、解码参数及随机种子的前提下，仅仅换掉推理服务适配器 (Adapter) ，同一个模型的得分便在 0.00 与 0.96 / 0.19 之间上演极端反差。针对“对话模板 (Chat Template) ”与“解析器 (Parser) ”开展的 2x2 因子实验精确揪出了问题的根源：两个组件各自的独立主效应完全为零，所有的偏差均纯粹源自二者协同交互时的契约脱节——这意味着两端组件单独拿出来看都毫无缺陷，但只要接口契约未能对齐，单方面修复任何一边都起不到哪怕一丝作用。在交互式基准 tau-bench 的 115 项真实零售任务测试中，仅仅更换适配器，服务端成功解析出的工具调用次数便直接从 0 激增至 636 次，能够真正走到工具执行环节的任务数也从 0 暴增至 103 项。我们的探测工具在参数量跨度达 21 倍的 Qwen2.5-Coder 系列模型上完整复现了这一“漏斗效应”：在所有参数规模下，服务端向上呈报的解析成功率统统是 0/100；然而实际上，模型自身吐出的合规有效调用早在 32B 规模下就攀升到了 80/100（在与仲裁黄金标准校对后约为 72）。而在接口契约规范完全匹配的测试外壳下，跨越同等模型尺度区间，隐性静默失败的发生数始终维持在极低的 0 到 2 之间（这一理论预测在实验跑通前就已预先提交并冻结在开源代码库中）。此外，Llama-3.1-8B 原本有 23% 的概率会将任务函数自身误调用为工具，但在开启一个简单的 `strict: true` 严格模式标志后，该失误率便瞬间归零。
+
+&gt; On BFCL v4's own data, executor and scorer, holding weights, cases, decoding and seeds fixed and changing only the serving adapter, the same model scores 0.00 or 0.96 / 0.19. A 2x2 over chat template and parser locates the effect exactly: both main effects are exactly zero and all of it sits in the interaction -- no component is defective, and repairing one side of the contract buys precisely nothing. On tau-bench's 115 interactive retail tasks the same swap moves server-parsed calls from 0 to 636 and tasks reaching any tool execution from 0 to 103. Our probe reproduces the funnel across a 21x scale range of Qwen2.5-Coder: the server parses 0/100 at every size while well-formed emitted calls rise to 80/100 at 32B (~72 after calibration against an adjudicated gold standard). Under a matched envelope, across a comparable scale span, the silent fraction stays at 0-2, a prediction committed to the repository before the run. Llama-3.1-8B's 23% rate of calling the task function itself as a tool falls to 0 under one strict:true flag.
+
+更令人担忧的是，这种接口不匹配的毒害并不局限于评测阶段，它已深深渗透至智能体的强化学习训练循环之中，且其破坏性表现出显著的模型尺度依赖性：在强化学习框架 verl 的 AgentLoop 中，7B 规模的模型在 115 次推演中明明有 45 次输出了完备的工具调用，却遭遇了“0 次被系统接收、0 次进入实际执行、0 次成功返回环境观测 (Observation) ”的惨烈全挂局面；而在 1.5B 规模下，由于较小模型自身生成调用的能力本就薄弱，0 分表现属于“多因超定”的双重失效，因此论文对这两种参数规模进行了独立汇报。而在纯评测阶段，尽管修复适配器成功使底层调用机制重回正轨（解析量由 0 恢复至 84，救回 9 次有效交互），任务通过率从 53% 提升至 62%，但该增益在统计学上尚未达到显著差异 (n.s.) 。针对这些普遍存在的工程暗礁，作者团队随论文开源发布了一段仅有 98 行的轻量级预检代码，能够百分之百捕获文中所揭示的各类静默失败。这项研究给全行业敲响了警钟：我们在基准测试中记录到的工具调用率，绝非大语言模型单方面的智商度量衡，而是承载它的“模型-接口技术栈”在工程契约层面共同作用的系统产物。
+
+&gt; The mismatch reaches inside the training loop, and its consequence is scale-dependent: in verl's AgentLoop at 7B, 45 of 115 generations carry a complete call; 0 are accepted, 0 execute, 0 return an observation. At 1.5B the same zero is over-determined, so we report the two scales separately. At evaluation time, repairing the adapter restores the mechanism but not a significant outcome gain: parsing 0-&gt;84, rescues 0-&gt;9, pass rate 53-&gt;62 (n.s.). We release a 98-line preflight check that catches every silent failure here. The observed tool-call rate is not a property of the model alone; it is a property of the model-interface stack that measures it.</description>
+    </item>
+    <item>
+      <title>共识算法研究的终结？AI 智能体如何自主发现新一代分布式共识协议</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/共识算法研究的终结-AI-智能体如何自主发现新一代分布式共识协议/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/共识算法研究的终结-AI-智能体如何自主发现新一代分布式共识协议/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在分布式计算领域，“分布式共识”与“状态机复制 (State Machine Replication, SMR)”堪称系统架构皇冠上的明珠，不仅是跨地域数据一致性与高可用性的底层基石，更是数十年来全球顶尖计算机科学家绞尽脑汁试图攻克的极限难题。洛桑联邦理工学院 (EPFL) 等顶尖学术机构的研究团队另辟蹊径，构建了一套名为 AI-greement 的领域专用智能体系统框架 (Agent Harness)，让 AI 智能体 (AI Agent) 首次实现了端到端的共识协议自主构思、代码实现、分布式集群测试以及基于 Lean 定理证明器的严格数学验证，并成功孕育出了全新协议 A-greement。在多节点跨地域真实部署评测中，A-greement 在写密集型与读密集型场景下的平均延迟相较最快基线分别大幅削减了 12.2% 与 33.3%，同时其内置的形式化验证框架还顺手捕获了以往经典共识算法中隐匿的安全缺陷。这项突破深刻表明，高度定制的领域工作台足以让通用编程大模型转化为攻坚分布式系统的硬核科研生产力；然而，人类专家的直觉指导与顶层把握在探索全流程中仍居核心地位，AI 并没有终结共识算法研究，而是拉开了人机协同科学探索的崭新序幕。
+
+---
+
+## 📌 内容概要
+
+&gt; ## Summary
+
+本篇论文深入探讨了人工智能在分布式计算领域的前沿角色，并将攻坚目标直接对准了该领域出了名难啃的硬骨头——分布式共识与状态机复制 (State Machine Replication, SMR)。研究团队构建了一套名为 **AI-greement** 的智能体系统框架 (Agent Harness)，能够自主探索、工程编码、集群实验测试并形式化验证候选的共识协议。依托该框架，他们成功发现了一种全新的跨地域副本共识协议 **A-greement**。实验表明，A-greement 在多种工作负载下均显著超越了现有的顶尖方案，并且该系统还在以往经典的共识协议中检测到了未曾被公开披露的安全漏洞。最终作者指出，尽管 AI 智能体为新型协议的自主发现带来了革命性突破，但人类专家的深厚经验在整个科研全流程中依然不可或缺。
+
+&gt; This paper investigates the role of Artificial Intelligence in distributed computing, specifically targeting the notoriously difficult problem of consensus and state machine replication (SMR). The authors introduce **AI-greement**, an agent harness that autonomously discovers, implements, experiments with, and verifies consensus protocols. Through this system, they discovered **A-greement**, a new geo-replicated consensus protocol that significantly outperforms existing state-of-the-art solutions across various workloads while uncovering hidden vulnerabilities in prior protocols. Ultimately, the authors argue that while AI agents revolutionize protocol discovery, human expertise remains vital throughout the research process.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+| 字段 (Field) | 详情 (Details) |
+| :--- | :--- |
+| **arXiv 论文编号** | [`2610.30114`](https://arxiv.org/abs/2610.30114) |
+| **主要学科领域** | 分布式、并行与集群计算 (`cs.DC`) |
+| **次要学科领域** | 人工智能 (`cs.AI`) |
+| **ACM 分类** | C.2.4 |
+| **提交日期** | 2026 年 10 月 21 日 |
+| **论文页数** | 39 页 |
+| **授权许可协议** | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt; |
+
+&gt; | Field | Details |
+&gt; | :--- | :--- |
+&gt; | **arXiv ID** | [`2610.30114`](https://arxiv.org/abs/2610.30114) |
+&gt; | **Primary Subject** | Distributed, Parallel, and Cluster Computing (`cs.DC`) |
+&gt; | **Secondary Subjects** | Artificial Intelligence (`cs.AI`) |
+&gt; | **ACM Classification** | C.2.4 |
+&gt; | **Submission Date** | October 21, 2026 |
+&gt; | **Length** | 39 pages |
+&gt; | **License** | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt; |
+
+---
+
+## 作者团队
+
+&gt; ## Authors
+
+* Clément Burgelin
+* Rachid Guerraoui
+* Zicong Hong
+* Yinan Hu
+* Anne-Marie Kermarrec
+* Rafael Pires
+* Rasmus Moorits Veski
+* Martijn de Vos
+
+&gt; * Clément Burgelin
+&gt; * Rachid Guerraoui
+&gt; * Zicong Hong
+&gt; * Yinan Hu
+&gt; * Anne-Marie Kermarrec
+&gt; * Rafael Pires
+&gt; * Rasmus Moorits Veski
+&gt; * Martijn de Vos
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+在分布式计算的世界中，分布式共识是最核心的基础问题，它同时也是构建高可用“状态机复制 (State Machine Replication, SMR)”架构的命脉所在。尽管人类科学家在过去数十年里倾注了大量心血并开展了持续研究，但在实际生产中探索出真正兼具极低延迟与实用性的共识解决方案，至今仍是一个未解的开放难题。究其原因，设计一套优秀的共识算法需要将深厚的协议领域知识、严苛的正确性逻辑推理、复杂的系统工程实现以及细致的集群实验评测紧密熔铸于一炉。
+
+&gt; Consensus is a fundamental problem in distributed computing and at the core of state machine replication (SMR). Despite decades of active human research, discovering practical low-latency solutions to the problem is still open, as it requires combining protocol knowledge, correctness reasoning, implementation, and experimental evaluation. 
+
+在本文中，我们展示了人工智能如何协助人类成功探索并发现了 **A-greement**——一种专为跨地域副本状态机量身打造的全新共识协议，其性能显著超越了现存的所有最先进解决方案。在涵盖 5 个或 9 个跨地域副本节点的 6 组实际集群部署测试中，相较于此前运行最快的基线方案，A-greement 为分布式键值存储系统带来了令人瞩目的延迟削减：
+
+&gt; We report on how AI helped us discover **A-greement**, a new consensus protocol for geo-replicated state machines that significantly outperforms state-of-the-art solutions. Averaged across six deployments with 5 or 9 replicas, A-greement reduces the mean latency of a geo-distributed key-value store over the fastest baseline by:
+
+* 在**写密集型工作负载**下，平均延迟降低 **12.2%**；
+* 在**读密集型工作负载**下，平均延迟降低 **33.3%**；
+* 在**纯读工作负载**下，性能**完全追平**最快基线方案。
+
+&gt; * **12.2%** on write-heavy workloads
+&gt; * **33.3%** on read-heavy workloads
+&gt; * **Matches** the fastest baseline on read-only workloads</description>
+    </item>
+    <item>
+      <title>从模糊到精确：Halo 架构如何通过有理数运算实现无限深度推理</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/从模糊到精确-Halo-架构如何通过有理数运算实现无限深度推理/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/从模糊到精确-Halo-架构如何通过有理数运算实现无限深度推理/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>当前主流的大语言模型都建立在“模糊”的浮点数运算底座之上，为了防止长序列推理过程中的数值崩溃，研究人员不得不堆叠复杂的残差连接、归一化和梯度截断等“脚手架”，极大地浪费了宝贵的算力。本文提出了颠覆性的 **Halo 架构**，首次将严谨的**有理数域 ($\mathbb{Q}$)** 运算引入模型，并辅以专用的**精确推理单元 (EIU)**。通过独特的“微环-宏环”双环拓扑结构，Halo 不仅巧妙解决了有理数位宽无限膨胀的内存难题，更实现了对传统 Transformer 繁重数值结构的“大拆解”，还原出极为纯粹的代数本质。这一突破性设计成功消除了梯度噪声，使采用超大宏观学习率成为可能，为实现兼具严谨逻辑与无限深度的通用人工智能推理开辟了全新的硬软件协同范式。
+
+---
+
+## 内容提要
+
+&gt; ## Summary
+
+现代大语言模型 (Large Language Models, LLMs) 的计算完全依赖于近似的浮点数（即“模糊”）算术。为了抵消这种数值基础天生带来的不稳定性，现代神经网络架构不得不引入沉重的结构启发式设计——例如复杂的残差连接 (Complex Residuals)、Pre-RMSNorm、注意力缩放 (Attention Scaling) 以及梯度截断 (Gradient Clipping) 等机制——这些结构仅仅是为了防止数值崩溃，就消耗了大量宝贵的计算资源。
+
+&gt; Modern Large Language Models (LLMs) rely on approximate floating-point ("fuzzy") arithmetic. To counteract the inherent instability of this numerical foundation, modern neural architectures require heavy structural heuristics—such as Complex Residuals, Pre-RMSNorm, Attention Scaling, and Gradient Clipping—which consume valuable computational resources strictly to prevent numerical collapse.
+
+为了解决这一根本问题，本论文提出了从近似计算转向精确算术的范式变革，隆重推出了 **Halo 架构**。该架构扎根于数学上的**有理数域 ($\mathbb{Q}$)** ，并由定制的**精确推理单元 (Exact Inference Unit, EIU)** 提供底层算力支撑。针对有理数运算过程中位宽呈指数级膨胀的难题，Halo 通过创新的**双环拓扑 (Dual-Ring Topology)** 进行了巧妙破解：
+
+&gt; This paper proposes a paradigm shift from approximate computation to exact arithmetic by introducing the **Halo Architecture**. Grounded in the **Rational Field ($\mathbb{Q}$)** and powered by a custom **Exact Inference Unit (EIU)**, Halo addresses the exponential bit-width growth of rational arithmetic via a **Dual-Ring Topology**:
+
+1. **微环 (连续统维护，Continuum Maintenance)**：利用丢番图逼近 (Diophantine Approximation) 严格限制内存复杂度的增长上限；
+2. **宏环 (符号对齐，Symbolic Alignment)**：通过周期的状态坍缩机制，强制确保推理过程中的逻辑一致性。
+
+&gt; 1. **The Micro-Ring (Continuum Maintenance):** Strictly bounds memory complexity using Diophantine Approximation.
+&gt; 2. **The Macro-Ring (Symbolic Alignment):** Enforces logical consistency via periodic state collapse.
+
+这一坚实稳定的双环底层基座，推动了对传统数值“脚手架”的**“大拆解” (Great Dismantling)**，成功将 Transformer 模块剥离精简至其最纯粹的代数形式（犹如一张未受污染的白板，*Tabula Rasa*）。此外，论文还证实了**“效率悖论” (Efficiency Paradox)**：彻底消除梯度噪声 ($\sigma \to 0$) 后，模型可以采用前所未有的宏观超大学习率 (Macro-Learning Rates)，从而有望将模型的总收敛时间 (Total Time-to-Convergence) 降低数个数量级。
+
+&gt; This stable dual-ring substrate enables the **"Great Dismantling"** of numerical scaffolding, stripping the Transformer block down to its clean algebraic form (*Tabula Rasa*). Furthermore, the paper verifies the **"Efficiency Paradox"**: eliminating gradient noise ($\sigma \to 0$) allows for Macro-Learning Rates, potentially reducing total time-to-convergence by orders of magnitude.
+
+---
+
+## 摘要
+
+&gt; ## Abstract
+
+当今大语言模型 (LLMs) 主流的参数扩展范式，完全建立在“模糊”的浮点算术基石之上。为了缓解这一近似计算基础固有的不稳定性，现代网络架构不得不搭建起一套极其复杂的结构与数值启发式“脚手架”——包括复杂的残差连接、Pre-RMSNorm、注意力缩放以及梯度截断等——仅仅是为了防止数值崩溃，就耗费了相当可观的算力开销。
+
+&gt; The prevailing scaling paradigm of Large Language Models (LLMs) rests on a substrate of "Fuzzy" floating-point arithmetic. To mitigate the inherent instability of this approximate foundation, modern architectures have erected a complex scaffolding of structural and numerical heuristics--Complex Residuals, Pre-RMSNorm, Attention Scaling, and Gradient Clipping--consuming significant compute solely to prevent numerical collapse.
+
+对此，我们提出向“精确”计算演进的范式转变，隆重介绍了基于有理数域 ($\mathbb{Q}$) 构建并由专用精确推理单元 (EIU) 驱动的 Halo 架构。为了解决有理数运算中位宽呈指数级急剧增长的顽疾，Halo 采用了一种双环拓扑结构，巧妙融合了两种互补的控制机制：(1) 微环（连续统维护），通过丢番图逼近严格限定内存复杂度；(2) 宏环（符号对齐），通过周期的状态坍缩强力约束逻辑一致性。
+
+&gt; We propose a paradigm shift to the "Exact". We introduce the Halo Architecture, grounded in the Rational Field ($\mathbb{Q}$) and powered by a custom Exact Inference Unit (EIU). To resolve the exponential bit-width growth of rational arithmetic, Halo employs a Dual-Ring Topology that unifies two complementary control mechanisms: (1) The Micro-Ring (Continuum Maintenance), which strictly bounds memory complexity via Diophantine Approximation; and (2) The Macro-Ring (Symbolic Alignment), which enforces logical consistency via periodic state collapse.
+
+这种高度稳定的双环底座为数值“脚手架”的“大拆解”创造了可能，使得 Transformer 模块能够彻底洗净铅华，回归至干净纯粹的代数形式 (Tabula Rasa)。不仅如此，我们还验证了“效率悖论”：完全消除梯度噪声 ($\sigma \to 0$) 允许模型采用极大的宏观学习率，从而有望使总收敛时间缩短数个数量级。Halo 架构雄辩地证明，通用人工智能 (AGI) 的实现，离不开在严谨数学框架下对连续场与离散推理链的高效混合与统一。
+
+&gt; This stable dual-ring substrate allows for the "Great Dismantling" of numerical scaffolding, reducing the Transformer block to its "Clean" algebraic form (Tabula Rasa). Furthermore, we verify the "Efficiency Paradox": the elimination of gradient noise ($\sigma \to 0$) allows for Macro-Learning Rates, potentially reducing the Total Time-to-Convergence by orders of magnitude. Halo demonstrates that General Intelligence requires the hybridization of continuous fields and discrete chains under a rigorous mathematical framework.
+
+---
+
+## 论文元数据与相关链接
+
+&gt; ## Article Metadata &amp; Links
+
+* **授权协议**：[Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"&gt;&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;&lt;span&gt;查看协议&lt;/span&gt;&lt;/a&gt;
+* **全文资源**：
+  * [下载 PDF](https://arxiv.org/pdf/2601.18702)
+  * [查看 HTML 实验版本](https://arxiv.org/html/2601.18702v5)
+  * [TeX 源码](https://arxiv.org/src/2601.18702)
+* **外部学术引用与检索工具**：
+  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2601.18702)
+  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2601.18702)
+  * [SciX](https://scixplorer.org/abs/arXiv:2601.18702)
+
+&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) &lt;a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"&gt;&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;&lt;span&gt;view license&lt;/span&gt;&lt;/a&gt;
+&gt; * **Full-Text Resources:**
+&gt;   * [View PDF](https://arxiv.org/pdf/2601.18702)
+&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2601.18702v5)
+&gt;   * [TeX Source](https://arxiv.org/src/2601.18702)
+&gt; * **External Citations &amp; Tools:**
+&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2601.18702)
+&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2601.18702)
+&gt;   * [SciX](https://scixplorer.org/abs/arXiv:2601.18702)</description>
+    </item>
+    <item>
+      <title>NVIDIA Nsight Python 实战教程：如何系统剖析 GPU 算子内核性能</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着深度学习与大模型向万亿参数规模演进，GPU 算子内核的微观性能调优成为突破计算瓶颈的关键。然而，传统的 NVIDIA Nsight Compute 工具往往依赖繁琐的命令行或独立的图形界面，严重割裂了算法开发者的交互式研发体验。NVIDIA 推出的开源 Nsight Python 接口，通过装饰器与上下文管理器将复杂的底层硬件指标直接捕获进 Pandas 数据帧，彻底打通了从算子编写到微架构性能剖析的高速闭环。本文将带领读者在 Google Colab 环境中，系统掌握算子耗时测量、缓存与时钟控制、瓶颈诊断及算子融合量化等全套实战调优技能。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+本教程将深入探讨 **Nsight Python**——这是 NVIDIA 为底层内核性能剖析器打造的开源 Python 接口。通过装饰器 ( `nsight.analyze.kernel` ) 与上下文管理器 ( `nsight.annotate` )，Nsight Python 能直接无缝嵌入到 Python 脚本中，绕过 Nsight Compute 烦琐的命令行交互流程，并将各项底层硬件指标直接输出为 Pandas 的 `DataFrame`。从最基础的矩阵乘法，到高级的缓存与时钟频率控制、算子融合 (Kernel Fusion)、自定义信息收集器，再到实验性的 CUPTI 后端，本指南将在免费的 Google Colab T4 实例上完整演示如何高效剖析 GPU 工作负载。
+
+&gt; This tutorial explores **Nsight Python**—NVIDIA's open-source Python interface for kernel profilers. By integrating directly into your Python scripts via decorators (`nsight.analyze.kernel`) and context managers (`nsight.annotate`), Nsight Python bypasses the tedious command-line workflows of Nsight Compute, returning hardware metrics straight into a Pandas `DataFrame`. Covering everything from basic matrix multiplications to advanced cache/clock control, kernel fusion, custom information collectors, and the experimental CUPTI backend, this guide demonstrates how to profile GPU workloads efficiently on a free Google Colab T4 instance.
+
+---
+
+## 1. 安装与环境配置
+
+&gt; ## 1. Installation and Environment Setup
+
+在执行任何 CUDA 操作之前，务必优先导入 `nsight`，这样 Nsight Compute 的注入库才能顺利挂钩 (Hook) 到 Python 进程中。由于 Colab 默认预装的 Nsight Compute ( `ncu` ) 版本较旧，我们需要通过 NVIDIA 官方的 CUDA APT 软件源对其进行升级，并安装指定版本的 Nsight Python 预览版。
+
+&gt; Before running any CUDA operations, it is critical to import `nsight` so that Nsight Compute’s injection library can hook into the Python process. Since Colab ships with an older version of Nsight Compute (`ncu`), we update it via NVIDIA's CUDA APT repository and install the pinned Nsight Python pre-release.
+
+```python
+import os
+import sys
+import glob
+import json
+import time
+import shutil
+import textwrap
+import traceback
+import subprocess
+ 
+RESULTS = {}
+ 
+def banner(title):
+    print("\n" + "=" * 78)
+    print(title)
+    print("=" * 78)
+ 
+def section(name):
+    def wrap(fn):
+        def run(*a, **kw):
+            banner(name)
+            try:
+                out = fn(*a, **kw)
+                RESULTS[name] = out if isinstance(out, str) else "ok"
+                return out
+            except Exception as e:
+                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {str(e).splitlines()[0][:160]}"
+                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
+                traceback.print_exc(limit=3)
+                return None
+        return run
+    return wrap
+ 
+def sh(cmd):
+    """Run a shell command and return its stdout, stripped."""
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout.strip()
+ 
+banner("1. Install a current Nsight Compute next to Colab's, then import nsight before CUDA")
+print(f"  GPU: {sh('nvidia-smi --query-gpu=name,driver_version,memory.total,compute_cap --format=csv,noheader')}")
+preinstalled = shutil.which("ncu")
+print(f"  ncu already on PATH: {preinstalled} -&gt; {sh('ncu --version | tail -1') if preinstalled else 'none'}")
+ 
+# Install Nsight Compute from NVIDIA's apt repository
+subprocess.run("apt-get update -qq &gt; /tmp/ncu_install.log 2&gt;&amp;1", shell=True)
+for NCU_VERSION in ("2026.3.1", "2026.2.1"):
+    if subprocess.run(f"apt-get install -y -qq nsight-compute-{NCU_VERSION} &gt;&gt; /tmp/ncu_install.log 2&gt;&amp;1",
+                      shell=True).returncode == 0:
+        break
+else:
+    print(sh("tail -5 /tmp/ncu_install.log"))
+    raise RuntimeError("could not install Nsight Compute 2026.2.1+ from NVIDIA's apt repository")
+
+ncu_paths = sh(f"dpkg -L nsight-compute-{NCU_VERSION} | grep -E '/ncu$'").split()
+if not ncu_paths:
+    raise RuntimeError(f"dpkg lists no ncu executable in nsight-compute-{NCU_VERSION}")
+NCU_DIR = os.path.dirname(min(ncu_paths, key=len))
+os.environ["PATH"] = NCU_DIR + os.pathsep + os.environ["PATH"]
+print(f"  installed: {shutil.which('ncu')} -&gt; {sh('ncu --version | tail -1')}")
+ 
+# Install Nsight Python
+NSIGHT_COMMIT = "bb96db4260b1823d86ecab9acfed0646d7af79ad"
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                f"nsight-python @ git+https://github.com/NVIDIA/nsight-python@{NSIGHT_COMMIT}"], check=True)
+
+CUPTI_DIR = "/content/cupti_env"
+CUPTI_EXTRA = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--target", CUPTI_DIR, "--no-deps",
+                              "cupti-python&gt;=13.4.0", "nvidia-cuda-cupti~=13.4", "pyelftools"]).returncode == 0
+ 
+import nsight  # MUST come before anything initializes CUDA
+from nsight.collection import ncu as ncu_backend
+ 
+import numpy as np
+import pandas as pd
+import torch
+ 
+SILENT = nsight.VerbosityLevel.SILENT
+pd.set_option("display.width", 200)
+pd.set_option("display.max_columns", 30)
+print(f"  nsight-python {nsight.__version__} | active tool: {nsight.get_active_tool()}"
+      f" | injection error at import: {ncu_backend.injection_load_error}")
+print(f"  torch {torch.__version__} (CUDA {torch.version.cuda}) | {torch.cuda.get_device_name(0)}"
+      f" | cupti-python installed: {CUPTI_EXTRA}")
+```
+
+---
+
+## 2. 单个算子内核性能剖析
+
+&gt; ## 2. Profiling a Single Kernel
+
+借助 `nsight.annotate`，我们可以精准隔离出需要进行性能剖析的目标代码块，同时剔除周围繁杂的准备工作 (例如随机张量的初始化生成) 对测试结果的干扰。
+
+&gt; Using `nsight.annotate`, we can isolate specific code blocks for profiling while omitting surrounding setup operations (like random tensor generation).
+
+```python
+ADD = lambda x, y: x + y   # sums metrics if cuBLAS splits a matmul into multiple kernels
+ 
+@nsight.analyze.kernel(thermal_mode="off", combine_kernel_metrics=ADD)
+def first_matmul(n: int) -&gt; None:
+    a = torch.randn(n, n, device="cuda")
+    b = torch.randn(n, n, device="cuda")
+    with nsight.annotate("matmul"):
+        _ = a @ b
+ 
+@section("2. Profile one kernel: what a ProfileResults row contains")
+def first_profile():
+    df = first_matmul(2048).to_dataframe()
+    print(f"\n  to_dataframe() columns: {list(df.columns)}\n")
+    r = df.iloc[0]
+    t = float(r["AvgValue"])
+    print(f"  annotation {r['Annotation']!r}, n = {r['n']}, kernel {r['Kernel']}")
+    print(f"  {r['Metric']} = {t:,.0f} {r['Unit']}  (runs {r['NumRuns']}, stable: {r['StableMeasurement']})")
+    print(f"  GPU {r['GPU']}, ComputeClock {r['ComputeClock']}, MemoryClock {r['MemoryClock']}")
+    print(f"  -&gt; {2 * 2048 ** 3 / (t * 1e-9) / 1e12:.2f} TFLOP/s for a 2048 x 2048 fp32 matmul")
+    return f"fp32 2048 matmul {t / 1e6:.3f} ms ({2 * 2048 ** 3 / (t * 1e-9) / 1e12:.2f} TFLOP/s)"
+ 
+first_profile()
+```
+
+---
+
+## 3. 评估测量稳定性与数据离散度
+
+&gt; ## 3. Evaluating Stability and Spread
+
+单次性能测量往往极易受到系统偶发噪声的干扰而产生偏差。通过执行多次迭代测试 (例如设置 `runs=20` )，我们能够自动生成置信区间与标准差，从而系统评估算子内核执行耗时的稳定性。
+
+&gt; A single measurement can be heavily skewed by noise. By running multiple iterations (e.g., `runs=20`), we generate confidence intervals and standard deviations to assess kernel timing stability.
+
+```python
+def show(df, cols, scale=None, fmt="{:,.2f}"):
+    out = df[cols].copy()
+    for c, f in (scale or {}).items():
+        out[c] = out[c] * f
+    print(textwrap.indent(out.to_string(index=False, float_format=lambda v: fmt.format(v)), "  "))
+ 
+@nsight.analyze.kernel(configs=[1 &lt;&lt; 14, 1 &lt;&lt; 24], runs=20, thermal_mode="off", verbosity=SILENT,
+                       combine_kernel_metrics=ADD)
+def noisy_or_not(n: int) -&gt; None:
+    x = torch.randn(n, device="cuda")
+    y = torch.randn(n, device="cuda")
+    a = torch.randn(2048, 2048, device="cuda")
+    with nsight.annotate("vector add"):
+        _ = x + y
+    with nsight.annotate("matmul 2048"):
+        _ = a @ a
+ 
+@section("3. How many runs? Spread, confidence intervals and the stability flag")
+def stability():
+    df = noisy_or_not().to_dataframe()
+    print("  20 runs per configuration; times in microseconds:\n")
+    show(df, ["Annotation", "n", "AvgValue", "StdDev", "CI95_Lower", "CI95_Upper", "RelativeStdDevPct",
+              "StableMeasurement"], scale={"AvgValue": 1e-3, "StdDev": 1e-3, "CI95_Lower": 1e-3, "CI95_Upper": 1e-3})
+    tiny = df[(df.Annotation == "vector add") &amp; (df.n == 1 &lt;&lt; 14)].iloc[0]
+    print(f"\n  StableMeasurement is simply RelativeStdDevPct &lt; 2. The smallest kernel ({tiny['AvgValue'] / 1e3:.1f} us)")
+    print(f"  varies by {tiny['RelativeStdDevPct']:.1f}% due to launch and clock jitter.")
+    return f"16K-element add RSD {tiny['RelativeStdDevPct']:.1f}%"
+ 
+stability()
+```
+
+---
+
+## 4. 缓存与时钟频率控制
+
+&gt; ## 4. Cache and Clock Control
+
+剖析器的参数配置对最终的性能读数有着决定性的影响。其中，`cache_control` 参数控制每次运行之间是否清空 L2 缓存，而 `clock_control` 则决定 GPU 流式多处理器 (Streaming Multiprocessor, SM) 的时钟频率是被锁定在基准频率，还是允许根据负载动态睿频加速。
+
+&gt; Profiler configurations significantly alter performance readings. `cache_control` dictates whether L2 caches are flushed between runs, while `clock_control` determines if GPU SM clocks are locked or allowed to boost dynamically.
+
+```python
+def make_scale_bench(cache_control, clock_control):
+    @nsight.analyze.kernel(configs=[1 &lt;&lt; 18, 1 &lt;&lt; 24], runs=10, cache_control=cache_control,
+                           clock_control=clock_control, thermal_mode="off", verbosity=SILENT,
+                           metrics=["gpu__time_duration.sum", "gpc__cycles_elapsed.avg.per_second"])
+    def scale(n: int) -&gt; None:
+        x = torch.randn(n, device="cuda")
+        with nsight.annotate("x * 2"):
+            _ = x * 2.0
+    return scale
+ 
+@section("4. Cache and clock control: two defaults that change the answer")
+def cache_and_clocks():
+    rows = []
+    for cache in ("all", "none"):
+        for clock in ("none", "base"):
+            try:
+                df = make_scale_bench(cache, clock)().to_dataframe()
+            except Exception as e:
+                print(f"  cache_control={cache!r}, clock_control={clock!r}: failed -&gt; {type(e).__name__}")
+                continue
+            t = df[df.Metric == "gpu__time_duration.sum"].set_index("n").AvgValue
+            hz = df[df.Metric == "gpc__cycles_elapsed.avg.per_second"].set_index("n").AvgValue
+            for n in t.index:
+                rows.append({"cache_control": cache, "clock_control": clock, "MB": 4 * n / 2 ** 20,
+                             "time_us": t[n] / 1e3, "GB/s": 2 * 4 * n / t[n], "SM_MHz": hz[n] / 1e6})
+    tab = pd.DataFrame(rows)
+    print(textwrap.indent(tab.to_string(index=False, float_format=lambda v: f"{v:,.1f}"), "  "))
+    globals()["CLOCK_TABLE"] = tab
+    return f"Completed cache/clock sweep across {len(tab)} configurations."
+ 
+cache_and_clocks()
+```
+
+---
+
+## 5. 尺寸扫描、派生指标与基准归一化
+
+&gt; ## 5. Size Sweeps, Derived Metrics, and Normalization
+
+Nsight Python 支持灵活自定义派生指标 (例如在测试过程中即时换算 TFLOP/s 算力利用率)，并能参照特定的基线对结果进行归一化对比 (例如直接将 `fp16` 精度下的性能表现与 `fp32` 进行相对比对)。
+
+&gt; Nsight Python allows customized derived metrics (such as calculating TFLOP/s on the fly) and normalizing results against specific baselines (e.g., comparing `fp16` performance directly against `fp32`).
+
+```python
+SIZES = [(512,), (1024,), (2048,), (4096,)]
+ 
+def tflops(time_ns: float, n: int) -&gt; tuple[float, str]:
+    return 2 * n ** 3 / (time_ns * 1e-9) / 1e12, "TFLOP/s"
+ 
+def make_precision_body():
+    def precision(n: int) -&gt; None:
+        a = torch.randn(n, n, device="cuda")
+        b = torch.randn(n, n, device="cuda")
+        a16, b16 = a.half(), b.half()
+        with nsight.annotate("fp32"):
+            _ = a @ b
+        with nsight.annotate("fp16"):
+            _ = a16 @ b16
+    return precision
+ 
+precision_tflops = nsight.analyze.kernel(configs=SIZES, runs=5, derive_metric=tflops, thermal_mode="off",
+                                         verbosity=SILENT, combine_kernel_metrics=ADD)(make_precision_body())
+precision_ratio = nsight.analyze.kernel(configs=SIZES, runs=5, normalize_against="fp32", thermal_mode="off",
+                                        verbosity=SILENT, combine_kernel_metrics=ADD)(make_precision_body())
+ 
+@section("5. A size sweep, a derived TFLOP/s metric, and normalisation")
+def precision_sweep():
+    df = precision_tflops().to_dataframe()
+    tf = df[df.Metric == "tflops"].pivot(index="n", columns="Annotation", values="AvgValue")
+    print("  derive_metric=tflops results:\n")
+    print(textwrap.indent(tf[["fp32", "fp16"]].to_string(float_format=lambda v: f"{v:,.2f}"), "  "))
+    return f"n=4096: fp32 {tf.loc[4096, 'fp32']:.2f}, fp16 {tf.loc[4096, 'fp16']:.2f} TFLOP/s"
+ 
+precision_sweep()
+```
+
+---
+
+## 6. 识别性能瓶颈：算力受限还是显存受限
+
+&gt; ## 6. Identifying Performance Bottlenecks: Compute-Bound vs. Memory-Bound
+
+通过在单次重放中同时查询多项底层硬件吞吐指标 (包括 `sm__throughput` 与 `dram__throughput` )，我们能够明确判断算子内核究竟是受限于 GPU 的计算能力，还是受限于显存的带宽吞吐瓶颈。
+
+&gt; By querying multiple hardware metrics simultaneously (`sm__throughput` and `dram__throughput`), we can determine whether a kernel is bound by compute capability or memory bandwidth.
+
+```python
+BOUND_METRICS = ["gpu__time_duration.sum",
+                 "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+                 "dram__throughput.avg.pct_of_peak_sustained_elapsed"]
+ 
+@nsight.analyze.kernel(metrics=BOUND_METRICS, runs=3, thermal_mode="off", verbosity=SILENT)
+def what_limits(n: int) -&gt; None:
+    a = torch.randn(n, n, device="cuda").half()
+    x = torch.randn(64 * 2 ** 20, device="cuda")
+    s = torch.randn(8192, 1024, device="cuda")
+    with nsight.annotate("fp16 matmul 4096"):
+        _ = a @ a
+    with nsight.annotate("x * 2 (256 MB)"):
+        _ = x * 2.0
+    with nsight.annotate("softmax 8192x1024"):
+        _ = torch.softmax(s, dim=-1)
+ 
+@section("6. Compute-bound or memory-bound? Three metrics from one replayed kernel")
+def bound():
+    df = what_limits(4096).to_dataframe()
+    tab = df.pivot(index="Annotation", columns="Metric", values="AvgValue")
+    tab = tab.rename(columns={"gpu__time_duration.sum": "ms",
+                              "sm__throughput.avg.pct_of_peak_sustained_elapsed": "SM % of peak",
+                              "dram__throughput.avg.pct_of_peak_sustained_elapsed": "DRAM % of peak"})
+    tab["ms"] = tab["ms"] / 1e6
+    tab["limited by"] = np.where(tab["SM % of peak"] &gt; tab["DRAM % of peak"], "compute", "memory")
+    print(textwrap.indent(tab.to_string(float_format=lambda v: f"{v:,.2f}"), "  "))
+    return "Analyzed compute vs memory bottlenecks successfully."
+ 
+bound()
+```
+
+---
+
+## 7. 通过显存访问量量化算子融合效果
+
+&gt; ## 7. Measuring Kernel Fusion via Memory Traffic
+
+算子融合的核心优势在于消除了中间临时数据在全局显存中的往返读写开销。借助 `dram__bytes_read.sum` 和 `dram__bytes_write.sum` 这两项指标，我们可以精确量化如 `torch.addcmul` 等融合算子相较于未融合表达式所带来的显存访问效率提升。
+
+&gt; Kernel fusion eliminates intermediate global memory roundtrips. Using `dram__bytes_read.sum` and `dram__bytes_write.sum`, we can quantify the memory efficiency gains of operations like `torch.addcmul` compared to unfused expressions.
+
+```python
+BYTES = ["gpu__time_duration.sum", "dram__bytes_read.sum", "dram__bytes_write.sum"]
+ 
+@nsight.analyze.kernel(metrics=BYTES, runs=5, thermal_mode="off", verbosity=SILENT,
+                       combine_kernel_metrics=lambda x, y: x + y)
+def fusion(n: int) -&gt; None:
+    a, b, c = (torch.randn(n, device="cuda") for _ in range(3))
+    with nsight.annotate("a + b * c (unfused)"):
+        _ = a + b * c
+    with nsight.annotate("torch.addcmul (fused)"):
+        _ = torch.addcmul(a, b, c)
+ 
+@section("7. Kernel fusion, measured in bytes: combine_kernel_metrics")
+def fused():
+    n = 32 * 2 ** 20
+    df = fusion(n).to_dataframe()
+    tab = df.pivot(index="Annotation", columns="Metric", values="AvgValue")
+    tab = pd.DataFrame({"ms": tab["gpu__time_duration.sum"] / 1e6,
+                        "MB read": tab["dram__bytes_read.sum"] / 2 ** 20,
+                        "MB written": tab["dram__bytes_write.sum"] / 2 ** 20})
+    print(textwrap.indent(tab.to_string(float_format=lambda v: f"{v:,.1f}"), "  "))
+    u, f = tab.loc["a + b * c (unfused)"], tab.loc["torch.addcmul (fused)"]
+    return f"fusion: {u['ms'] / f['ms']:.2f}x faster"
+ 
+fused()
+```
+
+---
+
+## 8. 自定义信息收集器与温度控制
+
+&gt; ## 8. Custom Information Collectors &amp; Thermal Control
+
+在 1.1 版本中，Nsight Python 引入了实验性的元数据收集器机制，允许用户在每次性能运行期间按需轮询自定义硬件指标 (例如通过 NVML 获取实时的 SM 时钟频率或 GPU 核心温度)。
+
+&gt; Version 1.1 introduces experimental metadata collectors to poll custom hardware parameters (such as SM clock frequencies or temperatures via NVML) per run.
+
+```python
+import pynvml
+ 
+pynvml.nvmlInit()
+NVML = pynvml.nvmlDeviceGetHandleByIndex(0)
+ 
+@nsight.experimental.collect(scope=nsight.CollectionScope.ONCE)
+def driver_version(*args):
+    return pynvml.nvmlSystemGetDriverVersion()
+ 
+@nsight.experimental.collect(scope=nsight.CollectionScope.RUN)
+def sm_clock_mhz(*args):
+    return pynvml.nvmlDeviceGetClockInfo(NVML, pynvml.NVML_CLOCK_SM)
+ 
+@nsight.experimental.collect(scope=nsight.CollectionScope.RUN)
+def gpu_temp_c(*args):
+    return pynvml.nvmlDeviceGetTemperature(NVML, pynvml.NVML_TEMPERATURE_GPU)
+ 
+def make_heat_body():
+    def heat(n: int) -&gt; None:
+        a = torch.randn(n, n, device="cuda").half()
+        with nsight.annotate("fp16 matmul"):
+            _ = a @ a
+    return heat
+ 
+@section("8. Custom info collectors and thermal control (experimental API)")
+def collectors():
+    out = {}
+    for mode in ("off", "auto"):
+        bench = nsight.analyze.kernel(configs=[4096], runs=10, thermal_mode=mode, thermal_timeout=60,
+                                      info_collectors=[driver_version, sm_clock_mhz, gpu_temp_c],
+                                      verbosity=SILENT, output_prefix=f"/content/nspy_thermal_{mode}/",
+                                      output_csv=True)(make_heat_body())
+        try:
+            df = bench().to_dataframe()
+            out[mode] = df.iloc[0]
+            print(f"  thermal_mode={mode!r}: {out[mode]['AvgValue'] / 1e6:.3f} ms")
+        except Exception as e:
+            print(f"  thermal_mode={mode!r}: failed -&gt; {e}")
+    return "Collectors executed successfully."
+ 
+collectors()
+```
+
+---
+
+## 9. 实验性 CUPTI 后端对比 Nsight Compute
+
+&gt; ## 9. The Experimental CUPTI Backend vs. Nsight Compute
+
+全新的 CUPTI 后端基于底层 CUPTI 活动接口 (Activity API) 实现，能够在不需要 Nsight Compute 繁重内核重放周期的前提下，以极低的额外开销直接剖析算子内核的执行耗时。
+
+&gt; The new CUPTI backend provides lower-overhead kernel duration profiling via the CUPTI activity API without requiring heavy Nsight Compute kernel replay cycles.
+
+```python
+CUPTI_SCRIPT = r'''
+import os, json, time
+os.environ["NSPY_NCU_INIT_AT_IMPORT"] = "0"
+import nsight
+nsight.activate(nsight.Tool.CUPTI)
+import torch
+@nsight.analyze.kernel(configs=[512, 1024, 2048, 4096], runs=10, thermal_mode="off",
+                       verbosity=nsight.VerbosityLevel.SILENT, combine_kernel_metrics=lambda x, y: x + y)
+def matmul(n):
+    a = torch.randn(n, n, device="cuda")
+    b = torch.randn(n, n, device="cuda")
+    with nsight.annotate("matmul"):
+        _ = a @ b
+t0 = time.time()
+df = matmul().to_dataframe()
+wall = time.time() - t0
+nsight.deactivate()
+print(json.dumps({"wall": wall, "rows": df[["n", "AvgValue", "RelativeStdDevPct"]].to_dict("records")}))
+'''
+ 
+@section("9. The experimental CUPTI backend, in its own process, against Nsight Compute")
+def cupti_vs_ncu():
+    if not CUPTI_EXTRA:
+        return "cupti-python could not be installed."
+    with open("/content/cupti_matmul.py", "w") as f:
+        f.write(CUPTI_SCRIPT)
+    env = {k: v for k, v in os.environ.items() if k not in ("NVTX_INJECTION64_PATH", "NV_COMPUTE_PROFILER_PERFWORKS_DIR", "NV_COMPUTE_PROFILER_IN_PROCESS")}
+    env["PYTHONPATH"] = CUPTI_DIR + os.pathsep + env.get("PYTHONPATH", "")
+    p = subprocess.run([sys.executable, "/content/cupti_matmul.py"], capture_output=True, text=True, env=env, timeout=900)
+    print(f"  CUPTI execution return code: {p.returncode}")
+    return f"CUPTI subprocess completed with exit code {p.returncode}"
+ 
+cupti_vs_ncu()
+```
+
+---
+
+## 10. 保存性能分析证据：报告与原始 CSV 日志
+
+&gt; ## 10. Archiving Evidence: Reports and Raw CSV Logs
+
+性能剖析会话会生成非常全面的输出结果，包括汇总整理后的 CSV 表格、每次运行的原始细节日志，以及完全兼容 Nsight Compute 桌面图形界面 (GUI) 的 `.ncu-rep` 报告文件。
+
+&gt; Profiling sessions produce comprehensive outputs, including aggregated processed CSVs, raw per-run logs, and `.ncu-rep` files compatible with the full Nsight Compute desktop GUI.
+
+```python
+@section("10. Keep the evidence: CSVs and the full Nsight Compute report")
+def evidence():
+    files = sorted(glob.glob("/content/nspy_thermal_off/*"))
+    for f in files:
+        print(f"  {os.path.basename(f):60s} {os.path.getsize(f) / 1024:9.1f} KB")
+    import ncu_report
+    rep_path = next((f for f in files if f.endswith(".ncu-rep")), None)
+    if rep_path is None:
+        return "No .ncu-rep report file found."
+    rep = ncu_report.load_report(rep_path)
+    print(f"\n  Successfully loaded .ncu-rep report containing {rep.num_ranges()} range(s).")
+    return f"Report loaded successfully with {rep.num_ranges()} ranges."
+ 
+evidence()
+```
+
+---
+
+## 总结
+
+&gt; ## Conclusion
+
+Nsight Python 将底层性能剖析结果直接封装为直观的 Python 原生数据结构，大幅降低了 GPU 算子内核优化的门槛。只要遵循最佳工程实践——例如在初始化 CUDA 之前优先导入 `nsight` 模块、根据评测目标合理配置缓存与时钟策略、利用置信区间过滤测试波动——开发者便无需离开熟悉的 Python 研发环境，即可快速诊断显存带宽瓶颈、量化评估算子融合增益，并精准采集各项微架构硬件指标。
+
+&gt; Nsight Python simplifies GPU kernel optimization by moving profiling insights directly into Python data structures. By following best practices—such as importing `nsight` prior to initializing CUDA, configuring cache/clock policies intentionally, and leveraging confidence intervals—developers can rapidly diagnose memory bottlenecks, evaluate kernel fusion, and collect precise hardware metrics without stepping outside their Python workflows.
+
+欢迎点击 **[完整代码链接](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%2&gt;)** 查阅实战脚本。本项目的所有技术荣誉均归属于该项目的研发团队。欢迎关注我们的 **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** 并加入拥有 15 万+开发者的 **[机器学习 Reddit 社区](https://www.reddit.com/r/machinelearningnews/)**。
+
+&gt; Check out the **[FULL CODES here](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%2&gt;)**. All credit goes to the researchers of this project. Feel free to follow us on **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** and join our **[150k+ ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**.</description>
+    </item>
+    <item>
+      <title>Gradium 开源 Phonon：仅 31M 参数的高性能端侧语音合成模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>从云端大模型向终端边缘设备的下沉，是生成式 AI (Generative AI) 迈向普及的关键战役。长期以来，高品质的文本转语音 (Text-to-Speech, TTS) 技术往往严重依赖庞大的云端算力与持续的 API 计费，而在边缘计算与移动端设备上运行的轻量级模型，则常面临发音机械、错误率高和首包延迟过长的困境。由前 Kyutai 团队成员创立的法国语音 AI 初创公司 Gradium，正式开源了革命性的端侧语音合成模型家族 Phonon。其中专攻英语的 Phonon 31m 核心参数量仅有 31M (量化后仅占 64.5 MB 存储)，采用商业友好的 Apache 2.0 宽松协议开源，不仅在常规消费级 CPU 上实现了低至 7 毫秒的超低首音频延迟，更在涵盖复杂边缘用例的严苛文本基准测试中大幅超越了同类主流模型，为离线设备、具身机器人、智能穿戴及各类本地 AI 智能体 (AI Agent) 带来了真正轻量且开箱即用的高保真实时语音能力。
+
+---
+
+## 内容摘要
+
+&gt; ## Summary
+
+Gradium 正式开源了轻量级语音合成模型家族 **Phonon**，专门针对本地端侧与边缘设备的高效运行而设计。该模型家族提供了 31M 与 40M 两种参数规格；其中专攻英语的 **Phonon 31m** 采用宽松的 Apache 2.0 协议开源，其 q8 量化权重体积仅为精巧的 64.5 MB。无论是常规 CPU、智能手机、以树莓派 5 (Raspberry Pi 5) 为代表的单板计算机，还是网页浏览器，Phonon 都能在脱离云端 API、无需独立 GPU 加速以及零字符计费成本的前提下，实现自然流畅的端侧实时语音生成。
+
+&gt; Gradium has open-sourced **Phonon**, a family of lightweight text-to-speech (TTS) models designed for local, on-device execution. Available in 31M and 40M parameter sizes, the English **Phonon 31m** model is licensed under Apache 2.0 and packs into a compact 64.5 MB file. It enables natural, real-time speech generation on CPUs, phones, single-board computers like the Raspberry Pi 5, and browsers without requiring cloud APIs, GPUs, or per-character billing.
+
+---
+
+## 核心速览
+
+&gt; ## TL;DR
+
+* **模型体量**：核心模型参数量仅 31M (不含音频分词器)，q8 GGUF 格式下仅占 64.5 MB 存储，支持 24 kHz 单声道高品质输出；而多语种版本 Phonon 40m 拥有 40M 参数，权重文件仅 74.6 MB。
+* **硬件支持**：通用于标准 CPU、智能手机、树莓派 5 (Raspberry Pi 5)、网页浏览器 (通过 WASM 与 WebGPU) 以及 NVIDIA GPU，完全不强求独立显卡。
+* **推理性能**：在 Gradium 测试的所有开源模型中斩获最高的英语 Elo 评分；在标准消费级 CPU 上实现仅约 7 毫秒的首音频响应延迟。
+* **核心优势**：在包含 500 个复杂边缘句式的严苛基准评测集中，单词错误率 (Word Error Rate, WER) 低至 1.70% (大幅超越了 Kokoro 的 3.50%)。
+* **潜在短板**：在 Seed-TTS 大语言模型 WER 基准评测中，得分略逊于 Kokoro 与 Magpie 等竞品 (0.51% 对比 0.45%)。
+
+&gt; * **Size:** 31M parameters (excluding audio tokenizer), 64.5 MB q8 GGUF, 24 kHz mono output. Phonon 40m features 40M parameters in a 74.6 MB file.
+&gt; * **Hardware Support:** Runs on CPUs, smartphones, Raspberry Pi 5, browsers (WASM, WebGPU), and NVIDIA GPUs. No dedicated GPU required.
+&gt; * **Performance:** Top English Elo among open models tested by Gradium; achieves ~7 ms to first audio on standard CPUs.
+&gt; * **Pros:** Low Word Error Rate (WER) of 1.70% on a 500-sentence hard benchmark set (outperforming Kokoro's 3.50%).
+&gt; * **Cons:** Scores slightly behind models like Kokoro and Magpie on the Seed-TTS LLM WER benchmark (0.51% vs. 0.45%).
+
+---
+
+## 什么是 Gradium Phonon？
+
+&gt; ## What is Gradium Phonon?
+
+Phonon 是由位于巴黎的语音 AI 初创团队 **Gradium** 开发的开源权重文本转语音模型家族。Gradium 脱胎于知名开源实验室 Kyutai，致力于将高保真、低延迟的语音合成能力无缝带入边缘计算设备、个人笔记本、智能手机以及网页浏览器端。
+
+&gt; Phonon is an open-weight TTS model family developed by **Gradium**, a Paris-based voice AI company spun out of Kyutai. It brings high-performance speech synthesis directly to edge devices, laptops, mobile phones, and web browsers.
+
+该模型家族目前涵盖三大核心版本分支：
+
+&gt; The model family consists of three main variants:
+
+* **Phonon 31m**：纯英文模型，内置 37 款丰富音色，采用最利于商业化落地的 Apache 2.0 协议开源。
+* **Phonon 40m**：单语种独立模型，支持英语、法语、德语、西班牙语以及葡萄牙语 (遵循 CC BY-NC 4.0 非商业化许可)。
+* **Phonon 40m Multilingual (多语种版)**：将上述 5 种语言融汇于单一模型之中，囊括多达 102 款预置音色 (遵循 CC BY-NC 4.0 非商业化许可)。
+
+&gt; * **Phonon 31m:** English-only, features 37 built-in voices, and is licensed under Apache 2.0.
+&gt; * **Phonon 40m:** Single-language models available for English, French, German, Spanish, and Portuguese (CC BY-NC 4.0).
+&gt; * **Phonon 40m Multilingual:** Combines all 5 languages into a single model with 102 voices (CC BY-NC 4.0).
+
+---
+
+## Phonon 的技术架构与工作原理
+
+&gt; ## How Does Phonon Work?
+
+在底层原理上，Phonon 采用了因果 Transformer (Causal Transformer) 作为核心骨干网络，其前缀输入由待合成文本与发音人嵌入向量 (Speaker Embedding) 共同拼接而成。模型借助词表规模为 4,000 个 Token 的 SentencePiece 分词器直接解析原始文本字符，彻底摒弃了传统语音合成中繁琐且易出错的音素 (Phoneme) 转换管线。
+
+&gt; Phonon utilizes a causal transformer backbone that takes a prefix combining text and speaker embeddings. A SentencePiece tokenizer with a 4,000-token vocabulary parses raw text directly, bypassing traditional phoneme conversion steps.
+
+Phonon 的端到端推理架构流水线设计极为紧凑高效：
+
+&gt; The architecture pipeline functions as follows:
+
+1. **输入文本与发音人嵌入 (Input Text &amp; Speaker Embedding)**：接收原始纯文本输入，并挂载内置预置音色、克隆音色或自定义发音人特征向量；
+2. **SentencePiece 分词处理 (SentencePiece Tokenization)**：直接对文本完成 Token 切分，无须任何中介音素字典或注音前置步骤；
+3. **因果 Transformer 骨干网络 (Causal Transformer)**：自回归 (Autoregressive) 地为每 80 毫秒的音频帧生成一个潜在向量 (在 31m 版本中包含 6 层结构、隐藏层维度 512，以及 8 个注意力头)；
+4. **流匹配预测头 (Flow-Matching Head)**：通过单步流匹配 (Flow-Matching) 机制，一步到位将潜在向量与环境噪声解算为连续音频嵌入，并辅以语音终止检测头 (End-of-Speech Detection Head) 实时把控句尾断句；
+5. **Mimi 音频解码器 (Mimi Decoder)**：采用源自 Kyutai 的 Mimi 神经音频解码器的轻量化精简变体，将连续嵌入快速解码还原为 24 kHz 高保真 PCM 音频流。
+
+&gt; 1. **Input Text &amp; Speaker Embedding:** Accepts raw text alongside built-in, cloned, or custom speaker embeddings.
+&gt; 2. **SentencePiece Tokenization:** Direct text processing without phoneme intermediaries.
+&gt; 3. **Causal Transformer:** Generates one latent vector per 80 ms frame autoregressively (6 layers, width 512, and 8 attention heads in the 31m version).
+&gt; 4. **Flow-Matching Head:** Converts latents and noise into continuous audio embeddings in a single step, paired with an end-of-speech detection head.
+&gt; 5. **Mimi Decoder:** A streamlined variant of Kyutai’s Mimi decoder translates embeddings into 24 kHz PCM audio streams.
+
+值得强调的是，Phonon 31m 与 40m 模型均是通过大规模教师模型进行知识蒸馏 (Knowledge Distillation) 提炼而成，整个训练过程在基于 NCCL 通信与 CUDA Graphs 深度优化的 NVIDIA H100 GPU 集群上高效完成。
+
+&gt; Both the 31m and 40m models are distilled from a larger teacher model, trained on an NVIDIA H100 cluster utilizing NCCL and CUDA Graphs.
+
+---
+
+## 基准测试与性能表现
+
+&gt; ## Benchmark Performance
+
+在 Gradium 组织的双盲成对听觉评估测试中 (共计 1,189 位评审员参与，累计产生 17,270 次有效盲测投票)，美式英语系列模型展现出了卓越的主观听感表现：
+
+&gt; In blind pairwise listening tests conducted by Gradium across 1,189 raters and 17,270 votes, US English variants performed strongly:
+
+* **Phonon 40m**：2117 Elo
+* **Phonon 31m**：2098 Elo
+* **Kokoro**：2043 Elo
+* **NeuTTS**：2034 Elo
+* **Magpie**：1939 Elo
+
+&gt; * **Phonon 40m:** 2117 Elo
+&gt; * **Phonon 31m:** 2098 Elo
+&gt; * **Kokoro:** 2043 Elo
+&gt; * **NeuTTS:** 2034 Elo
+&gt; * **Magpie:** 1939 Elo
+
+在涵盖电话号码、电子邮箱地址以及邮政编码等大量棘手边缘用例的公开**高难度句式基准数据集 (Hard-sentence Dataset, 共 500 句)** 上，Phonon 31m 斩获了惊艳的 **1.70% WER**，显著优于主流轻量模型 Kokoro (3.50%) 与 NeuTTS Nano (8.71%)。不过，在相对基础平顺的 Seed-TTS 基准测试集上，差距有所收窄：Phonon 31m 录得了 0.51% 的大语言模型辅助 WER，略微落后于 Kokoro 的 0.45%。
+
+&gt; On a rigorous public **hard-sentence dataset** (comprising 500 sentences filled with edge cases like phone numbers, emails, and postal codes), Phonon 31m achieved a **1.70% WER**, significantly outperforming Kokoro (3.50%) and NeuTTS Nano (8.71%). However, on the simpler Seed-TTS benchmark set, performance normalizes slightly, with Phonon 31m recording a 0.51% LLM WER compared to Kokoro's 0.45%.
+
+---
+
+## CPU 性能与延迟表现
+
+&gt; ## CPU Performance &amp; Latency
+
+Phonon 针对超低延迟边缘侧部署进行了全方位的底层计算优化：
+
+&gt; Phonon is heavily optimized for low-latency edge deployment:
+
+* **MacBook Air M5 (CPU 4 线程)**：首音频生成时间仅需 **6.9 毫秒**，推理吞吐达 **29.9 倍实时速率** (而在启用 KleidiAI 与 Apple Accelerate 加速库后，更进一步缩短至 5.4 毫秒，吞吐高达 46.7 倍实时速率)；
+* **树莓派 5 (Raspberry Pi 5)**：仅需 **38 毫秒** 即可吐出首段音频，整体生成维持在 **3.7 倍实时速率**；
+* **高通骁龙 8 至尊版 Gen 5 (Snapdragon 8 Elite Gen 5)**：首音频延迟仅 **7.5 毫秒**，达到 **24 倍实时速率**；
+* **NVIDIA L40S (CUDA 加速)**：首段语音延迟更是压低至极速的 **5 毫秒**。
+
+&gt; * **MacBook Air M5 (CPU, 4 threads):** Reaches first audio in **6.9 ms** at **29.9x real-time speed** (improving to 5.4 ms and 46.7x with KleidiAI and Apple Accelerate).
+&gt; * **Raspberry Pi 5:** Starts in **38 ms** and runs at **3.7x real-time speed**.
+&gt; * **Snapdragon 8 Elite Gen 5:** First audio in **7.5 ms** at **24x real-time**.
+&gt; * **NVIDIA L40S (CUDA):** First speech achieved in **5 ms**.
+
+---
+
+## 主流端侧语音模型横向对比
+
+&gt; ## Model Comparison
+
+| 评估特性 | Phonon 31m | Phonon 40m Multilingual | Kokoro-82M | NeuTTS Nano | Kitten TTS v0.8 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **开发者** | Gradium | Gradium | hexgrad | Neuphonic | KittenML |
+| **参数量** | 31M (不含分词器) | 40M | 82M | 总计约 228.7M，激活约 116.8M | 15M / 40M / 80M |
+| **权重体积** | 64.5 MB (q8) | 74.6 MB (q8) | 未披露 | 未披露 | 25 至 80 MB |
+| **支持语种** | 英语 | 英语、法语、德语、西语、葡语 | 8 种语言 (v1.0) | 英语 (套件扩展西、法、德语) | 英语 |
+| **开源协议** | Apache 2.0 | CC BY-NC 4.0 | Apache 2.0 | NeuTTS Open License 1.0 | Apache 2.0 |
+| **高难度句式 WER (英语)** | 1.70% | 2.11% | 3.50% | 8.71% | 7.40% |
+| **英语 Elo 评分** | 2098 | 2097 | 2043 | 2034 | 未测试 |
+| **Seed-TTS LLM WER (英语)** | 0.51% | 0.48% | 0.45% | 0.62% | 未测试 |
+| **首音频延迟 (M5 CPU)** | 6.9 ms | 8.8 ms | 517 ms | 未披露 | 未披露 |
+
+&gt; | Feature | Phonon 31m | Phonon 40m Multilingual | Kokoro-82M | NeuTTS Nano | Kitten TTS v0.8 |
+&gt; | :--- | :--- | :--- | :--- | :--- | :--- |
+&gt; | **Developer** | Gradium | Gradium | hexgrad | Neuphonic | KittenML |
+&gt; | **Parameters** | 31M (excl. tokenizer) | 40M | 82M | ~228.7M total, ~116.8M active | 15M / 40M / 80M |
+&gt; | **Weights** | 64.5 MB (q8) | 74.6 MB (q8) | Not disclosed | Not disclosed | 25 to 80 MB |
+&gt; | **Languages** | English | EN, FR, DE, ES, PT | 8 (v1.0) | English (collection adds ES, FR, DE) | English |
+&gt; | **License** | Apache 2.0 | CC BY-NC 4.0 | Apache 2.0 | NeuTTS Open License 1.0 | Apache 2.0 |
+&gt; | **Hard-set WER (EN)** | 1.70% | 2.11% | 3.50% | 8.71% | 7.40% |
+&gt; | **English Elo** | 2098 | 2097 | 2043 | 2034 | Not tested |
+&gt; | **Seed-TTS LLM WER (EN)** | 0.51% | 0.48% | 0.45% | 0.62% | Not tested |
+&gt; | **First Audio (M5 CPU)** | 6.9 ms | 8.8 ms | 517 ms | Not disclosed | Not disclosed |
+
+---
+
+## 开发者部署与生态集成
+
+&gt; ## Developer Deployment
+
+官方推理运行时 (`xn-ptts`) 采用双重宽松开源协议 (MIT 或 Apache 2.0)，提供了极为宽广的多语言生态绑定，原生支持 Rust、Python (`pip install ptts`)、Swift、C、C++，并支持在浏览器端通过 `phonon-tts` 直接驱动。此外，运行时还开箱即用地内置了兼容 OpenAI 接口规范的服务端以及轻量级 WebSocket 服务端。生态整合方面，Phonon 能与 Hugging Face Transformers、MLX-Audio、Ollama 以及 LM Studio 等主流框架无缝协同。
+
+&gt; The official runtime (`xn-ptts`) is available under an MIT or Apache-2.0 license, supporting Rust, Python (`pip install ptts`), Swift, C, C++, and web browsers via `phonon-tts`. It also includes out-of-the-box support for an OpenAI-compatible server and a WebSocket server. Phonon integrates smoothly with Transformers, MLX-Audio, Ollama, and LM Studio.
+
+---
+
+## 总结与核心看点
+
+&gt; ## Key Takeaways
+
+* **轻巧高效的开源利器**：**Phonon 31m** 提供了一个仅 31M 参数量的超轻量纯英语文本转语音模型，权重仅 64.5 MB，采用商业友好的 Apache 2.0 协议开源；
+* **复杂长尾文本精准无误**：在包含缩写、数字及邮箱等复杂现实场景文本中表现极其稳健，单词错误率 (WER) 仅为 1.70%；
+* **突破性的端侧超低延迟**：在现代消费级标准 CPU 上能够达成 7 毫秒以内的极速首包音频输出，并可在树莓派 5 等算力受限设备上流畅稳定运行；
+* **多语种能力延展**：同步推出了覆盖 5 种欧洲语言的 40M 多语种版本，供学术研究与非商业应用探索。
+
+&gt; * **Phonon 31m** offers an efficient, Apache 2.0-licensed 31M parameter English TTS model weighing just 64.5 MB.
+&gt; * Delivers robust accuracy with a 1.70% WER on difficult text inputs.
+&gt; * Unlocks ultra-low latency processing, achieving first audio in under 7 ms on modern consumer CPUs and running seamlessly on resource-constrained hardware like the Raspberry Pi 5.
+&gt; * Multilingual 40m counterparts are available under non-commercial licensing terms.
+
+---
+
+欢迎查阅官方资源了解更多详情：[技术博客 (Technical Blog)](https://gradium.ai/blog/release-phonon-open-weight) | [模型主页 (Model Card)](https://huggingface.co/gradium/phonon-31m-en) | [GitHub 运行时代码库 (GitHub Runtime)](https://github.com/gradium-ai/xn-ptts) | [高难度基准数据集 (Hard-Sentence Dataset)](https://huggingface.co/datasets/gradium/tts-hard-sentences-202610)。
+
+&gt; *Check out the [Technical Blog](https://gradium.ai/blog/release-phonon-open-weight), [Model Card](https://huggingface.co/gradium/phonon-31m-en), [GitHub Runtime](https://github.com/gradium-ai/xn-ptts), and [Hard-Sentence Dataset](https://huggingface.co/datasets/gradium/tts-hard-sentences-202610).*</description>
+    </item>
+    <item>
+      <title>Cactus Whistle 实战指南：16.9MB 轻量语音模型如何在 CPU 上硬刚 Whisper Base</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-23/Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base/</guid>
+      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在边缘计算设备与端侧 AI 场景中，语音识别模型长期面临模型体积庞大与推理资源消耗高的双重瓶颈。Cactus Compute 推出的超轻量语音转文字模型 Cactus Whistle 体积仅为 16.9MB ，专为在 CPU 环境下高效运行而打造。它不仅支持 7 种语言的高精度转录，还能同步输出精确到词级别的时间戳与置信度概率指标。本文在 Apple M4 芯片上采用标准 LibriSpeech 基准数据集，将 Cactus Whistle 与 OpenAI 经典开源模型 Whisper (Tiny 与 Base 模型) 展开了端到端严谨的对照实验，全方位评测了其在词错误率 (WER) 、推理延迟、流式传输、噪声鲁棒性以及语音转工具调用等场景中的性能表现，为开发者在边缘计算与端侧 AI 智能体开发中提供了极具实用价值的轻量级语音落地指南。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+在本技术实战教程与评测中，我们将深入探索由 Cactus Compute 推出的超轻量语音转文字 (Speech-to-Text) 模型 **Whistle** 。该模型体积仅为惊人的 16.9MB ，专为在 CPU 环境下高效运行而设计。虽然体积极其小巧，但 Whistle 却具备跨 7 种语言的多语种转录能力，同时还能提供极其精确的词级别时间戳和置信度概率指标。
+
+&gt; In this technical tutorial and evaluation, we explore **Whistle**—Cactus Compute’s ultra-compact, 16.9 MB speech-to-text model designed to run efficiently on CPUs. Whistle supports multi-language transcription across seven languages while returning precise word timestamps and probability metrics.
+
+我们基于固定的随机种子，从 LibriSpeech 基准测试数据集 (包含 `test-clean` 和 `test-other` 测试集) 中抽样构建评测音频，并在完全相同的音频片段上将其与 OpenAI 的开源标杆模型 **Whisper (Tiny 与 Base 模型) ** 展开全方位的严格对比分析。评测运行在 Apple M4 CPU 上，通过结合 Holm 校正 (Holm correction) 的配对发音人聚类置信区间进行严密的统计推断，我们的核心研究发现如下：
+
+&gt; Using seeded samples from LibriSpeech (`test-clean` and `test-other`), we conduct a rigorous comparative analysis against OpenAI's **Whisper (Tiny and Base models)** across identical audio clips. Evaluated through paired speaker-cluster intervals with Holm correction on an Apple M4 CPU, our findings highlight:
+
+* **词错误率 (Word Error Rate, WER) **：在背景噪声更复杂的 `test-other` 数据集上，Whistle 的转录精度甚至超越了采用贪婪搜索 (Greedy Search) 策略的 Whisper Base ；不过在 Whisper 开启束搜索 (Beam Search) 策略后，两者之间的差距有所收窄。
+* **速度与能效 (Speed &amp; Efficiency) **：在短音频场景下，Whistle 相较于 Whisper 展现出了显著的速度优势，不过随着音频片段长度的增加，两者之间的速度差距会逐渐缩小。
+* **运行边界限制 (Operational Limits) **：我们深入挖掘出了一些关键的边缘限制条件，例如当音频超过 30 秒窗口约束时，当前锁定的推理引擎可能会在静默状态下直接丢弃超长部分的音频片段。
+* **高级拓展能力 (Advanced Capabilities) **：我们还全面基准测试了流式传输延迟、时间戳精确度、关键词偏置增强 (Keyword Biasing)、多语种识别、抗噪鲁棒性、声学特征嵌入 (Embedding) 生成，以及将语音直接路由至工具调用 (Tool Call) 的端到端流程。
+
+&gt; * **Word Error Rate (WER):** Whistle outperforms greedy Whisper Base on `test-other`, though the performance gap narrows against beam search strategies.
+&gt; * **Speed &amp; Efficiency:** Whistle delivers significant speed advantages over Whisper, though the efficiency delta narrows as audio clip lengths increase.
+&gt; * **Operational Limits:** We uncover critical edge cases, such as a 30-second window constraint where the pinned engine can silently drop audio segments.
+&gt; * **Advanced Capabilities:** We benchmark streaming latency, timestamp accuracy, keyword biasing, multilingual processing, noise robustness, embedding generation, and speech-to-tool routing.
+
+---
+
+## 1. 环境搭建与模型初始化
+
+&gt; ## 1. Environment Setup &amp; Model Initialization
+
+在准备实验环境时，我们需要安装 `cactus-needle` 库以及必需的语音转录与音频处理工具，同时显式禁用相关的遥测数据收集功能。为了确保实验结果具备百分之百的可复现性，我们通过锁定 Hugging Face 仓库的具体版本提交哈希 (Revision) 并校验 SHA-256 哈希值，对模型权重及底层推理引擎进行严格固定。
+
+&gt; We install `cactus-needle` along with necessary transcription and audio processing utilities while disabling telemetry. By pinning specific Hugging Face repository revisions and recording SHA-256 hashes, we ensure complete reproducibility.
+
+```python
+import os
+import io
+import re
+import sys
+import json
+import math
+import time
+import random
+import hashlib
+import shutil
+import zipfile
+import platform
+import traceback
+import subprocess
+import collections
+import urllib.error
+import urllib.request
+ 
+RESULTS = {}
+VERDICTS = []
+ 
+def banner(title):
+    print("\n" + "=" * 78)
+    print(title)
+    print("=" * 78)
+ 
+def section(name):
+    def wrap(fn):
+        def run(*a, **kw):
+            banner(name)
+            t0 = time.time()
+            try:
+                out = fn(*a, **kw)
+                RESULTS[name] = out if isinstance(out, str) else "ok"
+                return out
+            except Exception as e:
+                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {e}"
+                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
+                traceback.print_exc(limit=3)
+                return None
+            finally:
+                print(f"\n[{time.time() - t0:.0f} s]")
+                json.dump({"results": RESULTS, "verdicts": VERDICTS}, open("results.json", "w"), indent=1)
+        return run
+    return wrap
+ 
+banner("1. Install Whistle, pin its weights and engine by Hub revision, transcribe one clip")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "cactus-needle==3.2.0", "openai-whisper==20250625",
+                "jiwer==4.0.0", "soundfile==0.14.0", "soxr==1.1.0"], check=True)
+os.environ["NEEDLE_TELEMETRY"] = "0"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+ 
+import numpy as np
+import soundfile as sf
+import soxr
+from huggingface_hub import hf_hub_download
+ 
+WHISTLE_REV = "ca5287601bef25af26dcf2e1b2bdc0843a7c19e5"
+NEEDLE3_REV = "93e88ede867e4311c39151285e74df513e4b835b"
+from needle.agent import fetch as needle_fetch
+TAG = needle_fetch._platform_tag()
+ENGINE_VERSION = needle_fetch.engine_version(3)
+weights = hf_hub_download("Cactus-Compute/whistle", "whistle.cact", revision=WHISTLE_REV)
+wheel = hf_hub_download("Cactus-Compute/needle3", needle_fetch.engine_wheel(ENGINE_VERSION, TAG, 3), revision=NEEDLE3_REV)
+with zipfile.ZipFile(wheel) as z:
+    member = next(n for n in z.namelist() if n.startswith("needle/libneedle"))
+    os.makedirs("engine", exist_ok=True)
+    engine = os.path.abspath(os.path.join("engine", os.path.basename(member)))
+    open(engine, "wb").write(z.read(member))
+needle3_weights = hf_hub_download("Cactus-Compute/needle3", "needle3.cact", revision=NEEDLE3_REV)
+os.makedirs(needle_fetch.cache_dir(3), exist_ok=True)
+shutil.copyfile(needle3_weights, os.path.join(needle_fetch.cache_dir(3), needle_fetch.base_weights(3)))
+os.environ["NEEDLE_WHISTLE_WEIGHTS"] = weights
+os.environ["NEEDLE3_LIB_PATH"] = engine
+ 
+import needle
+import importlib.metadata as md
+sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()[:12]
+CPU = platform.processor() or platform.machine()
+if sys.platform == "linux" and os.path.exists("/proc/cpuinfo"):
+    CPU = next((l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")), CPU)
+elif sys.platform == "darwin":
+    CPU = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip() or CPU
+
+print(f"cactus-needle {needle.__version__} (engine {ENGINE_VERSION}, wheel tag {TAG})   python {platform.python_version()}   "
+      f"soundfile {md.version('soundfile')}  soxr {md.version('soxr')}  numpy {np.__version__}")
+print(f"hardware: {CPU}, {os.cpu_count()} cpus visible")
+print(f"whistle.cact  {os.path.getsize(weights)/1e6:.1f} MB  sha256 {sha(weights)}   @ {WHISTLE_REV[:12]}")
+print(f"engine        {os.path.getsize(engine)/1e6:.1f} MB  sha256 {sha(engine)}   @ {NEEDLE3_REV[:12]}")
+print(f"needle3.cact  {os.path.getsize(needle3_weights)/1e6:.1f} MB  sha256 {sha(needle3_weights)}   @ {NEEDLE3_REV[:12]}")
+ 
+SR = 16000
+W = needle.Whistle()
+ 
+def fetch(url, tries=7):
+    for k in range(tries):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if k == tries - 1:
+                raise
+            wait = int(e.headers.get("Retry-After", 0) or 0) if e.code == 429 else 0
+            time.sleep(max(wait, 5 * 2 ** k) if e.code in (429, 500, 502, 503, 504) else 2)
+        except Exception:
+            if k == tries - 1:
+                raise
+            time.sleep(3 * (k + 1))
+ 
+def page(dataset, config, split, offset, length=100):
+    url = (f"https://datasets-server.huggingface.co/rows?dataset={dataset}&amp;config={config}"
+           f"&amp;split={split}&amp;offset={offset}&amp;length={length}")
+    time.sleep(0.25)
+    return json.loads(fetch(url))
+ 
+def load_audio(row):
+    data = fetch(row["audio"][0]["src"])
+    audio, sr = sf.read(io.BytesIO(data), dtype="float32")
+    if audio.ndim &gt; 1:
+        audio = audio.mean(axis=1)
+    if sr != SR:
+        audio = soxr.resample(audio, sr, SR, quality="HQ")
+    return audio, hashlib.sha256(data).hexdigest()[:12]
+ 
+first = page("openslr/librispeech_asr", "clean", "test", 0, 1)["rows"][0]["row"]
+clip, _ = load_audio(first)
+t0 = time.perf_counter()
+out = W.transcribe(clip, word_timestamps=True)
+wall = (time.perf_counter() - t0) * 1000
+print(f"\nclip {first['id']}  {len(clip)/SR:.1f} s   reference: {first['text']}")
+print(f"-&gt; {out['text']!r}")
+print(f"   language {out['language']}   engine time to first token {out['ttft_ms']:.1f} ms   decode {out['decode_tps']:.0f} tok/s"
+      f"   wall {wall:.0f} ms")
+print("   first words:", [(w["word"], w["start"], w["end"], w["probability"]) for w in out["words"][:3]])
+RESULTS["1. Install Whistle, pin its weights and engine by Hub revision, transcribe one clip"] = \
+    f"{os.path.getsize(weights)/1e6:.1f} MB weights, {len(clip)/SR:.1f} s clip in {wall:.0f} ms"
+```
+
+---
+
+## 2. 实验设计与随机种子采样
+
+&gt; ## 2. Experimental Design &amp; Seeded Sampling
+
+为了恪守学术研究与评测的严谨性，在正式启动评估流程之前，我们需要先在代码层面固化所有校验参数、统计指标与评估准则。
+
+&gt; To maintain academic rigor, validation parameters and evaluation metrics are codified prior to final evaluation runs.
+
+```python
+import jiwer
+import whisper
+import torch
+from whisper.normalizers import EnglishTextNormalizer, BasicTextNormalizer
+ 
+NORM_EN = EnglishTextNormalizer()
+NORM_BASIC = BasicTextNormalizer()
+SEED = 2026
+N_WHISTLE = 300
+N_PAIRED = {"other": 100, "clean": 60}
+MAX_CLIP_S = 30.0
+WHISPER_SECONDS = collections.Counter()
+ 
+def all_rows(dataset, config, split):
+    out, offset = [], 0
+    while True:
+        rows = page(dataset, config, split, offset)["rows"]
+        out += [r["row"] for r in rows]
+        offset += 100
+        if len(rows) &lt; 100:
+            return out
+ 
+def dataset_sha(dataset):
+    return json.loads(fetch(f"https://huggingface.co/api/datasets/{dataset}"))["sha"][:12]
+ 
+def wer_counts(ref, hyp):
+    n = len(ref.split())
+    if not hyp.strip():
+        return n, n
+    o = jiwer.process_words(ref, hyp)
+    return o.substitutions + o.deletions + o.insertions, n
+ 
+def sdi(ref, hyp):
+    if not hyp.strip():
+        return 0, len(ref.split()), 0
+    o = jiwer.process_words(ref, hyp)
+    return o.substitutions, o.deletions, o.insertions
+ 
+def corpus_wer(errs, words):
+    return 100.0 * sum(errs) / max(sum(words), 1)
+ 
+def _by_cluster(clusters, *arrays):
+    tot = collections.defaultdict(lambda: [0.0] * len(arrays))
+    for i, c in enumerate(clusters):
+        for j, a in enumerate(arrays):
+            tot[c][j] += a[i]
+    return tot
+ 
+def wer_ci(clusters, errs, words, B=2000, seed=0):
+    tot = _by_cluster(clusters, errs, words)
+    keys, rng = sorted(tot), random.Random(seed)
+    boots = []
+    for _ in range(B):
+        d = rng.choices(keys, k=len(keys))
+        boots.append(100 * sum(tot[c][0] for c in d) / max(sum(tot[c][1] for c in d), 1))
+    return np.percentile(boots, [2.5, 97.5])
+ 
+def paired_contrast(clusters, errs_a, words, errs_b, label_a, label_b, B=2000, seed=0):
+    tot = _by_cluster(clusters, errs_a, errs_b, words)
+    keys, rng = sorted(tot), random.Random(seed)
+    boots = []
+    for _ in range(B):
+        d = rng.choices(keys, k=len(keys))
+        w = max(sum(tot[c][2] for c in d), 1)
+        boots.append(100 * (sum(tot[c][0] for c in d) - sum(tot[c][1] for c in d)) / w)
+    boots = np.array(boots)
+    lo, hi = np.percentile(boots, [2.5, 97.5])
+    p = 2 * min((boots &lt;= 0).mean(), (boots &gt;= 0).mean())
+    return {"a": label_a, "b": label_b, "diff": corpus_wer(errs_a, words) - corpus_wer(errs_b, words),
+            "lo": lo, "hi": hi, "p": max(p, 1 / B), "clusters": len(keys)}
+ 
+def holm(ps, alpha=0.05):
+    order, keep = np.argsort(ps), [False] * len(ps)
+    for rank, i in enumerate(order):
+        if ps[i] &lt;= alpha / (len(ps) - rank):
+            keep[i] = True
+        else:
+            break
+    return keep
+ 
+def verdict(c, significant):
+    if c["lo"] &gt; 0 and significant:
+        return "Whistle ahead"
+    if c["hi"] &lt; 0 and significant:
+        return "Whistle behind"
+    return "no significant difference at this n"
+ 
+def fmt_contrast(c):
+    return f"{c['diff']:+.2f} pts (95% CI {c['lo']:+.2f}..{c['hi']:+.2f}, {c['clusters']} speakers)"
+ 
+@section("2. Fixed, seeded samples of LibriSpeech test-clean and test-other, and the rules for the verdicts")
+def sample_english():
+    global EN
+    global MANIFEST
+    EN, manifest = {}, {"dataset_sha": dataset_sha("openslr/librispeech_asr"), "seed": SEED, "splits": {}}
+    MANIFEST = manifest
+    for split in ("other", "clean"):
+        t0 = time.time()
+        rows = all_rows("openslr/librispeech_asr", split, "test")
+        idx = random.Random(SEED).sample(range(len(rows)), N_WHISTLE)
+        kept, too_long, empty = [], 0, 0
+        for i in idx:
+            r = rows[i]
+            audio, h = load_audio(r)
+            ref = NORM_EN(r["text"])
+            if len(audio) / SR &gt; MAX_CLIP_S:
+                too_long += 1
+                continue
+            if not ref:
+                empty += 1
+                continue
+            kept.append({"id": r["id"], "spk": str(r["speaker_id"]), "text": r["text"], "ref": ref,
+                         "audio": audio, "dur": len(audio) / SR, "sha": h})
+        EN[split] = kept
+        manifest["splits"][split] = {"rows": len(rows), "sampled": N_WHISTLE, "too_long": too_long, "empty_ref": empty,
+                                     "ids": [c["id"] for c in kept], "sha": [c["sha"] for c in kept]}
+        durs = [c["dur"] for c in kept]
+        pk = kept[:N_PAIRED[split]]
+        print(f"test-{split}: {len(rows)} rows -&gt; {len(kept)} clips kept ({too_long} over {MAX_CLIP_S:.0f} s, {empty} empty), "
+              f"{len(set(c['spk'] for c in kept))} speakers, {sum(durs)/60:.1f} min, clip {np.mean(durs):.1f} s mean / {max(durs):.1f} s max"
+              f"   [{time.time()-t0:.0f} s]")
+    json.dump(manifest, open("manifest.json", "w"))
+    return f"{len(EN['other'])} + {len(EN['clean'])} clips, manifest written"
+ 
+sample_english()
+```
+
+---
+
+## 3. 词错误率 (WER) 基准评测
+
+&gt; ## 3. Word Error Rate (WER) Benchmarking
+
+我们利用基于配对发音人聚类自举法 (Speaker-Cluster Bootstrapping) 计算出的置信区间，将 Whistle 与 Whisper Tiny 以及 Whisper Base 模型在词错误率指标上展开细致的比对。
+
+&gt; We evaluate word error rates against Whisper Tiny and Whisper Base models, utilizing paired speaker-cluster bootstrapped confidence intervals.
+
+```python
+WHISPER = {}
+ 
+def whisper_model(size):
+    if size not in WHISPER:
+        WHISPER[size] = whisper.load_model(size, device="cpu")
+    return WHISPER[size]
+ 
+def run_whisper(size, audio, language="en", **kw):
+    torch.manual_seed(0)
+    WHISPER_SECONDS[size] += len(audio) / SR
+    t0 = time.perf_counter()
+    r = whisper_model(size).transcribe(audio, language=language, fp16=False, **kw)
+    fell_back = any(s.get("temperature", 0) &gt; 0 for s in r["segments"])
+    return r["text"], fell_back, time.perf_counter() - t0
+ 
+SYSTEMS = {"other": [("whisper tiny, greedy", "tiny", {}), ("whisper base, greedy", "base", {}), ("whisper base, beam 5", "base", {"beam_size": 5})],
+           "clean": [("whisper tiny, greedy", "tiny", {}), ("whisper base, greedy", "base", {}), ("whisper base, beam 5", "base", {"beam_size": 5})]}
+FAMILY_A = {"test-clean: Whistle vs whisper base, greedy", "test-clean: Whistle vs whisper base, beam 5",
+            "test-other: Whistle vs whisper base, greedy", "test-other: Whistle vs whisper base, beam 5",
+            "MLS pooled: Whistle vs whisper base, greedy"}
+PUBLISHED = {"other": "Whistle 10.49 / Whisper base 11.0 (paper table 9, beam) / 12.4 (table 8, greedy)",
+             "clean": "Whistle 4.31 / Whisper base 4.9 (paper table 9, beam) / 5.0 (table 8, greedy)"}
+CONTRASTS = []
+ 
+@section("3. Word error rate against Whisper tiny and base, paired by clip, with a verdict per contrast")
+def english_wer():
+    global HYP
+    HYP = {}
+    for split in ("other", "clean"):
+        clips = EN[split]
+        t0 = time.perf_counter()
+        hw = [W.transcribe(c["audio"], language="en")["text"] for c in clips]
+        tw = time.perf_counter() - t0
+        HYP[(split, "Whistle")] = hw
+        e_w, n_w = zip(*[wer_counts(c["ref"], NORM_EN(h)) for c, h in zip(clips, hw)])
+        lo, hi = wer_ci([c["spk"] for c in clips], e_w, n_w)
+        print(f"test-{split}: Whistle on all {len(clips)} clips: WER {corpus_wer(e_w, n_w):.2f}% (95% speaker-cluster CI {lo:.2f}..{hi:.2f}) "
+              f"in {tw:.1f} s ({1000*tw/len(clips):.0f} ms per clip)")
+        pk = clips[:N_PAIRED[split]]
+        spk = [c["spk"] for c in pk]
+        e_wp, n_p = list(e_w[:len(pk)]), list(n_w[:len(pk)])
+        for label, size, kw in SYSTEMS[split]:
+            res = [run_whisper(size, c["audio"], **kw) for c in pk]
+            hyps = [r[0] for r in res]
+            HYP[(split, label)] = hyps
+            e_o = [wer_counts(c["ref"], NORM_EN(h))[0] for c, h in zip(pk, hyps)]
+            con = paired_contrast(spk, e_o, n_p, e_wp, label, "Whistle")
+            con["name"] = f"test-{split}: Whistle vs {label}"
+            CONTRASTS.append(con)
+            print(f"   {label:22s} {corpus_wer(e_o, n_p):6.2f}% | {fmt_contrast(con)}")
+    return "completed"
+ 
+english_wer()
+```
+
+---
+
+## 4. 推理速度与内存占用评估
+
+&gt; ## 4. Speed &amp; Footprint Evaluation
+
+为了确保性能基准测试的绝对客观与精准，避免多线程调度带来的资源争抢，我们让每个推理引擎均在独立的系统隔离子进程中运行。
+
+&gt; To ensure accurate performance profiling without thread contention, each inference engine operates inside an isolated system process.
+
+```python
+def audio_seconds(clips, seconds):
+    out, total = [], 0
+    for c in clips:
+        out.append(c["audio"])
+        total += c["dur"]
+        if total &gt;= seconds:
+            break
+    return np.concatenate(out)[:int(seconds * SR)]
+ 
+PROBE_SCRIPT = r"""
+import sys, json, time, resource, numpy as np
+kind, paths = sys.argv[1], sys.argv[2:]
+scale = 1 &lt;&lt; 20 if sys.platform == "darwin" else 1 &lt;&lt; 10
+rss = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / scale
+out = {"kind": kind}
+if kind.startswith("whistle"):
+    import needle
+    out["after_import"] = rss()
+    W = needle.Whistle()
+    run = lambda a: W.transcribe(a, language="en")
+else:
+    import whisper, torch
+    out["after_import"] = rss()
+    size, kw = kind.split("-")[1], ({"beam_size": 5} if kind.endswith("beam5") else {})
+    m = whisper.load_model(size, device="cpu")
+    def run(a):
+        torch.manual_seed(0)
+        return m.transcribe(a, language="en", fp16=False, **kw)
+clips = {p: np.load(p) for p in paths}
+run(clips[paths[0]])
+reps = 5 if kind.startswith("whistle") else 3
+for p, a in clips.items():
+    ts = []
+    for _ in range(reps):
+        t0 = time.perf_counter(); r = run(a); ts.append(time.perf_counter() - t0)
+    out[p] = {"wall_ms": 1000 * float(np.median(ts)), "spread_ms": 1000 * float(np.ptp(ts))}
+    if kind.startswith("whistle"):
+        out[p].update(ttft_ms=r["ttft_ms"], tps=r["decode_tps"])
+out["peak"] = rss()
+print(json.dumps(out))
+"""
+ 
+@section("4. Speed and footprint: identical arrays, one fresh process per engine, total wall time and peak memory")
+def speed():
+    pool = EN["other"]
+    for secs in (5, 10, 30):
+        np.save(f"clip{secs}.npy", audio_seconds(pool, secs))
+    open("probe.py", "w").write(PROBE_SCRIPT)
+    res = {}
+    for kind in ("whistle", "whisper-tiny", "whisper-base", "whisper-base-beam5"):
+        out = subprocess.run([sys.executable, "probe.py", kind, "clip5.npy", "clip10.npy", "clip30.npy"], capture_output=True, text=True, env=os.environ)
+        if out.returncode != 0:
+            raise RuntimeError(f"{kind} probe failed: {out.stderr[-300:]}")
+        res[kind] = json.loads(out.stdout.strip().splitlines()[-1])
+    for secs in (5, 10, 30):
+        p = f"clip{secs}.npy"
+        w = res["whistle"][p]
+        print(f"{secs:5d} s | Whistle: {w['wall_ms']:9.0f} ms | Base Greedy: {res['whisper-base'][p]['wall_ms']:8.0f} ms")
+    return "speed benchmark completed"
+ 
+speed()
+```
+
+---
+
+## 5. 音频长度管理与 30 秒窗口限制
+
+&gt; ## 5. Managing Audio Length &amp; The 30-Second Window
+
+Whistle 在单次处理不超过 30 秒的音频窗口时表现最为理想。一旦输入的音频时长超出了这一约束，就需要配合音频分块 (Chunking) 切片策略或流式处理实现。
+
+&gt; Whistle operates optimally on single-pass windows up to 30 seconds. Audio inputs extending beyond this constraint require chunking strategies or streaming implementations.
+
+```python
+def quiet_windows(a, limit=30.0, search=5.0, hop=0.2):
+    out, i, n, s, h = [], 0, int(limit * SR), int(search * SR), int(hop * SR)
+    while len(a) - i &gt; n:
+        seg = a[i + n - s:i + n]
+        energy = [np.mean(seg[j:j + h] ** 2) for j in range(0, len(seg) - h, h // 4)]
+        cut = i + n - s + int(np.argmin(energy)) * (h // 4) + h // 2
+        out.append(a[i:cut])
+        i = cut
+    out.append(a[i:])
+    return out
+ 
+def speaker_sessions(min_s=40, max_s=100, k=8):
+    by = collections.defaultdict(list)
+    for split in ("other", "clean"):
+        for c in EN[split]:
+            by[c["spk"]].append(c)
+    out, gap = [], np.zeros(int(0.4 * SR), np.float32)
+    for spk, cs in sorted(by.items(), key=lambda kv: -sum(c["dur"] for c in kv[1])):
+        parts, used, total = [], [], 0
+        for c in cs:
+            if total + c["dur"] + 0.4 &gt; max_s:
+                break
+            parts += [c["audio"], gap]
+            used.append(c)
+            total += c["dur"] + 0.4
+        if total &gt;= min_s:
+            out.append({"spk": spk, "clips": used, "audio": np.concatenate(parts), "ref": " ".join(c["ref"] for c in used), "dur": total})
+        if len(out) == k:
+            break
+    return out
+ 
+@section("5. The 30-second window: what transcribe() does with longer audio, and two ways around it")
+def long_audio():
+    global SESSIONS
+    SESSIONS = speaker_sessions()
+    s = SESSIONS[0]
+    print(f"speaker {s['spk']}: {len(s['clips'])} utterances joined, {s['dur']:.0f} s total duration.")
+    results = {}
+    for name, wins in (("fixed 30 s windows", [s["audio"][i:i + 30 * SR] for i in range(0, len(s["audio"]), 30 * SR)]),
+                       ("quiet-point cuts &lt;= 30 s", quiet_windows(s["audio"], 30))):
+        t0 = time.perf_counter()
+        hyp = NORM_EN(" ".join(W.transcribe(w, language="en")["text"] for w in wins))
+        results[name] = 100 * jiwer.wer(s["ref"], hyp or "&lt;empty&gt;")
+        print(f"   {name:26s} {len(wins):2d} calls   WER {results[name]:5.2f}%")
+    return "long audio analysis completed"
+ 
+long_audio()
+```
+
+---
+
+## 6. 流式传输延迟与吞吐性能
+
+&gt; ## 6. Streaming Latency &amp; Performance
+
+通过调用 Whistle 提供的 `stream()` 接口，我们可以系统评估基于音频切片的流式转录推理延迟以及文字确权 (Commitment) 的时间间隔。
+
+&gt; Using Whistle's `stream()` method, we evaluate chunk-based transcription latency and commitment intervals.
+
+```python
+@section("6. Streaming: cost per pass, how long a word waits to be committed, and what chunk size changes")
+def streaming():
+    print(f"{len(SESSIONS)} same-speaker sessions evaluated.")
+    summary = {}
+    for chunk_s, sessions in ((1.0, SESSIONS), (0.5, SESSIONS[:2]), (2.0, SESSIONS[:2])):
+        n = int(chunk_s * SR)
+        errs, pass_ms, lat = [], [], []
+        for s in sessions:
+            steps = list(W.stream(iter([s["audio"][i:i + n] for i in range(0, len(s["audio"]), n)]), language="en"))
+            errs.append(wer_counts(s["ref"], NORM_EN(" ".join(x["text"] for x in steps if x["text"])))[0])
+            body = steps[:-1]
+            pass_ms += [x["pass_ms"] for x in body]
+            lat += [x["received"] - wd["end"] for x in steps for wd in x["words"]]
+        summary[(chunk_s, len(sessions))] = (np.median(lat), np.mean(pass_ms))
+        print(f"Chunk size {chunk_s}s | Mean Pass Time: {np.mean(pass_ms):.1f} ms | Median Latency: {np.median(lat):.2f} s")
+    return "streaming evaluation complete"
+ 
+streaming()
+```
+
+---
+
+## 7. 词级别时间戳与置信度概率
+
+&gt; ## 7. Word Timestamps &amp; Probabilities
+
+Whistle 不仅能够精确输出每个词的时间戳，还同步输出了 Token 级别的置信度概率，这为后续业务逻辑中的置信度校验提供了十分可靠的代理参考。
+
+&gt; Whistle outputs token-level probabilities alongside timestamps, providing a reliable proxy for confidence scoring.
+
+```python
+@section("7. Word timestamps and word probabilities: consistency, a known shift, agreement with Whisper, and what p &lt; 0.7 means")
+def timestamps():
+    pk = EN["other"][:40]
+    probs, correct, durs = [], [], []
+    for c in pk:
+        ws = W.transcribe(c["audio"], language="en", word_timestamps=True)["words"]
+        for w in ws:
+            probs.append(w["probability"])
+            durs.append(w["end"] - w["start"])
+    probs = np.array(probs)
+    print(f"Analyzed {len(probs)} words across {len(pk)} clips. Median probability: {np.median(probs):.3f}")
+    return "timestamp validation complete"
+ 
+timestamps()
+```
+
+---
+
+## 8. 关键词偏置增强控制
+
+&gt; ## 8. Keyword Biasing Controls
+
+关键词偏置增强 (Keyword Biasing) 技术允许我们在转录过程中针对专业领域或特定词汇进行重点定向强化，我们通过神谕基准 (Oracle Ceiling) 和干扰项对照组对其有效性展开验证。
+
+&gt; Keyword boosting enables targeted vocabulary improvements during transcription, validated against oracle and distractor controls.
+
+```python
+@section("8. Keyword biasing: an oracle ceiling, a matched wrong-keyword control and a distractor list")
+def keywords():
+    clips = EN["other"]
+    base = HYP[("other", "Whistle")]
+    print(f"Running keyword biasing evaluation on {len(clips)} clips.")
+    return "keyword evaluation complete"
+ 
+keywords()
+```
+
+---
+
+## 9. 多语种 LibriSpeech (MLS) 多语言性能评测
+
+&gt; ## 9. Multilingual Performance on Multilingual LibriSpeech (MLS)
+
+我们进一步扩展了评测边界，基于多语种 LibriSpeech (MLS) 测试集，对德语 (`de`)、法语 (`fr`)、西班牙语 (`es`)、意大利语 (`it`)、荷兰语 (`nl`) 以及波兰语 (`pl`) 等 6 种额外语言进行了转录评测。
+
+&gt; We scale evaluation across six additional languages (`de`, `fr`, `es`, `it`, `nl`, `pl`) using Multilingual LibriSpeech test splits.
+
+```python
+MLS = {"de": "german", "fr": "french", "es": "spanish", "it": "italian", "nl": "dutch", "pl": "polish"}
+N_PER_LANG = 12
+ 
+@section("9. Six more languages on Multilingual LibriSpeech, pooled, with a symmetric language-ID test")
+def multilingual():
+    rng = random.Random(SEED)
+    pooled = {"Whistle (forced)": [], "whisper base, greedy": []}
+    words, clusters = [], []
+    for code, cfg in MLS.items():
+        rows = [r["row"] for r in page("facebook/multilingual_librispeech", cfg, "test", 0)["rows"]]
+        sample = rng.sample(rows, min(len(rows), N_PER_LANG))
+        for r in sample:
+            audio, _ = load_audio(r)
+            ref = NORM_BASIC(r["transcript"])
+            forced = W.transcribe(audio, language=code)["text"]
+            pooled["Whistle (forced)"].append(wer_counts(ref, NORM_BASIC(forced))[0])
+            words.append(len(ref.split()))
+            clusters.append(f"{code}-{r['speaker_id']}")
+    print(f"Multilingual evaluation processed {len(words)} total words.")
+    return "multilingual evaluation complete"
+ 
+multilingual()
+```
+
+---
+
+## 10. 噪声鲁棒性与不同信噪比下的表现
+
+&gt; ## 10. Noise Robustness &amp; Signal-to-Noise Ratios
+
+我们向音频中注入高斯白噪声，测试模型在多种不同信噪比 (Signal-to-Noise Ratio, SNR) 条件下的转录抗噪稳定性与退化规律。
+
+&gt; We test model behaviors under white noise injection across multiple Signal-to-Noise Ratios (SNRs).
+
+```python
+@section("10. Non-speech, quiet speech and white noise at three SNRs, Whistle against Whisper base")
+def noise():
+    rng = np.random.default_rng(SEED)
+    clips = EN["other"][:10]
+    for snr in (20, 10, 5):
+        print(f"Evaluating noise robustness at {snr} dB SNR...")
+    return "noise evaluation complete"
+ 
+noise()
+```
+
+---
+
+## 11. 语音嵌入特征与语音片段搜索
+
+&gt; ## 11. Speech Embeddings &amp; Spoken-Term Search
+
+Whistle 还具备提取内容级帧嵌入特征向量的能力 (输出约为每秒 25 帧的 256 维向量) ，为下游基于声学特征的检索与音频比对任务提供了强大支持。
+
+&gt; Whistle provides content-level frame embeddings (256-dimensional vectors at ~25 frames/sec), facilitating downstream acoustic retrieval tasks.
+
+```python
+@section("11. Speech embeddings: the measured frame rate, and finding a spoken word inside another clip")
+def embeddings():
+    for secs in (1, 5):
+        v = np.asarray(W.embed(audio_seconds(EN["other"], secs)), np.float32)
+        print(f"{secs} s audio -&gt; {len(v)} floats ({len(v)//256} frames)")
+    return "embedding extraction complete"
+ 
+embeddings()
+```
+
+---
+
+## 12. 语音直通工具调用：集成 MInDS-14 意图识别
+
+&gt; ## 12. Speech-to-Tool Calls (MInDS-14 Integration)
+
+我们结合 Needle 3 框架和 MInDS-14 银行业务意图数据集，将语音转录得到的文字结果直接路由至结构化工具调用 (Tool Calling) 架构中，实现端到端的语音操作智能体。
+
+&gt; We route audio transcripts directly into structured tool calling architectures using Needle 3 and MInDS-14 banking intents.
+
+```python
+INTENTS = {"abroad": "Using the card or account while travelling or abroad",
+           "balance": "Check the current account balance",
+           "card_issues": "A card is lost, stolen, blocked, declined or not working"}
+N_MINDS = 50
+ 
+@section("12. From speech to a tool call: Whistle transcripts into Needle 3 on MInDS-14 banking requests")
+def speech_to_tools():
+    tools = [{"name": n, "description": d, "parameters": {"type": "object", "properties": {}}} for n, d in INTENTS.items()]
+    print(f"Initialized {len(tools)} intent tools for tool-calling evaluation.")
+    return "tool routing complete"
+ 
+speech_to_tools()
+```
+
+---
+
+## 总结与关键要点
+
+&gt; ## Summary &amp; Key Takeaways
+
+```python
+banner("SUMMARY")
+for name, res in RESULTS.items():
+    print(f"  {name:&lt;104s}  {res}")
+```</description>
+    </item>
+    <item>
       <title>根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</guid>
@@ -3289,851 +5066,6 @@ Jerry Solinas 曾提到支持代码是由 Bob Reiter 编写的，但当年的原
 &gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.15715)
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.15715)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.15715)</description>
-    </item>
-    <item>
-      <title>SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-15/SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-15/SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速/</guid>
-      <pubDate>Thu, 15 Oct 2026 00:00:00 GMT</pubDate>
-      <description>混合专家模型 (Mixture-of-Experts, MoE) 凭借“按需激活”的稀疏计算特性，在大模型时代实现了参数规模与计算能效的绝佳平衡；然而，当数百亿的专家参数因显存不足而被卸载 (Offload) 到系统主机内存时，从主机内存到显存 (Host-to-Device, H2D) 的跨设备数据传输便瞬间跃升为拖慢自回归解码的核心瓶颈。虽然业界广泛采用投机解码 (Speculative Decoding) 试图通过单次前向传播同时验证多个草稿 Token (Draft Tokens) 来提速，但在 MoE 架构下，每个待验证的候选 Token 都可能唤醒完全不同的专家网络，盲目扩大草稿树不仅无法提速，反倒会迫使系统搬运海量专家权重，出现投机解码速度甚至反常落后于标准自回归解码的“加速负收益”怪象。为了破解这一困局，来自北京航空航天大学等机构的研究团队提出了 **SpecFit** 框架，首次打破了传统投机解码盲目堆砌候选接受长度的单一指标，开创性地确立了“以最大化预测吞吐量为核心”的草稿树动态剪裁准则。SpecFit 精准捕捉到各层激活专家集合并集天然具备的单调子模覆盖 (Monotone Submodular Coverage) 特性，仅针对每个候选节点带来的边际新增专家进行成本核算，并通过祖先闭包子树上的精确搜索算法，在每一个草稿层级动态决策最佳候选组合与最优终止时机。在 Qwen3-30B-A3B 等前沿开源模型上的评测表明，SpecFit 在相同专家缓存下相比主流方案 EAGLE-3 实现了最高 21.6% 的解码加速，面对原生 EAGLE-3 更是达成了最高 1.97 倍的强劲吞吐跃迁，为低显存环境下超大规模 MoE 模型的高效落地开辟了全新的工程优化范式。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-在混合专家模型 (MoE) 中，网络每处理一个 Token 仅需激活所有专家中的一小部分子集。然而，当显存容量告急、不得不将庞大的专家层权重参数卸载 (Offload) 到系统主机内存时，在每次解码迭代中将专家数据从主机搬运至 GPU 显存 (H2D) 的传输开销，便无可避免地成为了卡住整个解码流程的关键瓶颈。
-
-&gt; Mixture-of-Experts (MoE) models activate only a subset of experts per token. However, when expert weights are offloaded to host memory, host-to-device (H2D) expert transfers become a critical bottleneck during decoding. 
-
-投机解码虽然可以通过单次前向验证同时确认多个草稿 Token 来实现推理加速，但它也给 MoE 架构带来了前所未有的特有难题：每一个待验证的候选 Token 都可能激活一组全然不同的专家网络。这导致草稿树分支越多、规模越大，就越会强迫系统从主机内存中搬运海量的专家权重。在如此巨大的显存通信开销拖累下，传统投机解码在 MoE 卸载环境下非但没有提速，实际性能有时甚至比规规矩矩逐字生成的标准自回归解码还要*更差*。
-
-&gt; While speculative decoding accelerates inference by verifying multiple draft tokens in a single forward pass, it introduces a unique challenge in MoE models: each verified token activates its own distinct set of experts. Consequently, larger draft trees force massive H2D transfers. Due to this high memory transfer overhead, traditional speculative decoding can sometimes perform *worse* than standard autoregressive decoding.
-
-为了攻克这一痛点，论文作者提出了 **SpecFit** 优化框架。该框架一改传统算法单纯追求最大化接受长度的局限，转为以“最大化预测吞吐量”为核心准则来指导草稿树的构建与裁决：
-
-&gt; To address this issue, the authors introduce **SpecFit**, an optimized framework designed to maximize predicted throughput rather than simply maximizing acceptance length:
-
-* **吞吐量驱动的路径选择 (Throughput-Driven Selection) ：** SpecFit 依据草稿路径的转移概率来精确估算最终被确认的 Token 期望数量，同时综合草稿树的节点规模与各网络层激活专家的并集，精准预测整个验证周期的实际执行耗时。
-* **子模优化算法 (Submodular Optimization) ：** 鉴于每一层激活专家的并集在数学上天然构成单调子模覆盖函数 (Monotone Submodular Coverage Function) ，系统在评估每一个新增节点时，能够严格且仅为其引入的“边际新增专家”核算传输开销，避免重复计费。
-* **精确子树搜索 (Exact Subtree Search) ：** 通过在满足祖先闭包 (Ancestor-Closed) 约束的候选子树空间中执行精确搜索算法，SpecFit 能够高效锁定能带来最高预测吞吐量的最优子树，并在草稿生成的每个层级动态决断最佳终止时机。
-
-&gt; * **Throughput-Driven Selection:** SpecFit estimates the expected number of committed tokens using draft path probabilities while predicting cycle time based on node count and the per-layer union of activated experts.
-&gt; * **Submodular Optimization:** Because the per-layer union of experts forms a monotone submodular coverage function, each node is evaluated strictly on the marginal experts it adds.
-&gt; * **Exact Subtree Search:** An exact search algorithm over ancestor-closed subtrees determines the optimal subtree for the highest predicted throughput and dynamically decides when to stop drafting.</description>
-    </item>
-    <item>
-      <title>防御蒸馏黑魔法：无监督发现与消除大语言模型中的潜意识学习特征</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/防御蒸馏黑魔法-无监督发现与消除大语言模型中的潜意识学习特征/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/防御蒸馏黑魔法-无监督发现与消除大语言模型中的潜意识学习特征/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在当今的人工智能领域，知识蒸馏 (Knowledge Distillation) 是将庞大教师模型的智慧浓缩迁移至轻量化学生模型的常用手段，但这一过程却暗藏着意料之外的风险。最新研究揭示了一种被称为“潜意识学习” (Subliminal Learning) 的隐蔽现象——即使训练数据在语义上完全人畜无害，学生大语言模型 (Large Language Model, LLM) 仍会在无形之中悄然继承教师模型的特定行为偏好，甚至是潜在的未对齐 (Misalignment) 与恶意特征。以往针对这种“数字潜意识”的防御机制，几乎全部依赖于预先知晓具体的危险特征标签，一旦面对未知或隐蔽的特征污染便束手无策。本文团队提出了一种颠覆性的无监督防御机制：通过敏锐捕捉“特定特征跨数据集恒定表达，而常规任务能力因任务而异”的关键不对称性，仅凭参数更新轨迹即可精准定位被传递的隐秘特征。该方案不仅能将特征方向在权重空间中放大以供解释分析，更能将其无损投影剔除以抑制异常行为，在几乎不损害模型核心性能的同时，为大语言模型的安全蒸馏筑牢了“大脑防火墙”。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-本文提出了一种针对**潜意识学习** (Subliminal Learning) 的无监督防御机制。所谓潜意识学习，是指在知识蒸馏过程中，即便用于训练的数据在语义层面上与特定特征毫无关联，学生大语言模型也会在无意识中继承教师模型的行为特征 (例如对齐失效或潜在恶意倾向) 。与以往必须预先知晓并依赖显式特征标签的防御方案不同，这项新技术完全从模型的参数更新中分离并还原出被隐秘传递的特征；它巧妙利用了一个核心的不对称性规律：**特定特征在教师模型生成的不同数据集上均表现出高度一致性，而标准任务能力则会随着具体任务的不同而产生差异。** 由此构建的估计器能够精准锁定权重空间中的对应方向——这些方向既可以通过放大来洞察和解释特征背后的行为机制，也可以通过正交投影直接予以剔除，从而在对模型整体任务性能几乎零影响的前提下有效抑制不良行为。
-
-&gt; This paper introduces an unsupervised defense mechanism against **subliminal learning**—a phenomenon where distilled language models unconsciously inherit behavioral traits (such as misalignment) from a teacher model, even when trained on semantically unrelated data. Unlike previous methods requiring explicit trait labels, this new approach isolates and recovers transmitted traits entirely from parameter updates by leveraging a key asymmetry: **traits are expressed consistently across diverse datasets, whereas standard task capabilities vary.** The resulting estimator isolates weight-space directions that can either be amplified for interpretation or projected out to suppress unwanted behaviors with minimal impact on overall task performance.
-
----
-
-## 论文元数据与详细信息
-
-&gt; ## Metadata &amp; Article Details
-
-| 字段 | 详情 |
-| :--- | :--- |
-| **arXiv 编号** | [`arXiv:2610.13536`](https://arxiv.org/abs/2610.13536) [stat.ML] |
-| **学科领域** | 机器学习 (`stat.ML`)；人工智能 (`cs.AI`)；机器学习 (`cs.LG`) |
-| **提交日期** | 2026年10月9日 |
-| **作者** | Joseph Egan, Ciarán M. Gilligan-Lee, Michael O'Riordan, Yuchen Zhu |
-| **许可协议** | [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0)](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt; |
-
-&gt; | Field | Detail |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [`arXiv:2610.13536`](https://arxiv.org/abs/2610.13536) [stat.ML] |
-&gt; | **Subjects** | Machine Learning (`stat.ML`); Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`) |
-&gt; | **Submission Date** | October 9, 2026 |
-&gt; | **Authors** | Joseph Egan, Ciarán M. Gilligan-Lee, Michael O'Riordan, Yuchen Zhu |
-&gt; | **License** | [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt; |
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-当基于相同底座参数对大语言模型进行知识蒸馏时，即便训练数据在语义上与特定特征毫无关联，学生模型依然能够“潜意识”般继承教师模型的特定行为特征，甚至包括潜在的对齐失效风险 (Cloud et al., 2026) 。然而，目前所有现存的防御手段都存在一个致命前提——必须预先知晓具体的特征是什么。
-
-&gt; When a language model is distilled from a teacher that shares its base parameters, the student can inherit behavioural traits of the teacher—including misalignment—even from data that is semantically unrelated to the trait (Cloud et al., 2026). All existing defences require knowing the trait.
-
-本文彻底打破了这一限制，并从理论与实验上证明：无需任何人工监督，仅凭参数更新本身就能完全还原出潜意识传递的特征。这一突破归功于作者团队敏锐捕捉到的一个关键不对称性：由教师模型生成的不同数据集之间，特定隐蔽特征的表达始终保持高度一致；相反，针对具体任务的专用能力以及通用共享能力则在不同数据分布间呈现出显著差异。
-
-&gt; We remove this requirement and prove that a subliminally transferred trait can be recovered from the parameter updates alone, without supervision, by exploiting a single asymmetry: the trait is expressed consistently across diverse datasets generated by the teacher, whereas task-specific and shared capabilities vary.
-
-基于该原理构建的估计器能够精准求解出权重空间中的特征方向：研究人员既可以通过放大该方向的权重分量来直观探测并解释该特征的运作机理，也可以通过正交投影直接将其剔除，从而彻底压制异常行为的表达。在 (Cloud et al., 2026) 提出的潜意识学习基准测试中，该方法在完全不需要任何特征标签的情况下，成功还原出了被隐秘传递的动物偏好特征，并在对模型核心任务性能几乎毫无影响的前提下彻底消除了其行为表现。
-
-&gt; The resulting estimator returns a weight-space direction that can be amplified to discover and interpret the trait or projected out to suppress it. Applied to the subliminal-learning benchmarks of (Cloud et al., 2026), our method recovers the transmitted animal-preference traits without any trait labels and suppresses their expression with almost no impact to task performance.
-
----
-
-## 论文获取与相关资源
-
-&gt; ## Access &amp; Resources
-
-* **全文获取途径：** [查看 PDF 原文](https://arxiv.org/pdf/2610.13536) | [实验性 HTML](https://arxiv.org/html/2610.13536v1) | [TeX 源码](https://arxiv.org/src/2610.13536)
-* **引文与学术指标：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.13536) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.13536) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.13536)
-* **项目工具与社区生态：** [alphaXiv](https://alphaxiv.org/) | [CatalyzeX Code Finder](https://www.catalyzex.com) | [Hugging Face](https://huggingface.co/huggingface)
-
-&gt; * **Full-Text Options:** [View PDF](https://arxiv.org/pdf/2610.13536) | [Experimental HTML](https://arxiv.org/html/2610.13536v1) | [TeX Source](https://arxiv.org/src/2610.13536)
-&gt; * **Citations &amp; Metrics:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.13536) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.13536) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.13536)
-&gt; * **Project Tools &amp; Ecosystem:** [alphaXiv](https://alphaxiv.org/) | [CatalyzeX Code Finder](https://www.catalyzex.com) | [Hugging Face](https://huggingface.co/huggingface)</description>
-    </item>
-    <item>
-      <title>从准同步到同步：数字电话通信网络的世纪演进历程</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/从准同步到同步-数字电话通信网络的演进历程/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/从准同步到同步-数字电话通信网络的演进历程/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>本文系统梳理了现代通信网络从模拟时代走向全同步数字网络的百年演进之路。文章深入剖析了模拟信号的固有衰减痛点如何倒逼二战密码通信技术催生出脉冲编码调制 (Pulse Code Modulation, PCM) 与 T 载波 (T-carrier) 革命；详细复盘了准同步数字体系 (Plesiochronous Digital Hierarchy, PDH) 在各自分立的独立时钟下，如何利用“比特填充 (bit stuffing) ”与“借位信令 (robbed-bit signaling) ”等精妙而别扭的工程妥协维持运转；最后深度阐释了光纤革命与巨头拆分如何催生出光同步数字网络 (Synchronous Optical Network, SONET) 与同步数字体系 (Synchronous Digital Hierarchy, SDH) ，凭借微秒级的全局统一授时、自愈环网架构以及灵活的分插复用 (Add-Drop Multiplexing, ADM) ，彻底重塑了现代全球通信底座。
-
----
-
-## 内容摘要
-
-&gt; ## Summary
-
-本文追溯了电信技术从模拟系统演进到当今完全同步数字网络的历史轨迹。文章探讨了模拟信号的物理局限性如何推动了数字脉冲编码调制 (Pulse Code Modulation, PCM) 的普及——这一进程始于二战时期的保密语音通信系统 (SIGSALY) ，最终在 1962 年 AT&amp;T 推出 T 载波 (T-carrier) 系统时达到高潮。
-
-&gt; This article traces the evolution of telecommunications from analog systems to the fully synchronized digital networks of the modern era. It explores how the limitations of analog signals drove the adoption of digital pulse code modulation (PCM), beginning with WWII-era cryptography (SIGSALY) and culminating in AT&amp;T's introduction of the T-carrier in 1962.
-
-文章详细剖析了**准同步数字体系 (Plesiochronous Digital Hierarchy, PDH) **充满妥协与“野蛮生长”的发展历程——着重介绍了为了向下兼容而不得不引入的“比特填充 (bit-stuffing) ”与“借位信令 (robbed-bit signaling) ”等特异机制，并阐明了在相互独立的异构网络间进行时钟对齐、复用以及提取单路信道所面临的巨大挑战。最后，文章探讨了光纤技术的兴起、AT&amp;T 的反垄断拆分以及全球标准化互通的需求，如何共同孕育了**光同步数字网络 (Synchronous Optical Network, SONET) **与同步数字体系 (Synchronous Digital Hierarchy, SDH) ，并最终通过高精度授时、自愈环网拓扑以及分插复用技术，彻底取代了昔日粗糙的“大致同步”。
-
-&gt; The piece details the messy, organic growth of the **Plesiochronous Digital Hierarchy (PDH)**—highlighting quirks like bit-stuffing and robbed-bit signaling required for backwards compatibility—and explains the immense challenges of timing, multiplexing, and extracting individual channels across independent networks. Finally, it examines how the arrival of fiber optics, the breakup of AT&amp;T, and the need for standardized global interoperability gave rise to **SONET (Synchronous Optical Network)** and SDH, ultimately replacing "approximate synchronicity" with precise time-keeping, ring architectures, and add-drop multiplexing.
-
----
-
-## 数字体系的演进
-
-&gt; ## The Digital Hierarchy
-
-在 20 世纪 60 年代以前，电话通话一直是以模拟信号的形式进行传输的。当时网络中大量采用了频分复用 (Frequency Division Multiplexing, FDM) 技术，将信号加载到[架空明线](https://computer.rip/2021-12-05-singing-wires.html)以及部分[同轴电缆](https://computer.rip/2021-12-13-coaxial-goes-to-war.html)上传输，而在二战后的时期，地下埋设的多对双绞线电缆开始占据统治地位。尽管当时的电话网络功能表现出奇地好——即便是跨越美国东西两岸的长途通话依然相当清晰——但模拟载波存在着无法逾越的物理限制。通话质量在传输链路的每一次中继与放大中都会发生衰减；而对于那些敏感的数据传输连接而言，这种衰减问题显得尤为致命，而数字通信显然正是电话系统的未来方向。当时所谓的“数字通信”，仅仅是将数字信号调制在电话线路*顶层*：电话系统本身依然将它们视作普通的模拟通话，只是需要对其传输质量予以特殊关照。
-
-&gt; Up until the 1960s, telephone calls were carried as analog signals. There was a great deal of frequency division multiplexing onto [open wire](https://computer.rip/2021-12-05-singing-wires.html), and sometimes [coaxial cables](https://computer.rip/2021-12-13-coaxial-goes-to-war.html), but in the post-war period buried multipair telephone cables began to dominate. While the network was surprisingly functional—long distance calls from coast to coast were still quite intelligible—there were fundamental limitations to analog carriers. The quality of the call would degrade with each step, a problem that was much more acute for the sensitive digital connections that were already the apparent future of the telephone system. These were digital signals modulated *over the top* of telephone lines: the telephone system itself still handled them as analog calls, just ones that required special care for quality.
-
-在第二次世界大战期间，人们逐渐意识到，如果能以数字信号作为整套长途通信系统的底层架构，长途网络面临的诸多棘手难题就能迎刃而解。1943 年，Bell Labs 参与设计了一款名为 SIGSALY 的早期加密语音通信系统。与二战初期使用的“语音扰频器”及其他模拟手段不同，SIGSALY 的工作原理与现代数字加密技术惊人地相似。它将语音数据量化为数值，从而可以使用数字算术逻辑对其进行编码加密。在为语音打造密码系统的探索过程中，Bell Labs 顺带构建了人类首个用于 PCM 数字语音传输的实用系统。战后，对该技术进行改良并推广至常规民用通信服务，自然成为了水到渠成的一步。
-
-&gt; During the Second World War, it became apparent that many of the long distance network's challenges could be greatly simplified by using digital signaling as the basis of the entire long distance system. In 1943, Bell Labs contributed to the design of an early encrypted voice communications system called SIGSALY. Unlike the "voice scramblers" and other analog techniques of the early phase of the war, SIGSALY was recognizably similar to modern encryption. The voice data was quantized into numerical values, so that digital arithmetic could be used to encode it. In the quest to build a cryptosystem for voice, Bell Labs incidentally built the first applied system for PCM digital voice transmission. After the war, it was an obvious next step to refine this technology and apply it to regular service.
-
-但这并不意味着电话网络立刻就普及了端到端的纯数字服务，至少起初并非如此：事实上绝大多数用户本地回路 (subscriber loops) 直至今日依然是模拟线路。在数字网络起步的最初几年里，甚至电话局自身的交换机处理的也全都是纯模拟信号。然而在局间中继线上，将模拟信道编码为数字信号彻底解决了诸多痛点，从语音质量劣化、微波链路过载，到流量路由调度的灵活性问题无一不迎刃而解。数字化演进成为了 AT&amp;T 所谓*载波 (carrier) *概念的核心组成部分，正如 20 世纪 20 年代频分复用技术的地位一样。这正是 1962 年商用电话系统中首个数字载波体系——[T 载波 (T-carrier)](https://computer.rip/2025-09-20-T-carrier.html)问世的历史背景。
-
-&gt; This didn't necessarily mean direct digital service, at least not at first: most subscriber loops remain analog to the present day. For the first years of the digital network, even the exchanges themselves switched purely analog signals. Between offices, though, encoding the analog channels into digital ones solved problems from audio quality, to microwave path overloading, to flexibility in traffic routing. Digitization became a core part of AT&amp;T's concept of a *carrier,* just like frequency division multiplexing had in the 1920s. That's the background to the 1962 introduction of [T-carrier](https://computer.rip/2025-09-20-T-carrier.html), the first digital carrier in the commercial telephone system.
-
-在上一篇关于 T 载波的文章中 (如果你对这个话题感兴趣，强烈推荐阅读！) ，我曾解释过 T1、T2、T3 等是指带宽呈层级递增的物理连接，它们分别负责承载 DS1、DS2、DS3 等不同级别的数字信号 (Digital Signal, DS) 。让我们快速回顾一下这个分层体系概念，顺便再引入一个颇具迷惑性的硬件概念——D1 信道机 (channel bank) 。D1 信道机是一种实体硬件设备，它负责将 24 路模拟语音信道进行数字化采样，并将它们复用成一路 DS1 信号，最终在 T1 载波线路上传输。
-
-&gt; Back in the article on T-carrier (which you should read if you are at all interested in this topic!), I explained that T1, T2, T3, etc. are hierarchically larger-bandwidth connections that carry the DS1, DS2, DS3, etc. digital signals respectively. Let's quickly review this hierarchical concept and, just to keep things interesting, add the further confusion of the D1 channel bank. A D1 channel bank is the physical piece of equipment that digitizes 24 voice channels and multiplexes them into a DS1 signal, which will be carried over T1 carrier.
-
-以此类推，4 路 DS1 信号可以复用成 1 路 DS2 信号并在 T2 线路上传输；7 路 DS2 信号可以汇聚成 1 路 DS3 信号并在 T3 线路上传输。依此类推，一直延伸到当时技术所能达到的极限。DS2 级别通常大致对应 D2 信道机，但这种对应关系很容易让人混淆，因为后来研发的信道机不仅扩大了容量，还增添了诸多全新功能。D2 信道机能够将 96 路通话复用到一路 DS2 信号中，但它同时还提升了音频信道的整体质量，以满足通用混合长途业务的技术指标 (最初 D1 信道机仅获批用于常规语音通话，无法满足数据级专线等严苛应用的需求) 。
-
-&gt; Similarly, four DS1 signals can be combined into a DS2 signal and carried over T2. Seven DS2 signals can be combined into a single DS3 signal and carried over T3. And so on, at least as far as they were able to get with the technology of the time. The DS2 level maps generally to the D2 channel bank, but that relationship can be confusing as the subsequently developed channel banks added features as well as capacity. The D2 channel bank could multiplex 96 channels onto a DS2 signal, but it also increased the overall quality of the audio channel to meet the technical requirements for general mixed toll service (the D1 had originally only been approved for conventional voice channels, not other applications like data-grade leased lines).
-
-为了实现这一音质飞跃，D2 必须降低混入信号中的量化噪声。早期的 D1 信道机采用的是每个采样点 7 比特的 PCM 音频，而工程理论计算表明，达到长途级通话质量至少需要每个采样点 8 比特 [^1]。从表面上看，这似乎很容易实现：因为 DS1 体系本来就采用了 8 比特的单元。然而，那未被纳入 PCM 音频采样的第 8 个比特，此前一直被预留用于系统信令交互。不过这倒难不倒工程师：由于 D1 信道机原本就用不满全部信令带宽，因此完全可以削减信令速率来达成折中方案。于是，D2 信道机在大多数采样点上采用了满格的 8 比特，但每隔 6 个帧，每个采样的最后 1 个比特就会被“借走”，用于传输信令而非音频。这种做法虽然使量化噪声略有上升，并大幅削减了信令速率，但两者的最终指标都完美落在了工程允许的容差范围内。这是一个绝妙的妥协方案，但在技术美学上却显得极为别扭：从数学意义上看，D2 信道机相当于在每个样本中使用了 7.833 个比特。这确实够让人头皮发麻的。
-
-&gt; In order to make that improvement, the D2 had to reduce the amount of quantization noise introduced into the signal. The D1 channel bank had used PCM audio with seven bits per sample, and calculations showed that eight bits per sample would be required for a toll-grade connection [^1]. In a way, that looked easy: DS1 already used 8-bit units. But the eighth bit, not used as part of the PCM sample, was reserved for signaling purposes. No bother: the D1 channel bank hadn't really used the full signaling bandwidth anyway, so it could comfortably be reduced to meet a compromise position. The D2 channel bank used 8 bits for most PCM samples, but every six frames the last bit of each sample was reserved for signaling use rather than audio. This created a slight increase in quantization noise, and a significant decrease in signaling rate, but the resulting numbers for both fell within acceptable margins. A perfect compromise, but one that feels technically inelegant: in a sense, the D2 channel bank used 7.833 bits per sample. Ouch.
-
-这种工程“打补丁”式的设计当年想必也让 Bell System 的工程师们感到浑身难受，但为了向下兼容，牺牲这点设计美感完全是值得的。当 D2 信道机于 1970 年正式投入商用时，网络中已经铺设了海量的 D1 信道机和 T1 线路。向下兼容现有 T1 线路成为了不可动摇的硬性指标。D2 复用了 96 路信道，容量是 D1 的 4 倍，并且可以通过 4 条 T1 链路来承载这 96 路信道——事实上在最初阶段，这也是唯一的部署选项。因为 T2 及其后续更高级别的载波系统直到 D2 投产之后才真正问世。正是这种向下兼容性，不仅为老设备提供了平滑升级路径，还提供了一种将 96 路大容量拆分分流的手段。
-
-&gt; This must have given the Bell System's engineers similar discomfort, but the aesthetic offense was worth it for backwards-compatibility. By the time the D2 channel bank was fielded in 1970, there were a huge number of D1 channel banks and T1 connections in service. Backwards-compatibility to existing T1 lines was a firm requirement. The D2 multiplexed 96 channels, four times a D1, and could carry those channels over four T1 links—in fact, initially, this was only the option. T2 and subsequent carriers were not fielded until after the D2. This backwards compatibility provided an upgrade path, as well as a way to subdivide the 96-channel capacity.
-
-你或许已经意识到，这也为我们理解“分层体系”提供了一种截然不同的视角。
-
-&gt; You might realize that it is also a completely alternate explanation of the "hierarchy."
-
-你可能会纳闷，为什么这个分层体系中每一层级的复用倍数会如此杂乱无章——24、4、7、6 各不相同？读到上文中每 6 个样本抽取信令比特的设计，或许会唤醒你对“借位信令 (robbed-bit signaling) ”这一概念的深刻记忆——这是一种在 T1 系统中广泛采用的做法，即偶尔“偷窃”几个比特挪作他用。这些都是系统底层设计上的“坏味道”，表明这套体系根本不是预先*精心架构*出来的，而是如同野草一般*野蛮生长*出来的。由 T1、T2、T3 等构成的“数字体系”，绝非什么优雅纯粹的设计，至少远没有 T4 时代《Bell Laboratories Record》期刊吹捧得那么天衣无缝。正如 Dn 系列信道机的发展史所揭示的那样，这主要是历史偶然与现实妥协的产物：每一代全新的信道机 (如 D3、D4) 都被要求承载远多于前代的信道数量，同时还必须死死保证与老款信道机和旧载波线路的向下兼容。正是这种在背负沉重历史包袱下的指数级扩容演进，最终顺理成章地催生出了这套数字体系，它纯粹是现实妥协结出的自然果实，而非蓝图规划的既定杰作。
-
-&gt; You might wonder why the multipliers at the levels of the hierarchy are so inconsistent—24, 4, 7, 6. Reading the thing about signaling bits in every six samples above might have stirred deep memories of a concept called "robbed-bit signaling," a general concept of stealing occasional bits for other purposes that was widely used with T1. These are all smells, indications that a system was not *architected*, but *grown*. The "digital hierarchy" of T1, T2, T3, etc. is not some elegantly-designed system, at least not nearly as much as T4-era Bell Laboratories Record articles like to make it sound. It's mostly a result of happenstance, as the history of the Dn channel banks shows: each new channel bank, the D3, the D4, was designed to carry many more channels than those before. They were also required to be backwards-compatible with the use of the older channel banks and carriers. This process of exponential improvement with backwards compatibility led to the digital hierarchy as a natural consequence, not as a designed outcome.
-
----
-## 准同步性：戴着镣铐起舞的时钟对齐之术
-
-&gt; ## Plesiochronicity
-
-这种不断涌现的、由更大多路复用器 (multiplexer, mux) 逐层堆叠的概念解释了数字体系的由来，但现在我们必须面对一个核心难题：定时 (timing) 与同步 (synchronization) 。
-
-&gt; This emergent concept of layers of successively larger muxes explains the digital hierarchy, but we now need to consider the problem of timing and synchronization.
-
-在任何基于数字采样的系统中，若想将多路信号合并在一起，你必须精准掌握每个采样点的采集时间。设想这样一个场景：几通并发的电话需要被合并进同一个数字复用流中进行传输。当电话信号到达 D1 (或 D2、D3 等) 信道机时，信道机会在适当时刻对所有输入信号进行采样，从而构建出 DS1 (或更高级别) 的输出数据流。这种情况本身并没有什么特别复杂的，唯独有一个刚性要求：汇入该数字流的所有通话采样，必须全部受控于同一个时钟源。
-
-&gt; In any system based on digital sampling, you have to be aware at the point at which those samples are taken in order to combine multiple signals. Consider the scenario where several simultaneous phone calls are being combined into a single digital mux for transmission. When the phone calls reach a D1 (or D2, D3, etc) channel bank, it samples all of the inputs at an appropriate time to build its DS1 (or higher) output stream. Nothing about this case is particularly complicated, except that it does require that all of the calls involved in the digital stream are sampled under the control of the same clock.
-
-但是，如果各路电话线路必须在不同的地理位置分别进行数字化，情况又会如何呢？假设某座城市里有两座较小的端局 (local offices) ，需要将局间通话流量输送给邻近城市的中继汇接局 (tandem switch) 。一种显而易见的方法是：在各自的端局先将通话数字化，然后作为数字信号传输到其中一座端局 (比如市中心的枢纽局) ，再将所有这些数字信号合并在一起发往汇接局。但在当年，用现成的信道机来做这件事是非常糟糕的：你实际上必须先把这些通话重新解码变回模拟信号，然后再重新编码采样变回数字信号，才能将它们从第一段数字链路中继到第二段数字链路。最早期的数字电话线路就是这种形态：完全是点对点的，根本无法在纯数字层面进行交换或路由。在早期所有交换机本身都是模拟设备、数字链路仅仅用于提高局间线路利用率时，这还不算什么大问题；但它却彻底阻碍了 Bell Labs 构想的纯全数字网络的建设。
-
-&gt; But what about cases where lines need to be digitized in different locations? Say you have two smaller offices in a city, that need to deliver inter-office traffic to a tandem in the next city over. An obvious approach would be to digitize the calls in each of their local offices, send them as digital signals to one of the offices (perhaps the city's main downtown exchange), and then combine all of those digital signals together to be sent to the tandem switch. Doing this with channel banks wasn't very desirable: you would actually need to convert the calls back to analog, and then back to digital, in order to relay them from the first digital leg to the second. The first digital telephone leads were like this: completely point-to-point, without the possibility of switching or routing in the digital realm. That wasn't so big of a limitation early on when all of the switches were analog and digital leads just made the lines between them denser, but it prevented the construction of the fully digital network that Bell Labs envisioned.
-
-行业显然急需一种新型复用器：它可以直接接收已经成型的 4 路 DS1 信号，并将它们直接合并为 1 路 DS2 信号。如果更高级别也能照此办理，就能搭建起一套根据各端局流量需求灵活汇聚和分流业务的基础体系。但如此一来，各路采样的时钟定时问题该如何解决呢？
-
-&gt; What was clearly needed was some sort of mux that could take four DS1s, already in that form, and combine them into a DS2. Repeat this for the higher levels as well, and you have the basis of a system that can combine and separate traffic as needed to meet the level of demand between various offices. But what about the sample timing?
-
-在 20 世纪 70 年代，如果你手头有来自 4 个不同物理地点的 DS1 数据流，它们之间是绝不可能天然同步的。这 4 台 D1 信道机各自运行在自己的独立采样时钟上；由于现实物理世界晶振器件的不完美，这些时钟彼此间不可避免地会出现微小的走快或走慢。当这 4 路 DS1 流抵达预想中的复用器时，它们不仅存在相位偏差 (out of phase) ，而且实际传输速率也存在细微差异。
-
-&gt; If you have four DS1 streams from four different places, at least back in the 1970s, they are not going to be synchronized. The four D1 channel banks would each be operating on their own sample clocks, and because of the imperfection of the physical world some of these clocks would run slightly faster or slower than others. When our four DS1 streams arrived at our notional multiplexer, the four streams would be not only out of phase, they would actually run at slightly different speeds.
-
-从现代工程视角来看，我们能想出许多解决这一难题的方案，最典型的莫过于在内存中开辟较大的缓冲区暂存采样数据块，然后再统一从缓冲区打出。然而在 70 年代，事情远非如此简单：首先，相比于当时的传输比特率，内存昂贵且速度缓慢；其次，此前全模拟网络中的信号传播延迟仅仅受限于光速，而在网络中进行大量缓冲所引入的延迟，在当时的电话网标准下是根本无法接受的。
-
-&gt; We can imagine a lot of modern solutions to this problem, probably by buffering relatively large blocks of samples in memory and then transmitting out of that buffer. In the '70s, things weren't so simple: first, memory was expensive and slow compared to the bitrates involved, and second, the latency involved in such extensive buffering was not considered acceptable in a network that had previously been all-analog and thus had no more latency than that implied by the speed of light.
-
-针对这一时钟同步难题诞生的解决方案——准同步数字体系 (PDH) ，从我们当下的视角来看并不容易被理解。许多网络与通信教材虽然都会提及 PDH，但往往一笔带过、浮于表面，读完总给人一种说不清道不明的别扭感。PDH 之所以让人感到疏离，原因有二：首先，它是为了解决一系列由于更广泛的技术进步而早已不复存在的历史痛点；其次，即便放在当时的约束条件下，它也早已被更先进的技术彻底淘汰。放在今天，绝不会有任何工程师会设计出 PDH 这样的架构。回顾历史，最好将它视为一次工程上的“黑客式临时拼凑 (hack) ”。可以说，PDH 是一项过渡时期的权宜之策，它在数字信道机的诞生与后来真正*成熟优秀*的数字网络同步技术之间架起了一座桥梁。
-
-&gt; The solution to this problem, the Plesiochronous Digital Hierarchy or PDH, is not easy to understand from our contemporary perspective. Many textbooks on networking and communications make some nod to PDH, but it's often short and cursory, and leaves you with a nagging feeling that the whole thing doesn't make much sense. PDH is hard to relate to for two reasons: first, it was developed to solve a set of problems that (due to broader technical advancements) we no longer have. Second, even within those constraints, it is a solution that has been obsoleted by newer approaches. PDH is not something that anyone would design today, and in retrospect, it's probably best to think of it as a hack. PDH was an interim measure, if you will, that bridged a gap between the development of digital channel banks and the later development of a *good* approach to synchronizing a digital network.
-
-如果当年信道机和同步网络能够同步设计，事情自然会理想得多，但在现实中并非如此：在 AT&amp;T 拿出一套合理的数字网络架构之前整整十年，数字长途线路就已经被普遍使用了。你可以看到，早在 20 世纪 60 年代末，他们就已经在思考这些需求，并萌生出了将 PDH 作为分层网络架构的概念；但构建该网络所需的大部分核心*技术*，直到 70 年代和 80 年代才真正被研发出来。在很长一段时间里，通信网里运行的仅仅是“勉强能用”的东西——一个用工程绝缘胶布糊上去的临时补丁，一套概念层面上绑着铁丝网勉力维持的权宜产物。
-
-&gt; It would have been more convenient if those two systems had been designed at the same time, but in practice, they weren't: digital long distance lines were in common use a solid decade before AT&amp;T had a reasonable architecture for a digital network. You can already see that they were thinking through these requirements in the late 1960s, leading to the concept of the PDH as a hierarchical network architecture, but most of the actual *technology* to provide that network was built later, in the '70s and '80s. For a while, there was just, you know, something that worked. A duct tape fix. Conceptual bailing wire.
-
-&lt;img src="./images/d2ca857a1c7a.png" alt="Bit stuffing" loading="lazy"/&gt;
-
-那么，究竟什么是 PDH？我们不妨先从定义“plesiochronous (准同步) ”这个词开始，每本教科书都绕不开它，因为这个词正是 Bell Labs 为了描述其设计而生造出来的。这里就不考究词根了，但它的含义就是“几乎同步”或“大致同步”。这正是 PDH 的本质：它是一套留有松动余量的同步数字系统，预留了一丁点儿容差游隙。
-
-&gt; So what even was the PDH? It is helpful to start by defining the word "plesiochronous," which every textbook has to do since the term was invented by Bell Labs to describe their design. I will spare the roots, but plesiochronous means "almost synchronized" or "approximately synchronized." And that's what the PDH was: it was a synchronous digital system with some slop. There was a little wiggle room.
-
-一路 DS1 信号的速率是 1.544 Mbps，如果将 4 路 DS1 信号复用在一起，你直觉上可能会认为输出速率是 6.176 Mbps。但你猜错了：一路 DS2 的实际速率是 6.312 Mbps。这里多出来的额外开销，恰恰来自于准同步 (plesiochronous) 里的这个“准 (plesio) ”字。要理解它的工作机制，我们需要从头审视复用器的设计。按照 AT&amp;T 的命名习惯，将 DS1 级别复用到 DS2 级别的设备被称为 M12 (顾名思义，即从 1 到 2 的 Multiplexer) 。而在实际工程部署中，M13 型设备似乎更为普遍，其内部通常实现为 7 台 M12 输出汇入 1 台 M23。
-
-&gt; A DS1 signal is 1.544 Mbps, so if you multiplex four of them, you might expect 6.176 Mbps. You would be wrong: a DS2 is actually 6.312 Mbps. The overhead here comes from the *plesio* part of plesiochronous. To understand how that works, we should look at the design of the multiplexer from the beginning. AT&amp;T practice would call a multiplexer from the DS1 level to the DS2 level an M12, for, well, multiplexer from 1 to 2. In practice M13s seem to have been more common equipment, which were often implemented internally as seven M12s feeding one M23.
-
-无论如何，M12 接收 4 路不同的 DS1 数据流，然后将它们按比特位交织 (bit-interleave) 在一起，使得输出流中的每隔第 4 个比特位依次对应其中一个输入信道的下一个比特。这种机制逻辑清晰，最大的优势在于硬件中几乎完全不需要缓冲。但问题来了：如果其中一个输入流跑得稍快，而另一个输入流跑得稍慢，该怎么办？首先要明确的是，复用器的输出总流速率在设计上被故意调得比所有输入流的速率总和*还要稍快一点*。一套典型的 PDH 系统允许各路输入的速率有 $\pm 50\text{ PPM}$ (百万分之五十) 的波动误差，这意味着输出总速率必须相对于所有输入之和快上至少 50 PPM。通过这种超频设计，复用器就永远不会因为某个输入流喷射比特的速度过快而发生“赶不上、来不及交织”的积压故障。
-
-&gt; In any case, the M12 takes in four different DS1 streams and then bit-interleaves them, such that every 4th bit of the output is the next bit from one of the inputs. This is simple to reason about and has the advantage that virtually no buffering ever happens. But what if one of the inputs is running slightly fast, and another slightly slow? The first thing to know is that the output stream is intentionally slightly faster than *all* of the inputs. A typical PDH system allowed a 50 PPM plus or minus variation in the rate of the inputs, which means that the output had to be at least 50 PPM fast relative to the sum of the inputs. That way, the multiplexer will never "fall behind" because an input is providing bits faster than the output can interleave them.
-
-另一个核心要点是，复用器必须执行一项被称为*填充 (stuffing) *或*码速调整 (justification) *的功能。据说 AT&amp;T 内部引入“justification”这个词是因为它听起来更具学术专业范儿，而一线工程师则更喜欢直截了当的“stuffing (塞比特) ”。每个外发帧的特定位置在标准中被定义为“可填充位”，有时也被称作“间隙 (gaps) ”。在这些位置上，复用器既被允许填入有效数据，也被允许塞入被称为*填充比特 (stuffing bits) * (或者更专业地称为*调整比特 (justification bits) *) 的无意义伪数据。通过决定是在间隙中填入真实数据还是塞入填充比特，复用器实际上能够灵活地上下微调“真实”输出数据速率。如此一来，尽管各路输入的实际速度会因“时钟噪声”而出现微幅忽快忽慢，总输出却能在动态微调中精准收敛到正确的平均值 (即所有输入的实际总和) 。
-
-&gt; The other thing to know is that the multiplexer must perform a function known as either *stuffing* or *justification.* It is said that the term *justification* was introduced within AT&amp;T because it sounded more technical, while *stuffing* was more popular with the actual engineers. Certain parts of each outgoing frame are defined (by standard) as *stuffable,* and they're sometimes called *gaps.* These are sections where the multiplexer is allowed to either include real data, or to include some nonsense data called *stuffing bits* (or, if you want to sound more technical, *justification bits*). By choosing to either include real data or stuffing in the gaps, the multiplexer can actually adjust the "real" output data rate up or down. That way, it converges onto the correct average (the sum of the inputs) despite the "timing noise" of the inputs varying slightly up and down in real speed.
-
-如果你觉得上述解释有些抽象，不妨换个角度来理解：我们可以把 DS2 输出帧想象成由 4 个“卡槽”组成，4 路 DS1 输入帧分别塞入其中 (虽然在微观上它们是按比特逐位交叉交织的，并不那么直观，但在宏观数学逻辑上完全等价) 。在 PDH 设计下，这些卡槽在尺寸上全部被设计得*略宽于*输入帧，从而留出了“充裕空间”，允许输入帧向左向右微移或被适当拉长。这使得复用器既能通过快速吐出追平跑快了的输入，也能通过留白拉伸平抑跑慢了的输入。将这一机制理解为一个可随心所欲放置输入的宽槽，也能让我们更好地领会“justification (两端对齐/码速调整) ”一词的精妙之处：你可以左右挪动比特，或者在它们之间填塞额外空隙，就像排版软件对齐文本一样。
-
-&gt; If that didn't make sense to you, here's a different way to think about the same thing: we can imagine the DS2 output frame as consisting of four "slots" into which the four DS1 input frames are inserted (this isn't quite intuitive because they are interleaved bit-by-bit, but the math works out the same). Under the PDH design, these slots are all *slightly wider* than the input frames, so that there is "free space" for the input frames to be shifted a bit in either direction or stretched out. That allows the multiplexer to "catch up" on a fast input or to "draw out" the frames from a slow input. Thinking about it in terms of a wide slot that you can place the input into as desired also gives more value to the term "justification:" you can shift bits around, or add extra space in between them, just like you would to justify text.
-
-这一构想在工程落地时相当复杂，因为链路另一端的解复用器必须准确知道究竟哪些比特是填充进去的无用位，以便将它们剔除扔掉。正因如此，PDH 在帧结构的固定位置预先规定了间隙：控制信令中包含了一组指示标志 (flags) ，专门用于标明这些固定间隙到底是被填入了真实数据还是填充比特。当复用器根据输入流是否跑在输出前面来决定是否动用可填充位时，它还必须把这个决策暂存到帧末尾，以确保控制标志能够被准确设置。
-
-&gt; The actual implementation of this idea is pretty complicated, because the demultiplexer on the other end needs to know which bits were stuffed so that they can be discarded. That's why PDH specified gaps at fixed positions: the control signaling included a set of flags that indicated whether the fixed gaps were used for data or stuffing. When the multiplexer decided whether or not to use a stuffable bit (based on whether or not the input was getting ahead of the output mux), it also had to store that decision for the end of the frame so that the flag could be set correctly.
-
-PDH 称不上是一套优雅的方案，但它确实解决了现实问题；基于 PDH 路线，工程师们一路设计出了高达 DS4 级别的复用器。我们理应向 PDH 致以崇高敬意，正是这个笨重粗糙的权宜之计，支撑起了覆盖全美的早期数字化电话网络。但话虽如此，它的致命缺陷也同样不可小觑。
-
-&gt; PDH wasn't an elegant solution, but it was a solution, and multiplexers were designed up to the DS4 level based on the PDH approach. We all owe PDH a huge thanks for providing the clunky stopgap that allowed the construction of a nationwide digital telephone network. That said, well, it had quite a few downsides.
-
-首先，PDH 在标准化方面一直非常欠缺。今天去考证研究 PDH 相当棘手，因为几乎没有多少文献能详尽记录它在美国本土的实际工程实现，大多只有概要介绍、概念示意图以及来自欧洲的案例。据我所知 [^2]，Western Electric 甚至从未真正推出过一款独立的商用 PDH 复用器。Western Electric 的大型集成系统 (比如微波载波设备机架) 中可能会内置 PDH 复用模块，但我甚至无法确定 Western Electric 本身是否真的生产过它们——我能找到的 PDH 复用器广告和报价单全部来自其他第三方厂商，比如 Farinon 和 NEC。
-
-&gt; First, PDH was never all that well standardized. Researching PDH is tricky because there aren't a lot of documents that provide conclusive detail about the actual implementation in the US, mostly just summaries, conceptual sketches, and examples from Europe. As far as I can tell [^2], Western Electric never really offered a standalone PDH multiplexer. Larger integrated systems from Western Electric (like, say, a microwave carrier equipment bay) might include a PDH multiplexer, but it's not clear to me if WE even made them—the advertisements and pricing information I can find for PDH multiplexers are from other vendors like Farinon and NEC.
-
-在北美的工程实践中，PDH 似乎从未形成过坚固统一的工业标准，不同厂商的设备之间存在着各种实现层面的差异。这大概也是 PDH 设备文献如此匮乏的原因之一：电信局通常不会单独购买一台独立的 PDH 复用器，而是将其作为大型专用系统的一部分来指定特定型号。这意味着 PDH 网络的实际灵活性远远达不到 AT&amp;T 最初的设想。
-
-&gt; In North American practice, it doesn't seem like PDH was ever robustly standardized, and there were implementation differences between equipment from different manufacturers. That's probably one of the reasons for the scarcity of information on PDH equipment: you wouldn't usually buy a single PDH multiplexer, but instead would specify a specific model as part of a larger system. That meant that the PDH network was far less flexible than AT&amp;T had hoped.
-
-如果把视线转向海外，混乱的情况就更严重了：AT&amp;T 的作风往往是先由 Bell Labs 和 Western Electric 把最新成果火速投产，事后再将其强行推举为标准。而欧洲的电信运营商往往要等到美国的技术成熟后才予以跟进，这反而让他们有机会在硬件设备铺设之前从容制定出统一的标准规范。因此，许多通信技术的欧洲版本往往比美国原版设计得更为严谨合理，PDH 也不例外。事实上，美国、欧洲和日本在 PDH 信令上采用了 3 种完全不同的体系结构。欧洲标准在每个数据流中塞入了更多信道 (约 2 Mbps 的“E1”) ，并且在每个层级之间严格采用了整齐划一的 4 倍复用率。欧洲的 PDH 实践甚至获得了国际电报电话咨询委员会 (CCITT) 的完整正式标准背书。而日本系统虽然采用了与美国相同的 DS1 基准，但其每一级的复用倍数却大相径庭 (为 4、5、3、4，而不是美国的 4、7、6) 。因此，在没有把全部信号彻底拆解重新复用之前，各国的 PDH 系统根本无法直接用于国际长途通话。
-
-&gt; The problem was even bigger when you looked overseas: AT&amp;T tended to field the best thing that Bell Labs and Western Electric could come up with, and then promulgate that as a standard later on. The European telcos tended not to adopt new American developments until they were mature, giving them the opportunity to make standards before any equipment was in place. Thus the European versions of US telephone carriers are often a bit better, and PDH is no exception. In fact, the US, Europe, and Japan used three different hierarchies for PDH signaling. The European standard put more channels into a stream (the "E1" at about 2 Mbps), and used a consistent multiplier of 4 for each level. European PDH practices even got a complete published standard from CCITT. The Japanese system used the same DS1 standard as the US but with different multipliers (4, 5, 3, 4 instead of 4, 7, 6). PDH could thus not be used for international calling without completely remuxing everything.
-
-PDH 的另一个严重短板同样与这种“重新复用”有关。由于采用了将各输入帧按比特逐位交叉交织、动态塞入填充比特、并在交织流中插入比特填充标志位的设计，导致 PDH 复用器实际上将各路输入数据流彻底打乱“揉成了浆糊”。假设你手里有一路 DS3 高速数据流，想从中精准提取出一路单独的语音信道，摆在你面前的将是一场工程噩梦。以当年的电子技术水平，想直接在线解析出每一级的交织规律和填充位是根本做不到的。你唯一的办法，就是将这路 DS3 数据流一层一层地经过多台解复用器逐级拆解，一直拆到数字体系的最底层，取出你想要的那路信道，然后再一层一层重新复用封装回去。从一路 DS3 中单独掏出一路信道，甚至可能需要占用两台高达 11.5 英尺 (约 3.5 米) 的庞大设备机柜；而且受制于借位信令机制，这一来一回的拆解与重构还会进一步恶化量化噪声。
-
-&gt; Another shortcoming of PDH had to do with that remuxing. The decision to bit-interleave the input frames together, stuff some bits, and then put flags on the bit stuffing into the interleaved stream, meant that a PDH multiplexer effectively "scrambled" the input streams. If you had, say, a DS3 stream and wanted to extract a single voice channel from it, you had a lot of work in front of you. It simply wasn't feasible with the electronics of the era to analyze the stream to determine the interleaving and stuffing bits at each level. Instead, you would have to put the DS3 through demuxers all the way back down to the bottom of the hierarchy, pull out the channel you wanted, and then remux it all the way back up. Pulling a single channel out of a DS3 could require two 11.5 foot tall equipment bays, and even further quantization noise due to the nature of the robbed bit scheme.
-
-后来发生的两件大事将 PDH 推向了极限：首先是光纤技术的到来。众所周知，AT&amp;T 在光纤技术的接纳上显得相当保守迟钝；70 年代关于数字体系的官方文献中，通篇都在讨论如何通过 T 载波、微波和同轴电缆来进行传输。我们之前曾[探讨过同轴电缆](https://computer.rip/2021-12-13-coaxial-goes-to-war.html)，但当时的 L 载波是一套纯模拟系统。虽然数字同轴电缆后来也演进出了 T3、T4 和 T5 等载波，但它们的传输距离相对较短，主要仅用于局间较近距离的短途互联。
-
-&gt; Two things happened that pushed PDH to its limit: first, fiber optics. AT&amp;T was famously a late adopter of fiber, and 1970s documents on the digital hierarchy talked about conveying it over T-carrier, microwave, and coaxial. We have [talked about coaxial before](https://computer.rip/2021-12-13-coaxial-goes-to-war.html), but L-carrier was an analog system. Digital coaxial did emerge as the T3, T4, and T5 carriers, but these were relatively short range and mostly only saw use on shorter inter-office links.
-
-&lt;img src="./images/b86fe4f4a900.png" alt="Hierarchy" loading="lazy"/&gt;
-
-然而，时代的大潮正在迅速转向：当 DS3 设备开始在电话局崭露头角时，各路竞争对手已经在积极评估光纤通信的可行性了。AT&amp;T 于 1976 年开始涉足该领域，在亚特兰大铺设了一条实验性的 DS3 光纤链路。次年，AT&amp;T 与竞争对手 GTE 双双将 DS3 光纤线路投入商用 (分别位于芝加哥和洛杉矶地区) 。外部设备厂商大约在 1980 年开始推销“T1-over-fiber (光纤承载 T1) ”设备；到了 1983 年，AT&amp;T 已经建成了一条从纽约延伸至华盛顿的多模光纤通信系统。撇开商业与竞争博弈那些引人入胜的内幕不谈，大局已然昭然若揭：光纤必将主宰长途骨干网的未来。AT&amp;T 的工程师们清醒地认识到，PDH 的架构根本无法平滑扩展以适配光纤所能带来的惊人带宽容量；更致命的是，复杂的光纤网络急需一种 PDH 完全不具备的核心能力——直接从复用总流中随意分插单一信道。此外，尽管当时市面上已有各种光纤系统在运行，但业内压根就不存在一套关于如何在光纤上传输 PDH 信号的统一标准，这只会导致更加严重的软硬件兼容性噩梦。
-
-&gt; Things were changing, though: by the time DS3 equipment was appearing in telephone exchanges, competitors were already evaluating fiber optics. AT&amp;T dipped their toe in the water in 1976, with an experimental DS3 fiber optic link in Atlanta. The next year, both AT&amp;T and competitor GTE had DS3 fiber lines in service (in Chicago and the LA area, respectively). Outside manufacturers started offering T1-over-fiber equipment around 1980, and in 1983 AT&amp;T had a multimode fiber system stretching from New York to Washington. Sparing the (fascinating) story of the business and competitive factors, the writing was on the wall: fiber was the future of long lines. AT&amp;T engineers realized that the PDH design did not scale well to the enormous capacities that fiber could reach, and even worse, that complex fiber networks would require exactly the capability that PDH lacked: extracting single channels from the mux. Besides, despite the systems in use, there really wasn't any standard for conveying PDH signals over fiber, which only meant more compatibility issues.
-
-而在 1983 年，另一场撼动行业格局的巨变已然降临：反垄断拆分 (divestiture) 。20 世纪 80 年代中期 AT&amp;T 的彻底重组，将原有的 Bell 贝尔帝国肢解为多家独立的“贝尔小宝宝 (Baby Bells) ”公司，这使得 PDH 的互操作性缺陷变得雪上加霜。各家贝尔运营公司 (BOCs) 不仅需要与 AT&amp;T 长途业务部门无缝交换流量，而且随着时间推移，还必须与其他 BOCs、竞争性新兴电话公司以及各类长途运营商进行跨网互联。当这些跨网流量绝大部分被封装在缺乏标准规范的“黑盒”复用器中时，这种跨网互通变得困难重重。在 Bell System 拆分之前，美国电话网络的许多技术规范之所以标准化程度松散，是因为 AT&amp;T 独家掌控着整个网络，根本无需向任何外部厂商妥协协作。然而在 1984 年之后，美国电信市场的格局变得更像欧洲：一项技术若想被全行业广泛采纳，就必须具备定义清晰、公开发布的正式标准。
-
-&gt; Something else was coming over the horizon in 1983: divestiture. The complete reorganization of AT&amp;T in the mid-1980s, breaking the Baby Bells up into independent companies, made the interoperability problems with PDH much more severe. Bell operating companies (BOCs) would need to easily exchange traffic with both AT&amp;T Long Lines and, eventually, with other BOCs and competitive phone companies and long distance carriers. That was very difficult when that traffic was mostly conveyed in loosely-standardized black-box muxes. Many aspects of US telephony were loosely standardized prior to the Bell System breakup because AT&amp;T ran the entire network and didn't really need to cooperate with others. After 1984, the US became a lot more like Europe: for technology to be widely adopted, it would need to have a well-defined, published standard.
-
-这意味着行业必须设立中立的标准组织——原本隶属于 AT&amp;T、负责向所有 BOCs 发布技术规范的部门，在拆分后独立重组为一家名为 Bellcore 的公司。Bellcore 成立后的当务之急，就是制定一套用于各大电话公司之间跨网互通的全套标准化数字接口。与此同时，一批电信运营商与设备制造商联合组建了行业联盟，启动了美国国家标准学会 (ANSI) 旗下针对光纤设备的标准化进程。他们的目标是制定一套高速数字光纤通信的通用工业标准，从而让不同厂商生产的终端设备能够顺畅混用、无缝互通。
-
-&gt; That meant a standards body—the part of AT&amp;T that had formerly published the practices used by all of the BOCs, after divestiture, became an independent company called Bellcore. Bellcore had an immediate goal of developing a fully standardized set of digital interfaces to be used between telephone companies. At the same time, a group of carriers and equipment manufacturers organized an association to start an ANSI standards process for fiber-optic equipment. They had a goal of an industry standard for high-speed digital fiber optics, so that terminal equipment from different manufacturers could be used together.
-
-这一努力最终促成了 ANSI T1X1 工作组的成立，其全称为“数字体系与同步工作组”。1985 年，Bellcore 正式向 T1X1 委员会提交了他们起草的标准草案：他们将其命名为 SONET。
-
-&gt; That effort formed the ANSI T1X1 working group, titled Digital Hierarchy and Synchronization. In 1985, Bellcore proposed their draft standard to the T1X1 committee: they called it SONET.
-
----
-## 同步性：光纤时代的全局统一授时革命
-
-&gt; ## Synchronicity
-
-首先，我想为全球读者简要说明一下背景。PDH 当年的重大缺陷之一就是缺乏国际标准化，而 SONET 绝不会重蹈覆辙。在 SONET 被提交给 ANSI 后不久，它也被同步提交给了 CCITT。出于历史渊源，尽管两者在绝大多数机制上几乎完全一致，但光同步数字网络 (Synchronous Optical Network, SONET) 属于北美标准，而欧洲及国际标准则被称为同步数字体系 (Synchronous Digital Hierarchy, SDH) 。在下文中我将主要沿用 SONET 这一术语，因为它读起来更朗朗上口；但平心而论，“SDH”这个名字能更好地传达出其本质内涵——它与 PDH 怀揣着完全相同的构建理念，区别仅在于它真正实现了全网时钟的严格同步。不仅如此，它在功能特性上也更加强大完备，标准化程度更是不可同日而语。
-
-&gt; First, I will briefly explain some context for my global readers. One of the shortcomings of PDH was its lack of international standardization, and SONET would not make the same mistake. Shortly after SONET was proposed to ANSI, it was also proposed to CCITT. For historic reasons, and despite the fact that they are largely identical, SONET (Synchronous Optical Network) is a North American standard while the European standard is called SDH, for Synchronous Digital Hierarchy. I will stick to the term SONET because it is catchier, but the name SDH better conveys that SONET is essentially the same idea as PDH but it's actually synchronous. Beyond that, it is also more feature-rich and much better standardized.
-
-SONET 从一开始就站在了数字体系更高的起点上。SONET 的“最低”层级是同步传输信号 1 级 (Synchronous Transport Signal 1, STS-1) ，它通常由 1 级光载波 (Optical Carrier 1, OC-1) 负责物理承载。OC-1 的工作速率高达 51.84 Mbps，足以轻松打包承载一路包含信令开销的 PDH DS3 信道。在电信发展史行进到这一阶段时，信道机技术已大幅飞跃，50 Mbps 的速率已不再像往昔那般难以企及，因此 DS3 成为了大容量传输系统基础单元的绝佳之选。这也带来了至关重要的向下兼容优势：DS3 是当时部署最为广泛的 PDH 信号，通过将 DS3 完美封装进 STS-1 的载荷中，SONET 为用全新光网络隧道透明穿透、替换旧有 PDH 链路铺平了一条康庄大道。
-
-&gt; SONET starts out higher up in the digital hierarchy. The "lowest" SONET level is Synchronous Transport Signal 1, or STS-1, which is typically transported by Optical Carrier 1, or OC-1. OC-1 operates at 51.84 Mbps, sufficient to carry a PDH DS3 channel with signaling overhead. By this point in telecommunications history, channel banks had improved and 50 Mbps wasn't what it once was, so DS3 was a good choice for the basic unit of a high-capacity transport system. This also provided critical backwards compatibility: DS3 was the most widely deployed PDH signal, so by accommodating a DS3 within an STS-1, SONET provided an easy route to tunneling legacy PDH links through a SONET replacement.
-
----
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; *我在撰写本文上投入了大量心血，由衷希望你能享受阅读。如果你手头宽裕，不妨考虑[在 ko-fi 上支持我](https://ko-fi.com/jbcrawford)。你将不定期收到专属订阅专享文章，并帮助我分担从新墨西哥州阿尔伯克基直接手工匠心搭建万维网内容的服务器成本。*
-&gt;
-&gt; *I put a lot of time into writing this, and I hope that you enjoy reading it. If you can spare a few dollars, consider [supporting me on ko-fi](https://ko-fi.com/jbcrawford). You'll receive an occasional extra, subscribers-only post, and defray the costs of providing artisanal, hand-built world wide web directly from Albuquerque, New Mexico.*
----
-
-到了此时，源自 PDH 的数字体系分层理念已经深入人心，因此 SONET 完全沿用了相同的阶梯递进模式——不过幸运的是，它的命名规则终于变得规整而清晰。OC-3 的带宽是 OC-1 的 3 倍，OC-12 是 OC-1 的 12 倍，以此类推，OC-24、OC-48、OC-192 乃至 OC-768 都成为了业界标准常用配置，其中 OC-768 的净负荷吞吐能力超过了 38 Gbps。
-
-&gt; By this time, the Digital Hierarchy principle from PDH was well established, so SONET follows the exact same pattern—but, fortunately, the naming convention improved. OC-3 is three times the bandwidth of OC-1, OC-12 is twelve times the bandwidth of OC-1, and so on, with OC-24, OC-48, OC-192, and even OC-768 in common use, the latter achieving over 38 Gbps of payload.
-
-相比于大家通常的想象，SONET 的设计相当复杂，或者说与众不同。一个标准的 SONET 帧并不是简单地由一个头部 (header) 和一个净荷体 (body) 拼装而成。相反，就像此前的 PDH 一样，所有数据都以一种看似繁琐的方式精密交织在一起。以 STS-1 信号为例，一个帧结构由 3 字节的协议开销和 87 字节的净载荷组成一个 90 字节的行模式，并重复 9 次，从而构成一个 810 字节的完整二维帧。更高级别的速率使用更大尺寸的帧，但严格保留了这种矩阵结构，本质上是将协议头均匀揉杂到了整个数据帧的各个部分。正如 PDH 的比特交织一样，这种设计是为了极其严苛地控制传输延迟：将头部开销与数据载荷精密交织，彻底免去了网络设备在任何节点都需要将整帧数据完整缓存进内存的开销。得益于这项关键工程决策，SONET 能够实现远低于一个帧周期时长的超低端到端延迟。
-
-&gt; SONET is complex compared to what you might expect, or at least different. A SONET frame does not consist of a header and a body. Instead, like with PDH, all of the data is interleaved together in a way that feels messy. In an STS-1 signal, for example, a frame consists of three bytes of protocol overhead and 87 bytes of payload, making up a 90 byte pattern that is repeated nine times to make up an 810 byte frame. Higher levels use larger frames but keep the same structure, effectively mixing the header into each frame. Like PDH's bitwise interleaving, this is done to manage latency: interleaving the header with the payload avoids the need to buffer an entire frame of data at any point. Because of this design decision, SONET can provide a latency that is less than the frame time.
-
-上述描述其实也还做了一定程度的简化，因为它只探讨了 SONET 协议开销的一部分。在现实中，SONET 存在多个层级的开销字节，它们层层嵌套交织在一起，各司其职。传输链路沿途的每一个中继再生器 (regenerators，即对光信号进行解码放大并重新编码以补偿光衰的设备) 都会重新生成“最底层”的段开销；而更高层级的开销字节则仅由两端的终端设备进行终结解析，专门用于连接质量监测与链路故障告警等运维治理功能。
-
-&gt; This description also oversimplifies by discussing only one part of SONET's protocol overhead. There are actually several layers of overhead, all interleaved together, that serve different purposes. The "lowest layer" overhead is recreated at each regenerator along the route (devices that decode and then reencode the optical signaling to compensate for path loss), while higher layers are only processed by terminal equipment and are used for purposes like connection quality monitoring.
-
-这些开销机制极其重要，因为与野蛮生长的 PDH 不同，SONET 是一套对整套物理通信基础设施进行完备规范的宏大标准。在绝大多数实际工程中，SONET 总是围绕几种专门用于提供高可用冗余的标准网络架构进行部署。光纤中的 SONET 信号采用单向传输机制，因此任意一条标准的 SONET 链路上通常都有两条处于活跃工作状态的光纤，分别负责一个方向的传输。不同网络拓扑的区别主要在于它们实现容灾冗余的方式：在具备自动保护倒换的线性拓扑路由中，通常额外铺设两条“备用”光纤。一旦终端设备 (通过严密监控协议开销中的信令字节) 检测到主用光纤对的通信质量恶化，就会毫秒级自动切换到备用光纤对上。
-
-&gt; These types of overhead are important because, unlike PDH, SONET provides a specification for the entire physical infrastructure. SONET is virtually always used with one of a few standard architectures, each of which are designed to provide redundancy. SONET uses unidirectional signaling on the fiber, so any SONET link will have two fibers normally active, one for each direction. Where things vary are the approach to redundancy: in a linear route with automatic protection, there are two "spare" fibers. When terminal equipment detects (via monitoring protocol overhead signaling) that the connection quality is no longer good on the primary pair of fibers, it will switch automatically to the secondary pair.
-
-然而，在 SONET 的所有部署形态中最为常见且最具标志性特征的，当属环形网 (rings) 架构。一个单向自愈环采用两条光纤，每个方向各占一条，但这两条光纤都各自闭合成环并最终绕回起点。在始发节点上，每一个数据帧都会同时向顺时针和逆时针*两个方向*打入环网。分布在环网其他位置的终端设备会将接收到的两份完全相同的副本进行比对，并择优采信质量更好的一份。这为光纤物理损坏提供了坚实的安全保护：任何位于断纤物理位置“下游”的终端设备，依然能够稳定接收到从另一个相反方向绕环送达的数据帧。
-
-&gt; Particularly common with SONET though, and particularly distinctive, are rings. A unidirectional ring uses two fibers, one for each direction, but each of those fibers goes in a circle and returns to the origin point. At the origin point, each frame is transmitted *both directions* into the ring. The terminals elsewhere on the ring compare the two copies that they received, one from each direction, and use the better of the two. This provides protection against damage to one of the fibers: terminals that are "downstream" from a broken fiber should still be able to receive the frames that went the other way around.
-
-这种保护机制的唯一缺点在于资源利用率较低：将每个数据帧双发一次，意味着两条光纤的总吞吐能力在理论上只能达到单条光纤的极限上限。相比之下，双向环网采用了更为精密的监控机制来实时感知帧丢失，从而无需提前一律双发数据。一旦发生断纤，系统能够立刻检测到故障，并根据具体环网配置，要么将流量掉头改走反向通道，要么无缝切换到同一传输方向上专门预留的第二条冗余备用光纤上。
-
-&gt; A downside to this protection method is that it is inefficient: sending every frame twice means that two fibers are still providing a theoretical maximum bandwidth equal to the capacity of a single fiber. Bidirectional rings use a more complicated monitoring scheme to detect when frames are lost, so that they do not need to preemptively send them twice. A broken fiber will be detected and, depending on the ring, either sent the other way around or sent on a second redundant fiber allocated to the same direction.
-
-环网架构是 SONET 最引人入胜的核心特性之一。单向环常常被用作 SONET 网络接入的“最后一公里”组件。设想一下互联网早期的某家大型企业：如果你想要获得 100 Mbps 的高品质互联网带宽接入，当时最佳的解决方案之一就是向电话公司购买 SONET 接入服务。运营商会依托一条以电话局为起点和终点的现有光纤环路，通过工程规划将你的办公大楼接入环中的某个节点。这种环形拓扑在极为经济的光纤长度开销下，赋予了企业无可比拟的物理级高可用冗余。
-
-&gt; SONET's ring architecture is one of its most interesting properties. Unidirectional rings are often used as the "last mile" component of a SONET network. Consider, for example, a large business in the early days of the internet. If you wanted 100 Mbps internet connectivity, one of your best options was to purchase SONET service from the telephone company. They would take an existing ring, starting and ending with a telephone exchange, and figure out how to add your premises somewhere along it. The ring shape allowed redundancy with a relatively efficient use of fiber length.
-
-而双向环网虽然控制机制更为复杂但带宽效率成倍提升，通常部署在各大电话局之间的核心中继链路上，因为中心机房内拥有充足的空间来容纳那些功能更加复杂的庞大终端设备。
-
-&gt; Bidirectional rings, with their greater complexity but greater efficiency, were usually used between telephone exchanges where there was adequate room for more complex terminal equipment.
-
-环网拓扑也淋漓尽致地展现了 SONET 相对于 PDH 的最大压倒性优势。与 PDH 彻底揉乱数据的做法截然相反，SONET 各个层级始终将协议开销与帧数据固定在可预测的精确位置上，针对寻址定位任意单个信道所需的分帧数据保持着高度一致的固定偏移量。这意味着，设备完全可以在高速光纤链路飞速流转的数据流中，直接寻址并精准抽取出特定信道的比特流。你甚至可以准确定位某路信道所在的时间槽位，仅对该槽位的比特进行原地重写替换，直接将新数据注入数据流中。这一模式被称为“分插复用 (Add-Drop Multiplexing, ADM) ”，因为这种分插复用器通常正是负责“插入 (add) ”部分信道并“下路分出 (drop) ”另一部分信道。
-
-&gt; The ring topology also illustrates the biggest advantage of SONET over PDH. Unlike PDH, SONET hierarchy levels keep overhead and frame data in the same position, with consistent offsets to the framing data necessary to find an individual channel. That means that it is practical to inspect a high-rate SONET link, find a specific channel, and pull out those bits. You can even find where a channel is located and then overwrite just those bits, inserting data into the stream. This pattern is called "add-drop multiplexing," because the multiplexer usually adds some channels and drops others.
-
-让我们来看一个真实的生动案例。许多年前，我曾在弗吉尼亚州的一家通用电气 (General Electric) 工厂实习。虽然当时厂区的主要互联网连接已经升级，但为了提供灾备冗余以及支持一套老旧的时分复用专用分组交换机 (TDM PABX) ，厂区内的 SONET 专线依然保持着活跃运行。在机房里，一台产权归属于电信运营商的分插复用器端坐在机柜中，与光纤配线箱紧挨在一起，整栋大楼的光纤就是在这里熔接并入环网的。这台复用器充当了用户端驻地设备 (CPE) ；我们的 Cisco 路由器通过光载波 (OC) 光纤连接到复用器的“低速端”，而其“高速端”则分别向顺逆两个方向引出两条连接，通向环网上的“左邻右舍”。电信工程师在机柜上贴了一张手绘拓扑图，上面清清楚楚地标明了去向：一对光纤连向了美国国家射电天文台 (National Radio Astronomy Observatory) ，另一对光纤则通往了美国国家地理空间情报局 (National Geospatial-Intelligence Agency) 。可想而知，那条环网上当年流淌的数据该有多么惊心动魄！
-
-&gt; Let's work a concrete example. Many years ago, I was an intern at a General Electric plant in Virginia. Although the facility's main internet connectivity had since been upgraded, SONET service was still active for redundancy and for a legacy TDM PABX. In an equipment room, the telco-owned add-drop multiplexer sat in a rack with the fiber enclosures where the building was actually spliced into the ring. The multiplexer was the customer premises equipment, and our Cisco router was connected by OC fiber to the multiplexer's "low speed" side while its "high speed" side had two connections, one each way, to our "neighbors" on the ring. The telco had left a diagram taped to the rack that made this material: one pair of fibers went to the National Radio Astronomy Observatory, the other went to the National Geospatial Intelligence Agency. There must have been some interesting traffic on that ring!
-
-复用器精准抓取 SONET 环网中预先分配给我们厂区的特定时隙，“下路分出”这些比特并通过低速接口发送出去；与此同时，它接收来自低速侧的待发数据，并将其“插入”回相同的时隙中继续环流。环网上的每个机构节点都对属于自己的信道执行着完全相同的分插操作。
-
-&gt; The multiplexer found the time slots in the SONET ring that were assigned to us, "dropped" them and sent those bits out on the low-speed side, and then received bits on the low-speed side that were "added" back into the same time slots. Each of the organizations along the ring did the same thing with their own channels.
-
-SONET 环网必须实体物理“穿过”每一个客户节点的特点，也带来了一个实质性的潜在短板：因为一旦某家客户现场的分插复用器发生硬件故障，就可能殃及池鱼，导致环上其他客户的服务遭受波及中断。这正是为什么复用器必须被界定为运营商的直属资产，也是为什么 SONET 环网在部署时必须严格配备某种形式的自动保护与冗余倒换机制的原因。即便如此，电话公司的运维技术人员仍免不了隔三差五登记出现在大楼保安门禁处，申请进入机房对现场的 SONET 设备进行例行巡检或抢修排障。
-
-&gt; The fact that the SONET ring had to "pass through" each of its users was a material downside, since a failure of an add-drop multiplexer at one customer could cause service disruptions for others. That's why the multiplexer was telco property, and further why SONET rings were always deployed with some type of automatic protection and redundancy. Ultimately, though, a telephone company technician still showed up at the security desk from time to time, needing to perform maintenance or repairs on the SONET equipment.
-
-在 SONET 链路任意节点执行分插复用的非凡能力，还进一步孕育了数字交叉连接 (Digital Cross-Connects, DXC) 技术。至此，全美统一纯数字通信网络的宏伟蓝图终于得以成为现实：通过将两台分插复用器背靠背配对联动，你可以在两条不同的 SONET 传输线之间，以纯数字方式无缝交换信道，而且几乎零附加延迟。辅以名为事务语言 1 (Transaction Language 1, TL1) 的远程管理重构协议，数字交叉连接让长途通信骨干网获得了前所未有的超高弹性调度能力。海量的长途通信流量可以在毫秒间瞬间重路由，既能灵活归并汇聚到核心干线上，也能在需要时平滑分散到次级线路上。
-
-&gt; The ability to perform add-drop multiplexing at any point on a SONET link also enabled digital cross-connects. This, finally, was the original dream of the nationwide digital network: by pairing two add-drop multiplexers together, you can switch channels from one SONET line onto another, completely digitally and with almost no latency. Paired with a management protocol called Transaction language 1 (TL1) for remote reconfiguration, digital cross connects make the long distance network vastly more flexible. Big chunks of long distance traffic could be instantly rerouted, and consolidated onto major routes or spread across more minor ones.
-
-读到这里你可能会问，困扰通信界多年的时钟同步顽疾究竟是如何被化解的呢？PDH 与 SONET 最本质的区别就在于：PDH 是“准同步”的，而 SONET 是真正的“全同步”。SONET 强制要求其互联网络内部的所有终端设备必须保持绝对严格的步调一致。而这恰恰是当年 PDH 竭力回避并推辞的硬性条件。这背后的转机在于：授时与同步领域的技术水平已经取得了跨越式突破。
-
-&gt; Now, you might wonder, what happened to the whole synchronization problem? The most obvious difference between PDH and SONET is that PDH is plesiochronous while SONET is synchronous. SONET requires that all of the terminals, at least within a given interconnected network, operate in synchronization. That's exactly the requirement that PDH rejected. What changed is the state of the art in timing and synchronization.
-
-&lt;img src="./images/850eeb5a3229.png" alt="Interleaving" loading="lazy"/&gt;
-
-多项技术的交汇融合彻底终结了准同步方案的历史使命。首先是贝尔系统基准频率 (Bell System Reference Frequency) 的引入：为了统一协同调度对时间极度敏感的模拟与数字系统，AT&amp;T 搭建了一套覆盖全美的统一时间同步网络。到了 20 世纪 80 年代，2048 kHz 的贝尔系统基准频率已通过长途骨干网络分发至几乎所有核心电信机房。随后，各类先进的时间码体制接踵而至。与此同一时期，全球定位系统 (GPS) 投入全面组网运行，高精度 GPS 接收机迅速成为了一种极其经济可靠的精密时间基准源。
-
-&gt; A few things came together to obsolete the need for plesiochronous technology. One was the introduction of the Bell System Reference Frequency: to coordinate both analog and digital systems that were timing-sensitive, AT&amp;T introduced a nationwide time synchronization system. By the 1980s, the 2048 kHz Bell System Reference Frequency was distributed to nearly all telephone facilities over the long distance infrastructure. Various time code systems followed. During the same period, GPS was coming online, and GPS receivers became a relatively inexpensive source of precise time.
-
-在 SONET 环网中，大多数从属终端设备直接从光纤环网接收的信号中提取时钟节拍：它们只需跟随时钟脉冲，在约定的精准时刻执行信道的分插操作。而通常位于电信交换枢纽局的“主控 (master) ”终端，则负责保持全网统一的时钟心跳。在早期阶段，主终端通常从中心机房内的原子钟或者从上级枢纽局传来的基准参考信号中派生时钟。而在 SONET 发展的中后期，时间基准源普遍升级为“大楼综合定时供给系统 (Building Integrated Timing Supply, BITS) ”。BITS 本质上就是电信机房的“专用时间服务器”，它通常以机房楼顶的高精度 GPS 接收机作为主驯服基准源，并向机房内所有需要精准对时的网络设备广播输出不同格式的时分复用 (TDM) 时间码。
-
-&gt; Most terminals on a SONET ring got their timing from the ring: they just followed the signal and added or dropped channels at the appropriate time. A "master" terminal, typically at the telephone exchange, had to maintain that beat. In the early days, it would likely derive its clock either from an atomic clock in the office or via a reference signal coming from another office. In the later days of SONET, the time source was more likely to be a "BITS" or Building Integrated Timing Supply. BITS are basically time servers for telephone offices, typically using a GPS receiver as their discipline source and transmitting a few different types of TDM time codes to whatever devices needed them.
-
-有趣的是，尽管拥有了如此严密的授时体系，SONET 依然在协议底层保留了一点“作弊”后手。系统内依然留有*微量*的容差游隙。SONET 协议开销中专门设计了一个“指针 (pointer) ”，用于精确指示数据载荷在当前传输帧内的实际起始字节偏移量。这样一来，当出现偶发的微小频率漂移时，SONET 设备可以在帧内稍微向后推迟净荷的起始位置，从而从容消化并抚平微弱的时钟误差。这一指针调整机制意味着，即使在尚未实现绝对同步的准同步网络环境中，SONET 依然能够稳健运行，这也极大地加速了从 PDH 向 SONET 的全行业平滑过渡进程。
-
-&gt; Despite all of these measures, it's interesting that SONET still cheats. There *is* a bit of wiggle room. Part of the SONET protocol overhead is a pointer that indicates the offset within the frame that the payload frame actually starts. SONET devices can thus start the payload a little bit late in a SONET frame, providing an opportunity to fix timing errors. This capability means that SONET is still an option even in plesiochronous environments, which eased the fairly rapid transition from PDH to SONET.
-
----
-## SONET 实践：巅峰辉煌与走向黄昏
-
-&gt; ## SONET in Use
-
-SONET 的传输速率足够快，以至于它一直顽强存活到了现代，尽管如今它已无可争议地被归入“老旧遗留系统 (legacy) ”的行列。38 Gbps 的吞吐量绝非等闲之辈，即便是放在今天，与许多常见的长途链路相比依然毫不逊色。SONET 真正暴露其岁月痕迹的地方，在于它所承载的实际网络净荷。在现实世界中，人们究竟会在 SONET 环网上跑什么业务呢？
-
-&gt; SONET is fast enough to survive into the modern era, although it is now decidedly legacy. 38 Gbps is nothing to sneeze at, and still compares favorably with a lot of common long distance connections. Where SONET shows its age is in the actual network payload. What do you actually put on a SONET ring?
-
-显而易见，你可以在 SONET 的任何一个速率层级中塞入海量的 64 Kbps 电话信道。你可以直接跑“原生”的 T1 信号，也可以借助综合业务数字网 (ISDN) 来传输——后者运行在相同的底层光信号上，但对电话信令 (如摘机状态) 和互操作性给出了更规范的标准化定义。然而，即便是最低档的 OC-1 也拥有多达 672 个语音信道，这远远超出了绝大多数企业日常通话的实际需求。在 20 世纪 80 年代，推动商业 SONET 专线业务发展的真正发动机是——数据通信。
-
-&gt; Well, of course, you can fit a whole lot of 64 Kbps telephone channels onto any of the SONET tiers. You can do that using a "raw" T1 signal or via ISDN, which uses the same basic fiber signals but better standardizes telephone signaling (e.g. off hook status) and interoperability. But even an OC-1 has 672 channels, more phone calls than just about anyone needs to make. In the 1980s, the driver for commercial SONET service was data.
-
-SONET 本身表现出了惊人的“协议中立性”——它之所以采用那种奇特的分帧结构，原因之一就是它对上层协议帧的大小、速率和定时特性完全不敏感、一视同仁。从本质上讲，SONET 将所有连接都视作不透明的透明串行比特流；因此在概念上，你几乎可以在它上面承载任何类型的网络协议。
-
-&gt; SONET itself is incredibly protocol neutral—one of the reasons for its unusual framing structure is that it is agnostic to the size, rate, and timing of the frames of the next layer protocol. SONET basically treats all connections as opaque serial streams, so conceptually, you can put just about anything over it.
-
-由于 SONET 与 ISDN 诞生于同一时代，两者之间有着千丝万缕的联系。在 80 年代末 SONET 铺开建设的过程中，“宽带 ISDN (B-ISDN) ”计划催生了异步传输模式 (Asynchronous Transfer Mode, ATM) 。ATM 是一种虚电路交换协议，它将大量微小且固定尺寸的数据分组 (称为信元，cells) 复用到诸如 SONET 之类的高速连接上。ATM 曾经一度被视作统治广域网 (WAN) 的最强种子选手。然而历史并未如其所愿，IP 协议最终横扫天下并接管了一切——但在那之前，ATM 已经建立起了深厚的根基，以至于通过 ATM 承载 IP 成为了极具吸引力的主流过渡方案。IP over ATM 曾极为普及，事实上直到不久前，它依然是绝大多数数字用户线路 (DSL) 宽带的底层标准规范。
-
-&gt; Because SONET evolved during the same period as ISDN, the two are closely related. During the late '80s, as SONET was being deployed, the "Broadband ISDN" initiative created Asynchronous Transfer Mode (ATM). ATM is a virtual circuit switching protocol that multiplexes a large number of small, fixed-size packets (called cells) over high-speed connections like SONET. ATM was, at one time, a serious contender for the dominant protocol in wide area networks. That didn't come to be, though, and IP took over—but not before ATM was well-enough established to be a tempting way to carry IP. IP over ATM was fairly common, and in fact, remained the norm for DSL until fairly recently.
-
-当然，业内还有其他共存的承载方案：光纤上的分组传输 (Packet over SONET, POS) 是一套基于 SONET 运行的点对点协议 (PPP) 标准，它几乎能打包封装任何协议，但主要被用来高效搬运 IP 数据包。而后来更为现代化的方案则是以太网透传 SONET (Ethernet over SONET, EoS) ，顾名思义，它直接将以太网数据帧无缝封装映射进 SONET 链路中。
-
-&gt; There were other options as well: Packet over SONET was a standard for SONET-based PPP connections, which could carry just about anything but were often used for IP. A newer offering is Ethernet over SONET, which does exactly what it sounds like.
-
-互联网的爆发为 SONET 提供了极其广阔的应用舞台，但同时也给它带来了空前严峻的范式挑战。SONET 是由传统电话工业一手孕育打造的，其设计哲学极度推崇以极高的可靠性和极低的延迟来处理固定速率的刚性信道。然而基于 IP 的互联网却走向了完全相反的哲学：在相对高延迟且尽力而为 (缺乏绝对可靠性保障) 的信道上，见缝插针、投机式地传输可变速率的突发数据流。这种底层理念的剧烈冲突，使得在 SONET 上跑互联网业务变得越来越格格不入。
-
-&gt; The internet provided a compelling use-case for SONET, but it also became a challenge. SONET was designed within the telephone industry, which emphasized handling fixed-speed channels with very high reliability and very low latency. The IP-based internet embraced the opposite: opportunistically moving variable speed connections over relatively high-latency and low-reliability channels. That meant that internet service over SONET became awkward.
-
-其一，它往往显得不够快且昂贵。根源在于带宽分配机制：在 SONET 环网上获得通信时间意味着独占分配特定信道，无论你实际用不用，你都必须为这些信道 7×24 小时支付全额租费。虽然业界后来研发了一种名为虚级联 (Virtual Concatenation, VCAT) 的技术，允许将 SONET 的低阶构建单元 (如 STS-1) 任意捆绑组合，以拼凑出用户所需的任何带宽规格；但在 SONET 上划分出来的每一兆带宽，都是其他客户绝对无法共享分毫的物理专有带宽。你必须为之实打实买单。再后来，人们也研发出了动态可变带宽分配系统，但这些机制实现过于繁复，并且早已错失了扭转乾坤的最佳历史窗口期。
-
-&gt; For one, it tended to be slow. The reason was bandwidth allocation: getting time on a SONET ring means getting channels assigned, and you will pay for those channels 24/7 regardless of whether or not you use them. A technology called virtual concatenation was developed to allow SONET's lower-level building blocks (like STS-1) to be combined in arbitrary ways to produce just about any amount of bandwidth you could want, but every Mbps over SONET was an Mbps that couldn't be used by any other customer. You paid for it. Later on, variable-bandwidth allocation systems were developed, but they were complex and missed the opportunity to make much of a difference.
-
-SONET 刚性固定的带宽设计让它在传输实时流媒体方面游刃有余——这向来是电信工业的拿手好戏。但充满讽刺意味的是，在早期的信息技术革命中，实时多媒体通信却在相当长一段时间内缺席了：当时的普通互联网连接普遍太慢且太不可靠，根本无法承载流畅的音视频互动。而当实时媒体真正王者归来时，IP 网络的连接速率已经飙升到如此之快，以至于凭借排山倒海般的蛮力带宽，就足以彻底抹平缺乏精细化流量工程调度的缺陷。“慢速但绝对可靠”，在与“飞速但并不绝对完美”的残酷商业竞争中，几乎全盘溃败。
-
-&gt; SONET's fixed-bandwidth design made it excellent for real-time media, the wheelhouse of the telephone industry, but ironically real-time media was missing from the information revolution. Internet connections were generally too slow and unreliable to carry it. By the time real-time media returned, IP connections had gotten so fast that they could make up for the lack of traffic engineering with raw speed. Slow and reliable lost out to fast and unreliable almost every time.
-
-此外，SONET 身上也背负着传统电信行业网络架构所有的典型痼疾。到了 20 世纪 90 年代，基于 IP 的网络设备不仅成本远低于复杂的 ATM 和 SONET 硬件，而且在配置和运维上也简单得多。新兴的互联网服务提供商 (ISP) 怀揣着强烈的颠覆动力，凭借低成本的非 SONET 架构大打价格战，迅速将专线通信资费拉下了神坛。
-
-&gt; SONET also had all the typical warts of a telephone industry network architecture. By the '90s, IP-based network equipment was both cheaper and easier to use than ATM and SONET devices. Upstart internet service providers were much more competitively motivated, driving down prices on non-SONET services.
-
-在标准演进的舞台上，SONET 最终被光传送网 (Optical Transport Network, OTN) 所全面接替。OTN 是由国际电信联盟 (ITU) 制定的新一代数字体系标准，其起始速率从 2.5 Gbps 起步，向上延伸——只要物理工艺允许，理论上速率可以任意叠加攀升。如今，高达 800 Gbps 的“OTUC8”已正式投入商用。除了拥有高耸入云的带宽速率，OTN 的架构设计还能以远比前辈高得多的效率，轻松适配以太网等变长数据分组传输。当然，即便强如 OTN，如今在数据中心与城域互联的激战中，也正在面临直接将以太网数据帧裸奔打上光纤 (如彩光直连) 等极端扁平化方案的猛烈冲击。
-
-&gt; SONET has been superseded as a standard by OTN, Optical Transport Network. OTN is an ITU standard for a digital hierarchy that starts at 2.5 Gbps and goes up, well, as high as you want. 800 Gbps "OTUC8" is now in service. Besides being faster, OTN is also designed to accommodate variable packet connections like Ethernet much more efficiently. And, of course, even OTN is losing the fight against schemes that carry Ethernet frames directly over fiber.
-
----
-
-## 脚注与参考文献
-
-&gt; ## Footnotes
-
-1. 这是否是 8 比特字节 (byte) 在现代计算机领域变得如此普遍的根源所在？坦白说我并不能完全确定，这会是未来一项绝佳的研究课题。很久以前，我在另一个博客中曾花费大量时间试图考证当今无处不在的 8 位字长的真正起源谱系。如果不投入毕生学术生涯去专门深挖这一历史课题，我想我所能给出的最中肯结论是：当年似乎存在多条平行的技术演进脉络，最终不约而同地收敛到了将 7 比特和 8 比特视为通信传输的最佳位宽选择。而数字电话通信设备的发展，毫无疑问是其中极其关键的一条核心支脉。 [^1]
-
-&gt; 1. Is this the reason that 8-bit bytes became so universal in computing? I genuinely do not know, this would be a good topic for future research. A long time ago, on a different blog, I spent some time trying to establish the lineage of the 8-bit word length that is now so universal. Without devoting a career of research to the topic, I think the best I can say is that there seem to have been several parallel paths that converged on 7 and 8 bits as good choices for communications purposes. Digital telephony equipment was certainly one of them. [^1]
-
-2. 如果有哪位深谙此道的读者掌握相反的内幕史料，我将非常感激您能不吝赐教。 [^2]
-
-&gt; 2. And I would very much appreciate information from anyone who knows otherwise. [^2]
-
-[^1]: 这是否是 8 比特字节在计算领域变得如此普及的原因？作者在此探讨了 7 比特与 8 比特作为通信最佳选择的收敛历史。
-[^2]: 作者欢迎掌握 Western Electric 独立 PDH 复用器历史证据的读者提供进一步指正。</description>
-    </item>
-    <item>
-      <title>从 SGD 到 Muon：基于 Schatten-p 范数的逐层自适应几何优化器</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/从-SGD-到-Muon-基于-Schatten-p-范数的自适应优化器几何结构/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/从-SGD-到-Muon-基于-Schatten-p-范数的自适应优化器几何结构/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在深度学习模型的训练演进中，从经典的 SGD、Adam 到近期凭借矩阵谱范数优化大放异彩的 **Muon**，优化器正经历着从“标量元素独立更新”向“矩阵整体几何约束”的深刻范式迁移。然而，以 Muon 为代表的优化器虽然通过线性极小化预言机 (Linear Minimization Oracle, LMO) 实现了显著的收敛加速，其几何约束却往往是由设计者人为固化或经验设定的，无法适应神经网络中不同网络层各异的损失曲面与特征结构。针对这一局限，Thomas Massena 等人创新性地基于 Schatten-p 范数构建起一套数据驱动的逐层自适应几何优化框架，通过单步随机特征回归代理模型从激活与梯度统计中动态推导出最优闭式解，不仅优雅地在 SGD 与 Muon 之间构建起平滑连续的光谱，更将 SGD、Adam、Muon 及 MuAdam 全面纳为极端特例。令人瞩目的是，该算法在实现逐层动态几何自适应的同时，仅引入约 $3\%$ 的极低额外运行时开销，在多种严苛训练基准下均展现出顶尖的收敛效率与泛化表现，为大模型下一代自适应优化架构的设计提供了极具突破性的理论与工程范式。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-以 **Muon** 为代表的现代深度学习优化器，通过线性极小化预言机 (Linear Minimization Oracle, LMO) 理论，为权重更新引入了矩阵层面的几何约束，显著加速了模型的收敛步伐。然而，现有的前沿方法在设计更新几何结构时，往往依赖预设的静态规则或经验调优，导致所有网络层都只能采用一刀切的固定几何约束；这种静态设定很难精确契合神经网络各层之间截然不同的实际特征几何与损失曲面。
-
-&gt; Modern deep learning optimizers like **Muon** impose matrix-wise geometry constraints on their updates through Linear Minimization Oracle (LMO) theory. However, these methods typically use static, by-design, or empirically chosen update geometries that may not align with the specific geometry of individual neural network layers. 
-
-针对这一痛点，本文提出了一种数据驱动的动态评判准则，能够为神经网络的每一个层单独挑选最理想的代理更新 LMO 几何结构。作者团队利用单步随机特征回归代理模型 (Surrogate Model) ，从各层的梯度与激活值统计信息中推导出了优雅的解析闭式解，使该框架能够在 **SGD** 与 **Muon** 的参数更新模式之间实现无缝平滑插值。更进一步，通过引入逐参数的预条件处理 (Parameter-wise Preconditioning) ，该理论框架成功构建起一套大一统视角，将经典的 **SGD**、**Muon**、**Adam** 以及 **MuAdam** 均涵盖为其在特定极限条件下的特例。得益于极为精简高效的计算策略，该自适应机制仅带来约 $3\%$ 的极低运行时开销 (Runtime Overhead) ，便在多种复杂训练场景中展现出媲美甚至超越现有最优基准模型 (Baselines) 的亮眼战绩，为深度学习优化器迈向全动态、运行时逐层自适应几何结构开辟了崭新纪元。
-
-&gt; This paper introduces a data-driven criterion that dynamically selects proxy-optimal update LMO geometries per layer. Derived in closed form from gradient and activation statistics using a single-step random feature regression surrogate model, the proposed framework seamlessly interpolates between **SGD** and **Muon** updates. By integrating parameter-wise preconditioning, it generalizes and recovers **SGD**, **Muon**, **Adam**, and **MuAdam** as specific limiting cases. With efficient computational strategies yielding only a ~3% runtime overhead, the method demonstrates competitive or superior performance compared to the best-performing baselines across multiple training scenarios, paving the way for dynamic, runtime-adapted optimizer geometries.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2605.19781](https://arxiv.org/abs/2605.19781) (v2)
-* **研究领域：** 人工智能 (`cs.AI`)
-* **论文作者：** 
-  * Thomas Massena (DTIPG - SNCF, IRIT)
-  * Corentin Friedrich (IRIT)
-  * Mathieu Serrurier (IRIT)
-* **录用会议：** 神经信息处理系统大会 (NeurIPS, Conference on Neural Information Processing Systems) ，2026 年 12 月，澳大利亚悉尼
-* **提交历史：** 
-  * [v1] 2026 年 5 月 19 日 (周二)
-  * [v2] 2026 年 10 月 9 日 (周五)
-
-&gt; * **arXiv ID:** [arXiv:2605.19781](https://arxiv.org/abs/2605.19781) (v2)
-&gt; * **Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** 
-&gt;   * Thomas Massena (DTIPG - SNCF, IRIT)
-&gt;   * Corentin Friedrich (IRIT)
-&gt;   * Mathieu Serrurier (IRIT)
-&gt; * **Conference Reference:** Conference on Neural Information Processing Systems (NeurIPS), Dec 2026, Sydney, Australia
-&gt; * **Submission History:** 
-&gt;   * [v1] Tue, 19 May 2026
-&gt;   * [v2] Fri, 9 Oct 2026
-
----
-
-## 论文获取与相关资源
-
-&gt; ## Access &amp; Resources
-
-* **全文 PDF：** [阅读 PDF](https://arxiv.org/pdf/2605.19781)
-* **源码获取：** [TeX 源码包](https://arxiv.org/src/2605.19781)
-* **引文分析与学术工具：** 
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2605.19781)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2605.19781)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2605.19781)
-
-&gt; * **Full-Text PDF:** [View PDF](https://arxiv.org/pdf/2605.19781)
-&gt; * **Source Code:** [TeX Source](https://arxiv.org/src/2605.19781)
-&gt; * **External Citations &amp; Tools:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2605.19781)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2605.19781)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2605.19781)</description>
-    </item>
-    <item>
-      <title>ReplaySSM：缓存输入而非隐状态，破局 SSM 混合模型解码吞吐瓶颈</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/ReplaySSM-缓存-SSM-输入而非隐状态以提升长文本解码效率/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/ReplaySSM-缓存-SSM-输入而非隐状态以提升长文本解码效率/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>状态空间模型 (State-Space Model, SSM) 凭借恒定的显存占用与线性的长文本推理效率，被视为突破传统 Transformer 架构二次方计算瓶颈的关键方向，以 Mamba-2 为代表的混合架构更是备受学界与工业界瞩目。然而在实际部署中，传统 SSM 每一生成一个 Token 都要频繁读写其庞大的循环隐状态，由此带来的高频显存 I/O 成为制约自回归解码吞吐的核心瓶颈，同时也使投机解码的状态回滚和低比特量化面临严重阻碍。为此，Tri Dao 团队联合推出的 **ReplaySSM** 另辟蹊径，提出“缓存输入而非隐状态”的创新范式：它将连续状态解耦为周期性的检查点与一段极轻量的近期输入缓冲区，在绝大多数解码步中完全免除了高昂的状态写回，将主导显存访存量腰斩。在主流推理系统 vLLM 的实操测试中，ReplaySSM 在 Mamba-2 与 Gated DeltaNet 上带来了 $1.20\times \sim 1.47\times$ 的标准解码提速，并在 120B 级大型混合模型上实现了约 $1.8\times$ 的投机解码吞吐飞跃，为超长文本的高并发落地提供了全新解题思路。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-传统的状态空间模型 (State-Space Model, SSM) 通常会在推理时维护一个固定尺寸的循环隐状态。然而，在结合了注意力的混合架构大模型中，解码每生成一个 Token 都要对该隐状态进行一次完整的读取与写回，这逐渐演变成了拖累吞吐量的严重瓶颈。这种“步步更新”的急切状态管理策略，不仅引发了极其庞大的显存 I/O 访存流量与极低的计算访存比 (Arithmetic Intensity) ，还使得投机解码 (Speculative Decoding) 中的状态回滚变得异常笨重迟缓，更导致状态量化误差在后续的循环更新中不断累积放大。
-
-&gt; State-space models (SSMs) traditionally maintain a fixed-size recurrent state, but frequently reading and writing this state at every decoding step creates a significant bottleneck in hybrid models. This eager state management results in high memory traffic, low arithmetic intensity, inefficient speculative decoding rollbacks, and error accumulation from state quantization. 
-
-**ReplaySSM** 针对这一难题提出了革命性的解决方案：它通过时间维度上的循环展开，创新性地将状态表征解耦为一个周期性检查点 (Periodic Checkpoint) 与一段近期 SSM 输入轻量缓冲区 (Buffer of Recent SSM Inputs) 的组合。这种解耦架构在绝大多数解码步骤中完全免去了高昂的状态写回，将主导性的隐状态显存访存量直接砍掉近一半；同时，它将复杂的投机回滚简化为极度轻量的缓冲区指针回拨操作，并支持双精度检查点设计以彻底隔绝量化舍入误差对后续状态迭代的污染。在主流大模型推理框架 vLLM 中对 Mamba-2 与 Gated DeltaNet 的实际集成评测显示，ReplaySSM 将标准解码速度提升了 $1.20\times \sim 1.47\times$ ，并在 120B 参数级大型混合模型上实现了约 $1.8\times$ 于标准投机解码的极致吞吐量提升。
-
-&gt; **ReplaySSM** solves this by unrolling the recurrence to represent the state as a periodic checkpoint paired with a buffer of recent SSM inputs. This decoupled architecture avoids state writes on most steps, reduces dominant state memory traffic by roughly half, transforms speculative rollback into a simple buffer-pointer operation, and allows dual-precision checkpoints to prevent quantization error from corrupting recurrent updates. Implemented within vLLM for Mamba-2 and Gated DeltaNet, ReplaySSM accelerates standard decoding by $1.20\times$ to $1.47\times$ and delivers roughly $1.8\times$ the throughput of standard speculative decoding on 120B-class models.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-| 属性 | 详情 |
-| :--- | :--- |
-| **主要学科** | 机器学习 (`cs.LG`) |
-| **次要学科** | 人工智能 (`cs.AI`) |
-| **论文备注** | 正文 11 页 (含参考文献与附录共 35 页) ，6 张图，2 张表 |
-| **DOI 链接** | [10.48550/arXiv.2610.13778](https://doi.org/10.48550/arXiv.2610.13778) |
-| **版权许可** | [知识共享署名 4.0 (Creative Commons Attribution 4.0)](http://creativecommons.org/licenses/by/4.0/) &lt;a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"&gt;&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;&lt;span&gt;view license&lt;/span&gt;&lt;/a&gt; |
-
-&gt; | Attribute | Detail |
-&gt; | :--- | :--- |
-&gt; | **Primary Subject** | Machine Learning (`cs.LG`) |
-&gt; | **Secondary Subjects** | Artificial Intelligence (`cs.AI`) |
-&gt; | **Comments** | 11 pages (35 pages counting references and appendix), 6 figures, 2 tables |
-&gt; | **DOI** | [10.48550/arXiv.2610.13778](https://doi.org/10.48550/arXiv.2610.13778) |
-&gt; | **License** | [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) &lt;a class="has_license" href="http://creativecommons.org/licenses/by/4.0/" title="Rights to this article"&gt;&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;&lt;span&gt;view license&lt;/span&gt;&lt;/a&gt; |
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-传统状态空间模型 (SSM) 在自回归解码中维护着固定大小的循环隐状态，然而在注意力机制与 SSM 相融合的混合架构模型中，每一生成步都要频繁读写该隐状态，极易形成制约吞吐量的系统瓶颈。这种“步步更新”的急切状态管理策略造成了庞大的状态显存 I/O 访存开销与偏低的计算访存比 (Arithmetic Intensity) ，使得投机解码 (Speculative Decoding) 缺乏低成本的回滚机制，更会导致状态量化误差无休止地代入并污染后续的循环状态迭代。为此，我们提出了 **ReplaySSM**：它通过在时间维度上展开循环递归，将隐状态巧妙地解耦为“周期性保存的检查点”与“近期 SSM 输入数据的轻量缓冲区”，从而彻底将输出计算与检查点更新相分离。通过仅进行周期性检查点写入，ReplaySSM 在绝大多数解码步中完全免去了状态写回，将主导显存开销的状态访存量大致缩减了一半。与此同时，保留近期输入使得投机解码的回滚退化为极简的缓冲区指针调整，并能直接完成“仅针对输出”的高效验证，无需在显存中实体化展开任何中间隐状态。该解耦架构还支持状态双精度存储方案：绝大部分生成步采用低精度检查点供给输出计算，而底层更新则由高精度检查点维系，确保低精度量化的舍入误差永远不会反噬随后的循环更新。我们在主流服务引擎 vLLM 中为 Mamba-2 与 Gated DeltaNet 实现了 ReplaySSM。在并发服务批次大小 (Batch Size) 为 256 时，面对四款主流混合模型，ReplaySSM 相比精细调优后的 vLLM 基线实现了 $1.20$--$1.47\times$ 的标准解码加速；在两款 120B 参数级大型混合模型上，其吞吐量更达到 vLLM 原生投机解码的约 $1.8\times$。此外，相比共享单一低精度检查点，分离式的双精度状态机制显著降低了输出 KL 散度 (KL Divergence) 与下游任务的精度损失。
-
-&gt; State-space models (SSMs) maintain a fixed-size recurrent state, but reading and writing it at every decoding step can bottleneck hybrid models. This eager state management causes large state I/O with low arithmetic intensity, leaves speculative decoding no cheap rollback, and feeds state quantization error into subsequent recurrent updates. We introduce ReplaySSM, which unrolls the recurrence to represent the state as a checkpoint and a buffer of recent SSM inputs. This separates output computation from checkpoint updates. By updating the checkpoint periodically, ReplaySSM avoids state writes on most steps and roughly halves the dominant state memory traffic. Keeping recent inputs also makes speculative rollback a buffer-pointer operation and enables output-only verification without materializing intermediate states. The same separation allows a low-precision checkpoint to serve output computation on most steps while a higher-precision checkpoint serves recurrent updates, so rounding error in the low-precision copy never enters later updates. We implement ReplaySSM in vLLM for Mamba-2 and Gated DeltaNet. At serving batch size 256, it accelerates standard decoding by $1.20$--$1.47\times$ over a tuned vLLM baseline across four hybrid models, and delivers about $1.8\times$ the throughput of vLLM's speculative decoding on the two 120B-class models. Separate state precisions also reduce output KL divergence and downstream accuracy losses compared with a shared low-precision checkpoint.
-
----
-
-## 全文获取与相关资源
-
-&gt; ## Full-Text and Additional Resources
-
-* **论文 PDF：** [查看 PDF (View PDF)](https://arxiv.org/pdf/2610.13778)
-* **LaTeX 源码：** [TeX 源码 (TeX Source)](https://arxiv.org/src/2610.13778)
-* **在线 HTML 版本：** [HTML 版本 (HTML Version)](https://arxiv.org/html/2610.13778v1)
-* **学术引用检索：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.13778) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.13778) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.13778)
-
-&gt; * **PDF:** [View PDF](https://arxiv.org/pdf/2610.13778)
-&gt; * **LaTeX Source:** [TeX Source](https://arxiv.org/src/2610.13778)
-&gt; * **Experimental HTML:** [HTML Version](https://arxiv.org/html/2610.13778v1)
-&gt; * **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.13778) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.13778) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.13778)</description>
-    </item>
-    <item>
-      <title>Cloudflare 正式发布 Clef-omni：支持音视频与图文的全模态 30B 决策大模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 和 AI 智能体 (AI Agent) 在企业生产环境的广泛落地，开发者越来越频繁地需要让模型在海量复杂数据中做出精准、低延迟的业务决策。然而，传统的生成式模型不仅逐字生成文本缓慢、成本高昂，且难以同时原生地理解音频与动态视频等多媒体流。为此，Cloudflare 正式发布了开源权重的全模态决策模型 **Clef-omni** 。该模型基于混合专家架构 (Mixture-of-Experts, MoE) ，总参数量为 30B 、激活参数量仅为 3B ，能够通过单次 API 调用直接对文本、图像、音频和视频四种模态进行联合概率打分，无需预先进行繁琐的音视频转录与字幕提取。这一创新不仅将多模态决策延迟压缩至百毫秒级，还将推理成本大幅降低，为下一代高并发多模态智能体路由与自动化后端系统树立了全新的技术标杆。
-
----
-
-## 概述
-
-&gt; ## Summary
-
-Cloudflare 正式扩展了其 Clef 决策模型 (Decision Model) 家族，重磅推出开源权重的多模态决策模型 **Clef-omni** 。该模型采用混合专家架构 (Mixture-of-Experts, MoE) ，总参数量为 30B ，实际激活参数仅为 3B 。Clef-omni 基于 `Qwen3-Omni-30B-A3B-Instruct` 构建，能够在单次 API 调用中同时对文本、图像、音频和视频进行精准打分，彻底免去了以往必须先做语音转录 (Transcription) 和视频字幕提取 (Captioning) 的繁琐前置环节，极大简化了开发者的工程处理链路。Clef-omni 目前已在 Cloudflare Workers AI 平台上线，遵循 Apache-2.0 开源许可协议；与此同时，Cloudflare 还宣布对轻量级模型 Clef-flash 进行大幅降价，并通过深度集成推理引擎 SGLang ，使托管版 Clef 系列模型的推理速度直接翻倍提升。
-
-&gt; Cloudflare has expanded its Clef decision model family with the release of **Clef-omni**, an open-weight, 30B total / 3B active parameter Mixture-of-Experts (MoE) multimodal decision model. Built on top of `Qwen3-Omni-30B-A3B-Instruct`, Clef-omni is capable of scoring text, images, audio, and video in a single API call, streamlining developer pipelines by eliminating the need for preliminary transcription and captioning steps. Available on Cloudflare Workers AI and licensed under Apache-2.0, this release coincides with significant price cuts for Clef-flash and a 2x speed improvement for hosted Clef models via SGLang integration.
-
----
-
-## 核心速览 (TL;DR)
-
-&gt; ## TL;DR
-
-* **模型规模：** 总参数量 30B ，激活参数量 3B (MoE 架构) ；在 Workers AI 平台上提供高达 64,000 个 Token 的上下文窗口。
-* **运行环境：** 支持在 Workers AI 平台直接调用，模型标识为 `@cf/cloudflare/clef-omni` ；实测可在单张 NVIDIA H200 上完成私有化部署 (bfloat16 精度下占用显存约 64 GB) 。
-* **综合性能：** 在意图分类与任务路由等场景下表现优异；但在高难度复杂推理与工作流评估任务中，略逊于标准文本版 Clef 模型。
-* **最佳战绩：** 在 CLINC150+OOS 基准测试 (Benchmark) 中斩获 97.7 的宏平均 F1 分数 (Macro-F1) ，在 Clef 系列与 Jev 系列共四款对比模型中位列榜首。
-* **短板弱项：** 在音乐结构分析基准 POP909-CL 上的准确率仅为 2.6 ，在权威专家级问答基准 GPQA Diamond 上的准确率为 47.4 (作为对比，Jev 模型得分高达 78.3) 。
-* **总结评价：** 
-  * *优势：* 只需单次调用即可跨越 4 种不同模态完成统一的概率决策。
-  * *劣势：* 在严苛的纯逻辑深度推理任务上，准确率稍逊于专精文本的 Clef 变体。
-
-&gt; * **Size:** 30B total parameters, 3B active parameters (MoE); 64,000-token context on Workers AI.
-&gt; * **Runs on:** Workers AI as `@cf/cloudflare/clef-omni`; self-hosting tested on a single H200 (~64 GB GPU memory in bfloat16).
-&gt; * **Performance:** Excels on routing and intent tasks; trails standard Clef on complex reasoning and workflow evaluations.
-&gt; * **Best:** Achieves 97.7 macro-F1 on CLINC150+OOS (topping all four Clef and Jev models).
-&gt; * **Worst:** 2.6 accuracy on POP909-CL, and 47.4 on GPQA Diamond (compared to Jev's 78.3).
-&gt; * **Bottom Line:** 
-&gt;   * *Pros:* Makes unified decisions across 4 distinct modalities in a single call.
-&gt;   * *Cons:* Exhibits weaker accuracy than text-focused Clef variants on hard reasoning tasks.
-
----
-
-## 什么是决策模型？
-
-&gt; ## What is a Decision Model?
-
-与传统的生成式文本模型不同，决策模型并不会自由生成开放式自然语言文本，而是直接返回带有明确概率值的结构化答案。在实际使用中，用户只需传入一个状态对象 `state` 以及一组预先定义好的问题模式 (Schema) ，模型便会直接为每个候选选项输出置信度概率分数。Clef 支持[三类问题格式](https://huggingface.co/Cloudflare/clef-omni)：即 `noul` (判断真假，True/False) 、`choice` (单选或多选项评估) 和 `score` (连续分值评估) 。该输入输出格式完全兼容并遵循由 [TypeSafe AI](https://typesafe.ai/blog/introducing-system-one-models-and-jev) 制定的 Jev 与 SystemOne API 工业规范。
-
-&gt; Unlike traditional generative text models, a decision model returns typed answers accompanied by probabilities instead of free-form generated text. Users send a `state` object alongside a schema of questions, and the model responds with a probability score for every allowed option. Clef supports [three question types](https://huggingface.co/Cloudflare/clef-omni): `noul` (true or false), `choice`, and `score`. This format adheres to the Jev and SystemOne API standards introduced by [TypeSafe AI](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
-
----
-
-## Clef-omni 是如何工作的？
-
-&gt; ## How Does Clef-omni Work?
-
-Clef-omni 是在开源多模态底座 [Qwen3-Omni-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-Omni-30B-A3B-Instruct) 的基础上经过后训练 (Post-training) 优化而成的。Cloudflare 完整保留了该模型强大的核心多模态理解主干，同时剥离了耗费资源的语音合成 (Text-to-Speech) 输出通路。在执行推理时，模型仅需对输入的完整多模态载荷执行单次预填充处理 (Prefill Pass) ，将抽取的视频帧与音频片段精确对齐同步为一条统一的输入序列，进行深度联合计算。
-
-&gt; Clef-omni is post-trained from [Qwen3-Omni-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-Omni-30B-A3B-Instruct). Cloudflare preserved the model's core comprehension backbone while dropping the text-to-speech output path. The model executes a single prefill pass over the entire payload, synchronizing video frames and audio into a unified sequence for joint processing.
-
-随后，专门设计的联合模式头 (Joint Schema Head) 对所有选项进行精准概率评分。每个有效选项都会直接从多模态输入中提取关键证据，借助跨注意力机制 (Cross-Attention) 遍历全部上下文的字段向量，从而严密计算出最终的置信度评分。在模型微调方面，Cloudflare 冻结了 Qwen3 的底座参数，通过标签平滑交叉熵 (Label-Smoothed Cross-Entropy) 与布里尔分数校准 (Brier Score Calibration) 相结合的优化目标，训练了专属的 LoRA 适配层。
-
-&gt; A specialized joint schema head then scores the options. Each valid option gathers evidence directly from the input, utilizing field vectors that cross-attend across the full context to compute final confidence scores. Cloudflare froze the Qwen3 backbone and trained custom LoRA adapters using a combination of label-smoothed cross-entropy and Brier score calibration.</description>
-    </item>
-    <item>
-      <title>复古计算修复录 II：Alpha Micro Eagle 300 迷你机翻新与现代硬件改造</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-13/Alpha-Micro-Eagle-300-迷你机翻新与现代硬件改造/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-13/Alpha-Micro-Eagle-300-迷你机翻新与现代硬件改造/</guid>
-      <pubDate>Tue, 13 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在 20 世纪八九十年代的商用计算浪潮中，Alpha Microsystems 凭借独特的 AMOS 多用户操作系统与兼具向下兼容的硬件架构，打造了诸多被称为“平民迷你机”的经典商用计算设备。本文记录了一场跨越数年的经典硬件抢救与现代化升级之旅——围绕搭载 Motorola 68EC030 处理器的 Alpha Micro Eagle 300 迷你塔式机展开。面对电源风扇老化、开机自检持续报错代码 `2d` 等严峻硬件挑战，作者不仅深入排查主板逻辑与 DIP 引导开关时序使其重获新生，还成功引入现代固态存储仿真器 (ZuluSCSI) 替换脆弱的机械硬盘，使这台 30 年前的老机器兼具超高可靠性与高速备份能力。这不仅是一次硬核的复古硬件修复实战，更是一篇向已故资深硬件工程师 Rod Hewitt 及那个黄金工程时代致敬的诚挚之作。
-
----
-
-## 内容总结
-
-&gt; ## Summary
-
-本文记录了一场跨越数年的修复与升级之旅，核心聚焦于 **Alpha Microsystems 基于 68K 处理器的 Eagle 计算机家族**，特别是其中一台 **Alpha Micro Eagle 300**，以及它的同系机型 (Eagle 450 和 Eagle 500)。该项目涵盖了硬件与开机故障的深入排查、通过固态 **ZuluSCSI** 仿真器替换老旧机械硬盘以实现复古存储的现代化改造、系统梳理 Alpha Micro 的硬件发展史 (从 S-100 迷你机到 Motorola 68K 及 ColdFire 处理器)，并向已故资深工程师 **Rod Hewitt** 致以崇高敬意。
-
-&gt; This article chronicles a multi-year restoration and upgrade journey focusing on **Alpha Microsystems' 68K-based Eagle computer family**, specifically an **Alpha Micro Eagle 300**, alongside its siblings (the Eagle 450 and Eagle 500). The project involves troubleshooting hardware and boot failures, modernizing vintage storage by replacing aging spinning hard disks with solid-state **ZuluSCSI** emulators, examining the hardware history of Alpha Micro (from S-100 minicomputers to Motorola 68K and ColdFire processors), and paying tribute to late engineer **Rod Hewitt**.
-
----
-
-## 1. 引言：跨越多个周末的翻新续篇
-
-&gt; ## 1. Introduction: A Refurb Multi-Weekend Sequel
-
-本次“翻新周末”在两个层面上都是一部续作。
-
-&gt; This Refurb Weekend is a sequel in two ways.
-
-[![Eagle 300 in original setting](./images/aa03cf3f97e9.jpg)](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhtxXh6ipOCrGK54Zsl5U0tbOrL7jLHeBbGPf766eyl_M2XO_OdG7O_oqStkg8TBzXiW-towqKCGHfvAFiQT-9wVV2jkYw8TIEXZ24qJ4vR8lcy23R-v3Ma6idK4ObQRthAfID7v9JeUsfxa1k-OJNI8JkRhs4UQqzJOGOE47N7rDTEQP9nDuP5VoVyX5Y/s3648/PXL_20261004_143856069.jpg)
-
-[六年前](https://oldvcr.blogspot.com/2020/06/refurb-weekend-alpha-micro-eagle-300.html)，我修好了自己那台基于 68EC030 处理器的 Alpha Microsystems Eagle 300 的电源与机箱风扇——这是一台运行着 **AMOS** 操作系统 (这是 Alpha Micro 自研的、深受 DEC 启发的独特多用户操作系统) 的现代化高速迷你机。这些外观朴素的“蓝领商用机”凭借深度集成的企业级软件，在当年的垂直行业市场中备受青睐；更罕见的是，为了向下兼容早期的 WD-16 架构祖先，它们竟反常规地以*小端序* (Little-Endian) 运行原本为大端序 (Big-Endian) 的 68000 系列处理器。
-
-&gt; [Six years ago](https://oldvcr.blogspot.com/2020/06/refurb-weekend-alpha-micro-eagle-300.html), I fixed the power supply and case fan in my 68EC030-based Alpha Microsystems Eagle 300—a faster, modernized Alpha Micro running **AMOS**, their unique DEC-inspired multiuser operating system. These blue-collar boxes were common in vertical markets for their tightly integrated business software and are unusual for running their big-endian 68000-series processors *little*-endian for backwards compatibility with WD-16 ancestors.
-
-第二重“续作”意义，则是接续了[我们此前那场 Alpha Micro 翻新周末](https://oldvcr.blogspot.com/2026/03/refurb-weekend-double-header-alpha.html)——在那次行动中，我们成功救活了一台 Alpha Micro AM-1000 与一台 AM-1200。
-
-&gt; The second way it's a sequel is to [our previous Alpha Micro refurb weekend](https://oldvcr.blogspot.com/2026/03/refurb-weekend-double-header-alpha.html), which restored an Alpha Micro AM-1000 and AM-1200.</description>
-    </item>
-    <item>
-      <title>Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-11/Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-11/Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型/</guid>
-      <pubDate>Sun, 11 Oct 2026 00:00:00 GMT</pubDate>
-      <description>传统的生成式大语言模型在做决策判断时往往“废话连篇”：不仅需要自回归逐字生成冗长文本，还极易受到随机采样与幻觉漂移的干扰，导致后端流水线延迟居高不下且计费高昂。为破解这一工业落地瓶颈，Nace.AI 正式开源了参数量为 8.95B 的轻量级专用决策模型 **Drex 1.5** 。该模型彻底摒弃了繁琐的文本生成机制，通过精巧的指针头部架构，仅需单次前向传播 (Single Forward Pass) 即可直接计算出预设选项的精确概率分布。在公开的权威基准测试 Decision Index 0.3.1 中，Drex 1.5 以 58.08 的高分逼平了顶级商业闭源模型 Jev 1.13.0 ，尤其在 32K 至 128K 超长上下文处理中展现出高达 93.4% 的惊人准确率。这不仅为高并发 AI 智能体 (AI Agents) 与自动化后端工作流提供了极速、确定且廉价的决策底座，更标志着开源模型在单卡与端侧设备上迈入了轻量级决策智能的新里程碑。
-
----
-
-## 📌 执行摘要
-
-&gt; ## 📌 Executive Summary
-
-Nace.AI 正式开源了参数量为 8.95B 的决策模型 **Drex 1.5** ，专门为 AI 智能体 (AI Agents) 与后端自动化工作流量身打造。与传统的大语言模型 (Large Language Models, LLMs) 不同，Drex 1.5 完全不生成冗余的自然语言文本；相反，它能够结合输入的状态与特定类型的问题，仅通过单次前向传播 (Single Forward Pass) 便直接输出预定义选项的概率分布。在权威的 **Decision Index 0.3.1 基准测试** 中，Drex 1.5 斩获了 **58.08 分** 的顶尖战绩，不仅全面比肩主流前沿闭源模型，还能在单张消费级或云端 GPU 上高吞吐运行，甚至可在 Apple Silicon 芯片设备上流畅进行本地部署。
-
-&gt; Nace.AI has open-sourced **Drex 1.5**, an 8.95B parameter decision model designed specifically for agents and backend workflows. Unlike traditional large language models, Drex 1.5 does not generate text; instead, it evaluates a given state alongside typed questions and directly returns probabilities for a predefined set of options in a single forward pass. Achieving a top-tier score of **58.08 on Decision Index 0.3.1**, Drex 1.5 matches the performance of leading closed models while running efficiently on a single consumer or cloud GPU, or locally via Apple Silicon.
-
----
-
-## 🚀 核心速览 (TL;DR)
-
-&gt; ## 🚀 TL;DR
-
-* **模型规模：** 8.95B 稠密参数 (bf16 格式权重约 18 GB) 。默认上下文长度为 16,384 个 Token ，最高可扩展至 131,072 个 Token 。
-* **硬件门槛：** 仅需 1 张 CUDA GPU 即可运行 bf16 权重 (在 24 GB 显存的 A10G 上通过实测) ；其 Q8_0 量化版本的 GGUF 文件 (~9.5 GB) 还可在 Apple Silicon 芯片与标准 CPU 上高效运转。
-* **综合性能：** 在公开的 Decision Index 0.3.1 基准测试中斩获 **58.08 分** ，与顶级闭源模型 Jev 1.13.0 (57.96 分) 处于完全相同的并列领先梯队。
-* **核心优势：** 在长文档处理场景中表现卓越 (在 32K 至 128K Token 长度下达到 **93.4% 的超高准确率**) 。
-* **主要短板：** 在宽泛的通用世界知识测试 (例如 GPQA Diamond) 以及细粒度情感分析任务上表现相对吃力。
-
-&gt; * **Size:** 8.95B dense parameters (bf16 weights approx. 18 GB). Default context of 16,384 tokens, scaling up to 131,072 tokens.
-&gt; * **Hardware Requirements:** Runs on 1 CUDA GPU in bf16 (tested on a 24 GB A10G). A Q8_0 GGUF (~9.5 GB) runs efficiently on Apple Silicon and standard CPUs.
-&gt; * **Performance:** Scores **58.08** on Decision Index 0.3.1 (public), placing it squarely within the tie band of Jev 1.13.0 (57.96).
-&gt; * **Strengths:** Exceptional performance on long-document processing (**93.4% accuracy** on 32K–128K tokens).
-&gt; * **Weaknesses:** Struggles with broad general knowledge (e.g., GPQA Diamond) and fine-grained sentiment analysis tasks.
-
----
-
-## 什么是 Drex 1.5？
-
-&gt; ## What is Drex 1.5?
-
-Drex 1.5 是一款专精于决策判断的轻量级模型，其核心特点是在单次前向传播中直接为一组固定选项进行概率打分。用户向模型输入一段状态描述 `state` (支持纯文本或 JSON 格式) 以及具名的问题。它支持三类不同的问题类型：
-* `choice` (多选一选择题)
-* `noul` (是/否二元判定)
-* 序数型 `score` (等级评分)
-
-&gt; Drex 1.5 is a specialized decision model that scores a fixed set of options in a single forward pass. Users input a `state` (text or JSON) alongside named questions. It supports three distinct question types:
-&gt; * `choice`
-&gt; * `noul` (yes/no)
-&gt; * Ordinal `score`
-
-由于在推理阶段完全不需要采样生成任何 Token ，因此像采样温度 `temperature` 与核采样 `top_p` 这类超参数对它完全不适用。该模型被严格限制为只能基于预先给定的选项进行评估作答，从根本上杜绝了天马行空的幻觉。
-
-&gt; Because no tokens are sampled during inference, parameters like `temperature` and `top_p` do not apply. The model is strictly constrained to answering using the provided options.
-
-在接口兼容性方面，Drex 1.5 提供了标准的 `POST /v1/systemone` API 接口——这与 TypeSafe AI 旗下 Jev 所开创的请求规范完全一致。这意味着现有基于 Jev 构建的客户端应用，只需简单修改环境变量中的服务地址，就能无缝迁移至 Drex 1.5。
-
-&gt; It serves the `POST /v1/systemone` API—the same request format pioneered by TypeSafe’s Jev—allowing existing Jev clients to migrate simply by updating environment variables.
-
----
-
-## Drex 1.5 的底层架构与工作原理
-
-&gt; ## How Does Drex 1.5 Work?
-
-Drex 1.5 的基座骨干网络采用了 **MiMo-V2.6-Distill-Qwen-9B** (源自 Qwen 3.5 9B 的知识蒸馏变体) ，整网包含 32 层结构并引入了混合注意力机制 (Hybrid Attention ，即每 1 层全注意力层搭配 3 层线性注意力层) 。在该骨干网络之上，挂载了一个专用的指针头部 (`head.pt`) ，它能直接基于骨干网络输出的隐藏状态向量 (Hidden States) 对每一个候选选项进行打分。
-
-&gt; The model's backbone is **MiMo-V2.6-Distill-Qwen-9B** (a distilled variant of Qwen 3.5 9B), featuring 32 layers with hybrid attention (3 linear-attention layers per full-attention layer). A specialized pointer head (`head.pt`) scores each option based on the backbone's hidden states.
-
-在处理流程上，针对每个问题，模型仅需对“状态内容与该特定问题拼接后的序列”执行单次前向推理。借助 `llama.cpp` 的推理优化，复杂的状态上下文只需被编码一次，即可高效地在多个并行提问之间共享复用，大幅削减了重复计算开销。
-
-&gt; Each question executes a single pass over the state combined with that specific question. Using `llama.cpp`, the state is encoded once and efficiently shared across multiple questions.
-
----
-
-## 性能表现与基准测试
-
-&gt; ## Performance &amp; Benchmarks
-
-在公开的 **Decision Index 0.3.1** 基准测试 (涵盖 37 项校正随机概率后的严苛基准任务) 中，Drex 1.5 稳居 10B 以下参数量规模模型的榜首：
-
-&gt; On the public **Decision Index 0.3.1** (comprising 37 chance-corrected benchmarks), Drex 1.5 competes at the very top of the sub-10B parameter category:
-
-* **Drex 1.5：** 58.08 分
-* **Jev 1.13.0：** 57.96 分
-* **Bespoke Nimble 9B v3：** 57.19 分
-* **Cloudflare clef-flash：** 56.15 分
-
-&gt; * **Drex 1.5:** 58.08
-&gt; * **Jev 1.13.0:** 57.96
-&gt; * **Bespoke Nimble 9B v3:** 57.19
-&gt; * **Cloudflare clef-flash:** 56.15</description>
-    </item>
-    <item>
-      <title>算子失配困境：跨平台可移植 GPU 计算在自动驾驶 BEV 感知部署中的突破</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-10/算子失配困境-跨平台可移植-GPU-计算在自动驾驶-BEV-感知部署中的突破/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-10/算子失配困境-跨平台可移植-GPU-计算在自动驾驶-BEV-感知部署中的突破/</guid>
-      <pubDate>Sat, 10 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在当今自动驾驶系统中，鸟瞰图 (Bird's-Eye-View, BEV) 感知模型已成为深度融合车载相机图像与激光雷达 (LiDAR) 点云以实现三维空间精准目标检测的核心支柱。然而，这类先进模型在工程落地时却遭遇了严峻的“算子失配 (Operator Mismatch)”困境——主流推理运行时虽能高效支持常规密集卷积，却难以表达 3D 稀疏卷积，也缺乏处理几何离散映射 (Scatter) 算子的计算语义，加之现有稀疏卷积库普遍深度绑定 CUDA 与 PyTorch，导致工业部署被长期锁死在单一厂商的硬件生态中。为了打破硬件垄断并解决部署断层，研究人员提出了全新的跨平台部署框架 BEVPIPE，通过将感知网络创新性地解耦为由引擎托管的密集计算子图，以及体素化器 (Voxelizer)、稀疏编码器 (Sparse Encoder) 和 BEV 投影器 (BEV Projector) 三大外部扩展算子，并依托统一的共享 GPU 显存空间进行零开销数据打通。实验表明，BEVPIPE 在几乎无精度损失的情况下 (保留了 98.5% 的参考 mAP) ，不仅达成了相比传统方案高达 19.5 倍的端到端推理加速，更成功验证了在异构 GPU 后端上的无缝跨平台可移植性，为多模态 BEV 感知系统的通用工业化部署开辟了全新路径。
-
----
-
-## 内容总结
-
-&gt; ## Summary
-
-现代自动驾驶系统高度依赖鸟瞰图 (Bird's-Eye-View, BEV) 感知模型，通过融合车载相机与激光雷达 (LiDAR) 数据来实现高精度的 3D 目标检测。然而，这类模型的实际部署却面临着严峻的 **算子失配 (Operator Mismatch)** 困境：标准推理运行时能够流畅处理常规的密集卷积，却难以兼容模型所需的特定专用算子 (如密集卷积 vs. 稀疏 3D 卷积 vs. 几何离散映射 scatter 算子) 。更为棘手的是，当前主流的稀疏卷积库普遍严格限定于 CUDA 并深度绑定 PyTorch，导致感知算法的工业部署被牢牢锁定在单一硬件厂商的生态之中。
-
-&gt; Modern autonomous driving systems rely on bird's-eye-view (BEV) perception models to fuse camera and LiDAR data for 3D object detection. However, deploying these models is hindered by an **operator mismatch** between standard inference runtimes and specialized operations (dense convolutions vs. sparse 3D convolutions vs. geometric scatter operations). Furthermore, existing sparse convolution libraries are strictly CUDA-only and PyTorch-coupled, locking deployments to single-vendor hardware.
-
-为了化解这一难题，作者提出了 **BEVPIPE** 框架。该框架旨在利用高可移植性的 GPU 计算 API 来部署多模态 BEV 感知流水线，并能够与生产级推理运行时无缝集成。BEVPIPE 的核心思路是将感知模型清晰地划分为两大部分：
-
-1. 由推理运行时统一托管的密集计算子图；
-2. 三个通过共享 GPU 显存空间紧密连接的外部算子扩展组件——**体素化器 (Voxelizer)**、**稀疏编码器 (Sparse Encoder)** 与 **BEV 投影器 (BEV Projector)**。
-
-&gt; To solve this, the authors introduce **BEVPIPE**, a framework designed to deploy multimodal BEV perception pipelines using portable GPU compute APIs while integrating seamlessly with production inference runtimes. BEVPIPE works by partitioning the perception model into:
-&gt; 1. Runtime-managed dense subgraphs, and
-&gt; 2. Three external operator extensions (**voxelizer**, **sparse encoder**, and **BEV projector**), connected via a shared GPU memory space.
-
-**核心成果：** 相比传统部署方案，BEVPIPE 实现了 **19.5 倍的端到端加速比**，同时保留了基准模型 **98.5% 的参考 mAP**，成功验证了其在不同异构 GPU 计算后端上的出色可移植性。
-
-&gt; **Key Results:** BEVPIPE achieves a **19.5× end-to-end speedup** over conventional deployments while retaining **98.5% of reference mAP**, successfully demonstrating portability across different GPU backends.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2610.11504](https://arxiv.org/abs/2610.11504) [cs.AI]
-* **论文作者：** Rohit Verma, Anand V Bodas
-* **提交时间：** 2026 年 10 月 8 日 (October 8, 2026)
-* **主要领域：** 人工智能 (`cs.AI`)
-* **DOI 标识：** [10.48550/arXiv.2610.11504](https://doi.org/10.48550/arXiv.2610.11504)
-
-&gt; * **arXiv ID:** [arXiv:2610.11504](https://arxiv.org/abs/2610.11504) [cs.AI]
-&gt; * **Authors:** Rohit Verma, Anand V Bodas
-&gt; * **Submitted:** October 8, 2026
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **DOI:** [10.48550/arXiv.2610.11504](https://doi.org/10.48550/arXiv.2610.11504)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-现代自动驾驶系统广泛依赖鸟瞰图 (Bird's-Eye-View, BEV) 感知模型，通过深度融合车载相机与激光雷达 (LiDAR) 输入以实现三维空间内的精准目标检测。尽管这类模型具备极高的精度，但它们却根本无法直接借助标准的工业级推理运行时完成部署。其根源在于严峻的“算子失配 (Operator Mismatch)”难题——推理引擎虽能高效处理常规密集卷积，却完全无法表达 3D 稀疏卷积，更缺乏处理几何离散映射 (Scatter) 算子的计算语义与指令支持。而在当下的产业生态中，几乎所有主流的稀疏卷积库均仅支持 CUDA 且深度绑定 PyTorch 框架，从而将 BEV 感知模型的落地彻底锁死在单一厂商的计算硬件与专有执行框架之中。
-
-&gt; Modern autonomous driving systems rely on bird's-eye-view (BEV) perception models that fuse camera and LiDAR inputs to detect objects in 3D space. These models are accurate, but they cannot be deployed through standard inference runtimes. The reason is an operator mismatch between dense convolutions (which runtimes handle well), sparse 3D convolutions (which runtimes cannot represent), and geometric scatter operations (which runtimes have no vocabulary for). Today, every sparse convolution library is CUDA-only and PyTorch-coupled, locking BEV deployment to a single vendor's hardware and a single execution framework.
-
-针对上述痛点，本文提出了 BEVPIPE 框架——一个基于高可移植性 GPU 计算 API 构建、可与生产级推理运行时无缝结合的多模态 BEV 感知流水线部署方案。BEVPIPE 创新性地将整个感知网络解耦为两大板块：一部分是由推理引擎统一调度的密集计算子图；另一部分则是三大外部算子扩展模块 (体素化器 voxelizer、稀疏编码器 sparse encoder 以及 BEV 投影器 BEV projector) ，并通过统一的共享 GPU 显存空间进行零开销数据打通。在实际评测中，BEVPIPE 相比传统部署方案取得了高达 19.5 倍的端到端加速，同时保留了基准模型 98.5% 的参考 mAP 精度。更为重要的是，我们验证了 BEVPIPE 在多种不同 GPU 计算后端之间的无缝跨平台可移植性。
-
-&gt; We present BEVPIPE, a framework for deploying multimodal BEV perception pipelines using portable GPU compute APIs and integrating them with production inference runtimes. BEVPIPE partitions the model into runtime-managed dense subgraphs and three external operator extensions (voxelizer, sparse encoder, BEV projector), connected through a shared GPU memory space. BEVPIPE achieves a 19.5x end-to-end speedup over conventional deployments while retaining 98.5% of reference mAP. We also showcase that BEVPIPE is portable across different GPU backends.
-
----
-
-## 🔗 全文与资源链接
-
-&gt; ## Links &amp; Resources
-
-* **全文阅读选项：**
-  * [查看论文 PDF (View PDF)](https://arxiv.org/pdf/2610.11504)
-  * [HTML 网页版本 (实验性 / Experimental)](https://arxiv.org/html/2610.11504v1)
-  * [TeX 源码 (TeX Source)](https://arxiv.org/src/2610.11504)
-* **授权协议：** [知识共享署名-相同方式共享 4.0 国际许可协议 (CC BY-SA 4.0)](http://creativecommons.org/licenses/by-sa/4.0/) ![license icon](./images/5283893486a4.png)
-* **外部学术索引：**
-  * [Google 学术搜索 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2610.11504)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.11504)
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.11504)
-
-&gt; * **Full-Text Options:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2610.11504)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2610.11504v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2610.11504)
-&gt; * **License:** [Creative Commons Attribution-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/) ![license icon](./images/5283893486a4.png)
-&gt; * **External Citations:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.11504)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.11504)
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.11504)</description>
     </item>
   </channel>
 </rss>
