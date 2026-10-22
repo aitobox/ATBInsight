@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-10-23**: [Cactus Whistle 实战指南：16.9MB 轻量语音模型如何在 CPU 上硬刚 Whisper Base](blog/posts/2026-10-23-Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base.md)
 - **2026-10-22**: [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
 - **2026-10-21**: [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - **2026-10-20**: [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
