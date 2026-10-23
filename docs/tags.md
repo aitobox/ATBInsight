@@ -242,6 +242,7 @@ title: 标签浏览
 - [局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合](blog/posts/2026-10-22-局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合.md)
 - [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 - [构建智能体：何时应当将子智能体合并回主智能体循环](blog/posts/2026-10-23-构建智能体-何时应当将子智能体合并回主智能体循环.md)
+- [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 
 ## AI 智能体安全
 
@@ -1037,6 +1038,7 @@ title: 标签浏览
 - [结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布](blog/posts/2026-08-07-结合AI、开源工具与人工介入：实现 `huggingface_hub` 的每周迭代发布.md)
 - [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
 - [Forgejo 技巧 #2：与 Read the Docs 集成](blog/posts/2026-09-01-Forgejo 技巧 #2：与 Read the Docs 集成.md)
+- [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 
 ## CLAUDE.md
 
@@ -1381,6 +1383,10 @@ title: 标签浏览
 
 - [使用 DBOS 在 Postgres 中运行持久化工作流](blog/posts/2026-08-13-使用 DBOS 在 Postgres 中运行持久化工作流.md)
 
+## DConstrain
+
+- [DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码](blog/posts/2026-10-24-DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码.md)
+
 ## DINOv3
 
 - [BenthicDINO：面向视角不变侧扫声呐表征的物理融合自蒸馏方法](blog/posts/2026-08-26-BenthicDINO：面向视角不变侧扫声呐表征的物理融合自蒸馏方法.md)
@@ -1457,6 +1463,10 @@ title: 标签浏览
 
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+
+## DeepSeek-R1
+
+- [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
 
 ## DeepSeek-V4-Flash
 
@@ -2745,6 +2755,10 @@ title: 标签浏览
 
 - [为扩散语言模型启用共享前缀的 KV 缓存](blog/posts/2026-09-03-为扩散语言模型启用共享前缀的 KV 缓存.md)
 
+## LayerNorm
+
+- [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
+
 ## LayerRoPE
 
 - [LayerRoPE：深度维度的动态幅值与角度叠加编码架构](blog/posts/2026-10-09-LayerRoPE-深度维度的动态幅值与角度叠加编码架构.md)
@@ -3832,6 +3846,8 @@ title: 标签浏览
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 - [TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析](blog/posts/2026-10-22-TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析.md)
+- [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
+- [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 
 ## Pythia
 
@@ -4093,6 +4109,10 @@ title: 标签浏览
 - [基于可验证奖励的同策略蒸馏 (OPDVR)](blog/posts/2026-08-27-基于可验证奖励的同策略蒸馏 -OPDVR.md)
 - [F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解](blog/posts/2026-09-05-F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解.md)
 - [在模型动摇处分叉：面向树状结构强化学习的信念转移分支策略](blog/posts/2026-09-13-在模型动摇处分叉-面向树状结构强化学习的信念转移分支策略.md)
+
+## RMSNorm
+
+- [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
 
 ## RMT
 
@@ -4770,6 +4790,7 @@ title: 标签浏览
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
+- [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 
 ## TRL
 
@@ -4932,6 +4953,7 @@ title: 标签浏览
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
+- [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 
 ## TorchTitan
 
@@ -4999,6 +5021,7 @@ title: 标签浏览
 - [任务的算力天花板：Transformer 究竟何时能脱离思维链取得成功？](blog/posts/2026-09-30-任务的算力天花板-Transformer-究竟何时能脱离思维链取得成功.md)
 - [LayerRoPE：深度维度的动态幅值与角度叠加编码架构](blog/posts/2026-10-09-LayerRoPE-深度维度的动态幅值与角度叠加编码架构.md)
 - [从模糊到精确：Halo 架构如何通过有理数运算实现无限深度推理](blog/posts/2026-10-23-从模糊到精确-Halo-架构如何通过有理数运算实现无限深度推理.md)
+- [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
 
 ## Transformer 电路
 
@@ -13797,6 +13820,7 @@ title: 标签浏览
 - [并非所有大语言模型的推理过程都可见于思维链中](blog/posts/2026-09-08-并非所有大语言模型的推理过程都可见于思维链中.md)
 - [视觉语言模型中思维链忠实度的反事实测试评估](blog/posts/2026-09-10-视觉语言模型中思维链忠实度的反事实测试评估.md)
 - [任务的算力天花板：Transformer 究竟何时能脱离思维链取得成功？](blog/posts/2026-09-30-任务的算力天花板-Transformer-究竟何时能脱离思维链取得成功.md)
+- [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
 
 ## 思维链推理
 
@@ -14148,6 +14172,7 @@ title: 标签浏览
 - [CAI-DLLM：扩散语言模型的收敛感知推理](blog/posts/2026-08-26-CAI-DLLM：扩散语言模型的收敛感知推理.md)
 - [超越Token位置：扩散语言模型中跨去噪步骤的安全对齐](blog/posts/2026-09-03-超越Token位置：扩散语言模型中跨去噪步骤的安全对齐.md)
 - [扩散语言模型中的原位指令遵循](blog/posts/2026-09-10-扩散语言模型中的原位指令遵循.md)
+- [DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码](blog/posts/2026-10-24-DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码.md)
 
 ## 扫描探针显微镜
 
@@ -14235,6 +14260,7 @@ title: 标签浏览
 - [TreeWY：门控DeltaNet混合模型的投机验证](blog/posts/2026-08-25-TreeWY：门控DeltaNet混合模型的投机验证.md)
 - [投机探测：以投机解码成本实现大模型监控](blog/posts/2026-09-01-投机探测：以投机解码成本实现大模型监控.md)
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
+- [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
 
 ## 投毒抢注
 
@@ -14520,6 +14546,7 @@ title: 标签浏览
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
 - [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
+- [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
 
 ## 推理图
 
@@ -17991,6 +18018,7 @@ title: 标签浏览
 - [训练 nGPT](blog/posts/2026-09-04-训练 nGPT.md)
 - [别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理](blog/posts/2026-09-08-别放弃Dropout：优化层稀疏性以实现高效的LLM训练与推理.md)
 - [更少数据、更快训练：重复较小数据集通过采样偏差加速学习](blog/posts/2026-09-08-更少数据、更快训练：重复较小数据集通过采样偏差加速学习.md)
+- [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
 
 ## 模型评估
 
@@ -18857,6 +18885,10 @@ title: 标签浏览
 
 - [Muon优化器的物理响应与记忆模型](blog/posts/2026-08-26-Muon优化器的物理响应与记忆模型.md)
 - [从 SGD 到 Muon：基于 Schatten-p 范数的逐层自适应几何优化器](blog/posts/2026-10-13-从-SGD-到-Muon-基于-Schatten-p-范数的自适应优化器几何结构.md)
+
+## 深度学习加速
+
+- [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 
 ## 深度学习安全
 
@@ -20450,6 +20482,10 @@ title: 标签浏览
 
 - [阿hadamard矩阵的压缩存储](blog/posts/2026-08-16-阿hadamard矩阵的压缩存储.md)
 
+## 研发工程
+
+- [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
+
 ## 研发效能
 
 - [Claude Code 团队如何进行代码审查：应对 AI 生成代码爆发式增长](blog/posts/2026-10-17-Claude-Code-团队如何进行代码审查.md)
@@ -21893,6 +21929,7 @@ title: 标签浏览
 - [保持在边界内：基于距离引导解码的保证上下文无关文法合规性](blog/posts/2026-09-01-保持在边界内：基于距离引导解码的保证上下文无关文法合规性.md)
 - [语法对齐解码：保证结构化生成的正确性与概率保真度](blog/posts/2026-09-05-语法对齐解码：保证结构化生成的正确性与概率保真度.md)
 - [打破空间壁垒：亚对数空间计算理论在大模型结构化推理中的突破与应用](blog/posts/2026-10-09-打破空间壁垒-亚对数空间计算理论在大模型结构化推理中的突破与应用.md)
+- [DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码](blog/posts/2026-10-24-DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码.md)
 
 ## 约束遵循
 
@@ -22364,6 +22401,7 @@ title: 标签浏览
 ## 编译优化
 
 - [HIERA：针对GPU内核优化的跨实现空间工作负载感知规划](blog/posts/2026-08-25-HIERA：针对GPU内核优化的跨实现空间工作负载感知规划.md)
+- [DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码](blog/posts/2026-10-24-DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码.md)
 
 ## 编译器
 
@@ -22372,6 +22410,7 @@ title: 标签浏览
 - [Nova：面向深度学习的端到端 MLIR 编译器](blog/posts/2026-08-26-Nova：面向深度学习的端到端 MLIR 编译器.md)
 - [Nova：面向深度学习的端到端 MLIR 编译器](blog/posts/2026-09-04-Nova：面向深度学习的端到端 MLIR 编译器.md)
 - [标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机](blog/posts/2026-09-16-标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机.md)
+- [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 
 ## 编译器优化
 
@@ -22908,6 +22947,7 @@ title: 标签浏览
 - [InfraBench：跨层级、全生命周期与风险评估的基础设施智能体基准测试](blog/posts/2026-08-14-InfraBench：跨层级、全生命周期与风险评估的基础设施智能体基准测试.md)
 - [Meta 如何确保部署安全性：持续变更安全性的健康检查机制](blog/posts/2026-08-25-Meta 如何确保部署安全性：持续变更安全性的健康检查机制.md)
 - [InfraBench：跨层级、全生命周期与风险维度的基础设施智能体评估基准](blog/posts/2026-08-26-InfraBench：跨层级、全生命周期与风险维度的基础设施智能体评估基准.md)
+- [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 
 ## 自动化部署
 
@@ -24747,6 +24787,10 @@ title: 标签浏览
 
 - [字里行间：法律模拟中行为真实性的建模与评估](blog/posts/2026-08-18-字里行间：法律模拟中行为真实性的建模与评估.md)
 
+## 诊断分析
+
+- [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
+
 ## 诊断分类法
 
 - [潜诊断分类法：构建分类器及诊断其决策的框架及其在提示词注入检测中的应用](blog/posts/2026-08-29-潜诊断分类法：构建分类器及诊断其决策的框架及其在提示词注入检测中的应用.md)
@@ -24956,6 +25000,10 @@ title: 标签浏览
 ## 语料库建设
 
 - [英语-普纳语统计机器翻译系统：实证研究的若干见解](blog/posts/2026-08-26-英语-普纳语统计机器翻译系统：实证研究的若干见解.md)
+
+## 语法引导生成
+
+- [DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码](blog/posts/2026-10-24-DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码.md)
 
 ## 语法数一致性
 
@@ -25703,6 +25751,10 @@ title: 标签浏览
 
 - [包管理器之间的代码共享](blog/posts/2026-08-12-包管理器之间的代码共享.md)
 - [软件包管理规范全景图：标准组织、生态提案与碎片化现实](blog/posts/2026-10-08-软件包管理规范全景图-标准组织-生态提案与碎片化现实.md)
+
+## 软件供应链安全
+
+- [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 
 ## 软件包管理
 
