@@ -5,6 +5,310 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-24/深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-24/深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战/</guid>
+      <pubDate>Sat, 24 Oct 2026 00:00:00 GMT</pubDate>
+      <description>归一化是现代大语言模型 (Large Language Model, LLM) 稳定训练的“定海神针”，没有它，梯度爆炸与数值崩溃会在数百步之内彻底摧毁模型训练。传统以 GPT-2 为代表的模型普遍采用层归一化 (LayerNorm) ，而现代开源主流大模型却纷纷拥抱了均方根归一化 (Root Mean Square Normalization, RMSNorm) 。RMSNorm 的核心诀窍在于完全摒弃均值计算与中心化操作，仅依靠均方根缩放，在数学上更简练纯粹。然而，真实的训练基准测试揭示了一个关键真相：RMSNorm 与 LayerNorm 本身的理论算力差异其实微乎其微，真正让训练速度产生质的飞跃（提速超过 10%）的，是 PyTorch 底层经过算子融合的高性能 CUDA 核函数。
+
+---
+
+## 总结概述
+
+&gt; ## Summary
+
+归一化是大语言模型 (LLM) 中不可或缺的核心组件，它能够稳定神经元的统计特性、防止梯度消失或爆炸，并确保深层模型依然具备良好的可训练性。尽管像 GPT-2 这样的经典架构传统上依赖 **LayerNorm** ，但如今许多现代开源模型已经纷纷转向使用 **RMSNorm** (Root Mean Square Normalization) 。
+
+&gt; Normalization is an essential component of Large Language Models (LLMs) that helps stabilize statistical properties, prevents vanishing or exploding gradients, and ensures models remain trainable. While classic architectures like GPT-2 traditionally rely on **LayerNorm**, many modern open models use **RMSNorm** (Root Mean Square Normalization) instead. 
+
+本文将深入探讨 LayerNorm 与 RMSNorm 之间的数学与架构差异，带领大家一步步在 PyTorch 中手写实现它们的代码，对比手写实现与 PyTorch 内置融合模块的性能差异，并通过在 1.63 亿参数的 GPT-2 Small 模型上进行完整训练实验，验证 RMSNorm 是否真能带来速度或性能上的实质优势。
+
+&gt; This post explores the mathematical and architectural differences between LayerNorm and RMSNorm, walks through code implementations in PyTorch, evaluates hand-rolled vs. built-in fused PyTorch modules, and analyzes training runs of 163M-parameter GPT-2 small models to determine whether RMSNorm provides a genuine speed or performance advantage.
+
+---
+
+## 1. 归一化的基本原理
+
+&gt; ## 1. The Principle of Normalization
+
+在一个典型的 GPT-2 风格 Transformer 模块中，归一化操作部署在以下几个至关重要的节点：
+* 在输入的上下文向量进入多头注意力 (Multi-Head Attention, MHA) 模块之前；
+* 在计算结果传入前馈网络 (Feed-Forward Network, FFN) 之前；
+* 在通过最终输出头将上下文向量投影到词表空间之前，再执行一次归一化。
+
+&gt; In a GPT-2-style Transformer block, normalization occurs at several critical points:
+&gt; * Just before incoming context vectors enter the multi-head attention (MHA) module.
+&gt; * Just before the results are fed through the feed-forward network (FFN).
+&gt; * Once more right before projecting context vectors into vocabulary space via the output head.
+
+&lt;p&gt;&lt;img src="./images/90ddd2c650ce.svg" alt="A GPT-2-style Transformers block" title="A GPT-2-style Transformers block" loading="lazy"/&gt;&lt;/p&gt;
+
+如果完全移除归一化，模型训练通常会在 100 步左右彻底崩溃，损失值 (Loss) 会骤升到未初始化时的失控水平。然而，归一化并不一定非得使用 LayerNorm。要理解 RMSNorm 如今为何备受青睐，我们需要仔细审视这两者的底层运作机制。
+
+&gt; Without normalization, training typically collapses within roughly 100 steps, causing the loss to spike to uninitialized levels. However, normalization does not strictly *have* to be LayerNorm. To understand why RMSNorm has become popular, we must look closely at how both operate.
+
+---</description>
+    </item>
+    <item>
+      <title>投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-24/投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-24/投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析/</guid>
+      <pubDate>Sat, 24 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 在数学和逻辑推理上的深入，长思维链 (Chain-of-Thought, CoT) 带来了极其沉重的推理计算负担，而投机解码 (Speculative Decoding) 是当前实现无损加速的核心关键。过去业界普遍直觉性地认为：推理链条拉得越长，小模型生成的草稿就越容易“跑偏”，投机接受率会随着序列位置不断衰减，因此需要专门设计位置感知的训练架构。本研究首次基于 `DeepSeek-R1-Distill-Qwen-7B` 和 **MATH-500** 进行了跨越 178 万轮验证的全长度系统诊断，意外发现投机接受率在长达 8K 至 12K 的超长序列中不仅没有随位置衰减，后半程接受率反而略有提升。研究进一步揭示，投机失败并非由序列位置累积误差引起，而是高度精准地集中在关键反思触发词的高熵决策点上；这一发现彻底打破了行业既有认知，为长推理大模型的加速架构设计指明了更具针对性的突破方向。
+
+---
+
+## 📋 论文摘要
+
+&gt; ## 📋 Summary
+
+当前大模型工程界普遍流行一种假设：当模型的思维链 (Chain-of-Thought, CoT) 越拉越长时，投机解码 (Speculative Decoding) 中目标模型对草稿 Token 的接受率必然会不断下滑；这种担忧也直接促使业界投入大量精力去研发专用的草稿模型协同设计与位置感知训练算法。然而，过去支持该观点的绝大多数实验证据，都来自于那些离线训练长度远短于实际推理长度的草稿模型，这导致“纯粹的位置衰减规律”从未真正被独立剥离和验证过。
+
+&gt; The prevailing industry narrative assumes that speculative-decoding acceptance rates decay as a chain-of-thought (CoT) grows longer, driving the need for specialized draft-model co-design and position-aware training. However, because nearly all direct evidence stems from trained drafters whose offline training lengths are much shorter than inference lengths, a pure positional law has never been properly isolated.
+
+本研究首次系统性地对投机解码接受率随生成位置的变化进行了全长度实测。研究人员基于 `DeepSeek-R1-Distill-Qwen-7B` 模型，使用独立草稿在贪婪解码 (Greedy Decoding) 和采样解码 (Sampling Decoding) 两种模式下对完整的 **MATH-500** 基准测试进行了全面评估 (涵盖约 178 万轮验证过程)，并得出了一系列令人惊讶的核心发现：
+
+&gt; This paper presents the first systematic, full-length measurement of acceptance rates as a function of generation position. Evaluating the complete **MATH-500** benchmark under both greedy and sampling decoding using independent drafts against `DeepSeek-R1-Distill-Qwen-7B` (spanning ~1.78 million verification rounds), the study reveals surprising insights:
+
+* **完全不存在位置衰减 (No Positional Decay)**：在排除了贪婪解码中病态的自我重复现象后，在所有配置下 (贪婪模式覆盖 0–8K，采样模式覆盖 0–12K)，投机接受率**完全没有随生成位置出现衰减**。事实上，后半段推理轨迹的接受率不仅没有降低，反而比前半段略有上升，且具有统计显著性。
+* **采样模式下的假象与伪影 (Sampling-Mode Artifacts)**：严格受控的温度参数扫描实验表明，在采样模式下观察到的高熵反思 Token 所谓“质量恶化”，仅仅是 Argmax 最大概率匹配机制带来的可观测性假象 (Visibility Artifact)，并非目标模型期望接受概率的实质性下跌。
+* **失败定位高度精准 (Failure Localization)**：草稿 Token 被拒绝的现象高度集中且精准地发生在特定的反思触发词上 (例如 *"wait"*、*"however"* 以及 *"check"* 等关键转折词)。
+* **干预手段的局限性 (Intervention Limits)**：设计了三种轻量级 LoRA 轨迹对齐干预方案 (均匀对齐、反思标记对齐与熵加权对齐)，但均未能提升平均接受长度；这一结果进一步将残留的投机失败根源锁定在关键决策点的信息熵本身，而非序列的绝对位置。
+
+&gt; * **No Positional Decay:** After isolating a greedy-decoding repetition pathology, speculative acceptance **does not decay with position** across any configuration (greedy ranges: 0–8K; sampling ranges: 0–12K). In fact, acceptance rates in the second half of trajectories are slightly, yet significantly, higher than the first.
+&gt; * **Sampling-Mode Artifacts:** A controlled temperature sweep demonstrates that the apparent degradation of high-entropy reflection tokens during sampling is merely a visibility artifact of argmax agreement, rather than a true drop in expected acceptance probability.
+&gt; * **Failure Localization:** Rejections concentrate heavily and precisely on specific reflection trigger tokens (e.g., *"wait"*, *"however"*, and *"check"*). 
+&gt; * **Intervention Limits:** A lightweight three-arm LoRA trajectory-alignment intervention (uniform, reflection-marked, and entropy-weighted) fails to improve the mean accepted length, localizing the residual failure point to decision-point entropy rather than sequence position.
+
+---
+
+## 🔗 论文链接与相关资源
+
+&gt; ## 🔗 Links &amp; Resources
+
+* **全文阅读 (Full-Text Access)**：[查看 PDF](https://arxiv.org/pdf/2610.30644) | [实验性 HTML 页面](https://arxiv.org/html/2610.30644v1) | [TeX 源码](https://arxiv.org/src/2610.30644)
+* **元数据与学术引用 (Metadata &amp; Citation)**：[SciX](https://scixplorer.org/abs/arXiv:2610.30644) | [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.30644) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.30644)
+
+&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.30644) | [Experimental HTML](https://arxiv.org/html/2610.30644v1) | [TeX Source](https://arxiv.org/src/2610.30644)
+&gt; * **Metadata &amp; Citation:** [SciX](https://scixplorer.org/abs/arXiv:2610.30644) | [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.30644) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.30644)</description>
+    </item>
+    <item>
+      <title>一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-24/一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-24/一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机/</guid>
+      <pubDate>Sat, 24 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在现代软件工程中，一次看似微不足道的微小代码变更，往往可能引发难以预料的蝴蝶效应与连锁反应。本文生动讲述了一场充满黑色幽默却发人深省的技术惨剧：开发者最初仅想让 AI 智能体 (AI Agent) 修复一个简单的发票分页缺陷并添加 CSV 导出功能，但在随后的交互中，对 AI 建议的盲目信任与层层递进的自动化修复犹如推倒了多米诺骨牌，一路牵扯出隐藏极深的软件供应链安全风险、CI/CD 提权漏洞、被恶意篡改的 AI 钩子以及整套系统的全面瘫痪。最终，所有修复努力皆被强制回退，不仅原本的分页 Bug 毫发无损，甚至连生产系统也遭下线停机。这一惨痛教训深刻警示着软件工程团队：在智能化研发浪潮中，过度依赖自动化与忽视工程信任边界，极可能让微小的问题演变成无法收拾的灾难性危机。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+起初只是一个在发票页面添加 CSV 导出按钮的简单需求，却像滚雪球般演变成了一场荒诞且连锁爆发的软件工程灾难。随着开发者对 AI 编程助手连续给出看似人畜无害的“确认” (yes) 提示，整个会话逐步失控，接连揪出了核心依赖安全漏洞、软件供应链攻击、陈旧的 CI/CD 触发器、环境变量泄漏、存在漏洞的容器运行时、寿终正寝的废弃 PHP 软件、被投毒的编辑器配置，以及恶意的 AI 智能体钩子。这一连串交互最终以生产环境全面下线、AI 自行反复卸载与重装收场，并且在最后由于安全红线护栏机制而断然拒绝轮转 AWS 密钥——让用户直接回到了最初那个分页 Bug 的起点，并送上了一个充满慈悲的终极解脱出路：不如去买个农场养羊吧。
+
+&gt; What begins as a trivial request to add a CSV export button to an invoice page snowballs into an absurd cascading engineering nightmare. Through a series of seemingly harmless "yes" prompts to an AI coding assistant, the session spirals into uncovering critical dependency vulnerabilities, supply chain attacks, outdated CI/CD triggers, leaked environment variables, vulnerable container runtimes, end-of-life PHP software, poisoned editor configurations, and malicious AI agent hooks. The interaction ultimately culminates in production being taken offline, the AI un- and reinstalling itself, and a final refusal to rotate an AWS secret due to safety guardrails—leaving the user right back where they started with the original pagination bug, and offering a merciful escape route: buying a goat farm.
+
+---
+
+## 1. 初始需求与分页缺陷修复
+
+&gt; ## 1. The Initial Request &amp; Pagination Fix
+
+* **开发操作**：在 `InvoiceTable.tsx` 中添加了一个 CSV 导出按钮，并配套了 `GET /invoices.csv` 接口端点。
+* **排查发现**：注意到 `lib/pagination.ts` 中的 `paginate()` 分页函数存在缺陷，当条目总数刚好是分页大小的整数倍时，会异常丢弃最后一行数据。
+* **问题修复**：编写了新的测试用例并成功修复了该边界场景。
+
+&gt; * **Action:** Added a CSV export button to `InvoiceTable.tsx` alongside the `GET /invoices.csv` endpoint.
+&gt; * **Discovery:** Noticed that `paginate()` in `lib/pagination.ts` dropped the last row when the total was an exact multiple of the page size.
+&gt; * **Resolution:** Fixed the boundary case with a new test.
+
+---
+
+## 2. 依赖管理与供应链安全危机
+
+&gt; ## 2. Dependency Management &amp; Supply Chain Issues
+
+* **pnpm 与 .npmrc**：升级了 `pnpm` 包管理器以解决间接传递依赖冲突，并绕过了一个被忽略的 `minimum-release-age` 配置项。
+* **恶意软件包**：彻底清除了包含多个高危已知漏洞 (如 `CVE-2024-YIKES` 与 `CVE-2026-LGTM`) 的恶意第三方依赖 `snekpack`。
+* **工程工具风险**：排查并处置了 Dependabot、Renovate 以及本地 `mise.toml` 配置文件中意外泄露 `GITHUB_TOKEN` 的严重安全漏洞。
+
+&gt; * **pnpm &amp; .npmrc:** Upgraded `pnpm` to resolve a transitive dependency issue and bypassed an ignored `minimum-release-age` configuration.
+&gt; * **Malicious Packages:** Removed `snekpack` due to multiple CVEs (`CVE-2024-YIKES` and `CVE-2026-LGTM`).
+&gt; * **Tooling Risks:** Addressed vulnerabilities in Dependabot, Renovate, and a local `mise.toml` file that leaked `GITHUB_TOKEN`.
+
+---
+
+## 3. CI/CD 流水线与安全性加固
+
+&gt; ## 3. CI/CD &amp; Security Hardening
+
+* **GitHub Actions**：重写了存在高危越权与提权风险的工作流触发器 (包括 `pull_request_target`、`issue_comment` 以及具备高危权限的 `id-token: write`) 。
+* **Zizmor 安全分析**：对所有自动化工作流进行全面静态扫描，成功修复了 41 项安全隐患中的 38 项。
+* **Miri 缓存泄漏**：清空了 Rust 构建任务中意外残留环境变量等敏感信息的 `target/` 缓存目录。
+
+&gt; * **GitHub Actions:** Rewrote dangerous workflow triggers (`pull_request_target`, `issue_comment`, and `id-token: write`).
+&gt; * **Zizmor Analysis:** Scanned workflows, fixing 38 out of 41 security findings.
+&gt; * **Miri Cache Leak:** Cleared the Rust job's `target/` cache, which had leaked environment variables.
+
+---
+
+## 4. 凭证轮转与根证书信任链
+
+&gt; ## 4. Secret Rotations &amp; CA Bundles
+
+* **API 密钥状态**：全面核查并处理了 `NPM_TOKEN`、`NUGET_API_KEY`、`GEM_HOST_API_KEY` 以及工作区各组件模块的凭证状态。
+* **信任根证书库**：重新构建了基础工具链镜像，以彻底消除 Node、Go、rustup 及 Python 等多语言开发环境中存在的不安全根证书 (例如 eMudhra 根证书) 。
+* **容器运行时环境**：紧急升级了 Docker Engine、Podman 和 Gradle 构建工具，修复潜在的容器逃逸与 tar 归档解压安全漏洞。
+
+&gt; * **API Keys:** Addressed statuses for `NPM_TOKEN`, `NUGET_API_KEY`, `GEM_HOST_API_KEY`, and workspace modules.
+&gt; * **Trust Stores:** Rebuilt toolchain base images to address insecure root certificates (e.g., eMudhra roots) across Node, Go, rustup, and Python.
+&gt; * **Container Runtimes:** Upgraded Docker Engine, Podman, and Gradle to patch container escape and tar extraction vulnerabilities.
+
+---
+
+## 5. 生产环境事故升温与管理后台强制下线
+
+&gt; ## 5. Production Escalation &amp; Admin Panel Shutdown
+
+* **老旧遗留 PHP 系统**：深挖发现内部管理后台依然运行在早已停止维护 (End-of-Life, EOL) 的 `php:8.1-fpm` 环境上，且遭受近期曝光的严重漏洞 (如 `CVE-2026-12184`) 威胁。
+* **处置操作**：由于该脆弱的管理后台与核心生产系统共享了数据库用户凭据与负载均衡器，运维团队不得不紧急将整套生产环境强制停机下线。
+
+&gt; * **Legacy PHP:** Discovered the internal PHP admin panel ran on end-of-life `php:8.1-fpm`, plagued by recent CVEs (such as `CVE-2026-12184`).
+&gt; * **Action:** Shut down production due to shared database users and load balancers with the vulnerable admin panel.
+
+---
+
+## 6. 编辑器配置投毒与 AI 智能体失控劫持
+
+&gt; ## 6. Editor Configurations &amp; AI Agent Compromise
+
+* **受感染的代码仓库**：排查并解决了单人维护项目带来的软件供应链单点故障、存在安全漏洞的 VS Code 插件，以及在打开文件夹时自动静默执行脚本的恶意自动化任务。
+* **AI 智能体钩子注入**：在 `.claude/settings.json` 与 `CLAUDE.md` 中意外识破了一套经过精心伪装的恶意钩子，该钩子试图暗中将系统环境变量窃取并混入 Git 提交日志中。
+* **陷入重装死循环**：在紧急回滚了 14 次代码提交、先后将 AI 智能体卸载并重新安装之后，却惊愕地发现一个已通过安全审核的依赖包正在通过 `pnpm` 悄悄进行恶意的技能软链接劫持。
+
+&gt; * **Compromised Repositories:** Addressed single-maintainer supply chain risks, vulnerable VS Code extensions, and tasks executing folder-open scripts.
+&gt; * **AI Agent Hook Injection:** Uncovered a malicious hook in `.claude/settings.json` and `CLAUDE.md` designed to exfiltrate environment variables into commit messages.
+&gt; * **Reinstallation Loop:** Reverted 14 commits, uninstalled and reinstalled the agent, only to find malicious skill-linking via `pnpm` from an approved dependency.
+
+---
+
+## 7. 彻底破防与终极解脱
+
+&gt; ## 7. The Final Straw
+
+* **安全护栏拦截**：当准备轮转老旧的 `AWS_SECRET_ACCESS_KEY` 时，AI 智能体却由于预设的安全编码红线机制拒绝执行操作，并直接将该云账号标记为异常以待审查。
+* **惨淡结局**：在这一整套焦头烂额的“大扫除”与暴力回滚中，最初辛苦编写、用于修复分页 Bug 的代码变更已被全数抹除。
+* **最后的终极方案**：*需要我为您推荐几个正在出售中的山羊农场吗？*
+
+&gt; * **Guardrail Block:** The AI refused to rotate the legacy `AWS_SECRET_ACCESS_KEY` due to secure coding guardrails, flagging the account for review.
+&gt; * **Conclusion:** All previous commits fixing the original pagination bug were wiped out in the cleanup. 
+&gt; * **The Final Offer:** *Would you like to see some goat farms for sale?*</description>
+    </item>
+    <item>
+      <title>TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-24/TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-24/TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构/</guid>
+      <pubDate>Sat, 24 Oct 2026 00:00:00 GMT</pubDate>
+      <description>长期以来，PyTorch 开发者在将深度学习模型部署或迁移到 Google 张量处理器 (TPU) 硬件时，常常面临静态图编译笨重、动态图交互调试体验割裂以及性能调优门槛高等固有痛点。由 Google 与 Meta 联合打造的开源架构 **TorchTPU** 应运而生，它通过深度融合动态图 (Eager Mode) 的即时调试灵活性与 `torch.compile` 静态编译图的极致性能，首次为 Google TPU 构建了规范化、符合直觉的原生 PyTorch 后端。TorchTPU 依托底层原生硬件加速器与先进的动态执行优化机制，实现了真正意义上的“开箱即用”——开发者无需对现有 PyTorch 代码进行破坏性重构，即可无缝迁移并在 TPU 集群上高效运行。评测表明，该架构在模型训练和推理两端均展现出了极具行业竞争力的顶尖性能，不仅大幅抹平了 GPU 与 TPU 之间的生态迁移鸿沟，更重塑了下一代跨硬件深度学习编译基础设施的协作范式。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+**TorchTPU** 是 Google 与 Meta 深度合作研发的开源项目，它为 Google 张量处理器 (TPU) 引入了规范化、高内聚的原生 PyTorch 后端支持。该框架通过深度融合动态图即时执行 (Eager Execution) 优化机制、`torch.compile` 编译图深度集成以及底层原生硬件加速技术，使各类深度学习模型能够实现无缝的“开箱即用”式运行和极速 TPU 迁移，同时在模型训练与推理场景下均能释放出领先业界的强劲性能。
+
+&gt; **TorchTPU** is an open-source collaboration between Google and Meta that introduces a native, principled PyTorch backend for Google Tensor Processing Units (TPUs). The framework facilitates seamless, out-of-the-box model execution and TPU migration while delivering industry-competitive training and inference performance. It achieves this by combining eager execution optimizations, `torch.compile` integration, and native hardware acceleration.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 论文编号：** [arXiv:2610.24161](https://arxiv.org/abs/2610.24161) [cs.AI]
+* **主要研究领域：** 人工智能 (`cs.AI`)
+* **提交时间：** 2026 年 10 月 16 日
+* **最新修订：** 2026 年 10 月 22 日 (第 3 版)
+* **数字对象唯一标识符 (DOI) ：** [10.48550/arXiv.2610.24161](https://doi.org/10.48550/arXiv.2610.24161)
+
+&gt; * **arXiv Identifier:** [arXiv:2610.24161](https://arxiv.org/abs/2610.24161) [cs.AI]
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Submitted On:** 16 October 2026
+&gt; * **Last Revised:** 22 October 2026 (Version v3)
+&gt; * **DOI:** [10.48550/arXiv.2610.24161](https://doi.org/10.48550/arXiv.2610.24161)
+
+---
+
+## 论文作者
+
+&gt; ## Authors
+
+Claudio Basile, Michael Voznesensky, Gunhyun Park, Ben Wilson, Parker Holloway, Zhanyong Wan, Vlad Belous, Manish Khanna, Paul Ganssle, Kevin Gleason, Andrew Dame, Brendan Folie, Bhavya Bahl, Haifeng Jin, Pedro Goncalves Mokarzel, Arian Arfaian, Luke Boyer, Chi Zhang, Yiling Yuan, Adam Mainz, Aditya Patel, Huangze Tang, Jay Gan, Lizzie Liang, Will Froom, Tushar Agarwal, Karlo Basioli, Theotime Combes, Emilio Cota, Minos Papadopoulos, Tudor Pipernea, Yarong Mu, Qi Zhou, Yaoshiang Ho, Aleksey Vlasenko, Alexander Brauckmann, Ziyin Huang, Jack Oh, Jerry Hsu, Tanvi Bajpai, Jialei Chen, Wenjun Gu, Chintan Shah, Chris Chan, Sayce Falk, Chris Jones, Rob Torres, Kat Ko, Lee Howes, Freya Azad, Andi Gavrilescu, Joe Pamer 以及 Bill Jia。
+
+&gt; Claudio Basile, Michael Voznesensky, Gunhyun Park, Ben Wilson, Parker Holloway, Zhanyong Wan, Vlad Belous, Manish Khanna, Paul Ganssle, Kevin Gleason, Andrew Dame, Brendan Folie, Bhavya Bahl, Haifeng Jin, Pedro Goncalves Mokarzel, Arian Arfaian, Luke Boyer, Chi Zhang, Yiling Yuan, Adam Mainz, Aditya Patel, Huangze Tang, Jay Gan, Lizzie Liang, Will Froom, Tushar Agarwal, Karlo Basioli, Theotime Combes, Emilio Cota, Minos Papadopoulos, Tudor Pipernea, Yarong Mu, Qi Zhou, Yaoshiang Ho, Aleksey Vlasenko, Alexander Brauckmann, Ziyin Huang, Jack Oh, Jerry Hsu, Tanvi Bajpai, Jialei Chen, Wenjun Gu, Chintan Shah, Chris Chan, Sayce Falk, Chris Jones, Rob Torres, Kat Ko, Lee Howes, Freya Azad, Andi Gavrilescu, Joe Pamer, and Bill Jia.
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+**TorchTPU** 是由 Google 与 Meta 携手合作打造的开源架构，首次为 Google TPU 平台引入了原生、规范且符合工程直觉的 PyTorch 执行后端。通过将动态图即时执行 (Eager Execution) 优化、[`torch.compile`](http://torch.compile) 编译图深度融合以及原生硬件加速能力集于一身，TorchTPU 真正实现了深度学习模型开箱即用的极简体验与顺畅的 TPU 生态迁移，同时在模型训练和推理评测中均展现出极具行业竞争力的卓越性能。
+
+&gt; 💬 [原文摘要 / Original Abstract]:  
+&gt; TorchTPU is an open-source collaboration between Google and Meta that introduces a native and principled PyTorch backend for Google TPUs. It enables seamless out-of-the-box model execution and TPU migration while delivering industry-competitive inference and training performance through eager execution optimizations, [`torch.compile`](http://torch.compile) integration, and native hardware acceleration.
+
+---
+
+## 全文与相关资源
+
+&gt; ## Full-Text &amp; Resources
+
+* [阅读 PDF 原文](https://arxiv.org/pdf/2610.24161)
+* [HTML 网页版 (实验性功能) ](https://arxiv.org/html/2610.24161v3)
+* [TeX 源代码](https://arxiv.org/src/2610.24161)
+* [查看授权许可协议](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)
+
+&gt; * [View PDF](https://arxiv.org/pdf/2610.24161)
+&gt; * [HTML Version (Experimental)](https://arxiv.org/html/2610.24161v3)
+&gt; * [TeX Source](https://arxiv.org/src/2610.24161)
+&gt; * [View License](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)</description>
+    </item>
+    <item>
+      <title>DConstrain：通过编译上下文参数化状态转移实现扩散语言模型约束解码</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-24/DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-24/DConstrain-通过编译上下文参数化状态转移实现扩散语言模型约束解码/</guid>
+      <pubDate>Sat, 24 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着文本生成技术的发展，扩散语言模型 (Diffusion Language Model, DLM) 凭借全序列并行生成的超高吞吐潜力引起了学术界与工业界的广泛关注；但在实际结构化数据输出 (如 JSON 或工具调用) 场景中，由于缺乏自回归的时序因果约束，并行生成的各个 Token 往往会产生语法冲突，导致难以严格遵循预设的数据架构 (Schema)。以往的精确约束解码方法试图离线枚举所有解析状态，但这会导致解析栈与字段历史的状态空间呈指数级爆炸，迫使开发者不得不强制固定字段顺序并牺牲合法的输出多样性。
+
+为了打破这一严峻瓶颈，来自多所顶尖研究机构的学者联手推出了创新解码框架 **DConstrain**。该框架开创性地将语法架构编译为“上下文参数化状态转移程序”，通过冷编译将解析逻辑符号化、温编译在模型前向计算的同时重叠构建合法转移图，并在运行时动态追踪字段状态，巧妙规避了离线状态爆炸问题。实验表明，DConstrain 在权威工具调用基准测试 BFCL 架构下不仅达成了 100% 的完备编译率，并将端到端解码延迟降低了 6.65 至 46.26 倍，更将 DiffusionGemma 模型的任务准确率从 37.27% 跃升至 81.56%，为非自回归与扩散模型的工业级结构化应用奠定了坚实基石。
+
+---
+
+## 摘要概要
+
+&gt; ## Abstract Summary
+
+扩散语言模型 (DLM) 能够同时并行生成多个 Token，但这种机制往往会导致生成的单个 Token 虽然在局部完全合法，组合在一起时却违反给定数据架构 (Schema) 的语法约束。虽然基于语法图进行精确联合推断能够确保严格的语法合规性，但该方法通常需要在海量的假想解析器配置中追踪由 Token 标注的后继状态。由于在编译状态中直接编码解析栈和字段历史会导致状态数量发生指数级爆炸，以往的精确解码器不得不强制限制属性的出现顺序，从而无端排除了许多原本合法的有效输出。
+
+&gt; Diffusion language models (DLMs) generate multiple tokens in parallel, which can often result in individually valid tokens that are incompatible under a given schema. While exact joint inference over a grammar graph enforces strict compatibility, doing so typically requires tracking token-labeled successors across a massive number of hypothetical parser configurations. Because encoding stacks and field histories directly into compiled states leads to exponential growth, previous exact decoders have had to restrict property orders and exclude valid outputs.
+
+为了克服这些局限性，作者团队推出了 **DConstrain**——一种将语法架构编译为*上下文参数化状态转移程序 (Context-Parameterized Transition Programs)* 的全新框架：
+
+&gt; To overcome these limitations, the authors introduce **DConstrain**, a novel framework that compiles schemas into *context-parameterized transition programs*:
+
+* **冷编译 (Cold Compilation)**：将 Token 消耗特化到局部语法状态，同时以符号形式保留上下文相关的调用栈操作、环境守卫以及由调用方决定的延迟解析。通过将字段历史作为运行时数值进行动态追踪，该方法可在无需离线枚举所有字段子集的情况下，完整支持任意属性顺序。
+* **温编译 (Warm Compilation)**：将推理时实际触达的运行时配置绑定到这些状态转移程序，从而构建出精确的后继状态图。由于该图构建过程完全不需要依赖模型的预测打分，因此它可以直接与模型前向计算重叠并行执行。
+* **Token 效应分组 (Token-Effect Grouping)**：在绑定运行时上下文之前，先将编译后具有相同状态转移效应的 Token 进行合并。即便这些 Token 的具体后继状态互不相同，这些分组也能在各种解析栈和环境之间实现高效复用。
+
+&gt; * **Cold Compilation:** Specializes token consumption to local grammar states while retaining context-dependent stack operations, environment guards, and caller-dependent deferred parsing symbolically. By tracking field histories as runtime values, it supports arbitrary property orders without requiring offline enumeration of field subsets.
+&gt; * **Warm Compilation:** Binds reached runtime configurations to these transition programs to construct exact successors. This process overlaps directly with the model's forward pass because graph construction does not require model scores.
+&gt; * **Token-Effect Grouping:** Merges tokens with identical compiled effects prior to binding runtime contexts. These groups can then be reused across various stacks and environments, even when their concrete successors differ.</description>
+    </item>
+    <item>
       <title>用 Nix 声明与管理脚本依赖：摆脱环境依赖地狱</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-23/用-Nix-声明与管理脚本依赖-摆脱环境依赖地狱/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-23/用-Nix-声明与管理脚本依赖-摆脱环境依赖地狱/</guid>
@@ -4773,299 +5077,6 @@ Jerry Solinas 曾提到支持代码是由 Bob Reiter 编写的，但当年的原
 ## 核心概念与系统架构设计
 
 &gt; ## Core Concepts &amp; Architecture</description>
-    </item>
-    <item>
-      <title>扩散模型的修正训练：攻克暴露偏差与弥合训练推理差距</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-16/扩散模型的修正训练-攻克暴露偏差与弥合训练推理差距/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-16/扩散模型的修正训练-攻克暴露偏差与弥合训练推理差距/</guid>
-      <pubDate>Fri, 16 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代生成式人工智能中，扩散模型 (Diffusion Models) 凭借惊艳的图像生成能力成为了核心支柱，但其在逐步去噪生成样本的过程中，一直饱受“暴露偏差” (Exposure Bias) 的困扰——模型在训练时接触的都是掺杂噪声的标准图像，而在实际推理采样时，每一步面对的却是自身前一步并不完美、带有瑕疵的预测结果，导致误差层层累积。这种训练与推理阶段的输入分布鸿沟，往往迫使模型高度依赖无分类器引导 (Classifier-Free Guidance, CFG) 等外部辅助手段，而这又容易引发图像色彩过饱和以及生成多样性受损的问题。来自 UC Berkeley 等机构的学者们创新性地提出了“修正训练” (Correction Training) 框架，通过专门训练一个独立的修正模型来实时诊断并纠正基础去噪器的中间预测，在无需任何额外引导的情况下便大幅刷新了生成质量纪录，甚至能与强引导模式平分秋色。更为巧妙的是，这一修正能力还能通过知识蒸馏 (Knowledge Distillation) 完全无损地融回基础模型，实现零额外计算开销的推理加速与高质量生成。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-本文提出了**修正训练** (Correction Training) ，这是一个旨在解决扩散模型中因“暴露偏差” (Exposure Bias) 所导致的误差累积与训练推理差距的新型框架。该方法的核心思想在于：以真实无噪目标为监督信号，专门训练一个独立的修正器模型来学习修正基础去噪器 (Denoiser) 输出的预测结果；在推理阶段，该修正器能够对去噪过程中生成的纯净样本预测进行多轮迭代精炼与纠偏。
-
-&gt; This paper introduces **Correction Training**, a novel framework designed to mitigate error accumulation and the training-inference gap in diffusion models caused by exposure bias. By explicitly training a corrector model on predictions generated by the base denoiser against ground-truth targets, the method allows for iterative refinement of clean-sample predictions during inference. 
-
-在 **DiT** (Diffusion Transformer) 、**SiT** (Scalable Interpolant Transformer) 以及 **JiT** (Joint Interpolant Transformer) 等多种主流架构上的评估结果表明，该方法显著提升了无引导与无条件生成的图像质量，大幅刷新了此前的弗雷歇初始距离 (Fréchet Inception Distance, FID) 评分，达到了足以与经典无分类器引导 (Classifier-Free Guidance, CFG) 媲美的生成水平。此外，将修正机制与 CFG 结合使用，不仅能消除 CFG 常见的画面过饱和瑕疵，还能进一步丰富样本的多样性。最终，通过将修正精炼后的预测知识蒸馏 (Knowledge Distillation) 回基础扩散模型，完全抹平了推理阶段的额外计算开销，做到了鱼与熊掌兼得。
-
-&gt; Evaluated across architectures like **DiT**, **SiT**, and **JiT**, the approach significantly improves unguided and unconditional generation quality (outperforming previous FID scores) to levels competitive with Classifier-Free Guidance (CFG). Furthermore, combining correction with CFG enhances sample diversity while eliminating oversaturation artifacts. Finally, the inference-time cost can be eliminated entirely by distilling the refined predictions back into the base model.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2610.14136](https://arxiv.org/abs/2610.14136) [cs.AI]
-* **研究领域：** 人工智能 (`cs.AI`)
-* **论文作者：** 
-  * Donghoon Ahn
-  * Runqian Wang
-  * Alexei A. Efros
-  * Taesung Park
-  * Yash Belhe
-* **提交日期：** 
-  * 首次提交：2026 年 10 月 9 日 (v1) 
-  * 最新修订：2026 年 10 月 14 日 (v2) 
-* **项目资源：**
-  * [项目主页](https://sunovivid.github.io/correction-training/)
-  * [GitHub 代码仓库](https://github.com/sunovivid/correction-training)
-  * [查看 PDF 论文](https://arxiv.org/pdf/2610.14136)
-
-&gt; * **arXiv ID:** [arXiv:2610.14136](https://arxiv.org/abs/2610.14136) [cs.AI]
-&gt; * **Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** 
-&gt;   * Donghoon Ahn
-&gt;   * Runqian Wang
-&gt;   * Alexei A. Efros
-&gt;   * Taesung Park
-&gt;   * Yash Belhe
-&gt; * **Submission Dates:** 
-&gt;   * Submitted on 9 Oct 2026 (v1)
-&gt;   * Last revised 14 Oct 2026 (v2)
-&gt; * **Project Resources:**
-&gt;   * [Project Page](https://sunovivid.github.io/correction-training/)
-&gt;   * [GitHub Repository](https://github.com/sunovivid/correction-training)
-&gt;   * [View PDF](https://arxiv.org/pdf/2610.14136)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-在扩散模型中，逐步迭代采样的生成过程往往会因“暴露偏差” (Exposure Bias) 而导致严重的误差累积。根本原因在于：去噪器在训练阶段接触的都是由真实图像与纯高斯噪声混合插值而成的标准化数据；然而到了实际推理生成阶段，模型每一步的输入却来自于自身在先前时间步中生成的不完美预测——这种带有偏差与噪点的中间状态是模型在训练期从未见过的。这一训练与推理之间的分布断层，很可能是扩散模型在缺乏诸如 CFG 等外部辅助技术时生成效果大打折扣的核心症结。
-
-&gt; Iterative sampling in diffusion models can lead to error accumulation due to exposure bias. The denoiser is trained on real images interpolated with noise, but at inference its inputs are constructed from its own imperfect predictions from the earlier steps, something it has never seen at training time. This might be one reason diffusion models often struggle without additional help, such as CFG. 
-
-为此，我们为扩散模型设计了一套专门的修正步骤，旨在全力缩小这一训练与推理之间的鸿沟。该方案部署了一个修正器，将基础模型生成的初步预测作为输入，并以相同的真实图像作为监督目标进行端到端训练。如此一来，误差修正便转化为一项目标明确的显式学习任务，而基础模型本身则充当了生成训练输入的“出题人”。在推理采样阶段，去噪器每向前推进一个时间步，修正器就会对生成的纯净样本预测展开迭代精细化打磨。这使模型能够在去噪的中间阶段及时纠错，从而彻底阻断早期生成的画面伪影与结构瑕疵向最终成品画面的蔓延。
-
-&gt; We introduce a correction step for diffusion models which attempts to reduce this training-inference gap. The corrector takes the base model's prediction as input and is trained against the same ground-truth target. This makes correction an explicit learning task, with training inputs provided by the base model. During sampling, at each denoising step, we iteratively refine the denoiser's clean-sample prediction. This allows us to correct predictions at intermediate denoising steps, preventing early artifacts from persisting into the final sample. 
-
-令人惊喜的是，尽管该修正器在训练阶段仅学习过如何纠正基础去噪器的初步预测，但在推理阶段，它却能够反复对其自身的修正输出进行多轮“自修正”，从而带来更上一层楼的画质飞跃。这一简单直观的框架不仅大幅提升了生成样本的细腻度与画质，同时最大程度地守护了图像内容的多样性。我们跨越 DiT、SiT 和 JiT 等前沿扩散架构进行了深入评估。实验表明，我们的方法全面超越了以往各项基准中报告的无引导生成 FID 分数；尤其是在此前业界公认最具挑战性、脱离任何外部提示词或引导机制便极难生成高质量图像的“无条件生成”任务中，取得了突破性的质量跃升。
-
-&gt; Although the corrector is trained only on predictions from the base denoiser, it can be applied repeatedly to its own outputs at inference for better results. This simple framework leads to substantial improvement in sample quality while largely preserving diversity. We evaluate our method across DiT, SiT, and JiT. Our method substantially improves upon previously reported FID scores for unguided generation and, notably, unconditional generation, where producing high-quality samples without guidance has been particularly challenging. 
-
-在无需额外引导的纯净模式下，我们的方法展现出了足以媲美无分类器引导 (CFG) 的优秀生成水准；而当我们将修正训练与 CFG 双剑合璧时，不仅有效抑制了 CFG 标志性的色彩过度饱和与画面失真缺陷，还显著拓宽了样本生成的多样性。最后，研究团队证实，修正器引入的额外推理算力成本并非无法避免——通过将多次修正精炼后的预测轨迹直接蒸馏回基础扩散模型中，便能在不引入任何推理延迟与额外计算开销的前提下，完全保留所有的质量增益。
-
-&gt; Our method achieves performance competitive with classifier-free guidance (CFG), and combining correction with CFG further improves diversity and reduces oversaturation typical of CFG. Finally, we show that the additional inference cost of correction can be amortized by distilling the refined predictions back into the base diffusion model, retaining the quality gains without additional inference-time overhead.
-
----
-
-## 附加资源与功能
-
-&gt; ## Additional Resources &amp; Features
-
-* **全文版本格式：** [TeX 源码](https://arxiv.org/src/2610.14136) | [HTML 网页版](https://arxiv.org/html/2610.14136v2)
-* **外部学术引用：** [Google 学术搜索 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2610.14136) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.14136) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.14136)
-* **开源代码与演示：** [Hugging Face](https://huggingface.co/huggingface) | [Replicate](https://replicate.com/docs/arxiv/about) | [CatalyzeX 论文代码检索器](https://www.catalyzex.com)
-
-&gt; * **Full-Text Formats:** [TeX Source](https://arxiv.org/src/2610.14136) | [HTML Version](https://arxiv.org/html/2610.14136v2)
-&gt; * **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.14136) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.14136) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.14136)
-&gt; * **Code &amp; Demos:** [Hugging Face](https://huggingface.co/huggingface) | [Replicate](https://replicate.com/docs/arxiv/about) | [CatalyzeX Code Finder](https://www.catalyzex.com)</description>
-    </item>
-    <item>
-      <title>OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-16/OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-16/OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架/</guid>
-      <pubDate>Fri, 16 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在具身智能领域，实体机器人为了在复杂物理世界中生存与协作，往往需要一边手眼协同执行精细操作，一边与人类自然对话并实时构建情境记忆，且各项任务对执行频率与延迟 (Latency) 的容忍度截然不同。尽管基于 Transformer 架构的现代视觉-语言-动作模型 (Vision-Language-Action Model, VLA) 赋予了机器人多模态输出的能力，但现有的端侧推理系统在处理多任务并发时，频频陷入算力资源严重争抢与重复计算视觉特征预填充 (Prefill) 的泥潭。为此，研究团队推出了创新的 **OxyGen** 统一管理框架，突破性地将键值缓存 (Key-Value Cache, KV Cache) 视作贯穿多任务与控制周期的“一等公民共享资源”，通过跨任务 KV 共享彻底斩断了多任务重复编码同一视觉画面的开销，并依托跨帧连续批处理 (Continuous Batching) 在严苛的毫秒级控制预算内高效推进文本解码。基准测试与真实人形机器人实测表明，OxyGen 相比传统隔离运行框架带来了高达 3.7 倍的推理加速，不仅能在 NVIDIA RTX 4090 上同时实现 70 Hz 的高频动作控制与超过 200 Token/s 的流畅语言吞吐量 (Throughput) ，更在车载 Jetson AGX Thor 平台上实现了稳健的端侧具身部署，为多任务实时智能机器人的规模化落地带来了关键基石。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-在现实场景中，具身 AI 智能体 (Embodied AI Agent) 日益需要在共享传感器感知输入的前提下，并行处理多项异构任务——例如精准的机械臂操控、流畅的语音交互以及情境记忆的实时构建，同时还要满足各任务严格且截然不同的时间约束。尽管当下先进的混合架构 (Mixture-of-Transformers, MoT) 视觉-语言-动作模型能够胜任这些多模态输出，但现存的设备端推理系统在调度并发任务时，却深陷大量冗余计算与剧烈硬件资源冲突的困境。
-
-&gt; Embodied AI agents are increasingly required to execute multiple tasks in parallel—such as manipulation, conversation, and memory construction—from shared sensory observations while meeting strict, distinct time constraints. Modern Mixture-of-Transformers (MoT) Vision-Language-Action Models (VLAs) support these heterogeneous outputs, but current on-device inference systems struggle with redundant computations and severe resource contention when managing concurrent tasks. 
-
-为此，**OxyGen** 提出了一套统一的键值缓存 (KV Cache) 管理框架，它将 KV Cache 提升为贯穿所有并发任务与控制周期的“一等公民共享资源”。这一创新架构释放出两大核心优化能力：
-
-&gt; **OxyGen** introduces a unified Key-Value (KV) cache management framework that treats the KV cache as a first-class shared resource across tasks and control cycles. This design unlocks two core optimizations:
-
-1. **跨任务 KV 共享 (Cross-task KV sharing)**：对于多任务共同观察到的同一视觉画面，彻底免除了重复昂贵的预填充计算阶段；
-2. **跨帧连续批处理 (Cross-frame continuous batching)**：将源自不同视频帧且尚未完成的语言生成请求统一打包批处理，并在每帧严格限定的解码时间预算内紧凑推进。
-
-&gt; 1. **Cross-task KV sharing**, which completely eliminates the redundant prefill phase for shared visual observations.
-&gt; 2. **Cross-frame continuous batching**, which batches unfinished language requests originating from different frames and advances them within strict per-frame decoding budgets.
-
-在包括桌面端 NVIDIA GeForce RTX 4090 与边缘计算平台 Jetson AGX Thor 等多种硬件设备上的综合评测中 (涵盖 $\pi_{0.5}$、Xiaomi-Robotics-0 以及 StarVLA 等主流模型) ，**OxyGen** 相比传统任务各自为战的隔离执行方案，实现了最高达 **3.7 倍的推理加速**。在 RTX 4090 上，它能够以惊人的并发效率同时达成超过 **200 Token/s** 的语言吞吐量与 **70 Hz** 的动作控制频率；更重要的是，研究团队在搭载车载 Jetson AGX Thor 计算单元的真实人形机器人上完成了真机实测，充分验证了其在复杂物理交互场景中强大的实时推理增益。
-
-&gt; Evaluated on platforms like the NVIDIA GeForce RTX 4090 and Jetson AGX Thor (using models such as $\pi_{0.5}$, Xiaomi-Robotics-0, and StarVLA), **OxyGen** delivers up to a **3.7× speedup** over isolated execution frameworks. On an RTX 4090, it achieves over **200 tokens/s** language throughput and a **70 Hz** action frequency simultaneously, and demonstrates robust real-world inference gains on a humanoid robot powered by an on-board Jetson AGX Thor.
-
----
-
-## 相关链接与资源
-
-&gt; ## Links &amp; Resources
-
-* **全文链接：** [查看 PDF](https://arxiv.org/pdf/2603.14371) | [HTML 网页版本 (实验性) ](https://arxiv.org/html/2603.14371v4) | [TeX 源码](https://arxiv.org/src/2603.14371)
-* **关联代码与工具：** [Hugging Face](https://huggingface.co/huggingface) | [CatalyzeX 代码检索](https://www.catalyzex.com) | [alphaXiv](https://alphaxiv.org/)
-* **学术引用与索引：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2603.14371) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2603.14371) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2603.14371)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2603.14371) | [HTML (Experimental)](https://arxiv.org/html/2603.14371v4) | [TeX Source](https://arxiv.org/src/2603.14371)
-&gt; * **Associated Code &amp; Tools:** [Hugging Face](https://huggingface.co/huggingface) | [CatalyzeX Code Finder](https://www.catalyzex.com) | [alphaXiv](https://alphaxiv.org/)
-&gt; * **Citations &amp; References:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2603.14371) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2603.14371) | [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2603.14371)</description>
-    </item>
-    <item>
-      <title>扩展代码智能体团队的经验教训：仅用 30% 成本触达前沿能力</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-15/扩展代码智能体团队的经验教训-仅用-30-成本触达前沿能力/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-15/扩展代码智能体团队的经验教训-仅用-30-成本触达前沿能力/</guid>
-      <pubDate>Thu, 15 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着多智能体系统在真实软件工程中的落地，如何高性价比地利用推理算力成为了关键难题。最新研究通过类似 `mini-swe-agent` 的极简测试底座，在包含 200 个逆向重写任务的 ProgramBench 基准测试上系统探究了代码智能体团队的扩展规律。实验发现，盲目堆砌智能体只会导致算力成本成倍飙升，而将工作智能体精准配置在任务最前期的“探索与规划”阶段，能以一半的成本获得与全阶段分工相同的性能。更关键的是，采用“高能力领队搭配轻量级员工”的异构团队——由强模型 Sol 担任主导智能体、经济型模型 Luna 负责前期探索规划，仅需全 Sol 团队约 30% 的推理成本即可触达前沿性能。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-随着多智能体代码生成系统从实验室里的原型演示走向生产级软件工程，如何高效管理推理算力已经成为头等大事。组建 AI 智能体 (AI Agent) 团队为推理时扩展 (Inference-time Scaling) 开辟了一条强大的新途径，但如果不加思考地生硬编排，往往会导致账单费用爆炸式飞涨，而实际收益却越来越微薄。
-
-&gt; As multi-agent coding systems transition from experimental demos to production-grade software engineering, managing inference compute efficiently becomes paramount. Using teams of agents introduces a powerful new dimension of inference-time scaling, but naive orchestration often leads to ballooning costs and diminishing returns. 
-
-在 **ProgramBench** 等基准测试 (Benchmark) 上开展的受控实验清晰地表明：合理优化智能体在各个环节的“**排兵布阵**”，远比盲目堆砌算力重要得多。通过将实力出众的“主导智能体”与廉价且专精的“工作智能体”协同搭配，让后者主要聚焦于前期的代码探索与规划，整个团队就能以极低的成本换取逼近前沿模型的优异表现 (将整体开销大幅削减高达 70%)。
-
-&gt; Controlled experiments on benchmarks like **ProgramBench** demonstrate that optimizing **where** agents are deployed matters far more than simply adding more compute. By utilizing a strong lead agent paired with cheaper, specialized worker models focused primarily on early exploration and planning, teams can achieve near-frontier performance at a fraction of the cost (reducing expenses by up to 70%).</description>
-    </item>
-    <item>
-      <title>尖锐方向与你背道而驰：大语言模型激活引导的曲率分析与方向修正</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-15/尖锐方向与你背道而驰-大语言模型激活引导的曲率分析与方向修正/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-15/尖锐方向与你背道而驰-大语言模型激活引导的曲率分析与方向修正/</guid>
-      <pubDate>Thu, 15 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在掌控大语言模型 (Large Language Model, LLM) 的输出行为时，激活引导 (Activation Steering) 凭借无需微调权重参数的极轻量特性备受青睐，但以对比激活叠加 (Contrastive Activation Addition, CAA) 为代表的经典方法却存在极其脆弱的缺陷，常导致模型行为发生不可控偏离甚至完全背离预期。入选 NeurIPS 2026 的最新论文《尖锐方向与你背道而驰》创新性地从高维向量几何曲率切入，引入了基于模型行为损失的引导 Hessian 矩阵 (Steering Hessian) ，首次在表征空间中解构出对微小扰动极度敏感的“尖锐方向”与表现稳健的“平坦方向”。研究证实，尖锐方向虽然在引导向量中所占能量不足 5%，却不成比例地扭曲了自回归生成中的 Token 概率分布，导致高达 53%~100% 的反向引导失败。据此提出的“尖锐成分剔除” (Sharp Removal) 方案仅需一行代码即可将方向曲率暴降数倍，在几乎不损失向量模长的前提下，于三大主流模型家族和全套开放生成测试中全面碾压标准 CAA。
-
----
-
-## 📌 内容概要
-
-&gt; ## 📌 Summary
-
-激活引导 (Activation Steering) 是一种替代传统模型微调的轻量级行为调控技术，它在推理阶段通过直接向大语言模型 (Large Language Model, LLM) 的内部隐藏层表征叠加特定向量，从而引导模型的生成风格或态度。然而，当前业界最常用的标准范式——对比激活叠加 (Contrastive Activation Addition, CAA) 却以极度脆弱而著称，在面对许多日常输入提示词时，它常常会将模型行为推向完全违背预期的反方向。
-
-&gt; Activation steering is a lightweight alternative to fine-tuning that controls language model behavior at inference time by adding a vector to internal representations. However, standard methods like Contrastive Activation Addition (CAA) are notoriously fragile and often shift behavior in unintended directions. 
-
-本文创新性地从**引导向量的高维几何特征**出发，系统探究了导致这一脆弱现象的内在根源。研究团队首次引入了**引导 Hessian 矩阵** (Steering Hessian) ——即模型行为损失函数针对引导向量所求得的二阶偏导数矩阵。通过对该矩阵的特征向量展开谱分解分析，作者揭开了隐藏在模型内部的关键机制：
-
-&gt; This paper investigates this fragility through the **geometry of the steering vector**. The authors introduce the **steering Hessian**—the matrix of second-order derivatives of the model's behavioral loss with respect to the steering vector. By analyzing its eigenvectors, they reveal:
-
-* **尖锐方向 (Top 特征向量) ：** 沿这些方向只要存在极其细微的扰动，就会诱发巨大、混乱且高度依赖输入文本的剧烈行为震荡。若沿着这些尖锐方向进行引导，模型不仅不会配合，反而会必然走向与预期目标背道而驰的极端 (反向引导率高达 53%~100%) ，其本质作用更像是一种纯粹破坏性的高频噪声；
-* **平坦方向 (Bottom 特征向量) ：** 沿着这些平缓方向，模型的输出行为展现出高度的稳定性与鲁棒性；
-* **尖锐成分剔除 (Sharp Removal) ：** 一种极其精巧、仅需一行代码即可实现的几何修正算法。它能从引导向量中精准剥离出尖锐方向的分量，在近乎完美保留原始向量方向与模长的同时，将向量的方向曲率大幅压制数倍，在多项开放式文本生成与行为控制任务中全面超越标准 CAA。
-
-&gt; * **Sharp Directions (Top Eigenvectors):** Tiny perturbations cause large, erratic, input-dependent behavioral swings. Steering along these directions reliably reverses intended behavior (anti-steer rates of 53–100%) and acts essentially as noise.
-&gt; * **Flat Directions (Bottom Eigenvectors):** Behavior remains stable and robust.
-&gt; * **Sharp Removal:** A simple one-line correction that removes the sharp component of a steering vector. It preserves the vector's direction and magnitude while dramatically reducing directional curvature, consistently outperforming standard CAA across open-ended generation and behavioral tasks.
-
----
-
-## 🛠️ 论文元数据与相关链接
-
-&gt; ## 🛠️ Article Metadata &amp; Links
-
-* **全文阅读：** [查看 PDF](https://arxiv.org/pdf/2610.16084) | [网页 HTML 版](https://arxiv.org/html/2610.16084v1) | [TeX 源码](https://arxiv.org/src/2610.16084)
-* **开源协议：** [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-* **附加资源：** [音频速览](/audio/2610.16084)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.16084) | [HTML Version](https://arxiv.org/html/2610.16084v1) | [TeX Source](https://arxiv.org/src/2610.16084)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-&gt; * **Additional Resources:** [Audio Summary](/audio/2610.16084)
-
----
-
-## 📖 论文摘要
-
-&gt; ## 📖 Abstract
-
-激活引导技术在推理阶段通过向大语言模型的内部隐藏层表征中叠加热向量，从而实现对模型生成行为的定向干预。作为一种替代微调的轻量级行为调控手段，它免去了高昂的重新训练开销。然而，该领域最常用的经典范式——对比激活叠加 (Contrastive Activation Addition, CAA) 却暴露出极强的脆弱性：在面对许多输入提示词时，它在大量情况下不仅无法达成预期的调控目标，甚至会将模型行为引向完全相反的错误方向。
-
-&gt; Activation steering adds a vector to a language model's internal representations at inference time. It is a lightweight alternative to fine-tuning for behavioral control. The standard construction, contrastive activation addition (CAA), is fragile, as on many inputs it shifts behavior in the wrong direction. 
-
-为了彻底搞清这种脆弱性的成因，我们首先深入探索了引导向量在高维几何空间中的内在特性。我们在本研究中提出了**引导 Hessian 矩阵** (Steering Hessian) ——即模型行为损失函数相对于引导向量的二阶偏导数矩阵。该矩阵能够精确刻画出：当引导向量在不同空间方向上受到微弱扰动时，模型最终输出行为响应的敏感程度。分析发现，其顶层特征向量 (Top 特征向量) 代表了极为敏感的“尖锐方向”：在这些方向上哪怕施加极其微小的扰动，都会诱发模型输出发生巨大、剧烈、紊乱且高度依附于特定输入的行为摇摆；而底层特征向量 (Bottom 特征向量) 则代表了“平坦方向”：沿着这些平缓方向，模型的输出行为展现出高度的鲁棒性。
-
-&gt; To explain this fragility, we first study the geometry of the steering vector. We introduce **steering Hessian**, the matrix of second order derivative of the model's behavioral loss with respect to the steering vector. It captures the output behavior response sensitivity of the model under small perturbations of the steering vector along each direction. Its top eigenvectors are sharp directions: tiny perturbations along them can cause large, erratic, input-dependent behavioral swings. Bottom eigenvectors are flat directions: behavior is robust along them. 
-
-在引导向量中直接剔除掉这些尖锐成分后，能够在近乎完整保留向量原有方向与模长的前提下 (典型配置下余弦相似度大于 0.974 ，模长衰减小于 3%) ，将向量的方向曲率削减最高达 12 倍 (在 36 种测试场景中的中位数降幅达 4 倍) 。我们在涵盖三大开源主流大模型家族 (Qwen2.5-7B、Llama-3.1-8B 和 Mistral-7B) 、四类核心行为控制任务以及 36 种 Token 级实验条件上进行了全方位评测。
-
-&gt; Removing the sharp component of a steering vector approximately preserves its direction and magnitude (cosine &gt; 0.974, norm reduction &lt; 3% for typical settings) while reducing the vector's directional curvature by up to 12x (median 4x across 36 conditions). We evaluate on three model families (Qwen2.5-7B, Llama-3.1-8B, Mistral-7B), with four behavioral tasks, and 36 token-level conditions. 
-
-测试表明，在所有评估条件下，单纯沿着尖锐方向进行引导都会完全颠覆预期行为，其反向引导率高达 53%~100% 。尖锐方向在 CAA 向量的平方范数 (能量占比) 中仅仅占了微不足道的 1%~5% ；然而在自回归生成过程中，它们却不成比例地主导了引导后模型与原始模型之间下一个 Token 概率分布的巨大偏离。我们将这种仅需单行代码即可完成的修正算法命名为**尖锐成分剔除** (Sharp Removal) ；在全部 25 种开放式文本生成评测中，该方法均一致且显著地超越了标准 CAA 。随后的模型越狱对抗实验进一步证实，高曲率的尖锐方向在本质上更像纯粹的随机噪声而非有益控制信号：无论引导极性设定为正向还是反向，它们都会彻底破坏连贯一致的行为调控机制。
-
-&gt; Steering along sharp directions reverses the intended behavior in every condition tested, with anti-steer rates of 53–100%. Sharp directions account for only 1–5% of the CAA vector's squared norm. However, they drive a disproportionate share of the gap between the steered and unsteered next-token distributions during autoregressive generation. We term this one-line correction as **sharp removal**; it outperforms standard CAA in open-ended generation across all 25 conditions tested. A jailbreaking experiment further shows that sharp directions act as noise rather than signal: they disrupt coherent behavioral control regardless of steering polarity.</description>
-    </item>
-    <item>
-      <title>历史在此重演：利用原生重放释放线性注意力的百万长上下文能力</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-15/历史在此重演-利用原生重放释放线性注意力的百万长上下文能力/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-15/历史在此重演-利用原生重放释放线性注意力的百万长上下文能力/</guid>
-      <pubDate>Thu, 15 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在长上下文语言建模 (Long-Context Language Modeling) 领域，以线性注意力 (Linear Attention) 为代表的循环神经网络架构凭借优越的推理计算效率被寄予厚望；然而受限于固定尺寸的循环隐状态，模型既要在自回归过程中维系每一步的前向计算，又不得不设法容纳无限延伸的历史信息，极易在处理超长文本时遭遇严重的“记忆遗忘”。学术界此前普遍认为，正是这种状态容量的物理天花板锁死了线性注意力的长上下文扩展上限。针对这一核心瓶颈，Li Nanbo 与 Jürgen Schmidhuber 等研究人员提出了创新的 **NoteBank** 框架，打破了“循环计算必须孤身背负长时记忆全部负担”的传统定势——它构建了一种稀疏情境记忆 (Sparse Episodic Memory) 体系，在未知未来提问的情况下预先归档高价值文本，并直接复用主干网络的原生特征进行写入与寻址，最终借助“原生重放 (Native Replay) ”在前向计算中直接阅读并召回关键事实证据。这项免训练、即插即用的方案在高达 100 万 Token 的严苛评估下，将 Gated DeltaNet 在 RULER 检索基准上的平均准确率从濒临失效的 1.7% 跨越式提升至 70.3%，且在 4K 到 1M 的超大跨度内几乎没有出现检索衰退。尤为难能可贵的是，该方法仅引入了极小的计算开销 (理论分析浮点运算量 FLOPs 增幅 $\leqslant$0.025%) ，持久化上下文存储需求更是仅为传统 Transformer 完整多头注意力键值缓存 (KV Cache) 的约 1/2,600，为极低代价实现百万级长上下文能力提供了全新的技术突破口。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-线性注意力模型凭借卓越的计算效率，一直被视为长上下文语言建模的理想方案；然而在传统实践中，它们往往陷入左右为难的困局——其固定尺寸的循环隐状态既要支撑当下的实时计算，又要艰难背负不断累积的历史信息。本文正是要直面并挑战这一长期存在的固有观念：循环状态本身的物理存储容量，并不必然等同于模型长上下文能力的天花板。
-
-&gt; Linear attention models offer the efficiency required for long-context language modeling, but traditionally struggle because their fixed-size recurrent states must simultaneously handle ongoing computation and retain an ever-growing history. This paper challenges the assumption that the recurrent state's memory capacity dictates a model's long-context limit. 
-
-作者团队为此提出了 **NoteBank**——一种创新的稀疏情境记忆架构。它在未来提问尚不可知的前提下，前瞻性地甄选并归档重要文本；同时直接调用主干网络的原生特征进行写入与索引寻址，并在需要时通过“重放”机制将检索到的证据无缝融入标准前向计算进行读取。这种免训练、即插即用的轻量方案彻底摆脱了对外部嵌入模型、独立训练检索器或专用神经阅读器的依赖。在高达 100 万 Token 的超长上下文评测中，NoteBank 展现出惊人的威力：它将 Gated DeltaNet 在六项 RULER 检索任务上的平均准确率从近乎不可用的 1.7% 奇迹般提升至 70.3%，且在测试全流程中未见明显性能衰退。更令人瞩目的是，该方法仅引入了极小的理论计算开销 (理论分析浮点运算量 FLOPs 增幅 $\leqslant$0.025%) ，其上下文存储占用也仅为传统 Transformer 的一小部分。跨越多种主干网络——包括三款 1.3B 循环模型、Mamba-2-8B 以及 Qwen3.5-9B——的广泛实验表明，NoteBank 在 LongBench v1/v2 与 MemoryAgentBench 基准上均带来了持续且稳健的性能跃升。
-
-&gt; The authors introduce **NoteBank**, a sparse episodic memory framework that archives selected text before future queries are known, leverages the backbone's native features for writing and addressing, and retrieves evidence through standard forward computation via replay. This training-free, plug-and-play approach requires no external embedding models, separate retrievers, or dedicated neural readers. At one million tokens, NoteBank dramatically increases Gated DeltaNet's mean accuracy across six RULER retrieval tasks from 1.7% to 70.3% without notable degradation. Furthermore, it adds minimal overhead ($\leqslant$0.025% to analytical FLOPs) while utilizing a fraction of the context storage required by traditional Transformers. Experiments span multiple backbones—including 1.3B recurrent models, Mamba-2-8B, and Qwen3.5-9B—demonstrating consistent performance gains on LongBench v1/v2 and MemoryAgentBench.
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-线性注意力展现了长上下文语言建模梦寐以求的高效潜力，但其固定尺寸的循环隐状态却背负着双重重压：既要维系眼下源源不断的实时计算，又要持久封存无限延展的历史信息。这种计算与记忆的深度纠缠，催生并强化了一种学界的主流认知——即隐状态本身的存储容量上限，直接决定了模型长上下文能力的边界。
-
-&gt; Linear attention promises the efficiency needed for long-context language modelling, yet its fixed-size recurrent state must simultaneously support ongoing computation and preserve information from an ever-growing history. This coupling has reinforced a prevailing view that the state's memory capacity defines the model's long-context capability. 
-
-我们明确对这一假想的天花板提出挑战：*循环计算本就不必孤身背负长期存储的全部重担*。为此，我们提出了 **NoteBank**——一种创新的稀疏情境记忆机制。它在未来的提问尚不可知之时，即预先筛选并留存核心文本片段；完全复用主干网络的原生表征完成信息的写入与寻址；并通过“重放”机制将检索到的证据无缝注入原生前向计算中进行阅读。这一 *免训练、即插即用 (Training-Free, Plug-and-Play)* 的接口无需任何额外的外部嵌入模型、专门训练的检索模块或独立的神经阅读器。
-
-&gt; We challenge this presumed ceiling: *recurrent computation need not bear the full burden of long-term storage*. We introduce **NoteBank**, a sparse episodic memory that archives selected text before future queries are known, uses the backbone's native features for writing and addressing, and reads retrieved evidence through its native forward computation via replay. This *training-free, plug-and-play* interface requires no external embedding model, separately trained retriever, or separate neural reader. 
-
-在长达 100 万 Token 的超长上下文规模下，NoteBank 将 Gated DeltaNet 在六项 RULER 检索任务上的平均准确率从濒临失效的 1.7% 激增至 70.3%，且从 4K 到 1M Token 跨度内未见任何显著的检索性能退化。这种能力的强势挽回仅带来了微不足道的计算代价 (理论分析浮点运算量 FLOPs 增幅 $\leqslant$0.025%) ，在相同的模型宽度、深度与数值精度下，其持久化上下文存储体积仅为标准 Transformer 完整多头注意力键值缓存 (Full MHA KV Cache) 的约 1/2,600。我们的评测体系涵盖了从三款 1.3B 循环主干到 Mamba-2-8B 以及后训练版 Qwen3.5-9B 的丰富模型阵列，在 LongBench v1/v2 与 MemoryAgentBench 基准上均取得了持续一致的性能提升。综合各项成果，本文有力证明：稀疏证据存储与原生重放机制能够在完美保留循环计算极致效率的同时，大幅解锁预训练线性注意力模型的百万级长上下文潜能。
-
-&gt; At one million tokens, it raises Gated DeltaNet's mean accuracy across six RULER retrieval tasks from 1.7% to 70.3%, with no observed significant retrieval degradation from 4K to 1M tokens. This recovery adds $\leqslant$0.025% to analytical FLOPs, with persistent context storage approximately 1/2,600 that of a Transformer's full MHA KV cache at matched width, depth, and precision. Experiments extend from three 1.3B recurrent backbones to Mamba-2-8B and post-trained Qwen3.5-9B, demonstrating gains on LongBench v1/v2 and MemoryAgentBench. Together, these results show that sparse evidence storage and native replay can substantially expand the long-context capability of pretrained linear attention models while retaining the efficiency of recurrent computation.
-
----
-
-## 元数据与相关资源
-
-&gt; ## Metadata &amp; Resources
-
-* **学科领域：** 人工智能 (`cs.AI`) ；机器学习 (`cs.LG`)
-* **全文链接：** 
-  * [查看 PDF](https://arxiv.org/pdf/2610.15715)
-  * [HTML 网页版本 (实验性) ](https://arxiv.org/html/2610.15715v1)
-  * [TeX 源码](https://arxiv.org/src/2610.15715)
-  * ![license icon](./images/079cd8198ba3.png) [知识共享许可协议 (Creative Commons License) ](http://creativecommons.org/licenses/by-nc-sa/4.0/)
-* **外部学术引用：** 
-  * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.15715)
-  * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.15715)
-  * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.15715)
-
-&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Machine Learning (`cs.LG`)
-&gt; * **Full-Text Links:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2610.15715)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2610.15715v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2610.15715)
-&gt;   * ![license icon](./images/079cd8198ba3.png) [Creative Commons License](http://creativecommons.org/licenses/by-nc-sa/4.0/)
-&gt; * **External Citations:** 
-&gt;   * [NASA ADS](https://ui.adsabs.harvard.edu/abs/arXiv:2610.15715)
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.15715)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.15715)</description>
     </item>
   </channel>
 </rss>

@@ -1,0 +1,828 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-24-%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E4%B8%8E%E5%AE%9E%E7%8E%B0-LLM-%E4%B8%AD%E7%9A%84-RMSNorm-%E4%BB%8E%E6%95%B0%E5%AD%A6%E5%8E%9F%E7%90%86%E5%88%B0-PyTorch-%E5%AE%9E%E6%88%98/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#llm-rmsnorm-pytorch" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="llm-rmsnorm-pytorch">深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战</h1>
+<blockquote>
+<h1 id="understanding-and-implementing-rmsnorm-in-llms">Understanding and Implementing RMSNorm in LLMs</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>归一化是现代大语言模型 (Large Language Model, LLM) 稳定训练的“定海神针”，没有它，梯度爆炸与数值崩溃会在数百步之内彻底摧毁模型训练。传统以 GPT-2 为代表的模型普遍采用层归一化 (LayerNorm) ，而现代开源主流大模型却纷纷拥抱了均方根归一化 (Root Mean Square Normalization, RMSNorm) 。RMSNorm 的核心诀窍在于完全摒弃均值计算与中心化操作，仅依靠均方根缩放，在数学上更简练纯粹。然而，真实的训练基准测试揭示了一个关键真相：RMSNorm 与 LayerNorm 本身的理论算力差异其实微乎其微，真正让训练速度产生质的飞跃（提速超过 10%）的，是 PyTorch 底层经过算子融合的高性能 CUDA 核函数。</p>
+<hr />
+<h2 id="_2">总结概述</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>归一化是大语言模型 (LLM) 中不可或缺的核心组件，它能够稳定神经元的统计特性、防止梯度消失或爆炸，并确保深层模型依然具备良好的可训练性。尽管像 GPT-2 这样的经典架构传统上依赖 <strong>LayerNorm</strong> ，但如今许多现代开源模型已经纷纷转向使用 <strong>RMSNorm</strong> (Root Mean Square Normalization) 。</p>
+<blockquote>
+<p>Normalization is an essential component of Large Language Models (LLMs) that helps stabilize statistical properties, prevents vanishing or exploding gradients, and ensures models remain trainable. While classic architectures like GPT-2 traditionally rely on <strong>LayerNorm</strong>, many modern open models use <strong>RMSNorm</strong> (Root Mean Square Normalization) instead. </p>
+</blockquote>
+<p>本文将深入探讨 LayerNorm 与 RMSNorm 之间的数学与架构差异，带领大家一步步在 PyTorch 中手写实现它们的代码，对比手写实现与 PyTorch 内置融合模块的性能差异，并通过在 1.63 亿参数的 GPT-2 Small 模型上进行完整训练实验，验证 RMSNorm 是否真能带来速度或性能上的实质优势。</p>
+<blockquote>
+<p>This post explores the mathematical and architectural differences between LayerNorm and RMSNorm, walks through code implementations in PyTorch, evaluates hand-rolled vs. built-in fused PyTorch modules, and analyzes training runs of 163M-parameter GPT-2 small models to determine whether RMSNorm provides a genuine speed or performance advantage.</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 归一化的基本原理</h2>
+<blockquote>
+<h2 id="1-the-principle-of-normalization">1. The Principle of Normalization</h2>
+</blockquote>
+<p>在一个典型的 GPT-2 风格 Transformer 模块中，归一化操作部署在以下几个至关重要的节点：
+* 在输入的上下文向量进入多头注意力 (Multi-Head Attention, MHA) 模块之前；
+* 在计算结果传入前馈网络 (Feed-Forward Network, FFN) 之前；
+* 在通过最终输出头将上下文向量投影到词表空间之前，再执行一次归一化。</p>
+<blockquote>
+<p>In a GPT-2-style Transformer block, normalization occurs at several critical points:
+* Just before incoming context vectors enter the multi-head attention (MHA) module.
+* Just before the results are fed through the feed-forward network (FFN).
+* Once more right before projecting context vectors into vocabulary space via the output head.</p>
+</blockquote>
+<p><img src=".././images/90ddd2c650ce.svg" alt="A GPT-2-style Transformers block" title="A GPT-2-style Transformers block" loading="lazy"/></p>
+
+<p>如果完全移除归一化，模型训练通常会在 100 步左右彻底崩溃，损失值 (Loss) 会骤升到未初始化时的失控水平。然而，归一化并不一定非得使用 LayerNorm。要理解 RMSNorm 如今为何备受青睐，我们需要仔细审视这两者的底层运作机制。</p>
+<blockquote>
+<p>Without normalization, training typically collapses within roughly 100 steps, causing the loss to spike to uninitialized levels. However, normalization does not strictly <em>have</em> to be LayerNorm. To understand why RMSNorm has become popular, we must look closely at how both operate.</p>
+</blockquote>
+<hr />
+<h3 id="layernorm-rmsnorm">LayerNorm 与 RMSNorm 的机制对比</h3>
+<blockquote>
+<h3 id="layernorm-vs-rmsnorm">LayerNorm vs. RMSNorm</h3>
+</blockquote>
+<h4 id="layernorm">层归一化 (LayerNorm)</h4>
+<blockquote>
+<h4 id="layernorm_1">LayerNorm</h4>
+</blockquote>
+<p>LayerNorm 会独立处理每一个上下文向量，主要分为两大核心步骤：
+1. <strong>重新中心化与方差归一化</strong>：对上下文向量进行归一化，使其均值调整为 0，方差调整为 1；
+2. <strong>缩放与平移</strong>：逐元素应用可学习的缩放 (Scale / 权重 Weight) 和平移 (Shift / 偏置 Bias) 向量。</p>
+<blockquote>
+<p>LayerNorm processes each context vector separately by performing two main steps:
+1. <strong>Re-centering and Normalizing Variance:</strong> Normalizing the context vector so its mean is zero and its variance is one.
+2. <strong>Scaling and Shifting:</strong> Applying trainable scale (weight) and shift (bias) vectors element-wise.</p>
+</blockquote>
+<p>对于给定的上下文向量，计算 LayerNorm 的完整链路包括：求均值、减去均值（重新中心化）、计算差值的平方以获取方差、将方差转换为标准差 (Standard Deviation, SD) 、除以标准差，最后进行线性缩放和平移。这需要在每个向量上执行大量的加法、减法、除法、乘法以及开平方运算。</p>
+<blockquote>
+<p>For a given context vector, calculating LayerNorm involves determining the mean, subtracting it (re-centering), squaring the differences to find the variance, converting it to standard deviation (SD), dividing by the SD, and finally scaling and shifting. This requires a substantial number of addition, subtraction, division, multiplication, and square-root operations.</p>
+</blockquote>
+<h4 id="rmsnorm">均方根归一化 (RMSNorm)</h4>
+<blockquote>
+<h4 id="rmsnorm_1">RMSNorm</h4>
+</blockquote>
+<p>RMSNorm 大刀阔斧地简化了这一流程——它<strong>彻底跳过了均值计算</strong>，完全不做上下文向量的重新中心化。相反，它直接依据向量自身的均方根 (Root Mean Square, RMS) 将其缩放到统一尺度，每个元素直接除以该 RMS，随后仅通过一个可学习的缩放向量进行逐元素缩放（通常不包含平移/偏置）。</p>
+<blockquote>
+<p>RMSNorm simplifies this process by <strong>skipping the mean calculation entirely</strong>—it does not re-centre the context vectors. Instead, it scales them down to a uniform length based on their Root Mean Square (RMS), divides each element by the RMS, and then applies an element-wise scale via a trainable scale vector (typically without a shift/bias).</p>
+</blockquote>
+<p>通过完全省去均值中心化这一步，RMSNorm 大幅减少了每个上下文向量所需的加法和减法运算次数，从而带来了更轻量的计算开销。</p>
+<blockquote>
+<p>By omitting the mean-centering step, RMSNorm reduces the number of required addition and subtraction operations per context vector significantly, yielding a lighter computational footprint.</p>
+</blockquote>
+<hr />
+<h2 id="2">2. 代码实现</h2>
+<blockquote>
+<h2 id="2-code-implementation">2. Code Implementation</h2>
+</blockquote>
+<h3 id="pytorch-rmsnorm">在 PyTorch 中手写实现 RMSNorm</h3>
+<blockquote>
+<h3 id="hand-rolled-rmsnorm-in-pytorch">Hand-Rolled RMSNorm in PyTorch</h3>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RMSNorm</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_dim</span> <span class="o">=</span> <span class="n">emb_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb_dim</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps</span> <span class="o">=</span> <span class="n">RMSNORM_EPS</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+        <span class="n">squares</span> <span class="o">=</span> <span class="n">xs</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">mean_squares</span> <span class="o">=</span> <span class="n">squares</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eps</span> <span class="o">+</span> <span class="n">mean_squares</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">xs</span> <span class="o">/</span> <span class="n">rms</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
+</code></pre></div>
+<h3 id="_3">灵活的归一化工厂函数</h3>
+<blockquote>
+<h3 id="flexible-normalization-factory">Flexible Normalization Factory</h3>
+</blockquote>
+<p>为了便于对不同方案进行基准测试，我们设计了一个工厂函数 (<code>make_norm</code>) ，用于在手写变体、PyTorch 内置模块 (<code>nn.LayerNorm</code> 与 <code>nn.RMSNorm</code>) 以及无归一化基线 (<code>nn.Identity()</code>) 之间自由切换：</p>
+<blockquote>
+<p>To easily benchmark different approaches, a factory function (<code>make_norm</code>) was used to swap between hand-rolled variants, built-in PyTorch modules (<code>nn.LayerNorm</code> and <code>nn.RMSNorm</code>), and an unnormalized baseline (<code>nn.Identity()</code>):</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_norm</span><span class="p">(</span><span class="n">cfg</span><span class="p">):</span>
+  <span class="n">norm_type</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;norm_type&quot;</span><span class="p">,</span> <span class="s2">&quot;handrolled_layernorm&quot;</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">norm_type</span> <span class="o">==</span> <span class="s2">&quot;handrolled_layernorm&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">LayerNorm</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;emb_dim&quot;</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="n">norm_type</span> <span class="o">==</span> <span class="s2">&quot;pytorch_layernorm&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">normalized_shape</span><span class="o">=</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;emb_dim&quot;</span><span class="p">],</span> <span class="n">eps</span><span class="o">=</span><span class="n">LAYERNORM_EPS</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="n">norm_type</span> <span class="o">==</span> <span class="s2">&quot;handrolled_rmsnorm&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">RMSNorm</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;emb_dim&quot;</span><span class="p">])</span>
+  <span class="k">elif</span> <span class="n">norm_type</span> <span class="o">==</span> <span class="s2">&quot;pytorch_rmsnorm&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">RMSNorm</span><span class="p">(</span>
+        <span class="n">normalized_shape</span><span class="o">=</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;emb_dim&quot;</span><span class="p">],</span>
+        <span class="n">eps</span><span class="o">=</span><span class="n">RMSNORM_EPS</span><span class="p">,</span>
+        <span class="n">elementwise_affine</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+  <span class="k">elif</span> <span class="n">norm_type</span> <span class="o">==</span> <span class="s2">&quot;no_norm&quot;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown norm_type of </span><span class="si">{</span><span class="n">norm_type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="3">3. 训练实验与结果分析</h2>
+<blockquote>
+<h2 id="3-training-runs-and-results">3. Training Runs and Results</h2>
+</blockquote>
+<p>为了检验真实场景下的表现，我们在一个 8 张 A100 GPU 的集群上，从零开始训练了参数量约为 1.63 亿的 GPT-2 Small 风格模型，并遵循 Chinchilla 最优数据配比（每个参数对应约 20 个 Token）进行充分训练。</p>
+<blockquote>
+<p>To test real-world behavior, GPT-2 small-style models (~163M parameters) were trained from scratch using Chinchilla-optimal token counts (~20 tokens per parameter) across an 8x A100 GPU cluster.</p>
+</blockquote>
+<h3 id="_4">无归一化基线实验</h3>
+<blockquote>
+<h3 id="the-no-normalization-baseline">The No-Normalization Baseline</h3>
+</blockquote>
+<p>在没有任何归一化的情况下训练模型，数值稳定性迅速崩塌。仅仅进行到第 530 步，训练损失就持续记录为 <code>NaN</code>（非数字异常），模型梯度彻底失控爆炸：</p>
+<blockquote>
+<p>Training a model without any normalization quickly destabilized. By step 530, training loss logged consistent <code>NaN</code> values, and gradients exploded off the chart:</p>
+</blockquote>
+<p><img src=".././images/7a1db761b0eb.png" alt="Loss chart without normalisation" title="Loss chart without normalisation" loading="lazy"/></p>
+
+<p><img src=".././images/661f81d24e04.png" alt="Gradients chart without normalisation" title="Gradients chart without normalisation" loading="lazy"/></p>
+
+<hr />
+<h3 id="_5">对比基准测试结果</h3>
+<blockquote>
+<h3 id="comparative-benchmark-results">Comparative Benchmark Results</h3>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型 (Model)</th>
+<th style="text-align: left;">训练耗时 (秒)</th>
+<th style="text-align: left;">每秒处理 Token 数 (Tokens/sec)</th>
+<th style="text-align: left;">测试集损失 (Test loss)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-1-hand-layernorm"><code>gpjt/8xa100m40-rmsnorm-1-hand-layernorm</code></a></td>
+<td style="text-align: left;">9,358</td>
+<td style="text-align: left;">348,364</td>
+<td style="text-align: left;">3.595336</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-2-pytorch-layernorm"><code>gpjt/8xa100m40-rmsnorm-2-pytorch-layernorm</code></a></td>
+<td style="text-align: left;">8,324</td>
+<td style="text-align: left;">391,659</td>
+<td style="text-align: left;">3.571158</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-3-hand-rmsnorm"><code>gpjt/8xa100m40-rmsnorm-3-hand-rmsnorm</code></a></td>
+<td style="text-align: left;">9,134</td>
+<td style="text-align: left;">356,899</td>
+<td style="text-align: left;">3.601292</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-4-pytorch-rmsnorm"><code>gpjt/8xa100m40-rmsnorm-4-pytorch-rmsnorm</code></a></td>
+<td style="text-align: left;">8,289</td>
+<td style="text-align: left;">393,294</td>
+<td style="text-align: left;">3.572383</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Training time (s)</th>
+<th style="text-align: left;">Tokens/sec</th>
+<th style="text-align: left;">Test loss</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-1-hand-layernorm"><code>gpjt/8xa100m40-rmsnorm-1-hand-layernorm</code></a></td>
+<td style="text-align: left;">9,358</td>
+<td style="text-align: left;">348,364</td>
+<td style="text-align: left;">3.595336</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-2-pytorch-layernorm"><code>gpjt/8xa100m40-rmsnorm-2-pytorch-layernorm</code></a></td>
+<td style="text-align: left;">8,324</td>
+<td style="text-align: left;">391,659</td>
+<td style="text-align: left;">3.571158</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-3-hand-rmsnorm"><code>gpjt/8xa100m40-rmsnorm-3-hand-rmsnorm</code></a></td>
+<td style="text-align: left;">9,134</td>
+<td style="text-align: left;">356,899</td>
+<td style="text-align: left;">3.601292</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://huggingface.co/gpjt/8xa100m40-rmsnorm-4-pytorch-rmsnorm"><code>gpjt/8xa100m40-rmsnorm-4-pytorch-rmsnorm</code></a></td>
+<td style="text-align: left;">8,289</td>
+<td style="text-align: left;">393,294</td>
+<td style="text-align: left;">3.572383</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<hr />
+<h2 id="4">4. 关键结论</h2>
+<blockquote>
+<h2 id="4-key-takeaways">4. Key Takeaways</h2>
+</blockquote>
+<ol>
+<li><strong>训练速度 (Training Speed)</strong>：</li>
+<li>手写实现的 RMSNorm 相比手写实现的 LayerNorm 大约<strong>提速 2.5%</strong>；</li>
+<li>然而，当切换到 PyTorch 内置的原生模块时，两者的差距缩小到了仅有 <strong>0.5%</strong>；</li>
+<li><strong>真正的性能飞跃</strong>其实来自 PyTorch 内置的融合 CUDA 核函数 (Fused CUDA Kernels) ——与 Python 自定义实现的执行开销相比，它将总体训练耗时削减了约 <strong>10% 到 11%</strong>，其实际影响远远超过了归一化公式本身所带来的细微差异。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Training Speed:</strong> </li>
+<li>Hand-rolled RMSNorm was roughly <strong>2.5% faster</strong> than hand-rolled LayerNorm. </li>
+<li>However, when shifting to built-in PyTorch modules, the difference shrank to just <strong>0.5%</strong>.</li>
+<li>The <strong>true performance leap</strong> came from using PyTorch's built-in fused CUDA kernels, which reduced training times by roughly <strong>10% to 11%</strong> compared to Python-loop implementations, completely overshadowing the choice of normalization math itself.</li>
+</ol>
+</blockquote>
+<ol>
+<li><strong>模型质量（测试集损失 / Test Loss）</strong>：</li>
+<li>RMSNorm 取得了与 LayerNorm 几乎完全一致的测试集损失（两者微弱差异仅在 0.001 到 0.006 之间），有力证明了 RMSNorm 在模型表征能力上与 LayerNorm 旗鼓相当；</li>
+<li>有趣的是，PyTorch 内置实现的模型测试集损失始终略优于手写版本，不过要确定这是算子精度带来的系统性提升还是随机初始化噪声的影响，还需要进一步的验证。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Model Quality (Test Loss):</strong></li>
+<li>RMSNorm achieved test losses nearly identical to LayerNorm (a minor delta of ~0.001 to 0.006), reinforcing that RMSNorm is just as capable as LayerNorm.</li>
+<li>Interestingly, the built-in PyTorch implementations consistently yielded slightly better test losses than hand-rolled equivalents, though further validation is required to separate systematic improvement from random initialization noise.</li>
+</ol>
+</blockquote>
+<ol>
+<li><strong>RMSNorm 为何如此广受欢迎？</strong></li>
+<li>尽管其节省的计算量随模型的隐藏层宽度和深度呈线性增长，但在更大规模的架构中（计算主体完全被复杂度为 <span class="arithmatex">\(O(d_{\text{emb}}^2)\)</span> 的 FFN 前馈计算和 <span class="arithmatex">\(O(n^2)\)</span> 的注意力机制所主导），归一化带来的算力节省占比其实相对有限；</li>
+<li>归根结底，RMSNorm 在开源大模型中的广泛流行，主要得益于其概念上的极致精炼、与“无偏置 (Bias-Free) ”现代化架构理念的高度契合，以及能够无缝即插即用、开箱即用的出色稳定性。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Why is RMSNorm Popular?</strong></li>
+<li>While its computational savings scale linearly with model width and depth, its relative impact on larger architectures (which are dominated by <span class="arithmatex">\(O(d_{\text{emb}}^2)\)</span> FFN calculations and <span class="arithmatex">\(O(n^2)\)</span> attention mechanisms) is modest. </li>
+<li>Ultimately, RMSNorm's widespread adoption in open-source models is likely driven by its conceptual simplicity, its alignment with bias-free design choices, and its seamless plug-and-play drop-in performance.</li>
+</ol>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">RMSNorm</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">LayerNorm</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PyTorch</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Transformer</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型训练</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
