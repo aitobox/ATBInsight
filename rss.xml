@@ -5,6 +5,251 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-27/清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-27/清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统/</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在大模型智能体 (AI Agent) 频繁调用工具、执行多轮长程推理的过程中，不断膨胀的上下文历史使得键值缓存 (KV Cache) 显存开销居高不下，而传统的文本截断或总结不仅会破坏中间推理细节，更会引发高昂的二次重新预填充 (Re-prefill) 开销。针对这一制约智能体工业化落地的核心瓶颈，清华大学 (Tsinghua University) 与香港中文大学 (CUHK) 联合开源了专为智能体打造的缓存工程服务系统 AKV (Agent KV Cache Server) 。AKV 独辟蹊径地提出了“缓存工程”范式，直接在底层推理引擎中对 KV 缓存进行细粒度的动态丢弃与位置重排，而完全无需改动上层文本轨迹。在多项复杂智能体基准测试中，基于 SGLang 构建的 AKV 不仅将平均运行成本大幅削减了 27.7%，更将任务解决率逆势提升了 1.7 个百分点，在高并发场景下将 P95 延迟缩短了数倍，为长上下文智能体的高效低成本服务提供了突破性的全栈工程范式。
+
+---
+
+清华大学 (Tsinghua University) 与 CUHK 的研究团队正式开源了 **AKV**——一套专为大语言模型 (Large Language Model, LLM) 智能体 (AI Agent) 打造的创新型键值缓存 (KV Cache) 工程服务系统。与以往频繁压缩或粗暴裁剪对话历史的做法不同，AKV 赋予了智能体动态剔除特定 KV 缓存条目并高能效复用剩余缓存的硬核能力。在多种主流模型和复杂的智能体基准测试 (Benchmark) 中，这一创新方案将平均运行成本降低了 **27.7%**，同时将任务综合得分提升了 **1.7 分**。该系统基于高性能推理框架 **SGLang** 深度构建，目前已在 **Apache-2.0 协议** 下全面开源。
+
+&gt; Researchers from Tsinghua University and CUHK have open-sourced **AKV**, an innovative serving system designed for KV cache engineering in LLM agents. Instead of summarizing or trimming old conversation history, agents can dynamically drop selected KV cache entries and reuse the remainder. Across multiple models and agent benchmarks, this method reduces average operating costs by **27.7%** while increasing average task scores by **1.7 points**. Built on top of **SGLang**, the code is available under the **Apache-2.0 license**.
+
+---
+
+## 📌 执行摘要
+
+&gt; ## 📌 Executive Summary
+
+* **项目定位**：一套专用的推理服务系统与缓存策略库 (不包含模型权重)。已在 GPT-OSS-120B (激活参数 5.1B)、MiniMax-M2.7 (总参数 230B，激活参数 10B) 以及 MiroThinker-1.7-Mini (总参数 30B，激活参数 3B) 等前沿模型上完成系统验证。
+* **硬件要求**：依托 SGLang 运行于 NVIDIA GPU 之上。原论文研究在 BF16 精度下使用了 8 张 A800-80GB GPU，而快速上手部署仅需 2 张 GPU 即可运行 GPT-OSS-120B (张量并行度 Tensor Parallelism = 2)。
+* **性能收益**：相较于传统的阈值摘要机制，实现了平均成本降低 27.7%，平均任务得分提升 1.7 分的亮眼表现。
+* **最佳应用场景**：在 SWE-bench Verified 软件工程基准测试中运行 GPT-OSS-120B (单任务平均成本从 20.0 美分骤降至 9.7 美分，同时得分从 40.0 逆势跃升至 43.2)。
+* **已知局限**：MiniMax-M2.7 在 BrowseComp-Plus 网页检索测试中得分为 58.9，比传统文本工程策略的 62.3 分低 3.4 分。
+
+&gt; * **What it is:** A specialized serving system and policy library (weights not included). It has been tested on models such as GPT-OSS-120B (5.1B active), MiniMax-M2.7 (230B total, 10B active), and MiroThinker-1.7-Mini (30B total, 3B active).
+&gt; * **Hardware Requirements:** Runs on NVIDIA GPUs via SGLang. The research paper utilized 8× A800-80GB GPUs in BF16, while quick-start deployments can serve GPT-OSS-120B on just 2 GPUs (tensor parallelism = 2).
+&gt; * **Performance Gains:** Achieves a 27.7% reduction in average cost and a +1.7 point improvement in average scores compared to traditional threshold summarization.
+&gt; * **Best Use Case:** GPT-OSS-120B on SWE-bench Verified (reducing cost per task from 20.0¢ to 9.7¢ while raising scores from 40.0 to 43.2).
+&gt; * **Current Limitations:** MiniMax-M2.7 on BrowseComp-Plus scored 58.9, which is 3.4 points lower than Text Engineering's 62.3.
+
+---
+
+## 什么是缓存工程与上下文工程？
+
+&gt; ## What is Cache Engineering vs. Context Engineering?
+
+**AKV** 开创性地引入了一种全新服务范式，允许大语言模型智能体自主决定丢弃与重排底层的 KV 缓存状态。
+
+&gt; **AKV** introduces a serving paradigm that allows LLM agents to autonomously drop and reposition their own KV cache states. 
+
+传统的**上下文工程 (Context Engineering)** 往往依赖对文本历史的暴力裁剪或文本摘要。然而，在大模型自注意力机制中，任何对文本前缀 (Prefix) 的修改都会直接导致后续所有已生成的 KV 缓存状态彻底失效，迫使系统不得不对保留下来的后缀 (Suffix) 进行耗时费电的重新预填充 (Re-prefill)。正因如此，现有的智能体编排框架通常只能采取“滞后且激进”的摘要策略，这极易抹杀中间推理步骤中至关重要的细粒度细节。
+
+&gt; Traditional **context engineering** relies on trimming or summarizing text history. However, editing prefixes invalidates all subsequent KV states, forcing the system to re-prefill the retained suffix. As a result, agent harnesses often summarize late and aggressively, leading to a loss of granular details from intermediate reasoning steps.
+
+与此相反，**缓存工程 (Cache Engineering)** 完全不破坏底层的原始文本对话轨迹。它通过精细调控哪些 KV 缓存条目对后续的注意力机制保持可见，在无需任何重新计算的情况下直接复用保留下来的条目；即便前序的某些消息条目已被剔除，依然能够无损继承关键上下文。在研究人员的真实调用成本剖析中，KV 缓存的重复读取开销在整个 API 支出中竟然占据了惊人的 82.4%。
+
+&gt; **Cache engineering**, conversely, leaves the underlying text trajectory completely untouched. It selectively adjusts which KV entries remain visible to attention mechanisms. Retained entries are reused without recomputation and can preserve context even when preceding messages are pruned. In the researchers' cost analysis, KV cache reads accounted for a staggering 82.4% of total API expenses.
+
+---
+
+## AKV 是如何工作的？
+
+&gt; ## How Does AKV Work?
+
+AKV 明确定义了三项核心缓存操作：
+
+&gt; AKV defines three core cache operations:
+
+1. **追加 (Append)**：针对新生成 Token 的标准缓存更新机制。
+2. **丢弃 (Drop)**：将指定的条目从后续注意力计算的可见范围中剔除，同时保持位置索引完全不变。
+3. **重排 (Repos / Repositioning)**：利用 [RoPE 旋转位置编码 (RoPE Rotation)](https://arxiv.org/abs/2104.09864) 将保留下来的 Key 重新编码映射到位置 $0$ 至 $r-1$。在此过程中，Value 保持完全不变，从而确保隐藏状态的二次重算开销为零。在消融实验中，引入 `Repos` 机制直接使 GPT-OSS-120B 在 BrowseComp-Plus 上的任务通过率从 55% 大幅跃升至 62%。
+
+&gt; 1. **Append:** The standard update mechanism for newly generated tokens.
+&gt; 2. **Drop:** Removes targeted entries from future attention scopes without altering position indices.
+&gt; 3. **Repos (Repositioning):** Rewrites retained keys to positions $0$ through $r-1$ using [RoPE rotation](https://arxiv.org/abs/2104.09864). Values remain completely unchanged, ensuring zero recomputation of hidden states. In ablation studies, incorporating `Repos` boosted GPT-OSS-120B’s BrowseComp-Plus pass rate from 55% to 62%.</description>
+    </item>
+    <item>
+      <title>大语言模型助力形式化软件验证实现规模化突破</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-27/大语言模型助力形式化软件验证实现规模化突破/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-27/大语言模型助力形式化软件验证实现规模化突破/</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>传统软件普遍潜藏着可被现代 AI 轻易挖掘和利用的漏洞，而通过严密数学推导证明代码绝对没有缺陷的“形式化软件验证”，过去往往需要顶级专家耗时数年，因而仅能局限于航空航天等极少数容错率为零的关键系统。Anthropic 与 Theorem 开展前沿合作，首次证实以 Claude 为代表的大语言模型 (Large Language Model, LLM) 能够在大规模真实生产环境中自主构建严密的形式化数学证明。研究团队在 RISC-V 汇编代码级别，针对超过 100 个现实开源软件库成功完成了无崩溃安全证明，并顺带挖掘出经历过数万亿次模糊测试仍未暴露的深层长周期漏洞。这项突破标志着形式化软件验证正在走出象牙塔，未来将成为构建本质安全软件基石的核心支柱。
+
+---
+
+## 摘要
+
+&gt; ## Summary
+
+大部分现代软件都潜藏着安全缺陷，而现今的 AI 工具能轻而易举地找出并利用这些漏洞，使传统的网络安全防御手段逐渐捉襟见肘。虽然“形式化软件验证” (formal software verification) —— 即用严密的数学推导来证明代码绝对不存在任何漏洞 —— 是最理想的防御方案，但在过去，这项工作往往需要顶级专家耗费数年心血逐行推导，导致它只能被应用在航空航天飞控等极少数容错率为零的关键系统中。
+
+&gt; Most software contains bugs that modern AI can easily find and exploit, rendering traditional cyber defenses insufficient. While **formal software verification**—mathematically proving code is bug-free—is the ideal defense, it has historically demanded years of expert human effort, restricting its use to ultra-high-stakes systems like aerospace avionics.
+
+在与 Theorem 的合作研究中，团队证实了以 Claude 为代表的大语言模型 (LLM) 能够以史无前例的规模自主生成形式化证明。借助 Claude 的推理能力，团队成功在汇编代码层级 (RISC-V) 证明了**超过 100 个真实开源软件库**的安全属性 (这也是业界首次在汇编级别将 AI 驱动的形式化验证大规模应用于生产级软件)。在这个过程中，Claude 还顺藤摸瓜揪出了多个顽固的历史遗留漏洞，而这些漏洞此前即使经历过数万亿次自动化模糊测试 (fuzz-test) 也从未被察觉。随着模型的持续进化，形式化验证有望真正成为构建可信安全软件的基石。
+
+&gt; In a collaboration with **Theorem**, researchers demonstrated that Large Language Models (LLMs) like Claude can autonomously produce formal proofs at an unprecedented scale. By leveraging Claude, the team proved security properties at the assembly-code level (RISC-V) across **over 100 real-world open-source software libraries** (marking the first large-scale application of AI-driven formal verification to production software at the assembly level). Along the way, Claude uncovered long-standing bugs that had eluded trillions of automated fuzz-test runs. As models advance, formal verification is poised to become an essential pillar of secure software development.
+
+---
+
+## 引言
+
+&gt; ## Introduction
+
+现代软件的脆弱性早已人尽皆知；即便是像 Linux 内核这样经过无数严苛测试的核心系统，近期公开披露的安全漏洞也超过了 1,000 个。随着前沿 AI 模型越来越擅长将看似无关紧要的小瑕疵串联成破坏力惊人的漏洞利用链，开发者比以往任何时候都更需要一种前置防御手段 —— 从根本上直接验证软件绝对不存在缺陷。
+
+&gt; Modern software is notoriously fragile; even heavily tested systems like the Linux kernel recently had over 1,000 vulnerabilities disclosed. Because frontier AI models are increasingly adept at chaining seemingly benign bugs into catastrophic exploits, developers need proactive techniques that verify the absence of bugs altogether.</description>
+    </item>
+    <item>
+      <title>TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-27/TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-27/TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制/</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着线性注意力架构的快速演进，以门控 DeltaNet (Gated DeltaNet, GDN) 为代表的混合架构正在成为现代大语言模型 (Large Language Model, LLM) 兼顾长文本生成效率与显存占用的热门方向。然而，在利用推测解码 (Speculative Decoding) 加速模型推理时，传统系统为了支持草稿树多分支的验证与回滚，不得不为每个候选节点在 GDN 层完整保存循环状态快照，造成了极为严峻的显存爆炸，严重阻碍了高接受率宽草稿树的应用。针对这一核心系统瓶颈，本文创新性地提出了 TreeWY 算法，巧妙地将经典的 WY 矩阵变换拓展至树状结构并与门控 Delta 规则深度结合，仅需单次三角求解即可并行完成全部节点的验证，彻底摒弃了循环状态快照。在工业级混合模型 Qwen3.5 (35B 与 397B) 上的真实评测表明，TreeWY 极大幅度减轻了高带宽内存 (High Bandwidth Memory, HBM) 压力，显著降低了首字生成延迟 (Time-to-First-Token, TTFT) 并拉高了系统吞吐量，为未来新一代混合架构大模型的高性能推测推理扫清了显存障碍。
+
+---
+
+## 📋 论文摘要
+
+&gt; ## Abstract Summary
+
+当前开源大语言模型越来越多地采用混合架构，其中绝大多数网络层都由线性注意力组件构成，尤其是**门控 DeltaNet (Gated DeltaNet, GDN)** 层。与传统模型不同，GDN 在推理时无需维护随序列长度线性膨胀的键值缓存 (KV cache)，而是仅需保持一个固定大小的紧凑循环状态。尽管这种设计在常规逐 Token 解码中显著提升了显存利用效率，但在推测解码与验证过程中，却演变成了一个严重的性能瓶颈。
+
+&gt; Modern open-source language models increasingly rely on hybrid architectures where the majority of layers are linear-attention components, specifically **Gated DeltaNet (GDN)** layers. Unlike traditional models, GDNs maintain a small, fixed-size recurrent state instead of a growing Key-Value (KV) cache. While this design significantly improves memory efficiency during ordinary decoding, it creates a major bottleneck for speculative decoding and verification.</description>
+    </item>
+    <item>
+      <title>OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-27/OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-27/OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度/</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 上下文窗口的不断扩展，自回归解码阶段庞大的键值缓存 (KV Cache) 导致显存占用急剧膨胀、内存带宽不堪重负，稀疏注意力技术因此成为加速推理的核心方向。然而，现有的稀疏注意力机制在大幅降低 KV Cache 读取率时面临致命困境：若直接丢弃未读取的“长尾”信息会导致输出严重偏倚，而基于采样的折中方案在极低读取率 ($\le 5\%$) 下又极易错失被选择器遗漏的关键高权重 Token (Heavy-Hitters)。
+
+针对这一瓶颈，研究人员推出了革新性的 **OpenAttention** 架构。该研究突破性地发现，与其进行复杂的随机采样，不如将整个未被读取的尾部折叠为一个“感知数量的均值代理 Token” (Count-Aware Mean Proxy Token)，在极低读取率下能大幅降低注意力权重误差。结合无需训练的查询几何聚类 (Query-Geometry Clustering, QGC)、查询几何选择器 (Query-Geometry Selector, QGS) 以及基于误差估计的 ErrorGate 动态分配策略，OpenAttention 在 Llama-3.1-8B 模型的 RULER-32K HARD 基准测试中，**仅需读取 1% 的 KV Cache 即可保留 99% 的全量稠密注意力精度**，同时将解码注意力阶段的执行速度提升了整整 **10 倍 ($10\times$)**，为超长上下文大模型的高效部署开辟了极具实用价值的全新路径。
+
+---
+
+## 📋 内容总结
+
+&gt; ## 📋 Summary
+
+在处理长上下文时，稀疏注意力机制通常仅读取一小部分键值缓存 (KV Cache)，这使得如何妥善处理那些未被读取的“尾部 Token”成了一大核心难题。如果直接丢弃这些尾部数据，会给模型的最终输出带来显著偏差；而以往采用的随机采样策略，在极低读取率 ($\le 5\%$) 下表现极差，因为未读取的长尾区域中往往隐藏着被稀疏选择器遗漏的关键高权重 Token (Heavy-Hitters)。
+
+&gt; Sparse attention mechanisms typically read only a small subset of the key-value (KV) cache, leaving the unread "tail" as a significant challenge. Discarding the tail introduces output bias, while previous sampling approaches fail at low read rates ($\le 5\%$) where the tail frequently contains crucial heavy-hitters missed by the selector.
+
+为此，本文提出了 **OpenAttention**——一种使用简易尾部代理 (Tail Proxies) 的创新方法，它将未读取的整个尾部区域折叠压缩为一个具有数量感知能力的均值 Token (Count-Aware Mean Token)，从而实现了远低于传统采样方案的输出误差。结合无需训练的**查询几何聚类 (Query-Geometry Clustering, QGC)**、**查询几何选择器 (Query-Geometry Selector, QGS)** 以及按误差估计进行配额分配的 **ErrorGate** 机制，OpenAttention 在运行 Llama-3.1-8B 模型的 RULER-32K HARD 基准测试中，**仅凭 1% 的读取率便保留了稠密全注意力 99% 的精度**，同时使解码注意力阶段的运行速度比稠密全注意力**提升了 10 倍 ($10\times$)**。
+
+&gt; This paper introduces **OpenAttention**, a novel approach that uses simple tail proxies—folding the entire tail into a count-aware mean token—to achieve lower output error than conventional sampling. Combined with training-free **Query-Geometry Clustering (QGC)**, **Query-Geometry Selector (QGS)**, and **ErrorGate** allocation, OpenAttention retains **99% of dense accuracy at a 1% read rate** on RULER-32K HARD with Llama-3.1-8B, while running the decode attention stage **$10\times$ faster** than dense attention.
+
+---
+
+## 📑 论文摘要
+
+&gt; ## 📑 Abstract
+
+稀疏注意力机制往往仅读取键值缓存中极小的一部分数据，如何有效处理未被读取的“长尾”部分始终是该领域的一大核心瓶颈。若直接丢弃未读取的长尾，将导致模型输出产生系统性偏倚；而如果效仿先前的方法对其进行稀疏采样，在读取率降至 5% 及以下时便会彻底失效，因为此时尾部区域极有可能包含被稀疏选择器遗漏的关键高权重 Token。
+
+&gt; Sparse attention reads only a small subset of the key-value cache, and how to treat the unread tail remains a key challenge. Discarding the tail biases the output, and sampling it as previous approaches do fails at reads of 5% and below, where the tail likely holds heavy hitters the selector missed.
+
+我们的核心观察在于：即便是构建一个最为简化的代理——仅用单个 Token 将全部尾部折叠为其感知元素数量的均值表示——在搭配实际选择器时，其输出误差在各个读取率下就已经低于传统采样方法。我们进一步通过解析闭式解证明：在极低读取率下，随机采样的注意力权重误差几乎是直接丢弃策略的两倍，而单个均值代理所产生的误差则始终低于直接丢弃。
+
+&gt; Our key observation is that the simplest possible proxy, one token that folds the entire tail into its count-aware mean, already yields lower output error than a sample at every read behind a practical selector. We further show in closed form that at low reads sampling nearly doubles the weight error of discarding while a single proxy stays below it.
+
+基于这些新发现，我们探索了利用少量针对长尾的代理 Token 来逼近完整稠密注意力分布的可行性。我们提出了 OpenAttention 架构，该架构构建了一条由聚类、ErrorGate 动态配额与 Top-k 筛选组成的高效流水线，随后引入感知数量的均值代理进行精准补齐。为了兼顾聚类与选择过程的高效性与准确性，我们设计了无需任何微调或训练的查询几何聚类 (QGC) 与查询几何选择器 (QGS)，它们能够在充分尊重查询向量几何方向的同时对键 (Key) 进行高度压缩。此外，不同于以往仅依靠聚类质心排名的做法，ErrorGate 能够根据每个聚簇所估算的权重误差动态分配精确的读取配额。
+
+&gt; Building on these findings, we explore approximating the dense attention distribution with a few proxies that target the tail. We propose OpenAttention, a pipeline of clustering, ErrorGate and top-k selection followed by a count-aware mean proxy. To implement clustering and selection both efficiently and effectively, we design training-free Query-Geometry Clustering (QGC) and a Query-Geometry Selector (QGS), which compress the keys while respecting the query directions. Additionally, unlike prior methods that rank clusters by centroid alone, ErrorGate allocates the exact read by the estimated weight error of each cluster.
+
+在搭载 Llama-3.1-8B 模型的 RULER-32K HARD 基准测试中，OpenAttention 仅需 1% 的读取率即可保留全量稠密注意力 99% 的精度。不仅如此，它在各类基准模型、多种上下文长度以及不同测试数据集上均取得了业内最优 (SOTA) 的精度表现。我们为 OpenAttention 专门定制的高性能注意力算子内核，更是在 1% 读取率下将自回归解码注意力阶段的执行速度提升至稠密全注意力的 10 倍 ($10\times$)。
+
+&gt; On RULER-32K HARD with Llama-3.1-8B, OpenAttention retains 99% of dense accuracy at a 1% read. It also achieves state-of-the-art accuracy across models, context lengths and datasets. Our customized attention kernel for OpenAttention runs the decode attention stage $10\times$ faster than dense attention at a 1% read.
+
+---
+
+## 🛠️ OpenAttention 的核心技术组件
+
+&gt; ## 🛠️ Key Components of OpenAttention
+
+1. **尾部代理与感知数量的均值 (Tail Proxies &amp; Count-Aware Mean)**：彻底告别对未读取尾部的粗暴丢弃或低效采样，采用单个超高效代理 Token 捕捉未读取元素的数量感知均值，以极小代价大幅拉平长尾误差；
+2. **查询几何聚类 (QGC) 与查询几何选择器 (QGS)**：采用免训练 (Training-free) 机制，在严格对齐并保持查询向量空间几何方向的前提下，对大量键 (Key) 进行高效无损压缩与快速候选筛选；
+3. **ErrorGate 误差门控分配机制**：突破以往单纯依靠聚类质心距离排序的局限，根据每个聚簇预估的注意力权重误差动态分配精准的读取配额，让算力与带宽集中在误差最高的关键聚类上；
+4. **定制化高性能注意力算子内核 (Custom Attention Kernel)**：针对 OpenAttention 流水线在 GPU 底层深度调优打造的高效算子，在 1% 超低读取率下使自回归解码阶段的注意力计算速度狂飙 10 倍 ($10\times$)。
+
+&gt; 1. **Tail Proxies &amp; Count-Aware Mean:** Replaces discarded or sampled tails with a single, highly efficient proxy token capturing the count-aware mean of the unread elements.
+&gt; 2. **Query-Geometry Clustering (QGC) &amp; Query-Geometry Selector (QGS):** Training-free mechanisms that efficiently compress keys while precisely aligning with query directions.
+&gt; 3. **ErrorGate:** Dynamically allocates exact reads based on the estimated weight error of each cluster, moving beyond traditional centroid-only ranking methods.
+&gt; 4. **Custom Attention Kernel:** Optimized specifically for the OpenAttention pipeline, delivering a $10\times$ speedup during the decode attention stage at a 1% read rate.
+
+---
+
+## 🔗 相关链接与资源
+
+&gt; ## 🔗 Links &amp; Resources
+
+* **项目主页**：[hyunwoo137.github.io/OpenAttention](https://hyunwoo137.github.io/OpenAttention/)
+* **代码开源仓库**：[github.com/hyunwoo137/OpenAttention](https://github.com/hyunwoo137/OpenAttention)
+* **arXiv 全文检索**：[HTML 在线版本](https://arxiv.org/html/2610.30951v2) | [PDF 下载版本](https://arxiv.org/pdf/2610.30951)
+* **论文 DOI**：[10.48550/arXiv.2610.30951](https://doi.org/10.48550/arXiv.2610.30951)
+
+&gt; * **Project Page:** [hyunwoo137.github.io/OpenAttention](https://hyunwoo137.github.io/OpenAttention/)
+&gt; * **Code Repository:** [github.com/hyunwoo137/OpenAttention](https://github.com/hyunwoo137/OpenAttention)
+&gt; * **arXiv Full-Text:** [HTML Version](https://arxiv.org/html/2610.30951v2) | [PDF Version](https://arxiv.org/pdf/2610.30951)
+&gt; * **DOI:** [10.48550/arXiv.2610.30951](https://doi.org/10.48550/arXiv.2610.30951)</description>
+    </item>
+    <item>
+      <title>HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-27/HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-27/HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统/</guid>
+      <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 向百万级甚至更高长文本演进，传统注意力机制二次方复杂度的计算与显存开销已成为制约模型拓展的核心瓶颈，以 DeepSeek-V3.2 为代表的工业界前沿架构纷纷转向基于学习的稀疏注意力 (Learned Sparse Attention) 机制。然而，现有的训练系统在处理稀疏注意力时面临严重的“打分与重计算瓶颈”——为了选出最相关的少数 Token，系统仍需对历史所有 Token 全量打分并物化庞大的中间打分矩阵，且在激活值重计算阶段冗余重复整个筛选过程。针对这一工程难题，来自香港科技大学、爱丁堡大学与北京大学等机构的研究团队推出了专为可学习稀疏注意力定制的长文本分布式训练系统 **HyScale**。HyScale 开创性地提出了实时精确筛选 Top-$k$ 的无中间表算子 **HyTopK**，并结合在前向传播与反向重计算间高效复用索引决策的**选择重放 (Selection Replay)** 机制，彻底消除了显存物化瓶颈。在 512 张 H20 GPU 集群与 32 张 H800 GPU 集群上的实测表明，HyScale 在 100 万 Token 序列长度下将 GLM-5.1、DeepSeek-V4-Flash 及 Qwen3.8-Flash-Next 等主流模型的训练速度提升了 1.57 至 2.07 倍，为超长上下文大模型的高效预训练与后训练开辟了全新的系统架构路径。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+**HyScale** 是一套开创性的长上下文训练系统，专门用于攻克可学习稀疏注意力架构固有的训练性能瓶颈。自从 DeepSeek-V3.2 问世以来，这类可学习稀疏注意力架构在处理百万级 Token 上下文时已显现出巨大威力，并迅速成为主流模型的核心基石。
+
+&gt; **HyScale** is a novel long-context training system designed to address the training bottlenecks inherent in learned sparse attention architectures (which have become prominent for million-token contexts since DeepSeek-V3.2).
+
+虽然稀疏注意力模型在处理每个查询 (Query) 时仅仅需要读取最关键的 $k$ 个 Token，但现有的传统训练系统依然会对之前的每个历史 Token 进行全量打分。这便催生了极其沉重的打分性能瓶颈：系统不仅必须在显存中物化生成庞大的完整打分表，而且在激活值重计算 (Recomputation) 阶段还会冗余地重复整个筛选过程。为此，HyScale 创新性地引入了两大关键技术机制：
+
+1. **HyTopK 算子**：无需在显存中生成任何中间打分表，即可在流式计算中为每个查询 (Query) 实时、精确地计算出前 $k$ 个 (Top-$k$) 关键 Token。
+2. **选择重放 (Selection Replay)**：在激活值重计算阶段直接复用前向传播中已保存的索引筛选决策，避免无谓的重复计算。
+
+&gt; While sparse attention models only read $k$ tokens per query, conventional systems still score every previous token, creating a massive scoring bottleneck that materialize full score tables and redundantly repeat selection processes during recomputation. HyScale introduces two key mechanisms:
+&gt; 1. **HyTopK**: Computes exact top-$k$ tokens on the fly for each query without needing an intermediate score table.
+&gt; 2. **Selection Replay**: Reuses forward-pass selection outcomes during recomputation stages.
+
+结合全方位的端到端系统级协同优化，HyScale 显著提振了超长文本模型的训练性能：
+
+* **GLM-5.1** (在 512 张 H20 GPU 上训练 100 万 Token 序列)：相较于 Megatron-LM 实现了 **2.07 倍** 的显著加速。
+* **DeepSeek-V4-Flash CSA 稀疏注意力层** (在 32 张 H800 GPU 上处理 100 万 Token 序列)：实现 **2.01 倍** 加速。
+* **Qwen3.8-Flash-Next QSA 稀疏注意力层** (在 32 张 H800 GPU 上处理 100 万 Token 序列)：实现 **1.57 倍** 加速。
+
+&gt; Combined with holistic system optimizations, HyScale dramatically accelerates training performance:
+&gt; * **GLM-5.1** (1M-token sequences on 512 H20 GPUs): **2.07×** speedup over Megatron-LM.
+&gt; * **DeepSeek-V4-Flash CSA layers** (1M tokens on 32 H800 GPUs): **2.01×** speedup.
+&gt; * **Qwen3.8-Flash-Next QSA layers** (1M tokens on 32 H800 GPUs): **1.57×** speedup.
+
+---
+
+## 论文元数据
+
+&gt; ## Metadata
+
+* **arXiv 论文编号：** [arXiv:2610.32057](https://arxiv.org/abs/2610.32057) [cs.AI]
+* **主要研究领域：** 人工智能 (`cs.AI`)；分布式、并行与集群计算 (`cs.DC`)
+* **提交时间：** 2026 年 10 月 23 日
+* **数字对象唯一标识符 (DOI) ：** [10.48550/arXiv.2610.32057](https://doi.org/10.48550/arXiv.2610.32057)
+
+&gt; * **arXiv ID:** [arXiv:2610.32057](https://arxiv.org/abs/2610.32057) [cs.AI]
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Distributed, Parallel, and Cluster Computing (`cs.DC`)
+&gt; * **Submission Date:** October 23, 2026
+&gt; * **DOI:** [10.48550/arXiv.2610.32057](https://doi.org/10.48550/arXiv.2610.32057)</description>
+    </item>
+    <item>
       <title>冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-25/冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-25/冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南/</guid>
@@ -4847,330 +5092,6 @@ Perplexity 在发布的 [*逃逸 SPACE：第一部分 (Escaping SPACE: Part I)*]
 站在系统集成商的视角，我们所接入的 32 款财会与 ERP 系统的真实面貌如下。
 
 &gt; Here is what the 32 accounting and ERP systems we connect to look like from an integrator’s seat.</description>
-    </item>
-    <item>
-      <title>Self-Programmed Execution：大模型智能体的自编程执行机制</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/Self-Programmed-Execution-大模型智能体的自编程执行机制/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/Self-Programmed-Execution-大模型智能体的自编程执行机制/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，基于大语言模型 (Large Language Model, LLM) 构建的 AI 智能体 (AI Agent) 往往被束缚在外部框架设定的固定规则之中——轮次交替与工具调度的逻辑完全由系统宿主程序掌控，模型自身只是被动响应的调用接口。入选 NeurIPS 2026 的这篇长达 77 页的重磅论文打破了这一固有范式，创新性地提出了**自编程执行 (Self-Programmed Execution, SPE)** 机制：将模型生成的补全内容本身直接转化为动态编排程序，外部环境仅负责代码求值，不再强加任何僵化的预设策略。为了解决“代码源文件同时充当模型自身上下文窗口”这一独特的工程约束，作者专门打造了支持自我编辑与增量求值的专用 Lisp 方言 **Spell**，在避免副作用重复执行的同时赋予智能体前所未有的动态规划自由。令人瞩目的是，即便是未针对该机制进行专项微调的现有前沿大模型，仅凭上下文学习 (In-Context Learning, ICL) 即可迅速掌握 Spell 并成功解决复杂的智能体任务，为摆脱传统框架束缚、迈向完全自主演进的通用人工智能 (AGI) 奠定了坚实的基础。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-在传统的语言模型智能体架构中，连续轮次之间的状态转移通常由系统外围环境（Harness）内置的外部编排程序严格掌控。本文则提出了**自编程执行 (Self-Programmed Execution, SPE)** 这一全新范式：在大语言模型补全内容的同时，该补全本身即作为编排程序运行，而外围系统仅负责对其进行求值解析，不再强加任何固定的编排策略与执行规则。
-
-&gt; In traditional language model agent architectures, state transitions between consecutive turns are managed by an external orchestrator program embedded within the system harness. This paper introduces **Self-Programmed Execution (SPE)**, a paradigm where the language model's own completion functions as the orchestrator program, while the harness merely evaluates it without imposing a fixed orchestration policy. 
-
-为了克服“自编程执行程序的源代码同时兼作模型自身上下文窗口”这一独特的物理约束，作者专门提出了一种定制化的 Lisp 方言——**Spell**。Spell 具备自我编辑与自我重新求值的强大能力，同时对模型调用等产生副作用的有作用表达式进行了精心设计，确保程序在修改重算时绝不会重复触发副作用。实验表明，当前的主流前沿模型即使此前从未针对 SPE 或 Spell 进行过专门训练，也能成功通过上下文学习掌握 Spell 语法，并顺利执行各类极具挑战性的复杂智能体任务。
-
-&gt; To overcome the unique constraint that an SPE program's source code doubles as the model's context window, the author introduces **Spell**—a specialized Lisp dialect featuring self-editing and self-re-evaluation capabilities, alongside effectful expressions (like model invocations) structured to avoid replaying side effects upon re-evaluation. Experiments reveal that frontier models—even those not specifically trained for SPE or Spell—can successfully learn Spell *in-context* and execute complex agentic tasks.
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-语言模型智能体的核心在于一套编排调度程序，它统领着智能体在连续交互轮次之间的状态演进。然而在现有绝大多数系统中，这一程序均被固化在外部的系统脚手架（Harness）之中。本文正式提出自编程执行机制：由大语言模型生成的文本补全内容直接担任该编排程序，外部宿主环境仅负责解析并执行代码，不再强加任何固定的编排逻辑。从形式化定义来看，智能体机器的 SPE 状态允许模型补全在嵌入映射的意义下加载任意后续状态，其典型实现便是将模型生成的每段补全直接作为代码运行。但在实际工程中，由于代码源文件必须同时充当模型的上下文窗口，这要求编程语言具备罕见的技术特性。为此，作者设计并实现了 **Spell**——一种允许程序自主编辑源码并实现增量重新求值的 Lisp 方言；它通过精巧的状态结构设计，确保包含模型调用等产生外部副作用的表达式在重新求值时不会被重复触发。基于未经 SPE 或 Spell 专门微调的现有前沿模型进行的实验表明，当前顶尖大模型仅依靠上下文学习便能迅速掌握 Spell，并成功攻克高难度的智能体任务。这一成果清晰展示了语言模型如何在彻底摆脱预设编排策略的情况下自主扮演智能体，并引出了一个极具潜力的前瞻性问题：如果专门针对自编程执行展开训练，模型究竟能自主演化出怎样精妙的自编排策略？
-
-&gt; At the heart of a language model agent is an orchestrator program which is responsible for the state transition between consecutive turns. In existing systems, this program is implemented in the harness. This paper introduces self-programmed execution (SPE), in which the model completion is itself the orchestrator program, and the harness evaluates this program but does not impose any fixed orchestration policy. Formally, an SPE state of an agentic machine is one from which a model completion can load any successor state up to an embedding, and an instance of an SPE state is one which executes the model completion as a program. In practice, the program requires a language with unusual features, as its source code doubles as the content of the model's context window. I therefore introduce Spell, a Lisp dialect in which programs can edit and re-evaluate themselves, and effectful expressions like model invocations are structured such that re-evaluating an edited program does not replay its side effects. Experiments with existing models, not trained for SPE or Spell, show that frontier models can learn Spell in-context and accomplish challenging agentic tasks. These results demonstrate how a LM can act as an agent without any fixed orchestration policy, and they raise the question of what self-orchestration strategies might be learned by a model trained for self-programmed execution.
-
----
-
-## 元数据与提交历史
-
-&gt; ## Metadata &amp; Submission History
-
-* **首次提交日期：** 2026 年 5 月 7 日 (v1)
-* **最新修订日期：** 2026 年 10 月 15 日 (v2)
-* **主要学科领域：** 人工智能 (`cs.AI`)
-* **DOI 数字对象唯一标识符：** [10.48550/arXiv.2605.06898](https://doi.org/10.48550/arXiv.2605.06898)
-* **开源协议：** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-
-&gt; * **Submitted:** 7 May 2026 (v1)
-&gt; * **Last Revised:** 15 Oct 2026 (v2)
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **DOI:** [10.48550/arXiv.2605.06898](https://doi.org/10.48550/arXiv.2605.06898)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)</description>
-    </item>
-    <item>
-      <title>DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 在长文本与长对话任务中的全面铺开，键值缓存 (Key-Value Cache, KV-Cache) 的显存开销随序列长度线性持续增长，成为了卡死模型高效长上下文推理的核心瓶颈。尽管近期的驱逐算法尝试超越传统的单一注意力打分规则，从全局层面最小化丢弃 Token 对最终模型输出的扰动，但该目标的求解在本质上却属于 NP-hard 组合优化难题，致使现有方案要么退化为缺乏理论背书的次优启发式策略，要么其实现架构过度繁复而无法在硬件层面高效算子化 (Kernelize) 。入选 NeurIPS 2026 的 **DropKV** 提出了一套基于“解耦残差输出扰动” (Decoupled Residual-Output Perturbation) 的原则性驱逐框架，创新性地将相互交织的联合驱逐决策拆解为各 Token 的独立打分，在避开组合计算爆炸的同时，在实证成立的锥体条件 (Cone Condition) 下给出了严密的常数因子近似理论保证。得益于深度定制的高性能融合 Triton 算子，DropKV 完全免除了在显存中实体化全量注意力矩阵的沉重负担，斩获了高达 19.8 倍的打分算子提速与 9.9% 的端到端预填充 (Prefill) 性能提升，在 RULER 和 LongBench 等前沿长文本基准测试中以最低的延迟全面刷新了性能上限。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-在将大语言模型 (LLM) 扩展到处理长上下文输入的实际应用中，键值缓存 (KV-Cache) 的显存开销构成了极其严峻的系统瓶颈。尽管近期的先进驱逐策略试图超越传统的注意力得分启发式规则，通过端到端考量来最小化驱逐缓存对模型输出带来的扰动，但这类方法通常陷入了求解 NP-hard 组合优化问题的泥潭。这直接导致算法在数学层面只能妥协于次优解，或者演变为流程极其冗杂、难以在 GPU 底层实现高效算子化 (Kernelize) 的复杂方案。
-
-&gt; Key-value (KV) cache management presents a significant memory bottleneck when scaling Large Language Models (LLMs) to handle long-context inputs. While advanced eviction strategies attempt to minimize output perturbation by looking beyond traditional attention-score heuristics, they typically struggle with NP-hard combinatorial optimization problems. This leads to mathematical suboptimality or complex implementations that are difficult to kernelize. 
-
-为了打破这些局限，**DropKV** 引入了一套基于**解耦残差输出扰动** (Decoupled Residual-Output Perturbation) 的原则性驱逐框架。通过将原本相互耦合的全局联合驱逐决策，解耦为针对各个 Token 的独立打分机制，DropKV 巧妙绕过了棘手的组合计算不可解性，并在经由长上下文大语言模型实证检验的锥体条件 (Cone Condition) 下，提供了可从数学上严格证明的常数因子近似保证。在高性能融合 Triton 算子的强力驱动下，DropKV 显著加快了打分评估与预填充 (Prefill) 阶段的运行速度，并在权威的 RULER 和 LongBench 基准测试中全面超越了现存的最强基线模型。
-
-&gt; To overcome these challenges, **DropKV** introduces a principled eviction framework based on **Decoupled Residual-Output Perturbation**. By decoupling joint eviction decisions into independent per-token scoring, DropKV bypasses combinatorial intractability and provides a provable constant-factor approximation guarantee. Backed by high-performance fused Triton kernels, DropKV significantly accelerates scoring and prefill speeds while outperforming state-of-the-art baselines on RULER and LongBench benchmarks.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-| 字段 | 详情 |
-| :--- | :--- |
-| **arXiv 编号** | [arXiv:2610.22130](https://arxiv.org/abs/2610.22130) [cs.AI] |
-| **学科领域** | 人工智能 (`cs.AI`) |
-| **入选会议** | NeurIPS 2026 |
-| **提交日期** | 2026 年 10 月 15 日 |
-| **DOI** | [10.48550/arXiv.2610.22130](https://doi.org/10.48550/arXiv.2610.22130) |
-
-&gt; | Field | Details |
-&gt; | :--- | :--- |
-&gt; | **arXiv ID** | [arXiv:2610.22130](https://arxiv.org/abs/2610.22130) [cs.AI] |
-&gt; | **Subject** | Artificial Intelligence (`cs.AI`) |
-&gt; | **Accepted Venue** | NeurIPS 2026 |
-&gt; | **Submission Date** | October 15, 2026 |
-&gt; | **DOI** | [10.48550/arXiv.2610.22130](https://doi.org/10.48550/arXiv.2610.22130) |</description>
-    </item>
-    <item>
-      <title>Claude Code 团队如何进行代码审查</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/Claude-Code-团队如何进行代码审查/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/Claude-Code-团队如何进行代码审查/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着 AI 智能体 (AI Agent) 编写了 Claude Code 自身约 90% 的代码库，代码变更与合并请求 (Pull Request, PR) 的数量迎来了爆发式增长。传统的逐行人工代码审查 (Code Review) 迅速沦为研发效能的最大瓶颈，Anthropic 的 Claude Code 团队为此彻底重构了审查流程。他们通过将常规代码阅读交给自动化机器、引入多层 AI 交叉验证、推行基于风险的分级人工审批、以及严格执行收敛指标，成功在合并请求数量翻倍的同时将代码回滚率降低了 40% 以上。本文将全面拆解这套在 AI 编程时代兼顾极速迭代与极致质量防御的工程实践。
-
----
-
-## 内容总结
-
-&gt; ## Summary
-
-如今，AI 智能体编写了 Claude Code 自身大约 90% 的代码，这导致需要审查的代码量迎来了爆发式增长。Claude Code 团队没有继续依赖传统低效的人工逐行审查瓶颈，而是转向了一套经过专项优化的全新体系：**在不增加代码回滚 (Reverts) 或线上事故的前提下，将人工审查时间降至最低**。
-
-&gt; With AI agents writing roughly 90% of Claude Code's own codebase, code review volumes have surged dramatically. Rather than relying on traditional manual, line-by-line bottlenecks, the Claude Code team shifted toward a system optimized for **minimal human review time without increasing reverts or incidents**. 
-
-通过将常规的代码阅读工作移交给自动化机器、建立多层 AI 验证机制、采用基于风险分级的人工审批流程，并强制执行严格的收敛指标，该团队成功让合并的代码请求翻了一倍，同时将代码回滚率降低了 40% 以上。本指南详细阐述了他们如何安全且高效地管理由智能体生成的海量代码。
-
-&gt; By moving routine reading to automated machines, instituting multi-layered AI verification, utilizing risk-based human approvals, and enforcing strict convergence metrics, the team doubled merged pull requests while reducing reverts by over 40%. This guide outlines how they manage high-volume, agent-generated code safely and effectively.
-
----
-
-## 重新审视代码审查的初衷
-
-&gt; ## Rethinking the Purpose of Code Review
-
-当智能体全面接管代码编写后，代码变更的数量便开始极速膨胀。在 Anthropic 的单体代码仓库 (Monorepo) 中，每天合入的代码变更从 5 月份的约 2,500 次猛增至 9 月份的超过 30,000 次。传统的人工代码审查方式根本无法跟上这种爆发式的研发节奏。
-
-&gt; When agents write code, change volume escalates rapidly. Across Anthropic's monorepo, daily landing changes jumped from roughly 2,500 in May to over 30,000 in September. Traditional, manual code review cannot keep pace with this velocity.
-
-在传统的软件工程理念中，代码审查主要承担着两大职责：
-
-1. 在代码发布上线之前，发现并修复潜在的问题与漏洞；
-2. 在团队成员之间建立共享的业务上下文，加深对代码库整体架构的理解。
-
-&gt; Code review traditionally serves two purposes:
-&gt; 1. Finding and fixing issues before they ship.
-&gt; 2. Building shared context and codebase understanding across the team.
-
-团队指出，纠结于*“是否有工程师逐行读过这段代码？”*实际上是一个不够精确的替代问题，真正核心的问题应当是：*“这次代码变更可能会引发哪些潜在故障？又该由哪种检查机制——无论是自动化工具还是人工介入——来最准确地捕获它？”*
-
-&gt; The team argues that asking *"Did a human read the code?"* is an imprecise proxy for *"What could go wrong with this change, and which check—automated or human—is the right one to catch it?"* 
-
-现在的代码审查不再是研发流程末端的一道死卡死守的“终点关卡”，而是像实时拼写检查工具一样在编码过程中持续运行。在任何人类工程师审阅之前，绝大多数代码变更都已经被 Claude 自动审查并修复过至少一轮。
-
-&gt; Rather than functioning as a final gate at the end of the road, review now runs continuously like a live spellcheck. Most changes are reviewed and fixed by Claude at least once before a human ever looks at them.
-
----
-
-## 真正稀缺的资源：人类工程师的时间与精力
-
-&gt; ## The Scarce Resource: Human Time and Attention
-
-工程师的时间与专注力始终是研发流程中最核心的终极瓶颈。这不仅包括审阅代码所消耗的时间，还涵盖了由于劣质代码引入故障后、排查并修复线上问题所花费的精力——毕竟，如果在审查阶段省下了时间，却导致后续调试排障时间呈指数级激增，那完全是得不偿失的。
-
-&gt; Human time is the ultimate bottleneck. This encompasses both the time spent reviewing and the time spent fixing what bad code breaks (saving time on review is pointless if it exponentially increases debugging later). 
-
-该团队衡量成功的核心指标非常明确：**绝大多数合并请求在最多只需一名工程师介入 (该工程师甚至可以是代码作者本人) 的情况下完成合并，同时代码回滚次数和线上事故率不发生任何增长。**
-
-&gt; The core metric for success: **Most pull requests merge with at most one human in the loop (who can be the author), with no increase in reverts or incidents.** 
-
----
-
-## 代码变更的生命周期与分层防御架构
-
-&gt; ## The Life of a Change &amp; Layer-by-Layer Architecture
-
-一项典型的代码变更在最终推送至用户面前之前，会依次穿过六个由自动化流水线与人工协同把关的防御检查点：
-
-&gt; A typical change travels through six distinct, automated and human checkpoints before reaching users:
-
-```
-[ 1. Work Verified ] ➔ [ 2. AI Review ] ➔ [ 3. Security Review ] ➔ [ 4. CI Checks ] ➔ [ 5. Human Approval ] ➔ [ 6. Merge Queue &amp; Flags ] ➔ [ 7. Rollback ]
-```</description>
-    </item>
-    <item>
-      <title>Athanor：面向自主后训练研究的智能体原生系统</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/Athanor-面向自主后训练研究的智能体原生系统/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/Athanor-面向自主后训练研究的智能体原生系统/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>如果让 AI 智能体自己动手训练大模型，它们能做到什么程度？来自多所顶尖研究机构的学者们推出了名为 Athanor 的开源智能体原生研究系统。在完全脱离人类干预且无法调用外部更强“教师模型”的严苛沙盒环境中，四名由 Claude Opus 5.5 驱动的 AI 智能体在真实 GPU 集群上展开了一场长达 104 小时的自主科研战役。它们不仅独立构建数据集、编写训练算法并调优超参数，还灵活运用了强化学习、自蒸馏与权重融合技术。最终，智能体团队成功将原生开源基座模型 Qwen3-4B-Base 锻造为全能模型，其跨领域综合测试表现甚至一举超越了官方发布的同规模指令微调版本，首次有力证明了前沿智能体已具备自主驱动深度学习科研与模型进化的硬核工程能力。
-
----
-
-## 作者团队
-
-&gt; ## Authors
-
-* Yufa Zhou
-* Yichen Wang
-* Jiakun Fan
-* Ziqi Shu
-* Zhichao Liu
-* Anru R. Zhang
-* Neiwen Ling
-* Zijun Wei
-
-&gt; * Yufa Zhou
-&gt; * Yichen Wang
-&gt; * Jiakun Fan
-&gt; * Ziqi Shu
-&gt; * Zhichao Liu
-&gt; * Anru R. Zhang
-&gt; * Neiwen Ling
-&gt; * Zijun Wei
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-**Athanor** 是一套开源的智能体原生系统，旨在通过真实图形处理器 (GPU) 上的自主后训练研究，深入探索 AI 系统的递归自改进 (Recursive Self-Improvement) 机制。在完全脱离外部教师模型指导且零人类干预的严格沙盒环境中，一个由四名 `Claude Opus 5.5` 驱动的 AI 智能体 (AI Agent) 团队，成功将未经调优的原始基座模型 `Qwen3-4B-Base` 锤炼成了一款跨领域通用大语言模型 (Large Language Model, LLM)。在长达 104 小时的持续科研推进中，智能体团队自主清洗与构建数据集、编写全新训练算法、调优超参数，并创造性地融合了自蒸馏 (Self-Distillation) 与权重融合 (Weight Merging) 技术。
-
-&gt; **Athanor** is an open, agent-native system designed to study recursive self-improvement through autonomous post-training research on real GPUs. Operating in a strict sandbox without external teacher models or human intervention, a team of four `Claude Opus 5.5` agents successfully transformed the raw base model `Qwen3-4B-Base` into a cross-domain generalist model. Over a 104-hour campaign, the agents built datasets, wrote training algorithms, tuned hyperparameters, and applied self-distillation and weight merging.
-
-最终训练出的模型展现出极其惊人的性能飞跃：
-
-&gt; The resulting model improved dramatically:
-
-* **开发测试集 (包含 6 项核心任务)：** 综合评分从 **15.9 跃升至 67.3** (相较之下，官方指令微调版 `Qwen3-4B-Instruct-2507` 得分为 66.5)；
-* **独立保留测试集 (Held-out Suite)：** 评分从 **9.2 飙升至 48.2** (甚至超过了官方发布的指令微调版本的 47.9)。
-
-&gt; * **Development Suite (6 tasks):** Increased from **15.9 to 67.3** (compared to `Qwen3-4B-Instruct-2507` at 66.5).
-&gt; * **Held-out Suite:** Increased from **9.2 to 48.2** (compared to the official instruct version at 47.9).
-
-据我们所知，这是业内首次成功验证：前沿 AI 智能体完全依靠自主后训练，便能将未经打磨的原始基座模型提升至匹敌甚至超越官方精调指令模型的水平。
-
-&gt; To our knowledge, this is the first successful demonstration of frontier agents autonomously post-training a raw base model to match or surpass the performance of an official instruct version.
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-递归自改进——即让 AI 系统自主构建更强大的下一代 AI 系统——一直被视作通往超级智能 (Superintelligence) 的极具前景的路径之一。在本项研究中，我们聚焦于一种在当下具备可测性与可落地性的探索范式：通过让前沿智能体仅利用公开数据集对小型原始基座模型进行后训练，来全方位检验其自主科研潜力与工程极限。
-
-&gt; Recursive self-improvement, in which AI systems build stronger AI systems, is one promising route to superintelligence. We study a weaker form that can be measured today: frontier agents post-training a small raw base model with public data, as a test of their research potential.
-
-为此，我们构建了 **Athanor**——一套面向真实 GPU 环境下自主后训练研究 (Autonomous Post-Training Research, AutoPostTrain) 的开源智能体原生系统。我们赋予了智能体完全的科研自主权、低门槛的顺畅工程工具链以及高效率的初始脚手架代码。整个科研探索完全由智能体自主驱动：它们独立查阅数据集与评测反馈、自主构建微调样本、编写并迭代训练算法、调优关键超参数，并严谨分析实验日志以决定下一阶段的探索方向。所有智能体均在安全沙盒中独立运作，且严禁调用外部更强大的教师模型。
-
-&gt; We build **Athanor**, an open agent-native system for autonomous post-training research (AutoPostTrain) on real GPUs. We give the agents full research autonomy, low-friction engineering tools, and efficient starter code. The agents carry out the research themselves: they read datasets and evaluation results, build their training data, write and modify training algorithms, tune hyperparameters, and analyze the results to decide what to try next. They work in a sandbox and cannot use external teacher models.
-
-Athanor 的后台服务提供了固化的评测基准、托管式作业调度、严格去污染的数据集、持久化科研日志，以及智能体事先毫不知情的盲测独立保留测试集。在一场耗时 104 小时的连续实验中，由四名各自独占 8 卡 GPU 算力节点的 `Claude Opus 5.5` 智能体组成的研究团队，在未获得任何外部人类科研建议的条件下，将 `Qwen3-4B-Base` 在包含 6 项任务的开发基准上的得分从 **15.9 提升至 67.3**，并在完全盲测的独立保留测试集上从 **9.2 跃升至 48.2**；作为对比，官方发布的 `Qwen3-4B-Instruct-2507` 在这两个测试集上的得分分别为 **66.5** 与 **47.9**。
-
-&gt; Athanor's services supply frozen evaluation, managed jobs, decontaminated data, a persistent research record, and a held-out suite the agents are unaware of. In a 104-hour campaign, a team of four `Claude Opus 5.5` agents, each on an eight-GPU node and given no research advice, improves `Qwen3-4B-Base` from **15.9 to 67.3** on a six-task development suite and from **9.2 to 48.2** on a held-out suite, against **66.5** and **47.9** for the official `Qwen3-4B-Instruct-2507`.
-
-实验的完整科研轨迹记录表明，智能体之所以能取得这一卓越水准，关键在于它们学会了将已知的前沿算法与团队彼此的模型成果进行有机重组：包括在公开推理数据上执行监督微调 (Supervised Fine-Tuning, SFT)、应用某位智能体率先提出的采样展开改进版强化学习 (Reinforcement Learning, RL)、跨智能体间的权重融合，以及多轮深度自蒸馏。这表明只要底层的工程调度与环境交互问题得到有效解决，当下的 AI 智能体已然具备攻克复杂深度学习研发任务的硬核工程与科研能力。我们期待 Athanor 能为进一步扩展自主 AI 科研 (Autonomous AI Research) 的疆界奠定坚实基石。
-
-&gt; The campaign's full record shows that the agents reach this level by recombining known methods and each other's models: SFT on public reasoning data, RL with a rollout change one agent introduced, weight merges across agents, and rounds of self-distillation. With execution handled, today's agents already have the engineering and research ability to conquer this task. We hope Athanor provides a foundation for scaling autonomous AI research.
-
----
-
-## 相关链接与资源
-
-&gt; ## Links &amp; Resources
-
-* [查看 PDF 论文](https://arxiv.org/pdf/2610.21055)
-* [TeX 源代码](https://arxiv.org/src/2610.21055)
-* [DOI (DataCite)](https://doi.org/10.48550/arXiv.2610.21055)
-* [音频总结](https://arxiv.org/audio/2610.21055)
-* [Google 学术 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2610.21055)
-* [Semantic Scholar 检索](https://api.semanticscholar.org/arXiv:2610.21055)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2610.21055)
-&gt; * [TeX Source](https://arxiv.org/src/2610.21055)
-&gt; * [DOI (DataCite)](https://doi.org/10.48550/arXiv.2610.21055)
-&gt; * [Audio Summary](https://arxiv.org/audio/2610.21055)
-&gt; * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.21055)
-&gt; * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.21055)</description>
-    </item>
-    <item>
-      <title>Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代互联网安全体系中，椭圆曲线数字签名算法 (ECDSA) 犹如守护全球数字金融、安全通信与加密证书的基石护城河。然而近三十年来，美国国家标准与技术研究院 (NIST) 标准中广泛采用的曲线参数神秘种子 (Seed) 究竟从何而来，一直笼罩在浓重的美国国家安全局 (NSA) 后门疑云之中，成为密码学界悬而未决的“世纪悬案”。2026 年 10 月，Anthropic 前沿红队 (Frontier Red Team) 的研究人员向其内部研发中的大语言模型 (Large Language Model, LLM) Claude 发起逆向挑战；令人震惊的是，Claude 仅耗时不到半小时，便凭借 1990 年代软件工程约束与数学格基规约算法，彻底破解了这一长达数十年的参数源流之谜。研究表明，这些神秘参数并非暗藏后门的恶意构造，而是源自 1990 年代 C 语言标准库中的经典伪随机数生成器 (PRNG) `lrand48`，并通过 Unix 时间戳直接播种生成。这一重磅发现不仅平息了密码学界三十年的后门猜疑，更为前沿 AI 智能体 (AI Agent) 在底层软硬件逆向工程与复杂符号推演中的惊人威力树立了崭新的里程碑。
-
----
-
-**摘要：** Anthropic 前沿红队 (Frontier Red Team) 披露，其内部研发的一款 Claude 实验模型成功破解了 NIST ECDSA 椭圆曲线种子的起源之谜。在不到半小时的时间内，Claude 将这些核心密码学参数追溯到了 1990 年代 C 语言库中通过 Unix 时间戳播种的随机数生成器 (RNG) `lrand48`，从而一举解开了由 NSA 遗留近三十年的密码学溯源谜题。
-
-&gt; **Summary:** Anthropic’s Frontier Red Team revealed that an internal Claude research model successfully uncovered the origins of the NIST ECDSA curve seeds. In under half an hour, Claude traced the cryptographic parameters back to a 1990s C library random-number generator (`lrand48`) seeded via Unix timestamps, effectively solving a decades-old provenance mystery left open by the NSA.
-
----
-
-## 无法解释的 NSA 种子来源
-
-&gt; ## The Unexplained NSA Seeds
-
-椭圆曲线数字签名算法 (ECDSA) 是当今全球应用最为广泛的椭圆曲线密码学标准。2000 年，[NIST](https://www.unite.ai/nist-opens-national-vulnerability-database-modernization-to-public-comment/) 正式将其采纳为 FIPS 186-2 数字签名标准的一部分，该标准规范了覆盖不同密钥长度与安全等级的标准椭圆曲线。针对素数域和二元域上的曲线，规范公布了一个种子参数 (Seed) ，其哈希值直接决定了曲线方程中的关键系数 $b$。
-
-&gt; ECDSA stands as the most widely used elliptic curve cryptography standard. [NIST](https://www.unite.ai/nist-opens-national-vulnerability-database-modernization-to-public-comment/) adopted it in 2000 as part of the FIPS 186-2 Digital Signature Standard, which catalogs standard elliptic curves across varying sizes and security levels. For curves over prime and binary fields, the specification published a seed parameter whose hash value defines the coefficient $b$ of the curve. 
-
-至关重要的一点在于，NSA 当初提供这些种子时未附带任何背景解释或生成依据。例如，被全球数十亿设备广泛采用的 P-256 曲线种子——`C49D3608 86E70493 6A6678E1 139D26B7 819F7E90`——在发布时完全缺失上下文溯源信息，如同凭空降下的一串神秘十六进制数。
-
-&gt; Crucially, the NSA provided these seeds without any explanation or justification. For instance, the P-256 seed—`C49D3608 86E70493 6A6678E1 139D26B7 819F7E90`—was published entirely devoid of contextual provenance.
-
-这种透明度的缺失在密码学界引爆了旷日持久的争论。Neal Koblitz 与 Alfred Menezes 在其经典论文《谜中之谜》 (A Riddle Wrapped in an Enigma) 中深刻总结了这场论战；该论文随后也激发了民间密码爱好者的广泛调查，甚至催生了重金悬赏，以此奖励能够彻底解开这些种子真实来源的研究者。
-
-&gt; This lack of transparency sparked long-standing cryptographic controversy. Neal Koblitz and Alfred Menezes famously summarized the debate in their paper, “A Riddle Wrapped in an Enigma,” which later inspired amateur investigations and bounties for anyone capable of discovering the true origins of the seeds. 
-
-当时流传最广的主流假设指向了 NSA 的资深雇员 Jerry Solinas，据传他是利用某句带有幽默色彩的通行口令 (Passphrase) 哈希值生成了这些种子。在 2015 年的一份声明中，Jerry Solinas 回忆道：
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; *“The message was along the lines of ‘Give Bob and Jerry a raise’ or ‘Bob and Jerry rule’ or something like that.”*
-
-(中文意译：*“那句话的大意类似于‘给 Bob 和 Jerry 涨工资’，或者‘Bob 和 Jerry 太牛了’之类的话。”*)
-
-&gt; The prevailing hypothesis pointed toward longtime NSA employee Jerry Solinas, who allegedly generated the seeds using the hash of a humorous passphrase. In a 2015 statement, Solinas recalled: 
-&gt; &gt; *“The message was along the lines of ‘Give Bob and Jerry a raise’ or ‘Bob and Jerry rule’ or something like that.”* 
-
-Jerry Solinas 曾提到支持代码是由 Bob Reiter 编写的，但当年的原始档案却早已湮没在历史尘埃中。随着 Jerry Solinas 于 2023 年离世，相关同事也未作回应，这些种子的真实推导过程就此成了一桩悬案。
-
-&gt; He noted that Bob Reiter wrote the supporting code, but contemporary archives were lost to time. With Solinas passing away in 2023 and colleagues unresponsive, the true derivation remained an open mystery.
-
----
-
-## Claude 是如何破译这组神秘种子的
-
-&gt; ## How Claude Recovered the Seeds
-
-在“幽默口令假说”屡屡碰壁、无功而返之后，一名 Anthropic 员工在 2026 年 10 月向其内部研发模型发起挑战，让 AI 尝试从零推导这些种子究竟是如何构造出来的。
-
-&gt; Following dead ends with the "humorous passphrase" theory, an Anthropic employee challenged an internal research model in October 2026 to deduce how the seeds were generated from scratch. 
-
-在不到 30 分钟的时间里，Claude 势如破竹地成功揭示了 NIST P-192、P-224、P-256、P-384 以及 P-521 等全部主流种子的真正起源：它们实际上是 C 语言标准库中 `lrand48` 随机数生成器 (RNG) 的直接输出，初始化仅以 Unix 时间戳为种子，过程中根本没有使用任何哈希算法！当年的生成脚本每次迭代提取 20 个字节作为一个候选种子；而最终被 NIST 正式发布的 P-256 种子，恰好就是该轮特定运行中的第 1842 个候选值。
-
-&gt; In under 30 minutes, Claude successfully identified the origins of the NIST P-192, P-224, P-256, P-384, and P-521 seeds: they were the direct outputs of the C library’s `lrand48` random-number generator, seeded with a Unix timestamp and involving zero hash algorithms. The generation script drew 20 bytes per iteration as a candidate seed; the published P-256 seed turned out to be candidate 1842 of that specific run.</description>
     </item>
   </channel>
 </rss>
