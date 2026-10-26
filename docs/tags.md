@@ -244,6 +244,7 @@ title: 标签浏览
 - [构建智能体：何时应当将子智能体合并回主智能体循环](blog/posts/2026-10-23-构建智能体-何时应当将子智能体合并回主智能体循环.md)
 - [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
+- [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 
 ## AI 智能体安全
 
@@ -555,6 +556,10 @@ title: 标签浏览
 ## AI隐私
 
 - [MOSAIC：安全 AI 计算的掩码外包方案](blog/posts/2026-08-27-MOSAIC：安全 AI 计算的掩码外包方案.md)
+
+## AKV
+
+- [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 
 ## ALTK-Evolve
 
@@ -1228,6 +1233,7 @@ title: 标签浏览
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 - [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
+- [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 
 ## Claude 5
 
@@ -1991,6 +1997,7 @@ title: 标签浏览
 ## Gated DeltaNet
 
 - [为什么门控DeltaNet能在4位量化下存活：混合27B大模型循环部分的NVFP4 W4A4技术解析](blog/posts/2026-09-05-为什么门控DeltaNet能在4位量化下存活：混合27B大模型循环部分的NVFP4 W4A4技术解析.md)
+- [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 
 ## Gated-BEPO
 
@@ -2246,6 +2253,10 @@ title: 标签浏览
 
 - [Humanize：面向智能体编码的判断力工程与构建者-审查者双模型协同框架](blog/posts/2026-10-09-Humanize-面向智能体编码的判断力工程与构建者-审查者双模型协同框架.md)
 
+## HyScale
+
+- [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
+
 ## HybridProver
 
 - [HybridProver：通过大模型驱动的证明合成与精炼增强定理证明](blog/posts/2026-08-29-HybridProver：通过大模型驱动的证明合成与精炼增强定理证明.md)
@@ -2449,6 +2460,8 @@ title: 标签浏览
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
+- [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
+- [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 
 ## KV Cache 压缩
 
@@ -3512,6 +3525,10 @@ title: 标签浏览
 
 - [OpWeave：面向异构大模型推理服务的灵活算子级解耦框架](blog/posts/2026-09-16-OpWeave-面向异构大模型推理服务的灵活算子级解耦框架.md)
 
+## OpenAttention
+
+- [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
+
 ## OpenEnv
 
 - [使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型](blog/posts/2026-09-04-使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型.md)
@@ -4098,6 +4115,7 @@ title: 标签浏览
 
 - [具备权威性的AI：从应用层到硅片](blog/posts/2026-08-25-具备权威性的AI：从应用层到硅片.md)
 - [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
+- [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 
 ## RLS
 
@@ -4339,6 +4357,7 @@ title: 标签浏览
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
+- [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 
 ## SHACL
 
@@ -5054,6 +5073,10 @@ title: 标签浏览
 ## Transpiler
 
 - [Fortran 通用转译器：概念验证](blog/posts/2026-08-11-Fortran 通用转译器：概念验证.md)
+
+## TreeWY
+
+- [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 
 ## Triton
 
@@ -8111,6 +8134,7 @@ title: 标签浏览
 - [AsyncFlow：面向高效大模型后训练的异步流式强化学习框架](blog/posts/2026-09-15-AsyncFlow-面向高效大模型后训练的异步流式强化学习框架.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
+- [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
 
 ## 分布式验证
 
@@ -11607,6 +11631,8 @@ title: 标签浏览
 - [尖锐方向与你背道而驰：大语言模型激活引导的曲率分析与方向修正](blog/posts/2026-10-15-尖锐方向与你背道而驰-大语言模型激活引导的曲率分析与方向修正.md)
 - [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
 - [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
+- [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
+- [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 
 ## 大语言模型代理
 
@@ -12501,6 +12527,10 @@ title: 标签浏览
 ## 尼日利亚皮钦语
 
 - [Wazobia Eval：尼日利亚皮钦语情感理解、讽刺检测与文化推理基准](blog/posts/2026-08-26-Wazobia Eval：尼日利亚皮钦语情感理解、讽刺检测与文化推理基准.md)
+
+## 尾部代理
+
+- [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
 
 ## 局部学习
 
@@ -13603,6 +13633,7 @@ title: 标签浏览
 - [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
 - [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 - [共识算法研究的终结？AI 智能体如何自主发现新一代分布式共识协议](blog/posts/2026-10-23-共识算法研究的终结-AI-智能体如何自主发现新一代分布式共识协议.md)
+- [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 
 ## 形式语言学
 
@@ -14497,6 +14528,7 @@ title: 标签浏览
 - [S2-MoE：在边缘设备上实现高效的混合专家模型自推测解码](blog/posts/2026-08-21-S2-MoE：在边缘设备上实现高效的混合专家模型自推测解码.md)
 - [用于加速工具使用型智能体的推测性宏指令提交（Speculative Macro Commit）](blog/posts/2026-09-05-用于加速工具使用型智能体的推测性宏指令提交（Speculative Macro Commit）.md)
 - [SpecFold：折叠多分支计算冗余加速扩散大语言模型推测解码](blog/posts/2026-10-08-SpecFold-折叠多分支计算冗余加速扩散大语言模型推测解码.md)
+- [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 
 ## 推演剪枝
 
@@ -15853,6 +15885,7 @@ title: 标签浏览
 - [UltraQuant：面向重度上下文智能体的 4-bit KV Cache 压缩技术](blog/posts/2026-09-15-UltraQuant-面向重度上下文智能体的-4-bit-KV-Cache-压缩技术.md)
 - [直接问工具，别瞎猜：智能体工具调用自带运行进度，推理系统理应主动读取](blog/posts/2026-09-18-直接问工具别瞎猜-智能体工具调用自带运行进度-推理系统理应主动读取.md)
 - [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
+- [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 
 ## 显微镜控制
 
@@ -19059,6 +19092,10 @@ title: 标签浏览
 
 - [Golden Ruler：包含FP8、BF16、MXFP4及微标度格式位精确一致性向量的数字格式目录](blog/posts/2026-09-08-Golden Ruler：包含FP8、BF16、MXFP4及微标度格式位精确一致性向量的数字格式目录.md)
 
+## 清华大学
+
+- [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
+
 ## 渐近行为
 
 - [迈向双塔推荐模型的理论理解](blog/posts/2026-08-11-迈向双塔推荐模型的理论理解.md)
@@ -21176,6 +21213,8 @@ title: 标签浏览
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - [HISA：面向细粒度稀疏注意力的高效分层索引机制](blog/posts/2026-09-13-HISA-面向细粒度稀疏注意力的高效分层索引机制.md)
 - [解耦 Key 与 Value：非对称稀疏注意力 SAGA 让大模型长文本解码提速两倍](blog/posts/2026-10-08-解耦-Key-与-Value-非对称稀疏注意力-SAGA-让大模型长文本解码提速两倍.md)
+- [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
+- [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
 
 ## 稀疏自编码器
 
@@ -21571,6 +21610,7 @@ title: 标签浏览
 ## 算子优化
 
 - [FluxBin：通过算法与算子协同实现基于灵活查找表的超低比特大模型推理](blog/posts/2026-08-19-FluxBin：通过算法与算子协同实现基于灵活查找表的超低比特大模型推理.md)
+- [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
 
 ## 算子失配
 
@@ -21989,6 +22029,7 @@ title: 标签浏览
 - [GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构](blog/posts/2026-08-30-GLM-5.3-Flash 对比 Qwen3.8-Flash-Next：两家中国 AI 实验室如何独立收敛于相同的模型架构.md)
 - [动态路由器需要记忆吗？HeRo：面向高效大模型推理的历史感知路由机制](blog/posts/2026-09-10-动态路由器需要记忆吗？HeRo：面向高效大模型推理的历史感知路由机制.md)
 - [历史在此重演：利用原生重放释放线性注意力的百万长上下文能力](blog/posts/2026-10-15-历史在此重演-利用原生重放释放线性注意力的百万长上下文能力.md)
+- [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 
 ## 线性规划
 
@@ -25771,6 +25812,7 @@ title: 标签浏览
 ## 软件安全
 
 - [自动化安全补丁向后移植基准测试：我们距离成熟还有多远？](blog/posts/2026-08-20-自动化安全补丁向后移植基准测试：我们距离成熟还有多远？.md)
+- [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 
 ## 软件工程
 
@@ -26709,6 +26751,7 @@ title: 标签浏览
 - [HeadWiseKV：混合长上下文语言模型的按头预算化缓存驻留机制](blog/posts/2026-09-04-HeadWiseKV：混合长上下文语言模型的按头预算化缓存驻留机制.md)
 - [HISA：面向细粒度稀疏注意力的高效分层索引机制](blog/posts/2026-09-13-HISA-面向细粒度稀疏注意力的高效分层索引机制.md)
 - [历史在此重演：利用原生重放释放线性注意力的百万长上下文能力](blog/posts/2026-10-15-历史在此重演-利用原生重放释放线性注意力的百万长上下文能力.md)
+- [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
 
 ## 长上下文推理
 

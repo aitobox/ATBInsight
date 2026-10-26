@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-10-27**: [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 - **2026-10-25**: [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
 - **2026-10-24**: [深入理解与实现 LLM 中的 RMSNorm：从数学原理到 PyTorch 实战](blog/posts/2026-10-24-深入理解与实现-LLM-中的-RMSNorm-从数学原理到-PyTorch-实战.md)
 - **2026-10-23**: [Cactus Whistle 实战指南：16.9MB 轻量语音模型如何在 CPU 上硬刚 Whisper Base](blog/posts/2026-10-23-Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base.md)
