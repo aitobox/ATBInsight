@@ -529,6 +529,10 @@ title: 标签浏览
 
 - [规范优先的AI编码智能体收敛实践：在无测试预言机、无人工代码审查的情况下，对71.7万行代码库中189个文件的核心架构不变式进行拆解的案例研究](blog/posts/2026-08-16-规范优先的AI编码智能体收敛实践：在无测试预言机、无人工代码审查的情况下，对71.7万行代码库中189个文件的核心架构不变式进行拆解的案例研究.md)
 
+## AI网络
+
+- [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
+
 ## AI评估
 
 - [随机鹦鹉还是和谐共鸣？测试五大主流大模型利用合成数据复刻人类调查的能力](blog/posts/2026-08-07-随机鹦鹉还是和谐共鸣？测试五大主流大模型利用合成数据复刻人类调查的能力.md)
@@ -882,6 +886,10 @@ title: 标签浏览
 ## BEVPIPE
 
 - [算子失配困境：跨平台可移植 GPU 计算在自动驾驶 BEV 感知部署中的突破](blog/posts/2026-10-10-算子失配困境-跨平台可移植-GPU-计算在自动驾驶-BEV-感知部署中的突破.md)
+
+## BF16
+
+- [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 
 ## BFCL
 
@@ -1266,6 +1274,7 @@ title: 标签浏览
 ## Cloudflare
 
 - [Cloudflare 正式发布 Clef-omni：支持音视频与图文的全模态 30B 决策大模型](blog/posts/2026-10-13-Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型.md)
+- [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
 ## CoBa
 
@@ -1909,6 +1918,7 @@ title: 标签浏览
 - [面向存算分离 GPU 推理的拓扑感知数据传输技术](blog/posts/2026-08-11-面向存算分离 GPU 推理的拓扑感知数据传输技术.md)
 - [面向大规模 GPU 推理的 KV Cache 预测性多层内存管理](blog/posts/2026-08-11-面向大规模 GPU 推理的 KV Cache 预测性多层内存管理.md)
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+- [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
 ## GPU算子优化
 
@@ -1946,6 +1956,7 @@ title: 标签浏览
 - [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)
 - [阿里通义发布 Qwen-Audio-3.1-Realtime：具备自主思考、工具调用与话轮决策的全双工语音大模型](blog/posts/2026-09-30-阿里通义发布-Qwen-Audio-3.1-Realtime-具备自主思考-工具调用与话轮决策的全双工语音大模型.md)
 - [StoreBench：面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境](blog/posts/2026-10-10-StoreBench-面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境.md)
+- [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 
 ## GSM-Symbolic
 
@@ -2462,6 +2473,7 @@ title: 标签浏览
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
 - [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
 - [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
+- [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
 ## KV Cache 压缩
 
@@ -2557,6 +2569,11 @@ title: 标签浏览
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响.md)
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响.md)
 
+## Kimina-Prover
+
+- [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
+- [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
+
 ## Kolmogorov-Arnold Networks
 
 - [RecKAN：具有可学习递归多项式基的柯尔莫哥洛夫-阿诺德网络](blog/posts/2026-09-04-RecKAN：具有可学习递归多项式基的柯尔莫哥洛夫-阿诺德网络.md)
@@ -2593,10 +2610,18 @@ title: 标签浏览
 
 - [LEGO-RL：面向代码智能体的原生基架强化学习](blog/posts/2026-08-20-LEGO-RL：面向代码智能体的原生基架强化学习.md)
 
+## LEMS
+
+- [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
+
 ## LFM2.5
 
 - [基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布](blog/posts/2026-08-20-基于量化感知蒸馏的 LFM2.5 Q4_0 检查点发布.md)
 - [通过 100 步 GRPO 微调 350M 模型以获得更好的结构化输出](blog/posts/2026-09-04-通过 100 步 GRPO 微调 350M 模型以获得更好的结构化输出.md)
+
+## LFM3
+
+- [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 
 ## LLM
 
@@ -2809,6 +2834,8 @@ title: 标签浏览
 - [Lean Pool：由 AI 智能体自主维护与持续扩充的形式化数学知识库](blog/posts/2026-09-24-Lean-Pool-由-AI-智能体自主维护与持续扩充的形式化数学知识库.md)
 - [超越自然语言：专为自主科学研究打造的智能体原生形式化语言 Lara](blog/posts/2026-09-24-超越自然语言-专为自主科学研究打造的智能体原生形式化语言-Lara.md)
 - [ProofLoom：基于证明义务驱动的随机优化理论形式化构建系统](blog/posts/2026-09-30-ProofLoom-基于证明义务驱动的随机优化理论形式化构建系统.md)
+- [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
+- [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 
 ## Lean Pool
 
@@ -2891,6 +2918,7 @@ title: 标签浏览
 ## Liquid AI
 
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
+- [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 
 ## LiquidAI
 
@@ -3080,6 +3108,10 @@ title: 标签浏览
 ## MVCC
 
 - [Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库](blog/posts/2026-09-04-Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库.md)
+
+## MXFP4
+
+- [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 
 ## MXene
 
@@ -3564,6 +3596,10 @@ title: 标签浏览
 
 - [并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架](blog/posts/2026-08-11-并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架.md)
 
+## Oracle Cloud
+
+- [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
+
 ## OxyGen
 
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
@@ -3745,6 +3781,10 @@ title: 标签浏览
 
 - [PhysElite：大语言模型距离解决奥林匹克级物理题还有多远？](blog/posts/2026-08-29-PhysElite：大语言模型距离解决奥林匹克级物理题还有多远？.md)
 
+## Pinecone
+
+- [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
+
 ## PlanBench
 
 - [治理记录作为监督：用于结构化工作流修复的验证器选择自训练](blog/posts/2026-08-21-治理记录作为监督：用于结构化工作流修复的验证器选择自训练.md)
@@ -3789,6 +3829,7 @@ title: 标签浏览
 - [使用范围列（Range Columns）简化基于时间的查询](blog/posts/2026-08-13-使用范围列（Range Columns）简化基于时间的查询.md)
 - [post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎](blog/posts/2026-08-29-post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎.md)
 - [Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库](blog/posts/2026-09-04-Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库.md)
+- [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
 
 ## Postgres
 
@@ -4086,6 +4127,7 @@ title: 标签浏览
 ## RDMA
 
 - [面向存算分离 GPU 推理的拓扑感知数据传输技术](blog/posts/2026-08-11-面向存算分离 GPU 推理的拓扑感知数据传输技术.md)
+- [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
 
 ## REIN
 
@@ -4358,6 +4400,7 @@ title: 标签浏览
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
+- [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
 ## SHACL
 
@@ -4498,6 +4541,10 @@ title: 标签浏览
 ## SUMO
 
 - [SimSkill：用于自主掌握交通模拟的终身学习AI智能体](blog/posts/2026-09-05-SimSkill：用于自主掌握交通模拟的终身学习AI智能体.md)
+
+## SVD
+
+- [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
 
 ## SVDQuant
 
@@ -5160,6 +5207,10 @@ title: 标签浏览
 
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
 
+## Unlimited OCR 2
+
+- [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
+
 ## VLA
 
 - [OxyGen：多任务并行下 VLA 推理的统一 KV Cache 管理框架](blog/posts/2026-10-16-OxyGen-多任务并行下-VLA-推理的统一-KV-Cache-管理框架.md)
@@ -5535,6 +5586,10 @@ title: 标签浏览
 
 - [将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting](blog/posts/2026-08-13-将 Postgres 用作图数据库：巧妙（或超常）运用 pgRouting.md)
 
+## pg_pinecone
+
+- [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
+
 ## pgvector
 
 - [使用 Postgres 构建个性化 AI 助手](blog/posts/2026-08-13-使用 Postgres 构建个性化 AI 助手.md)
@@ -5542,6 +5597,7 @@ title: 标签浏览
 - [使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索](blog/posts/2026-08-13-使用 PGlite 和 Transformers.js 在浏览器中实现语义 AI 搜索.md)
 - [pgvector v0.7.0 的新特性解析](blog/posts/2026-08-13-pgvector v0.7.0 的新特性解析.md)
 - [post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎](blog/posts/2026-08-29-post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎.md)
+- [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
 
 ## pplx-embed-v2-context-9b-preview
 
@@ -7037,6 +7093,7 @@ title: 标签浏览
 ## 低秩分解
 
 - [理解大语言模型免训练低秩压缩中的校准与截断误差传播](blog/posts/2026-08-12-理解大语言模型免训练低秩压缩中的校准与截断误差传播.md)
+- [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
 
 ## 低秩动力学
 
@@ -7065,6 +7122,10 @@ title: 标签浏览
 ## 低秩适配
 
 - [LoRA 作为预言机：基于低秩适配器的神经网络隐蔽后门审计与消除](blog/posts/2026-08-29-LoRA 作为预言机：基于低秩适配器的神经网络隐蔽后门审计与消除.md)
+
+## 低精度训练
+
+- [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 
 ## 低资源环境
 
@@ -9359,6 +9420,7 @@ title: 标签浏览
 - [长运行 AI 智能体内存中的“压缩悬崖”现象](blog/posts/2026-08-26-长运行 AI 智能体内存中的“压缩悬崖”现象.md)
 - [超级智能检索代理：Agentic 检索的下一个前沿](blog/posts/2026-08-27-超级智能检索代理：Agentic 检索的下一个前沿.md)
 - [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
+- [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
 
 ## 向量索引
 
@@ -10320,6 +10382,7 @@ title: 标签浏览
 - [大型视觉语言模型中用于缓解幻觉的动态对齐补偿方法](blog/posts/2026-09-01-大型视觉语言模型中用于缓解幻觉的动态对齐补偿方法.md)
 - [大语言模型时代的医学推理：增强技术与应用系统的全面综述](blog/posts/2026-09-05-大语言模型时代的医学推理：增强技术与应用系统的全面综述.md)
 - [Cloudflare 正式发布 Clef-omni：支持音视频与图文的全模态 30B 决策大模型](blog/posts/2026-10-13-Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型.md)
+- [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 
 ## 多模态AI
 
@@ -10389,6 +10452,7 @@ title: 标签浏览
 - [StrixAE：面向真实场景复杂失真耦合的音频增强智能体](blog/posts/2026-09-05-StrixAE：面向真实场景复杂失真耦合的音频增强智能体.md)
 - [迁移安全意识：多模态大语言模型中的跨模态安全漂移](blog/posts/2026-09-05-迁移安全意识：多模态大语言模型中的跨模态安全漂移.md)
 - [问两次，看两次：提示词回显解决了视觉语言模型中的“问题前置悖论”](blog/posts/2026-09-05-问两次，看两次：提示词回显解决了视觉语言模型中的“问题前置悖论”.md)
+- [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 
 ## 多模态大语言模型
 
@@ -11633,6 +11697,8 @@ title: 标签浏览
 - [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
 - [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
+- [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
+- [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 
 ## 大语言模型代理
 
@@ -12225,6 +12291,10 @@ title: 标签浏览
 
 - [OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量](blog/posts/2026-08-07-OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量.md)
 - [Logos：基于跨进程总线的智能体运行框架](blog/posts/2026-09-02-Logos：基于跨进程总线的智能体运行框架.md)
+
+## 容错架构
+
+- [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
 
 ## 容错计算
 
@@ -13145,6 +13215,8 @@ title: 标签浏览
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 - [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 - [Gradium 开源 Phonon：仅 31M 参数的高性能端侧语音合成模型](blog/posts/2026-10-23-Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型.md)
+- [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
+- [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 
 ## 开源治理
 
@@ -13502,6 +13574,8 @@ title: 标签浏览
 - [AsyncFlow：面向高效大模型后训练的异步流式强化学习框架](blog/posts/2026-09-15-AsyncFlow-面向高效大模型后训练的异步流式强化学习框架.md)
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)
+- [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
+- [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 
 ## 强化学习与SFT
 
@@ -13561,6 +13635,7 @@ title: 标签浏览
 
 - [超越正确性：基于 Lean 4 实现自动化新颖性验证](blog/posts/2026-08-19-超越正确性：基于 Lean 4 实现自动化新颖性验证.md)
 - [Lean Pool：由 AI 智能体自主维护与持续扩充的形式化数学知识库](blog/posts/2026-09-24-Lean-Pool-由-AI-智能体自主维护与持续扩充的形式化数学知识库.md)
+- [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 
 ## 形式化方法
 
@@ -13577,6 +13652,7 @@ title: 标签浏览
 
 - [VALG：用于机器学习理论研究的智能体系统](blog/posts/2026-08-16-VALG：用于机器学习理论研究的智能体系统.md)
 - [HOL 中的一元二阶逻辑：深层与浅层嵌入及自动化忠实性（扩展预印本）](blog/posts/2026-09-10-HOL 中的一元二阶逻辑：深层与浅层嵌入及自动化忠实性（扩展预印本）.md)
+- [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 
 ## 形式化语义
 
@@ -16326,6 +16402,10 @@ title: 标签浏览
 - [DomusFM：用于智能家居基于事件行为监测的基础模型](blog/posts/2026-08-16-DomusFM：用于智能家居基于事件行为监测的基础模型.md)
 - [SimVerity：模拟智能体成功何时能在物理部署中持续？](blog/posts/2026-08-29-SimVerity：模拟智能体成功何时能在物理部署中持续？.md)
 
+## 智能推理
+
+- [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
+
 ## 智能旅游
 
 - [填补鸿沟：用于统一多任务用户意图推理的双知识图谱框架](blog/posts/2026-08-11-填补鸿沟：用于统一多任务用户意图推理的双知识图谱框架.md)
@@ -16341,6 +16421,10 @@ title: 标签浏览
 ## 智能科学
 
 - [面向智能科学的层级服务器架构](blog/posts/2026-08-07-面向智能科学的层级服务器架构.md)
+
+## 智能网卡
+
+- [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
 
 ## 智能调度
 
@@ -17621,6 +17705,7 @@ title: 标签浏览
 - [REAL-Q：基于动态梯度下降的端到端大语言模型量化](blog/posts/2026-09-13-REAL-Q-基于动态梯度下降的端到端大语言模型量化.md)
 - [突破 1.58 比特极限：三值大语言模型的极致压缩与加速](blog/posts/2026-09-18-突破-1.58-比特极限-三值大语言模型的极致压缩与加速.md)
 - [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
+- [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
 
 ## 模型去偏
 
@@ -17716,6 +17801,7 @@ title: 标签浏览
 - [表征对齐带来语言模型中具泛化能力的安全性](blog/posts/2026-09-05-表征对齐带来语言模型中具泛化能力的安全性.md)
 - [解码前拒绝：检测与利用大语言模型中间激活中的拒绝信号](blog/posts/2026-09-05-解码前拒绝：检测与利用大语言模型中间激活中的拒绝信号.md)
 - [迁移安全意识：多模态大语言模型中的跨模态安全漂移](blog/posts/2026-09-05-迁移安全意识：多模态大语言模型中的跨模态安全漂移.md)
+- [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
 ## 模型安全性
 
@@ -19037,6 +19123,7 @@ title: 标签浏览
 - [WiSDoM：面向多任务移动网络优化的基于混合专家模型的无线稀疏决策Transformer](blog/posts/2026-09-03-WiSDoM：面向多任务移动网络优化的基于混合专家模型的无线稀疏决策Transformer.md)
 - [Xiaomi-TabLDM：表格基础模型技术报告](blog/posts/2026-09-05-Xiaomi-TabLDM：表格基础模型技术报告.md)
 - [T1：面向长程终端任务的强化学习智能体](blog/posts/2026-09-13-T1-面向长程终端任务的强化学习智能体.md)
+- [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 
 ## 混合序列模型
 
@@ -20126,6 +20213,10 @@ title: 标签浏览
 ## 白盒攻击
 
 - [引君入瓮与恢复：通过投毒内部拒绝信号防御白盒编辑越狱](blog/posts/2026-09-10-引君入瓮与恢复：通过投毒内部拒绝信号防御白盒编辑越狱.md)
+
+## 百度
+
+- [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 
 ## 皮尔斯推理三分法
 
@@ -21411,6 +21502,7 @@ title: 标签浏览
 - [自信且错，悄无声息：端侧部署语言模型未遂故障审计](blog/posts/2026-08-27-自信且错，悄无声息：端侧部署语言模型未遂故障审计.md)
 - [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 - [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
+- [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 
 ## 端侧大模型
 
@@ -26820,6 +26912,10 @@ title: 标签浏览
 ## 长文档推理
 
 - [DocMemo：基于概率记忆引导检索的多模态文档理解动态证据发现](blog/posts/2026-08-11-DocMemo：基于概率记忆引导检索的多模态文档理解动态证据发现.md)
+
+## 长文档解析
+
+- [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 
 ## 长时序推理
 

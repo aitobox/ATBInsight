@@ -4,6 +4,15 @@
 
 ## 2026-10
 
+- **2026-10-28**: [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
+- **2026-10-28**: [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
+- **2026-10-28**: [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
+- **2026-10-28**: [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
+- **2026-10-28**: [Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络](blog/posts/2026-10-28-Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络.md)
+- **2026-10-28**: [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
+- **2026-10-28**: [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
+- **2026-10-28**: [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
+- **2026-10-28**: [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 - **2026-10-27**: [TreeWY：门控 DeltaNet 混合架构的免快照推测验证机制](blog/posts/2026-10-27-TreeWY-门控-DeltaNet-混合架构的免快照推测验证机制.md)
 - **2026-10-27**: [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
 - **2026-10-27**: [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
