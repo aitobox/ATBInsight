@@ -5,6 +5,803 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>百度开源 Unlimited OCR 2：支持百页超长文档端到端解析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在海量非结构化数据处理与智能文档分析领域，传统光学字符识别 (Optical Character Recognition, OCR) 模型受制于注意力计算复杂度的二次方爆炸与显存限制，往往难以单次吞吐数十乃至上百页的长篇文档，普遍需要依赖机械的单页切分与拼接，极易割裂跨页上下文并丢失全局排版信息。2026 年 10 月，Baidu 正式开源了参数量为 3.34B 的全新多模态端到端超长文档解析模型 Unlimited OCR 2。该模型创新性地引入了稀疏参考滑动窗口注意力机制 (Sparse Reference Sliding Window Attention, SR-SWA)，将每步解码的计算与显存开销压缩为近乎恒定的常数，真正实现了在单个推理请求中对书籍、财报等数百页文档的整体结构化解析。在多页文档基准测试 MarathonDocBench 上，Unlimited OCR 2 取得了 77.1 的顶尖成绩，大幅领先业界同类模型，且采用高度宽松的 MIT 开源协议，为长文本视觉多模态技术的工程落地树立了全新标杆。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+Baidu 正式开源了 **Unlimited OCR 2**，这是一款参数规模为 3.34B 的视觉语言模型 (Vision-Language Model, VLM)，专为在单次请求中端到端解析超长文档（如长篇书籍、企业财务报告以及长达数百页的技术文档）而量身打造。该模型创新性地引入了名为 **SR-SWA (稀疏参考滑动窗口注意力机制，Sparse Reference Sliding Window Attention)** 的稀疏注意力算法，使得随着文档页数增加，模型单步自回归解码的显存与计算开销能够保持近乎平直的常数水平。Unlimited OCR 2 基于极具开放性的 MIT 商业友好协议发布，在 MPDocBench 和 MarathonDocBench 等主流多页文档权威评测基准上均刷新了最佳纪录 (SOTA)。
+
+&gt; Baidu has released **Unlimited OCR 2**, an open-source 3.34B vision-language model designed specifically to parse extremely long documents—such as books, financial filings, and multi-hundred-page reports—in a single request. Featuring a novel sparse attention mechanism known as **SR-SWA (Sparse Reference Sliding Window Attention)**, the model keeps per-step decoding costs nearly flat as document length scales. Available under the MIT license, Unlimited OCR 2 achieves state-of-the-art results on multi-page benchmarks like MPDocBench and MarathonDocBench.
+
+---
+
+## 核心速览 (TL;DR)
+
+&gt; ## TL;DR
+
+* **模型规模**：总参数量为 3.34B（激活参数量未公开）。最大位置编码长度达到 131,072 Token。
+* **硬件要求**：支持单张 CUDA GPU 以 BF16 精度全量加载运行（Baidu 官方在单张 NVIDIA A800-80GB 上完成测试），BF16 权重文件总计约 6.7 GB。
+* **综合性能**：在与 9 款主流模型的横向对比中，在多页基准测试中拔得头筹（官方自测数据）。
+* **亮眼优势**：在包含数百页超长文档的基准测试 MarathonDocBench 上斩获 **77.1** 的综合高分，大幅超越位列第二的 Kimi-K3 (33.7 分)。
+* **尚存短板**：在 MarathonDocBench 的标题层级结构树状编辑距离 (TEDS) 评测中得分为 **48.2**，是其各项评测中的最低细项得分。
+
+&gt; * **Size:** 3.34B parameters (active parameters not disclosed). Maximum position length of 131,072 tokens.
+&gt; * **Hardware Requirements:** Runs on a single CUDA GPU in BF16 (tested by Baidu on an NVIDIA A800-80GB). BF16 weights total roughly 6.7 GB.
+&gt; * **Performance:** Claims first place on multi-page benchmarks tested against 9 other models (self-reported).
+&gt; * **Highs:** Scores **77.1** overall on MarathonDocBench (hundreds of pages), significantly outperforming the next best model, Kimi-K3 (33.7).
+&gt; * **Lows:** Scores **48.2** on heading hierarchy (TEDS) on MarathonDocBench, marking its lowest sub-score.
+
+---
+
+## 什么是 Unlimited OCR 2？
+
+&gt; ## What is Unlimited OCR 2?
+
+Unlimited OCR 2 是一款多模态视觉语言模型，能够将按顺序排列的整篇文档页面图像直接转换为具备排版结构的纯文本，涵盖复杂表格、数学公式、图表注释、各级层级标题以及自然的阅读流顺序。它是 Baidu 于 2026 年 6 月开源的 [Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) 的全新升级迭代之作。
+
+&gt; Unlimited OCR 2 is a vision-language model that converts ordered page images into structured text, including tables, formulas, figures, headings, and reading order. It succeeds [Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR), which was released in June 2026.
+
+该模型的官方 [配置架构](https://huggingface.co/baidu/Unlimited-OCR-2/blob/main/config.json) 延续了类似 DeepSeek-OCR 的经典设计：前端由 SAM ViT-B 与 CLIP-L 双视觉编码器构成，负责抽取细粒度文字与高层语义特征，随后将视觉特征输入后端的 12 层混合专家模型 (Mixture of Experts, MoE) 解码器。在推理时，每个 Token 会动态路由至 64 个路由专家中的 6 个，并始终激活 2 个共享专家。在多页处理模式下，每张输入的文档图像会被极其紧凑地压缩为 273 个图像 Token。
+
+&gt; The model’s [configuration](https://huggingface.co/baidu/Unlimited-OCR-2/blob/main/config.json) maintains a DeepSeek-OCR style layout: a SAM ViT-B plus CLIP-L encoder feeding into a 12-layer mixture-of-experts (MoE) decoder. Each token routes to 6 of 64 experts, alongside 2 shared experts. In multi-page mode, each processed page consumes 273 image tokens.
+
+---
+
+## SR-SWA 机制的工作原理
+
+&gt; ## How Does SR-SWA Work?
+
+在标准注意力机制中，全量注意力计算的开销与序列长度呈二次方级爆炸增长。在自回归解码阶段，每一个新生成的 Token 都必须重新扫描并计算不断膨胀的键值缓存 (Key-Value Cache, KV Cache)；以每页文档消耗 273 个图像 Token 计算，光是解析一份 100 页的长文档，在尚未生成哪怕一个输出字符之前，系统就已累积了高达 27,300 个输入 Token 的庞大显存负担。
+
+&gt; Full attention costs grow quadratically with sequence length. During decoding, every new token scans an increasingly large KV cache; at 273 image tokens per page, parsing a 100-page document introduces 27,300 input tokens before generating any output.
+
+**SR-SWA (稀疏参考滑动窗口注意力机制)** 正是为了攻破这一显存与算力瓶颈而生。它将庞大的图文交叉注意力范围深度压缩进一个固定尺寸的动态工作参考集 (Working References) 中。据官方 [Model Card](https://huggingface.co/baidu/Unlimited-OCR-2) 披露，标准的工作参考集大小仅设为 512 Token，其内部结合了覆盖临近区域的 128 Token 局部滑动窗口，以及对 32 Token 特征块执行 Top-16 稀疏检索的高效挑选机制。
+
+&gt; **SR-SWA (Sparse Reference Sliding Window Attention)** resolves this by compressing text-visual attention into a fixed set of working references. The [model card](https://huggingface.co/baidu/Unlimited-OCR-2) cites 512 tokens as a standard reference size, pairing a 128-token local window with top-16 selection over 32-token blocks. 
+
+得益于这一巧妙的稀疏设计，即使文档页数成倍激增，模型单步自回归解码的显存消耗与单步延迟都能保持近乎恒定的平稳状态，成功在有限的上下文窗口约束下解锁了“无限视界”的长文档解析能力（需要说明的是，前端图像编码耗时以及整体端到端推理总时间仍会随着实际页面数量线性增长）。
+
+&gt; This design keeps per-step latency and memory usage nearly constant as document size increases, delivering "unlimited-horizon" parsing within a finite context window (though image encoding time and total runtime still scale with page counts).
+
+---
+
+## 在 MPDocBench 与 MarathonDocBench 基准评测上的表现
+
+&gt; ## Performance on MPDocBench and MarathonDocBench
+
+Baidu 官方在包含数十页的中等长度基准 **MPDocBench** 与涵盖数百页超长篇幅的挑战性基准 **MarathonDocBench** 上对模型展开了全方位评测。
+
+&gt; Baidu evaluated the model on **MPDocBench** (dozens of pages per document) and **MarathonDocBench** (hundreds of pages). 
+
+* **MPDocBench 综合得分**：Unlimited OCR 2 斩获 **84.6** 分高居榜首，紧随其后的是 Qwen3.8-Max (78.3 分) 与 Qwen-3.8-Flash-Next (77.4 分)。
+* **MarathonDocBench 综合得分**：Unlimited OCR 2 表现极为抢眼，拿下 **77.1** 的高分；相比之下，竞品模型在数百页的极端长度下均遭遇性能断崖式滑坡（如 Kimi-K3 跌至 33.7 分，Qwen3.8-Max 跌至 22.9 分）。值得一提的是，其前代模型 Unlimited-OCR 在该基准上得分为 0.0。
+
+&gt; * **MPDocBench Overall:** Unlimited OCR 2 scores **84.6**, followed by Qwen3.8-Max at 78.3 and Qwen-3.8-Flash-Next at 77.4.
+&gt; * **MarathonDocBench Overall:** Unlimited OCR 2 scores **77.1**, while competitors experience sharp performance drops (e.g., Kimi-K3 at 33.7 and Qwen3.8-Max falling to 22.9). Its predecessor, Unlimited-OCR, scored 0.0 on this benchmark.</description>
+    </item>
+    <item>
+      <title>基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 参数规模迈向数百亿甚至上千亿，高昂的计算和显存开销已成为其在实际工业场景落地的最大阻碍之一。基于低秩奇异值分解 (Singular Value Decomposition, SVD) 的模型压缩技术被视为无损瘦身的有效途径，但传统方法长期受困于两大痛点：无法准确评估层间累积误差导致秩分配不合理，以及基于费舍尔信息矩阵的分解容易陷入严重的“秩坍缩”。针对这些技术掣肘，来自国际顶尖学术机构的研究团队提出了全新的 LEMS (分层误差建模搜索) 机制与 KFAC-SVD 分解方法，首次将局部/全局重要性与传播偏差融合构建代理误差函数，并通过整数线性规划 (Integer Linear Programming, ILP) 精准分配压缩预算。在 Mistral、Qwen3 和 Llama 3 等主流模型家族上的实测表明，新方案不仅成功扩展到了 70B 超大模型，还实现了零样本精度最高 4.7 个百分点的跃升与平均 19% 的困惑度改善，为大模型的高效落地提供了崭新的数学与工程范式。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+本论文提出了一系列前沿技术，旨在推进大语言模型 (Large Language Model, LLM) 基于低秩奇异值分解 (Singular Value Decomposition, SVD) 的压缩效果。研究团队精准定位了现有压缩范式中的两大核心缺陷：
+
+&gt; This paper presents novel techniques to advance low-rank Singular Value Decomposition (SVD)-based compression for Large Language Models (LLMs). The authors identify two primary limitations in existing compression methodologies:
+
+1. **全局秩分配瓶颈**：未校准的误差代理指标无法准确捕捉模型各层之间极其复杂的误差传递与累积效应；
+2. **分解质量缺陷**：基于费舍尔信息 (Fisher) 的估计方法容易遭遇严重的“秩坍缩 (Rank Collapse)”，破坏压缩后的表达能力。
+
+&gt; 1. **Global Rank Allocation:** Uncalibrated error proxies fail to capture complex error propagation across layers.
+&gt; 2. **Decomposition Quality:** Fisher-based estimators suffer from severe rank collapse.
+
+为了彻底破解这些难题，研究人员构建了两大关键创新框架：
+
+&gt; To resolve these issues, the researchers introduce two key frameworks:
+
+* **LEMS (分层误差建模搜索, Layer-wise Error Modeling Search)**：通过引入一套分层误差代理模型来优化全局秩分配，该模型有机结合了各层的局部与全局重要性以及误差传播偏差，并巧妙地转化为整数线性规划 (Integer Linear Programming, ILP) 问题进行精确高效求解；
+* **KFAC-SVD**：利用逐 Token (Token-wise) 的统计特征，显著改善分解质量，一举消除了以往基于 Fisher 的 SVD 算法所面临的有效秩缺失 (Rank Deficiency) 困境。
+
+&gt; * **LEMS (Layer-wise Error Modeling Search):** Improves global rank allocation by incorporating a layer-wise error surrogate that integrates local/global layer importance alongside a propagation bias, solved via an Integer Linear Programming (ILP) formulation.
+&gt; * **KFAC-SVD:** Enhances decomposition quality by using token-wise statistics to alleviate rank deficiency in prior Fisher-based SVD approaches.
+
+在 **Mistral**、**Qwen3** 和 **Llama 3** 等主流模型家族上的详尽基准测试表明，本方案实现了高达 **4.7 个百分点**的零样本 (Zero-shot) 准确率增益（这一优势能够无缝拓展至 70B 参数规模的模型），同时带来了平均 **19% 的困惑度 (Perplexity) 显著优化**。
+
+&gt; Extensive evaluations across the **Mistral**, **Qwen3**, and **Llama 3** model families demonstrate zero-shot accuracy gains of up to **4.7 percentage points** (generalizing effectively to 70B parameter models), alongside an average **19% perplexity improvement**.
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+基于低秩奇异值分解 (SVD) 的模型压缩技术，为大幅削减大语言模型 (LLM) 的计算与存储开销提供了一种强有力的途径。然而，现有主流方法普遍受制于两大关键瓶颈：其一是全局秩分配难题——未校准的误差代理函数无法精准刻画深层网络中复杂的跨层误差传递；其二是权重分解质量问题——基于费舍尔信息的估计器往往会出现严重的秩坍缩。在本项工作中，我们通过提出分层误差建模搜索 (LEMS) 与 KFAC-SVD 两大核心创新，有效化解了这些痛点。LEMS 创新性地引入了分层误差替代模型，在整合各层局部与全局重要性的同时兼顾误差传播偏差，并借助整数线性规划 (ILP) 建模实现了全局最优的秩自适应分配。与此同时，KFAC-SVD 充分利用逐 Token 的高阶统计信息，极大缓解了传统 Fisher-SVD 方法中的秩亏损缺陷。跨越 Mistral、Qwen3 和 Llama 3 系列模型的全面实验表明，LEMS 持续超越现有的各类搜索基线策略，在 70B 参数体量的大模型上亦能稳定泛化，带来高达 4.7 个百分点的零样本精度提升；而 KFAC-SVD 则实现了平均 19% 的困惑度大幅改善。
+
+&gt; &gt; Low-rank SVD-based compression offers a powerful strategy to reduce the computational costs of LLMs. However, existing methods face two key limitations: (i) global rank allocation, where uncalibrated error proxies fail to capture complex error propagation, and (ii) decomposition quality, where Fisher-based estimators suffer from severe rank collapse. In this work, we address these limitations by introducing Layer-wise Error Modeling Search (LEMS) and KFAC-SVD. LEMS advances rank allocation by introducing a layer-wise error surrogate that integrates local and global layer importance alongside a propagation bias, enabling effective global rank allocation via an ILP formulation. KFAC-SVD improves decomposition quality by utilizing token-wise statistics, mitigating the rank deficiency observed in prior Fisher-based SVD approaches. Across Mistral, Qwen3, and Llama 3 model families, we show that LEMS consistently outperforms existing search strategies, delivering significant zero-shot accuracy gains of up to 4.7 p.p. that generalize to model sizes of 70B parameters, while KFAC-SVD achieves an average perplexity improvement of 19%.
+
+---
+
+## 资源与论文链接
+
+&gt; ## Resources &amp; Links
+
+* **项目主页与开源代码**：[lems-svd.github.io](https://lems-svd.github.io)
+* **论文全文获取**：[查看 PDF](https://arxiv.org/pdf/2610.32878) | [HTML 网页版](https://arxiv.org/html/2610.32878v2) | [TeX 源码](https://arxiv.org/src/2610.32878)
+* **数字对象唯一标识符 (DOI)**：[10.48550/arXiv.2610.32878](https://doi.org/10.48550/arXiv.2610.32878)
+
+&gt; * **Project Page &amp; Code:** [lems-svd.github.io](https://lems-svd.github.io)
+&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.32878) | [HTML Version](https://arxiv.org/html/2610.32878v2) | [TeX Source](https://arxiv.org/src/2610.32878)
+&gt; * **DOI:** [10.48550/arXiv.2610.32878](https://doi.org/10.48550/arXiv.2610.32878)</description>
+    </item>
+    <item>
+      <title>在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大模型训练对显存带宽与算力吞吐的要求日益苛刻，将浮点精度压缩至 8 位以下的低精度格式（如 4 位浮点数 FP4）成为了学术界与工业界竞相探索的前沿方向。然而，极低的数值精度带来的剧烈量化误差极易引发训练不收敛与精度雪崩，如何在极度嘈杂的 FP4 环境中保持与标准 16 位浮点 (BF16) 相当的训练质量是当前的核心挑战。针对这一技术瓶颈，研究人员开源了专为混合专家模型 (Mixture-of-Experts, MoE) 打造的训练配方 ALTO，在拥有 200 亿参数的 GPT-OSS-20B 模型上成功落地了微缩放浮点格式 MXFP4。通过融合混合块量化、随机阿达马变换 (Randomized Hadamard Transforms, RHT)、随机舍入 (Stochastic Rounding, SR) 与创新的权重去震荡方案，该方法成功抹平了约 50% 与 BF16 的精度鸿沟，并将达到预定质量目标的收敛步数额外开销从 +20% 骤降至 +5%。这一突破性工作证实了超低精度 FP4 在超大规模稀疏架构模型训练中的巨大可行性，为下一代低成本绿色 AI 基础设施建设指明了方向。
+
+---
+
+## 核心执行概要
+
+&gt; ## Executive Summary
+
+使用低于 8 位的超低精度算术体系训练大语言模型 (Large Language Model, LLM)，在大幅释放显存带宽潜力以及显著提升计算吞吐量方面展现出了巨大的吸引力。然而，4 位浮点数 (FP4) 格式所引入的极端量化误差，往往会导致优化过程严重失稳甚至发散。
+
+&gt; Training Large Language Models (LLMs) in sub-8-bit arithmetic presents significant potential for boosting memory bandwidth and compute throughput. However, the extreme quantization errors introduced by FP4 formats typically destabilize optimization. 
+
+针对这一技术瓶颈，本文隆重推出了 **ALTO**——一套开源训练技术方案，专为在 MLPerf Small MoE 训练基准评测中使用 **MXFP4 微缩放格式 (Microscaling Format)** 训练拥有 200 亿参数的混合专家模型 (Mixture-of-Experts, MoE) **GPT-OSS-20B** 而量身定制。通过巧妙结合混合块量化、随机阿达马变换 (Randomized Hadamard Transforms, RHT)、随机舍入 (Stochastic Rounding, SR) 以及简化的权重去震荡 (Weight De-oscillation) 机制，研究团队成功抹平了与标准 BF16 基准线之间约 **50% 的精度差距**。
+
+&gt; This paper introduces **ALTO**, an open-source training recipe designed to train **GPT-OSS-20B**—a 20-billion-parameter mixture-of-experts (MoE) model—using the **MXFP4 microscaling format** on the MLPerf Small MoE Training benchmark. By integrating hybrid block quantization, randomized Hadamard transforms, stochastic rounding, and a simplified weight de-oscillation scheme, the researchers successfully closed approximately **50% of the accuracy gap** to the BF16 baseline.
+
+---
+
+## 方法论：ALTO 训练技术配方
+
+&gt; ## Methodology: The ALTO Recipe
+
+为了稳固 FP4 极低精度下的训练稳定性，并弥合与传统 16 位浮点精度之间的表现差距，ALTO 紧密结合了数项业界前沿的技术手段：
+
+&gt; To stabilize FP4 training and bridge the gap to traditional 16-bit precisions, ALTO combines several cutting-edge techniques:
+
+1. **量化基础构建**：采用混合 1D/2D 块量化策略（改良自 Abecassis 等人的方案）；
+2. **误差消除机制**：运用**随机阿达马变换 (Randomized Hadamard Transforms, RHT)** 与**随机舍入 (Stochastic Rounding, SR)** 来有效抵御低精度噪声带来的扰动；
+3. **权重稳定调控**：引入并简化了源自 *TetraJet-v2* (arXiv:2510.27527) 的**权重去震荡方案 (Weight De-oscillation Scheme)**。
+
+&gt; 1. **Quantization Foundations:** Employs hybrid 1D/2D block quantization (adapted from Abecassis et al.).
+&gt; 2. **Error Mitigation:** Utilizes **Randomized Hadamard Transforms (RHT)** and **Stochastic Rounding (SR)** to handle low-precision noise.
+&gt; 3. **Weight Stabilization:** Integrates a simplified **weight de-oscillation scheme** adapted from *TetraJet-v2* (arXiv:2510.27527).
+
+---
+
+## 评测结果与模型性能表现
+
+&gt; ## Results &amp; Performance
+
+* **验证集损失 (C4 数据集)**：在全局批大小 (Global Batch Size) 为 16、训练步数为 16,128 步的设定下，集成了 `MXFP4 + RHT + SR + 权重去震荡` 的完整流程取得了 **3.3350** 的验证集损失 (Validation Loss)；
+* **极度逼近 Baseline**：该数值距离纯 16 位精度基线 (BF16 Baseline) 的 3.3283 仅有 **0.007 的极微弱差距**；
+* **去震荡机制的显著功效**：若未开启权重去震荡，MXFP4 训练的验证损失停留在 3.3418；去震荡方案成功挽回了近 **50% 的性能落差**；
+* **收敛额外开销大幅收窄**：以达到 MLPerf 质量目标（验证损失 3.34）所需的迭代步数计算，去震荡机制将 FP4 相对 BF16 的额外收敛步数开销**从 +20.0% 骤降至仅 +5.0%**。
+
+&gt; * **Validation Loss (C4 Dataset):** At a global batch size of 16 and 16,128 steps, the full `MXFP4 + RHT + SR + de-oscillation` pipeline achieved a validation loss of **3.3350**. 
+&gt; * **Proximity to Baseline:** This sits just **0.007 above the BF16 baseline** of 3.3283.
+&gt; * **Impact of De-Oscillation:** Without de-oscillation, MXFP4 hit a validation loss of 3.3418. The de-oscillation scheme successfully recovered roughly **50% of the performance gap**.
+&gt; * **Convergence Overhead:** Measured by the steps required to hit the MLPerf quality target (validation loss of 3.34), de-oscillation reduced the FP4 convergence overhead relative to BF16 **from +20.0% down to +5.0%**.
+
+---
+
+## 负向探索结果（被证实无效的技术手段）
+
+&gt; ## Negative Results (What Didn't Work)
+
+尽管在算子级别的信噪比 (Signal-to-Noise Ratio, SNR) 测试中观察到了一定收益，但作者指出，以下技术在端到端 (End-to-End) 训练中均表现出负向效果：
+
+&gt; Despite observing operator-level Signal-to-Noise Ratio (SNR) gains, the authors reported negative end-to-end results for the following techniques:
+
+* 差分梯度估计 (Differential Gradient Estimation)
+* 离群值截断 (Outlier Clipping)
+* 宏块缩放 (Macro-block Scaling)
+
+&gt; * Differential gradient estimation
+&gt; * Outlier clipping
+&gt; * Macro-block scaling</description>
+    </item>
+    <item>
+      <title>Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着检索增强生成 (Retrieval-Augmented Generation, RAG) 与各类 AI 智能体应用的爆发，如何在传统关系型数据库中低成本、高效率地管理与检索海量高维向量数据，成为了现代数据架构领域的关键命题。尽管主流的 `pgvector` 扩展提供了基础的向量检索能力，但在面对海量数据集时，基于图拓扑的 HNSW 索引往往面临显存与磁盘占用过大、带条件过滤查询 (Filtered Search) 召回率和延迟急剧劣化的痛点。针对这一工程瓶颈，知名向量数据库厂商 Pinecone 正式开源了基于 Apache 2.0 协议的 Postgres 扩展插件 **`pg_pinecone`**。该插件创新性地在 Postgres 内部引入了基于 RaBitQ 量化算法的倒排文件索引架构，使得 100 万条 768 维向量的索引体积压缩至仅 136 MB，比传统 HNSW 缩减数十倍，并彻底解决了预过滤与后过滤的性能与准确率两难困境。此外，`pg_pinecone` 提供了原生引擎、Pgvector 引擎和托管远程引擎三种模式，帮助开发者无缝实现从单机本地轻量开发到云端无服务器海量扩展的平滑过渡。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+2026 年 10 月 27 日，Pinecone 正式开源了遵循 Apache 2.0 协议的 Postgres 搜索扩展插件 **`pg_pinecone`**。该扩展能够直接与现有的 `pgvector` 向量列深度集成，提供高效率的向量检索 (Vector Search) 能力。根据官方发布的基准测试，对于 100 万条 768 维度的向量，其原生索引所需的存储空间仅为 136 MB——其空间利用效率显著超越了以 HNSW 为代表的传统图基索引。`pg_pinecone` 旨在将数据完全保留在 Postgres 内部的同时，彻底解决带条件过滤检索常见的不准确问题；它提供了三种差异化的执行引擎（原生引擎、Pgvector 引擎以及远程引擎），支持应用从本地开发环境平滑过渡并扩展至云端托管的无服务器 (Serverless) 基础设施。
+
+&gt; On October 27, 2026, Pinecone released **`pg_pinecone`**, an open-source Postgres search extension licensed under Apache 2.0. The extension integrates high-efficiency vector search capabilities directly with existing `pgvector` columns. In company-reported benchmarks, its native index for 1 million 768-dimension vectors requires only 136 MB of storage—significantly outperforming traditional graph-based index sizes like HNSW. Designed to maintain data fully inside Postgres while resolving accuracy issues typical of filtered searches, `pg_pinecone` offers three distinct engines (Native, Pgvector, and Remote) to scale smoothly from local development to cloud-managed serverless infrastructure.
+
+---
+
+## 单一索引背后的三套执行引擎
+
+&gt; ## Three Engines Behind One Index
+
+`pg_pinecone` 能够与现有的 `pgvector` 向量列无缝协作。应用程序可以完全按照常规方式连接到 Postgres，并执行标准 SQL 查询（例如 `ORDER BY embedding &lt;=&gt; $1 LIMIT 10`）。由于原始数据表和完整高维向量仍然保存在数据库内部，Postgres 继续充当最根本的权威数据源记录系统 (System of Record)。
+
+&gt; `pg_pinecone` works seamlessly with vector columns already held in `pgvector`. Applications connect to Postgres normally and issue standard SQL queries (such as `ORDER BY embedding &lt;=&gt; $1 LIMIT 10`), leaving tables and full vectors in place so that Postgres remains the system of record.
+
+每个数据库表都可以选择使用以下三种专用引擎之一：
+
+* **原生引擎 (Native Engine, 默认配置)**：完全在 Postgres 内部构建索引并执行搜索，不需要注册 Pinecone 账号、配置 API 密钥或发出任何外部网络请求。
+* **Pgvector 引擎 (Pgvector Engine)**：直接搜索既有的 `pgvector` 索引（如 HNSW 或 IVFFlat），非常适合那些已建好索引且无需复杂条件过滤的现有数据表。
+* **远程引擎 (Remote Engine)**：将检索操作卸载分流至 Pinecone 托管服务中的无服务器索引，专为单个 Postgres 数据库服务器无法承载的超大规模负载而量身定制。
+
+&gt; Each database table can utilize one of three specialized engines:
+&gt; *   **Native Engine (Default):** Builds and searches its index entirely inside Postgres without requiring a Pinecone account, API keys, or external network calls.
+&gt; *   **Pgvector Engine:** Searches an existing `pgvector` index (HNSW or IVFFlat), making it ideal for pre-indexed tables that do not require filtering.
+&gt; *   **Remote Engine:** Offloads search operations to a serverless index in Pinecone’s managed service, tailored for workloads that have outgrown a single Postgres server.
+
+只需调用一次 `pinecone.set_engine()`，即可在不同的引擎之间无缝切换数据表。这一过程完全不会改动上层的业务查询逻辑，并且整个操作是完全可逆的。
+
+&gt; Switching a table between engines requires a single call to `pinecone.set_engine()`, keeping queries unchanged and fully reversible.
+
+---
+
+## 原生引擎的检索工作机制
+
+&gt; ## How the Native Engine Searches
+
+与 `pgvector` 的 HNSW 类似，原生引擎同样采用了近似最近邻 (Approximate Nearest Neighbor, ANN) 算法；不同之处在于，它抛弃了传统的图结构，转而采用一种对相似向量进行聚类分组的**倒排文件索引 (Inverted File Index)**。
+
+&gt; Like `pgvector`'s HNSW, the native engine employs an approximate nearest neighbor algorithm, but replaces traditional graphs with an **inverted file index** that clusters similar vectors.</description>
+    </item>
+    <item>
+      <title>Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在万卡级大模型分布式训练与超大规模 AI 推理集群中，底层的网络通信往往是最脆弱的木桶短板——任何一个节点微小的网络拥塞或单点光纤链路故障，都可能导致全局计算任务陷入长久等待甚至全面瘫痪。为此，Oracle 在拉斯维加斯举办的 Oracle AI World 大会上，对其专为 AI 算力设计的云原生网络架构套件 **Oracle Acceleron** 进行了重磅升级。本次更新首次将远程直接内存访问 (Remote Direct Memory Access, RDMA) 技术引入前端计算网络，使 NVMe 块存储性能狂飙高达 3 倍，并重磅推出了 Oracle 集合通信库 (Oracle Collective Communications Library, OCCL) 与透明前端多平面容错网络架构。这套新方案不仅彻底打破了传统网络中 CPU 参与数据搬运的性能瓶颈，更能在硬件链路发生抖动或中断时，以应用层无感知的亚毫秒级速度动态重路由流量，为大规模分布式 AI 基础设施构筑了坚如磐石的高速容错网络基石。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+在拉斯维加斯举办的 Oracle AI World 大会上，Oracle 正式发布了其专为严苛 AI 工作负载定制的 **Oracle Acceleron** 云网络套件的重大更新。本次升级引入了前端 RDMA 直连能力，通过扩展的 NVMe 块存储挂载选项实现了最高达 3 倍的性能飞跃，并同步推出了 Oracle 集合通信库 (Oracle Collective Communications Library, OCCL) 以及透明前端多平面网络架构 (Transparent Front-End Multiplanar Networking)。这些技术突破旨在消除分布式集群中的网络传输瓶颈，在硬件出现单点故障时动态将流量重定向绕行，从而安全地横向扩展超大规模 AI 算力基础设施。
+
+&gt; At Oracle AI World in Las Vegas, Oracle announced major updates to its **Oracle Acceleron** cloud networking suite designed for demanding AI workloads. The updates introduce front-end RDMA connectivity, up to 3x performance improvements via expanded NVMe block-storage options, the Oracle Collective Communications Library (OCCL), and Transparent Front-End Multiplanar Networking. These enhancements are built to prevent network bottlenecks, dynamically reroute traffic around failures, and securely scale large-scale AI infrastructure.
+
+---
+
+## 方案介绍
+
+&gt; ## Introduction
+
+2026年10月27日，Oracle 在拉斯维加斯的 Oracle AI World 大会上揭晓了专为 AI 工作负载打造的全新 Oracle Acceleron 云网络功能。这套重磅更新引入了前端 RDMA 连接能力，推出了据 Oracle 称性能最高提升达 3 倍的扩展 NVMe 块存储挂载选项，并为其多平面网络 (Multiplanar Networks) 配备了全新的专属集合通信库。
+
+&gt; Oracle announced new Oracle Acceleron cloud networking capabilities for AI workloads at Oracle AI World in Las Vegas on October 27, 2026. The updates introduce front-end RDMA connectivity, expanded NVMe block-storage options that Oracle said improve performance up to 3x, and a collective communications library for its multi-planar networks.
+
+Oracle Acceleron 是 Oracle 云基础设施 (Oracle Cloud Infrastructure, OCI) 推出的一整套高性能网络与基础设施技术体系，专门保障严苛 AI 任务能够高可靠、高安全且大规模地顺畅运行。它将专用网络交换拓扑 (Fabric)、更直接的数据直通路径、融合网卡 (Converged NIC) 与主机级零信任路由及多平面容错设计深度整合，兼顾超高安全性与集群韧性。此次发布的全新能力主要涵盖三大核心维度：
+* AI 数据高速流转
+* 分布式 AI 通信协同
+* 安全多租户 AI 基础设施
+
+&gt; Oracle Acceleron is Oracle Cloud Infrastructure’s (OCI) suite of networking and infrastructure technologies for running demanding AI workloads reliably, securely, and at scale. It combines dedicated network fabrics, more direct data paths, and a converged NIC, with host-level zero-trust routing and multi-planar designs for security and resilience. The new capabilities span three areas: 
+&gt; * AI data movement
+&gt; * Distributed AI communication
+&gt; * Secure multi-tenant AI infrastructure
+
+“当成千上万张加速计算芯片协同作业时，任何一条路径的拥塞或故障，所造成的后果都会远远超出单一连接本身的范畴，” OCI 计算与 AI 基础设施执行副总裁 Pradeep Vincent 在 [Oracle 的官方公告](https://www.prnewswire.com/news-releases/oracle-unveils-new-cloud-networking-innovations-for-ai-302920240.html) 中指出。
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *"When thousands of accelerators are working together, one congested or failed path can have consequences far beyond a single connection,"* said Pradeep Vincent, executive vice president of Compute and AI Infrastructure at OCI, in [Oracle’s announcement](https://www.prnewswire.com/news-releases/oracle-unveils-new-cloud-networking-innovations-for-ai-302920240.html). 
+
+Pradeep Vincent 特别强调，Acceleron 架构的原生设计正是为了实现动态实时响应：它能够在遇到链路故障时瞬时绕障重路由，快速自愈，从而帮助客户实现安全从容的集群算力扩容。
+
+&gt; Vincent noted that Acceleron is built to respond dynamically by rerouting traffic, recovering from failures, and helping customers scale securely.
+
+---
+
+## 前端 RDMA 与 NVMe 存储加速
+
+&gt; ## Front-End RDMA and NVMe Storage
+
+首项新能力名为 **Oracle Acceleron 高性能网络交换拓扑 (Oracle Acceleron High-Performance Fabric)**，它首次将远程直接内存访问 (RDMA) 扩展到了 OCI 的前端计算节点，助力客户以更出色的性能部署大规模推理、分布式存储以及高性能计算 (High-Performance Computing, HPC) 任务。第二项突破则是大幅丰富了跨 Oracle Acceleron 裸金属服务器及虚拟机的 NVMe 块存储挂载形态，直接将面向 AI、现代数据库以及其他高密度数据吞吐型负载的综合性能提升了高达 **3 倍**。
+
+&gt; The first new capability, **Oracle Acceleron High-Performance Fabric**, brings RDMA connectivity to OCI front-end compute, helping customers deploy inference, storage, and HPC workloads with greater performance. The second enhancement—expanded NVMe block-storage attachment options across Oracle Acceleron bare metal and virtual machine shapes—improves performance up to **3x** for AI, database, and other data-intensive workloads.
+
+在 [Oracle 官方 OCI 技术博客的一篇长文](https://blogs.oracle.com/cloud-infrastructure/first-principles-networking-for-ai-scale) 中，技术作者将 RDMA 形象地描述为：允许数据在不同物理机之间的内存中极速直传，而几乎无需中央处理器 (CPU) 的深度介入。通过彻底绕过传统网络传输中繁重冗长的操作系统与内核协议栈软件开销，RDMA 不仅极大压缩了网络延迟、维系着顶格的高吞吐带宽，还能为关键应用程序释放出宝贵的 CPU 算力资源。
+
+&gt; In [a technical post on Oracle’s OCI blog](https://blogs.oracle.com/cloud-infrastructure/first-principles-networking-for-ai-scale), authors described RDMA as moving data directly between memory on different machines with minimal CPU involvement. By bypassing much of the operating-system and software processing standard in conventional transfers, RDMA reduces latency, sustains high throughput, and leaves more CPU capacity for applications.</description>
+    </item>
+    <item>
+      <title>Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (Large Language Model, LLM) 与多模态技术竞相追求数百亿乃至千亿超大参数的浪潮下，如何在计算资源严苛受限的端侧设备、智能手机和边缘终端上高效运行全功能 AI，已成为工业界与学术界共同探索的技术前沿。2026年10月27日，前沿 AI 独角兽 Liquid AI 重磅揭晓了全新一代开源权重液体基座模型 (Liquid Foundation Models) **LFM3** 系列，一口气推出了涵盖纯文本、视觉、音频、全模态及专业决策等六款 20 亿 (2B) 参数级模型。该系列颠覆了传统单一纯 Transformer 架构，采用由门控短卷积、滑动窗口注意力与全局全量注意力深度交织的“三混合 (Tri-Hybrid)”创新架构，并通过真实物理硬件闭环优化大幅削减显存占用与推理延迟。其 4-bit 量化版本物理内存开销仅需约 1 GB，上下文窗口一举跨越至 256K Token，并在仅用 1/3 到 1/6 算力规模的情况下越级战胜了诸多大尺寸主流基座模型，为端侧与高性价比 AI 的规模化落地提供了强有力的开源利器。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+2026年10月27日，Liquid AI 正式发布了新一代开源权重液体基座模型 **LFM3**。该系列将文本、视觉、音频、全模态 (Omni) 以及决策推理能力全部统一收束在同一个共享骨干网络之上。首批亮相的模型包含 6 款 20 亿 (2B) 参数级别的轻量化模型，采用基于硬件在环 (Hardware-in-the-Loop) 自动化搜索定制的创新“三混合 (Tri-Hybrid)”架构打造。凭借超长上下文支持、更强悍的多模态交互处理能力以及极佳的能效比，该系列模型可无缝跨越各种硬件生态流畅运行——从最底层的边缘物联网终端、主流智能手机，一直覆盖至企业级大型云端算力集群。
+
+&gt; On October 27, 2026, Liquid AI announced **LFM3**, a new generation of open-weight Liquid Foundation Models unifying text, vision, audio, omni, and decision capabilities onto a single shared backbone. The initial release features six models in the 2-billion-parameter range, built using an innovative "tri-hybrid" architecture designed via hardware-in-the-loop optimization. Offering massive context lengths, enhanced multimodal processing, and high efficiency, these models are designed to run across diverse hardware—from edge devices and smartphones to enterprise-grade cloud clusters.
+
+---
+
+## 同一共享骨干网络孕育的六大模型
+
+&gt; ## Six Models on One Shared Backbone
+
+LFM3 家族中的每一款模型都源自同一颗技术基石——基础骨干模型 `LFM3-1.7B-Base` 分化衍生而来：
+
+&gt; Every model in the LFM3 family branches from the foundational `LFM3-1.7B-Base`:
+
+* **LFM3-1.7B**：标准文本输入、文本输出的基座模型 (拥有 17.3 亿参数、256K Token 的超长上下文窗口、12.8 万词表容量，支持 16 种自然语言)。
+* **LFM3-VL-2B**：支持图文混合的多模态视觉语言模型 (Vision-Language Model, VLM)，能够灵活接收文本、单张/多张图像以及连续视频输入。
+* **LFM3-Audio-2B**：专注于音频交互的多模态模型，支持文本或音频语音直接输入，并能跨 18 种语言生成自然流畅的文本或高保真语音回复。
+* **LFM3-Omni-2B**：Liquid AI 推出的首款真正意义上的全模态 (Omni) 原生模型，可同时混合接收文本、图像、视频和语音多模态输入，并端到端直接输出文本与语音。
+* **决策模型 (`d1-2B` 与 `d1-omni-2B`)**：直接源自视觉与全模态架构的高阶专业决策模型，专门经过强化调优，旨在输出校准准确、带明确类型标记 (Typed) 的高精度确定性判定结果，而非发散性的长篇文本生成。
+
+&gt; * **LFM3-1.7B:** Standard text-in, text-out model (1.73B parameters, 256K-token context length, 128K vocabulary, supporting 16 languages).
+&gt; * **LFM3-VL-2B:** Multimodal vision-language model accepting text, images, and video.
+&gt; * **LFM3-Audio-2B:** Audio-focused model taking text or audio inputs and responding with text or speech across 18 languages.
+&gt; * **LFM3-Omni-2B:** Liquid AI's first true omni model, accepting text, images, video, and audio inputs and producing text and speech.
+&gt; * **Decision Models (`d1-2B` and `d1-omni-2B`):** Specialized models derived from the vision and omni architectures optimized to output calibrated, typed answers rather than generated text.
+
+所有的基础模型以及后训练模型均完全开放权重，并在 LFM Open License v1.0 协议下正式上架 Hugging Face 社区，同时在 Liquid AI Playground 在线体验平台和云端 API 中同步开放。该系列模型的首发首日 (Day-0) 生态合作伙伴阵容极其强大，包括 Ambarella、AMD、Arm、Intel (OpenVINO)、NVIDIA、OpenRouter、Qualcomm 以及 Vercel，并在发布前获得了来自 Mercedes-Benz 和 Shopify 的深度预发评测支持。
+
+&gt; The base and post-trained models are open-weight and available on Hugging Face under the LFM Open License v1.0, as well as via the Liquid AI Playground and API. Day-0 launch partners include Ambarella, AMD, Arm, Intel (OpenVINO), NVIDIA, OpenRouter, Qualcomm, and Vercel, with pre-release evaluation support from Mercedes-Benz and Shopify.
+
+---
+
+## 三混合创新架构与训练流程
+
+&gt; ## Tri-Hybrid Architecture and Training
+
+作为家族骨干的 `LFM3-1.7B-Base` 模型整体共包含 24 层网络结构：
+
+&gt; The architecture of `LFM3-1.7B-Base` incorporates 24 layers:
+
+* **13 层门控短卷积 (Gated Short Convolutions)** (采用长度为 7 的卷积核大小)。
+* **5 层滑动窗口注意力机制 (Sliding-Window Attention)** (窗口尺寸为 256 个 Token)。
+* **6 层全局全量注意力机制 (Global Attention)**。
+
+&gt; * **13 gated short convolutions** (using a kernel size of 7).
+&gt; * **5 sliding-window attention layers** (256-token window).
+&gt; * **6 global attention layers**.
+
+该架构的关键技术突破亮点主要涵盖以下几个层面：
+
+&gt; Key architectural innovations include:
+
+* **按注意力头门控机制 (Head-wise Gated Attention)**：巧妙借助 Sigmoid 门控单元动态缩放每个注意力头的输出分布，从而强力抑制那些在模型量化过程中经常破坏数值稳定性的激活值离群异常值 (Activation Outliers)。
+* **部分旋转位置编码 (Partial RoPE)**：在全局注意力层中，仅将旋转位置编码 (Rotary Position Embedding, RoPE) 施加在每个注意力头最高频的一半维度上；而在滑动窗口注意力层中，则继续保持完整的全维度 RoPE 编码。
+* **三明治归一化 (Sandwich Norm)**：在每个网络功能块的输入端与输出端双管齐下施加归一化处理，大幅提升深度训练的平稳度。
+
+&gt; * **Head-wise gated attention:** Uses a sigmoid gate to scale each attention head's output, suppressing activation outliers that disrupt quantization.
+&gt; * **Partial RoPE:** Global attention layers apply Rotary Position Embedding (RoPE) only to the highest-frequency half of each head, while sliding-window layers maintain full RoPE.
+&gt; * **Sandwich norm:** Normalizes both the input and output of each block.
+
+这套高度精简而强悍的架构设计，完全诞生自基于真实物理硬件闭环 (Hardware-in-the-Loop) 的网络架构自动搜索。搜索空间广泛覆盖了多达 14 种代表性边缘终端设备与底层计算后端的组合，涵盖现代智能手机 (如 Samsung Galaxy S26 Ultra、OnePlus 15)、树莓派 (Raspberry Pi 5)、高端笔记本电脑 (如搭载 Apple M4 Max 芯片与 AMD Ryzen AI 处理器的设备)，以及专用的 Qualcomm Hexagon 神经处理单元 (Neural Processing Unit, NPU)。
+
+&gt; This design emerged from hardware-in-the-loop architecture searches spanning 14 device and backend combinations, including smartphones (Samsung Galaxy S26 Ultra, OnePlus 15), Raspberry Pi 5, laptops (Apple M4 Max, AMD Ryzen AI), and the Qualcomm Hexagon NPU.</description>
+    </item>
+    <item>
+      <title>Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型在数学与逻辑推理领域的飞速演进，将 AI 应用于 Lean 4 形式化定理证明已成为检验大模型深度推理能力的标杆试金石。由 Numina 与 Kimi 团队联合研发的 **Kimina-Prover** 打破了传统单次生成证明的局限，创新性地提出了**测试时强化学习搜索 (Test-Time Reinforcement Learning Search, TTRL)** 与**交互式错误纠正 (Error-Fixing)** 闭环机制。该框架能够自主发现并组合辅助引理、解析编译器错误反馈，在极具挑战性的 miniF2F 权威基准测试中取得了 92.2% 的通过率，刷新了开源形式化定理证明的最高纪录。
+
+---
+
+## 📌 执行概要
+
+&gt; ## 📌 Executive Summary
+
+**Kimina-Prover** 是由 Numina 与 Kimi 团队联手研发的顶尖自动化定理证明 (Automated Theorem Proving, ATP) 框架。该系统构建在诸如 Qwen2.5-72B 及 Qwen3 系列等顶尖基础推理模型之上，依托 Kimi k1.5 强化学习训练管线，创新性地引入了**测试时强化学习搜索 (Test-Time Reinforcement Learning Search, TTRL)** 以及**交互式错误纠错能力**。
+
+&gt; **Kimina-Prover** is a state-of-the-art automated theorem proving framework developed by the Numina and Kimi teams. Built upon large foundational reasoning models (such as Qwen2.5-72B and Qwen3 variants) and trained using the Kimi k1.5 reinforcement learning pipeline, Kimina-Prover introduces **Test-Time Reinforcement Learning (TTRL) Search** and **Error-Fixing Capabilities**.
+
+其核心技术突破包括：
+* **TTRL 搜索框架**：能够递归式地探索、筛选并组合多个中间引理，以应对复杂的长程多阶段定理推导。
+* **基于反馈的纠错闭环**：能够精准解析 Lean 4 编译器返回的报错信息并生成针对性的修复方案，大幅提升采样的有效性与证明成功率。
+* **刷新 SOTA 表现**：在权威形式化数学基准 miniF2F 测试集上实现了领跑行业的 **92.2% 通过率**。
+
+&gt; Key breakthroughs include:
+&gt; * **TTRL Search Framework:** Recursively discovers, combines, and applies multiple lemmas to construct complex, multi-stage proofs.
+&gt; * **Error-Correcting Feedback Loops:** Interprets Lean 4 compiler error messages to propose targeted fixes, dramatically increasing sample efficiency.
+&gt; * **State-of-the-Art Performance:** Achieves a leading **92.2% pass rate** on the miniF2F benchmark dataset.
+
+---
+
+![kimina_prover_main_result](./images/f2f49ebb142a.png)
+&gt; **图 1:** *各定理证明模型在 miniF2F-test 测试集上的性能表现对比。*
+
+---
+
+## 🚀 引言与系统总览
+
+&gt; ## 🚀 Introduction &amp; Overview
+
+在 **Lean 4** 交互式证明语言中，自动化定理证明 (Automated Theorem Proving, ATP) 的核心愿景是让计算机全面接管严谨数学证明的构造流程。尽管此前已有 Google DeepMind 打造的 *AlphaProof*、开源领域的 *DeepSeek-Prover-V2* 以及结合神经符号机制的 *DSP+* 等标杆工作，但业界主流的单步端到端生成方式在面对深度嵌套、逻辑跨度极长的复杂数学论证时，依然常常力不从心。
+
+&gt; Automated theorem proving (ATP) in the **Lean 4** language aims to make formal mathematical proof construction machine-driven. While monumental strides have been made via systems like Google DeepMind's *AlphaProof*, open-source pipelines like *DeepSeek-Prover-V2*, and neuro-symbolic methods like *DSP+*, single-step proof generation often struggles with long, deeply nested mathematical arguments.
+
+**Kimina-Prover** 系列通过跳出传统“一次性端到端生成”的窠臼，成功化解了这一瓶颈：
+1. **Kimina-Prover-72B**：以 Qwen2.5-72B 为骨干打造的旗舰级模型。
+2. **Kimina-Prover-Distill-8B &amp; 1.7B**：基于 Qwen3-8B 和 Qwen3-1.7B 蒸馏得到的轻量化高效版本。
+
+&gt; The **Kimina-Prover** series addresses this limitation by moving beyond simple generation paradigms:
+&gt; 1. **Kimina-Prover-72B:** The flagship model based on Qwen2.5-72B.
+&gt; 2. **Kimina-Prover-Distill-8B &amp; 1.7B:** Lightweight distilled variations based on Qwen3-8B and Qwen3-1.7B.</description>
+    </item>
+    <item>
+      <title>Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在人工智能攻坚高等数学与形式化定理证明的征途上，如何让大语言模型不仅能“构思出符合逻辑的解题思路”，而且能产出被 Lean 4 等交互式定理证明器 100% 形式化严谨校验的代码，是当前 AI 复杂符号推理领域的最前沿难题。受 DeepSeek-R1 先深度思考后代码输出范式的启发，Project Numina 团队开源了专为 Lean 4 定理证明量身定制的高效强化学习训练流水线 **Kimina-Prover-RL**。该方案依托火山引擎开源的 verl 强化学习框架，基于群相对策略优化 (Group Relative Policy Optimization, GRPO) 算法，开创性地设计了将“自然语言思维链推导”与“形式化代码生成”紧密耦合并施加严格语法结构奖惩的输出格式，并首次引入能够自主从编译器报错中吸取教训的错误纠正轮次机制。实测表明，该方案使得 0.6B 与 1.7B 参数量级的轻量模型在国际权威的 MiniF2F 形式化数学基准测试中刷新了开源最优纪录，分别实现 71.30% 与 77.87% 的 Pass@32 解题成功率，为小尺寸模型突破高阶符号推理开辟了全新路径。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+`kimina-prover-rl` 是一套专为在 Lean 4 中进行形式化定理证明而设计的开源、轻量高效的训练流水线。受 DeepSeek-R1 “先推理后生成”范式的启发，该方案基于开源的 **verl** 强化学习框架改造并适配了群相对策略优化 (Group Relative Policy Optimization, GRPO) 算法。通过将模型输出显式规范为“思维链推理轨迹后接 Lean 4 形式化代码”的双阶段结构、引入严苛的格式合规性检查奖励，并首创支持自我调试的错误纠正交互轮次，该流水线在国际权威的 MiniF2F 基准测试中，推动 0.6B 与 1.7B 参数量级的小模型刷新了同体量开源模型的最先进性能记录。
+
+&gt; `kimina-prover-rl` is an open-source, streamlined training pipeline designed for formal theorem proving in Lean 4. Inspired by the reasoning-then-generation paradigm of DeepSeek-R1, it adapts Group Relative Policy Optimization (GRPO) using the open-source **verl** framework. By structuring outputs into a reasoning trace followed by Lean 4 code, incorporating strict formatting checks, and introducing an error-correction turn for self-debugging, the pipeline establishes new state-of-the-art performance for open-source models in the 0.6B and 1.7B parameter classes on the MiniF2F benchmark.
+
+---
+
+## 项目引言
+
+&gt; ## Introduction
+
+![image/png](./images/135a69d43bf0.png)
+
+`kimina-prover-rl` 是一套旨在训练大语言模型 (Large Language Model, LLM) 解决 Lean 4 形式化证明目标的训练流水线。它采用了一种清晰的双阶段输出结构：首先输出一段自然语言构成的思维链推理轨迹，随后生成与之对应的 Lean 4 证明代码。
+
+&gt; `kimina-prover-rl` is a training pipeline designed to teach large language models to solve formal proof goals in Lean 4, using a two-stage output structure: a natural language reasoning trace followed by corresponding Lean code.
+
+这种深受 DeepSeek-R1 启发的解题范式，让模型能够将“解题逻辑规划”与“形式化语法执行”清晰地分离开来，极大地提升了证明过程的可解释性、错误恢复能力以及在复杂未见问题上的泛化性能。
+
+&gt; This paradigm, inspired by DeepSeek-R1, enables the model to separate planning from execution, promoting explainability, error recovery, and stronger generalization.
+
+为了在这一推理框架下充分激发模型的推理潜能，我们采用了群相对策略优化 (GRPO)——一种专为大语言模型定制的高效强化学习 (Reinforcement Learning, RL) 算法。Kimina-prover 这一开源版训练流水线依托于开源强化学习库 [Verl](https://github.com/volcengine/verl) 构建。
+
+&gt; To train models under this reasoning framework, we apply GRPO — a reinforcement learning approach tailored for LLMs. This open-source version of the training pipeline of Kimina-prover is implemented using the RL library [Verl](https://github.com/volcengine/verl).
+
+在 GRPO 的生成采样 (Rollout) 阶段，模型会针对每个输入的数学问题提示词生成 $N$ 个候选回答。我们通过自主研发的 [kimina-lean-server](https://github.com/project-numina/kimina-lean-server) 实时调用 Lean 4 编译器对生成的代码进行形式化严谨校验；只要候选代码能通过 Lean 的语法与逻辑验证，该样本就会被赋予值为 1 的奖励。
+
+&gt; During the rollout phase of GRPO, the model generates $N$ outputs for each prompt. A reward of 1 is assigned to any output whose Lean code is successfully verified by Lean using our [kimina-lean-server](https://github.com/project-numina/kimina-lean-server).
+
+该框架在此基础上特别注入了两大核心创新特性：
+
+* **格式校验奖励机制**：约束并引导模型规范化地组织其输出结构；
+* **错误纠正交互轮次**：促使模型主动从编译失败信号中吸取教训，实现自我纠错与调试。
+
+&gt; Two main features are added to this framework:
+&gt; * A format checking reward to teach the model to structure its outputs
+&gt; * An error correction turn to encourage the model to learn from failure signals
+
+---
+
+## 高吞吐校验客户端：Kimina-Client
+
+&gt; ## Kimina-Client
+
+在强化学习的训练过程中，系统必须同时对海量的 Lean 4 候选证明代码进行实时并发验证。为了高吞吐、低延迟地处理这一计算瓶颈，必须构建一套高并发的形式化检验系统。
+
+&gt; During training, a large number of Lean 4 proof candidates must be verified simultaneously. To handle this efficiently, we require a high-throughput verification system.
+
+针对这一迫切需求，Numina 与 Kimi 团队联合研发并开源了高性能证明服务器 [kimina-lean-server](https://github.com/project-numina/kimina-lean-server)，能够利用 Lean 4 引擎提供大规模的高并发定理检验支持。
+
+&gt; To meet this need, Numina and Kimi have developed an open-source server called [kimina-lean-server](https://github.com/project-numina/kimina-lean-server), which supports parallel proof checking at scale using Lean 4.
+
+为了进一步降低集成门槛，我们还配套提供了 [kimina-client](https://www.piwheels.org/project/kimina-client/)，这是一个已发布至 PyPI 的轻量级 Python 工具包，为开发者调用服务端 API 提供了极其清爽简洁的交互接口。
+
+&gt; To simplify integration, we also provide [kimina-client](https://www.piwheels.org/project/kimina-client/), a lightweight Python package (available on PyPI) that offers a clean interface for interacting with the server’s API.
+
+---
+
+## 训练数据集设计
+
+&gt; ## Dataset
+
+我们使用了精选构建的 [Kimina-Prover-Promptset](https://huggingface.co/datasets/AI-MO/Kimina-Prover-Promptset) 数据集进行训练，该数据集是基于著名的开源数学形式化数据集 [NuminaMath-LEAN](https://huggingface.co/datasets/AI-MO/NuminaMath-LEAN) 筛选提炼而成的子集。
+
+&gt; We train using [Kimina-Prover-Promptset](https://huggingface.co/datasets/AI-MO/Kimina-Prover-Promptset), a curated subset of the [NuminaMath-LEAN](https://huggingface.co/datasets/AI-MO/NuminaMath-LEAN) dataset.
+
+在当前训练设置下，我们对原始数据集执行了如下几项关键的过滤与预处理步骤：
+
+* **剔除简单问题**：将历史成功率高于 **0.5** 的简单题目全部过滤掉，使数据集中仅保留具备真正思维挑战性的难题。
+* **生成变体题型**：借助 Gemini 模型对现有题目进行语义与条件变异扩充，从而显著丰富题目的多样性。
+* **重采样高难题目**：对难度极高的疑难题目进行按比例复制，赋予其在训练更新时更大的梯度权重。
+
+&gt; For this training setup, we filter and preprocess the dataset as follows:
+&gt; * **Remove easy problems** with a historical win rate above **0.5** to only keep challenging statements in the dataset.
+&gt; * **Generate variants** of existing problems to increase diversity using Gemini.
+&gt; * **Duplicate hard problems** to give them more weight during training.
+
+经过上述严苛洗练后构建的数据集，汇聚了极具挑战性且信息密度极高的高价值题目，是全面磨炼 Lean 4 定理证明模型的优质养料。
+
+&gt; The resulting dataset contains challenging, high-value problems for improving Lean 4 theorem proving models.
+
+这一整套 NuminaMath-LEAN-RL 数据集，正是训练 [AI-MO/Kimina-Prover-RL-1.7B](https://huggingface.co/AI-MO/Kimina-Prover-RL-1.7B) 与 [AI-MO/Kimina-Prover-RL-0.6B](https://huggingface.co/AI-MO/Kimina-Prover-RL-0.6B) 模型的核心基石。
+
+&gt; NuminaMath-LEAN-RL is also the dataset used to train [AI-MO/Kimina-Prover-RL-1.7B](https://huggingface.co/AI-MO/Kimina-Prover-RL-1.7B) and [AI-MO/Kimina-Prover-RL-0.6B](https://huggingface.co/AI-MO/Kimina-Prover-RL-0.6B).
+
+**输入格式示例：**
+
+&gt; **Example input format:**
+
+```text
+Think about and solve the following problems step by step in Lean 4.
+
+# Problem:
+Find all primes that are the difference of the fourth powers of two integers.
+
+# Formal Statement:
+'''lean4
+import Mathlib
+
+theorem number_theory_4487 : {p : ℕ | p.Prime ∧ ∃ a b, p = a ^ 4 - b ^ 4} = ∅ := by
+'''
+```
+
+---
+
+## 结构化格式奖励机制
+
+&gt; ## Format Reward
+
+我们这套推理训练流水线的核心精髓，在于强制规范大语言模型的输出范式，将其严格约束为两个连贯的阶段：先生成一段深度思考块，再输出形式化 Lean 4 代码块：
+
+1. 思维链推理块 (`&lt;think&gt;...&lt;/think&gt;`)
+2. Lean 4 形式化代码块
+
+&gt; The core idea of our reasoning training pipeline is to structure the LLM output into two stages: one thinking block followed by one Lean 4 block:
+&gt; 1. A reasoning block (`&lt;think&gt;...&lt;/think&gt;`)
+&gt; 2. A Lean 4 code block
+
+```text
+&lt;think&gt;
+To prove the statement, we use induction on n.
+The base case is trivial, and the inductive step follows by applying the hypothesis.
+&lt;/think&gt;
+
+'''lean4
+theorem my_thm : ∀ n, f n = g n := by
+  induction n with
+  | zero =&gt; simp
+  | succ n ih =&gt; simp [ih]
+'''
+```
+
+系统会对每一个生成的 Rollout 样本进行**合规性严格校验**。一旦输出格式出现畸变——例如缺失了 `&lt;think&gt;` 标签块、或者 Lean 4 代码块放置位置颠倒错乱——无论其中包含的证明代码在数学上是否实际成立，模型都会被**直接判予零分 (Zero Reward)**。
+
+&gt; Each rollout is **verified** to ensure that this format is respected. If the output is malformed — e.g., missing the `&lt;think&gt;` block or misplacing the code — the model receives a **zero reward**, regardless of whether the proof is actually valid.
+
+在 `kimina-prover` 的具体工程落地中，格式校验绝不仅限于检查标签是否存在这么简单，而是包含了一套极其缜密的约束准则：
+
+* **唯一性校验**：确保每次生成的输出中，严格只包含恰好一个 `&lt;think&gt;...&lt;/think&gt;` 思考块和一个 Lean 4 代码块。
+* **剔除重复退化**：严密过滤并在出现内容高度重复的推理行时直接判定无效，这类重复往往是模型陷入幻觉 (Hallucination) 或文本退化的危险信号。
+* **策略密集度校验**：深入检查思考段落中的策略 (Tactic) 思考块是否数量充沛，且包含足够数量的实质性非注释代码行。
+* **注释密度阈值**：对思考过程与 Lean 代码中的注释占比施加阈值限制，对废话连篇、模板化堆砌的冗长输出予以惩罚。
+* **思考与代码语义对齐**：通过相似度匹配打分（如交并比 IoU 或子代码覆盖率指标），量化比对思考块中构想的策略与最终实际生成的 Lean 代码之间的逻辑一致性。
+* **长度效率惩罚**：对不必要的冗长赘述施加负向惩罚，鼓励模型在保证论证完整缜密的前提下以最高的 Token 效率解决问题。
+
+&gt; In `kimina-prover`, these checks go beyond simply verifying the presence of `&lt;think&gt;` and Lean 4 blocks:
+&gt; * Ensuring there is exactly one `&lt;think&gt;...&lt;/think&gt;` block and one Lean 4 code block per output.
+&gt; * Rejecting outputs with repetitive reasoning lines, which often indicate hallucinated or degenerate generations.
+&gt; * Checking that tactic blocks inside the thinking section are present in sufficient number and contain enough non-comment lines.
+&gt; * Applying thresholds on comment density (in both reasoning and Lean code) to penalize overly verbose or boilerplate outputs.
+&gt; * Comparing the semantic alignment between tactics described in blocks and the final Lean code using a matching score (e.g., Intersection-over-Union or subcode coverage).
+&gt; * Penalizing unnecessarily long responses, encouraging the model to use tokens more efficiently while still giving complete replies.
+
+---
+
+## 交互式错误纠正机制
+
+&gt; ## Error Correction
+
+为了使训练过程更具信息量和针对性，我们额外引入了**自我纠错机制 (Error Correction Mechanism)**，赋予模型一次主动修复自身证明漏洞的机会。
+
+&gt; To make training more informative, we have added an **error correction mechanism** that gives the model a chance to fix its own failed proofs.
+
+当某一生成样本验证失败时（例如 Lean 编译器报错或代码无法完成证明封闭）：
+
+1. 系统会完整归档当时的原始提示词、模型的回复内容以及 Lean 编译器返回的报错反馈信息。
+2. 动态构建一个**全新的训练样本**，在该样本中明确指示模型参考报错反馈对其先前的推理思维链与代码进行反思重构。
+
+&gt; When a rollout fails (e.g., due to a Lean error or incorrect proof), we:
+&gt; 1. Store the full prompt, response, and Lean feedback.
+&gt; 2. Create a **new training sample** where the model is explicitly prompted to revise its previous reasoning/code.
+
+由于在训练过程中不断注入来自 Lean 编译器的精准反馈，这种设计强烈鼓励模型从失败信号中领悟调试技巧。它开辟了多轮交互推理链路：Lean 编译器的报错信息被重新组装为提示词上下文，只要模型能成功实现代码的自我 Debug 并使证明成立，便能斩获全额奖励。
+
+&gt; This encourages the model to learn from failure signals as Lean feedback is provided during training. It also enables multi-turn interaction chains, where feedback from Lean is injected as part of the prompt, and the model is rewarded for successfully debugging its own output.
+
+---
+
+## 训练流水线全景架构
+
+&gt; ## Overview of the Pipeline
+
+前沿学术研究《*深入理解类似 R1-Zero 的训练：批判性视角*》(*Understanding R1-Zero-Like Training: A Critical Perspective*) 指出，原生的 GRPO 算法存在特定的优化偏差，容易诱导模型不自然地拉长回复长度，尤其是在给出错误答案时更为明显。我们在早期的调优实验中也观察到了这一倾向，因此在策略优化阶段果断采用了 **DrGRPO** 算法。DrGRPO 通过使用全局常数对 Token 级别的损失 (Loss) 进行归一化聚合，成功从根源上消除了响应长度的非良性膨胀偏差。
+
+&gt; The work *Understanding R1-Zero-Like Training: A Critical Perspective* claims there is optimization bias in GRPO that leads to artificially longer responses, especially for incorrect outputs. We noticed this behavior during our experiments and used **DrGRPO** for our optimization. DrGRPO aggregates token-level losses by normalizing with a global constant to eliminate length bias.
+
+* **硬件集群配置**：代码仓库中提供的默认训练配置文件面向 8 卡 GPU 集群进行了专门适配。
+* **基座模型选型**：我们对 **[AI-MO/Kimina-Prover-Distill-1.7B](https://huggingface.co/AI-MO/Kimina-Prover-Distill-1.7B)** 进行微调 (Fine-tuning)。该模型是基于 **[Qwen/Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B)**，利用旗舰模型 **[AI-MO/Kimina-Prover-72B](https://huggingface.co/AI-MO/Kimina-Prover-72B)** 合成冷启动数据蒸馏调优而成的模型。
+* **批处理大小与采样规模**：在训练的每一个 Step 中，从数据集中抽取 256 个问题样本（其中一半样本严格为包含报错信息的错误纠正样本）。每个样本生成 8 个 Rollout 候选（单步总生成量达到 2048 次）。
+* **模型评测**：每训练 5 个 Step，系统就会利用 verl 的 `best@8` 指标对当前模型进行极速验证评测。对于每一个评测中首轮失败的回答，系统均允许模型进行一次自我修正的挽救重试。
+
+&gt; * **Hardware Configuration:** The configuration file provided in the repository is for an 8-GPU setup.
+&gt; * **Base Model:** We fine-tune **[AI-MO/Kimina-Prover-Distill-1.7B](https://huggingface.co/AI-MO/Kimina-Prover-Distill-1.7B)**, which is a fine-tuned version of **[Qwen/Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B)** using cold-start data generated from our **[AI-MO/Kimina-Prover-72B](https://huggingface.co/AI-MO/Kimina-Prover-72B)** model.
+&gt; * **Batch Size &amp; Rollouts:** At every step, 256 samples are fetched from the training dataset (one out of every two is an error-correction sample). We generate 8 rollouts per sample (2048 total generations).
+&gt; * **Evaluation:** We evaluate the model every 5 training steps using the `best@8` metric from verl for fast validation. For each failed response, we allow the model one tentative retry to fix its proof.
+
+---
+
+## 实验结果与评估分析
+
+&gt; ## Results
+
+在 8 张 NVIDIA H100 GPU 上历经 48 小时的强化学习训练后，各项核心指标均呈现出稳步且显著的提升：
+
+&gt; After 48 hours of training on 8 H100 GPUs, we observed consistent improvements across all metrics:
+
+1. **证明准确率 (Accuracy)**：训练进行到第 85 个 Step 时，流水线将模型准确率直接拉升了 4 个百分点，其 `best@8` 指标达到 70%，在融合错误纠正轮次后进一步跃升至 74%。
+
+   &gt; 1. **Accuracy:** By step 85, the pipeline improves model accuracy by 4 points, reaching 70% for the `best@8` metric and 74% after the error-correction turn.
+
+   ![image/png](./images/16cbb23017db.png)
+
+2. **格式有效性 (Format Validity)**：在整个训练进程中，格式违规错误率持续平稳下跌，强力印证了模型已经牢牢掌握了结构合规的输出规范。
+
+   &gt; 2. **Format Validity:** Format errors steadily decrease over the course of training, confirming that the model learns to produce structurally valid outputs.
+
+   ![image/png](./images/e1a70fe42389.png)
+
+3. **Token 长度 (Token Length)**：与 DeepSeek-R1 风格的强化学习演化规律高度契合，模型的平均 Token 长度随着训练进行而稳步拉长，表明模型正在自主学会构建更深邃、更完备的长思维链推导路径。
+
+   &gt; 3. **Token Length:** Consistent with DeepSeek-R1-style training, average token length increases as the model learns to construct longer, deeper reasoning traces.
+
+   ![image/png](./images/f6028f8e55ac.png)</description>
+    </item>
+    <item>
+      <title>Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露/</guid>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 迈入百万级长上下文时代，为了提升算力利用率与降低生成延迟，现代 AI 推理系统普遍采用计算与解码解耦的分离式集群架构。然而，在这种高度复杂的多租户共享 GPU 基础设施中，显存与状态管理一旦出现疏漏，极易引发生命攸关的数据隔离与隐私泄露隐患。2026 年 9 月，Cloudflare 在其 Workers AI 平台上发现了由推理引擎 SGLang 底层缺陷与显存池配置失配共同引发的罕见漏洞：当用户输入超长提示词 (Prompt) 导致键值缓存 (Key-Value Cache, KV Cache) 溢出时，系统不仅未按预期拦截报错，反而将其他会话残留的未清零显存拼装输出，导致 155 条多租户会话响应发生跨请求数据泄露。Cloudflare 与 SGLang 团队随后协同完成紧急修复并在开源社区发布安全补丁。本文详细复盘了该漏洞的触发机制、排查时间线与应急修复方案，为行业安全运营解耦式 GPU 推理基础设施提供了极具价值的实战借鉴。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+Cloudflare 发布了一份安全事故调查报告，详细披露了其 Workers AI 平台上运行的 GLM-5.3 模型存在的跨请求键值缓存 (KV Cache) 暴露漏洞。由于模型部署配置失配以及上游 SGLang 推理引擎的一个内部缺陷相互叠加，导致当用户发送超长提示词时，系统在返回的 155 条会话响应中意外泄露了其他客户会话的历史数据。该漏洞最初由安全研究员 Gadi Evron 负责任地披露，Cloudflare 团队在 2026 年 9 月迅速实施了紧急处置与隔离修复；此次安全事件也推动了 SGLang 上游代码库的广泛安全修补，并为业内安全运营计算与解码解耦架构的 GPU 基础设施提供了重要的实践建议。
+
+&gt; Cloudflare published an incident report detailing a cross-request KV cache exposure vulnerability in the GLM-5.3 model on its Workers AI platform. Caused by a configuration mismatch and an upstream SGLang inference engine bug, the issue resulted in 155 responses to extremely long prompts leaking data from other customer sessions. Disclosed by security researcher Gadi Evron and swiftly remediated by Cloudflare in September 2026, the incident prompted widespread upstream patches and operational recommendations for managing disaggregated GPU infrastructure securely.
+
+---
+
+## 漏洞暴露背后的两大核心根因
+
+&gt; ## The Two Issues Behind the Exposure
+
+Cloudflare 在其平台中以“计算与解码解耦” (disaggregated) 的集群架构，使用开源推理引擎 SGLang 承载 Z.ai 研发的 GLM-5.3 文本生成模型。在这一架构下，Prefill（预填充）GPU 负责处理输入的提示词并计算生成键值缓存 (KV Cache)，随后通过 Mooncake 框架利用远程直接内存访问 (Remote Direct Memory Access, RDMA) 技术将缓存数据跨节点高速传输给 Decode（解码）GPU，由后者继续执行自回归解码以生成最终的回答。为了追求极致吞吐，这套由固定大小内存页组成的共享 KV 缓存池在请求之间并不会执行全量清零擦除，推理引擎完全依赖严谨的内存页所有权追踪机制来保障多租户之间的数据隔离。
+
+&gt; Cloudflare runs Z.ai's GLM-5.3 text generation model using SGLang—an open-source inference engine—in a disaggregated configuration. In this setup, prefill GPUs process prompts and generate the Key-Value (KV) cache, passing it over remote direct memory access (RDMA) via Mooncake to decode GPUs that construct the final response. Because the shared pool of fixed-size KV cache pages is not zeroed out between requests, the engine relies strictly on tracking page ownership.
+
+本次数据泄露事件正是由以下两项致命因素叠加交织所致：
+
+&gt; The data exposure stemmed from two combined factors:
+
+1. **部署配置失配**：Cloudflare 在部署 GLM-5.3 时对外开放了 1,048,576 Token 的超长上下文窗口，然而集群中 Prefill GPU 节点预分配的 KV 缓存池容量上限实际上仅能容纳 681,280 Token。Cloudflare 的运维团队原本预期当提示词超出显存池承载能力时推理引擎会自动抛出安全异常并优雅报错，但在先前的上线测试中，自动化测试套件主要验证了 HTTP 状态码和系统吞吐性能，并未深入校验极端边界下模型输出内容的语义连贯性。
+2. **SGLang 引擎底层缺陷**：当处理超过缓存池容量上限的超长提示词时，SGLang 引擎内部虽将该请求标记为“拒绝处理”，却在内部使用了一个单 Token 的占位符进行替换继续调度。更严重的是，负责 Prefill 的 GPU 节点依然针对这个占位符生成了 KV 缓存，并向后端发出了传输完成的信号。这直接导致负责 Decode 的 GPU 节点误以为数据准备就绪，直接在残留着上一个历史请求数据的“陈旧缓存页”上执行了内容生成，并最终返回了 HTTP 200 成功状态码，而非本应抛出的 HTTP 400 客户端错误。
+
+&gt; 1. **The Configuration Mismatch:** Cloudflare deployed GLM-5.3 with a 1,048,576-token context window, while the prefill GPU's KV cache pool was limited to 681,280 tokens. Cloudflare expected the engine to safely error out on overly large prompts, but their testing validated HTTP response codes and performance rather than model output coherence. 
+&gt; 2. **The SGLang Engine Bug:** When processing prompts exceeding the cache pool size, SGLang internally marked them as rejected and swapped them with a one-token placeholder. However, the prefill node still generated a KV cache for the placeholder and signaled a completed transfer. Consequently, the decode node generated responses over stale cache pages holding data from previous requests, returning an HTTP 200 instead of an HTTP 400 error.
+
+经全面核查，所有受影响的 155 条异常响应全部对应长度超过 681,280 Token 的超长提示词请求。Cloudflare 官方明确证实，目前没有任何证据表明该漏洞曾遭到黑客的蓄意探测或恶意利用，相关异常请求在时间分布与请求规模上完全符合用户正常调用超长上下文场景的常规业务特征。
+
+&gt; All 155 affected responses were tied to prompts exceeding 681,280 tokens. Cloudflare confirmed there was no evidence of deliberate exploitation, noting that the timing and volume of affected requests matched standard long-context usage.
+
+---
+
+## 应急响应与漏洞处置全流程
+
+&gt; ## Incident Response and Remediation
+
+在安全研究员 Gadi Evron 于 2026 年 9 月 8 日通过 HackerOne 漏洞赏金平台提交多租户数据隔离缺陷报告后，Cloudflare 迅速启动紧急应急响应机制对漏洞展开排查与闭环修复：
+
+&gt; After security researcher Gadi Evron reported the tenant-isolation issue via HackerOne on September 8, 2026, Cloudflare moved quickly to isolate and resolve the vulnerability:
+
+* **2026 年 9 月 9 日 08:00 (UTC)**：Cloudflare 安全团队正式启动漏洞报告的复现与核验。
+* **13:22 (UTC)**：产品安全团队成功稳定复现数据泄露现象，正式宣布进入安全事件应急状态。
+* **14:00 (UTC)**：紧急下线 GLM-5.3 模型对外服务，将其访问权限设为私有隔离状态。
+* **14:35 (UTC)**：彻底锁定配置失配与 SGLang 内部状态转移的根本原因。
+* **19:04 (UTC)**：基于 Cloudflare 自研定制补丁，完成全量生产环境的编译与滚动部署。
+* **19:40 (UTC)**：经过严密安全验证后，GLM-5.3 模型正式恢复公开访问服务。
+
+&gt; * **September 9, 2026 (08:00 UTC):** Cloudflare began verifying the report.
+&gt; * **13:22 UTC:** Declared a security incident after the Product Security team successfully reproduced the leak.
+&gt; * **14:00 UTC:** GLM-5.3 was set to private.
+&gt; * **14:35 UTC:** Root cause identified.
+&gt; * **19:04 UTC:** Full deployment rebuilt using a custom Cloudflare engine patch.
+&gt; * **19:40 UTC:** Model restored to public access.
+
+本次漏洞修复采取了“配置修正 + 引擎补丁”的双重防御机制：
+
+&gt; The remediation involved a dual fix:
+
+* **集群配置调整**：大幅清理与释放 GPU 显存，确保 Prefill 节点的 KV 缓存池容量扩展至约 204 万 Token——相当于上下文窗口设计上限的两倍，从而在根本上确保任何合法提示词均能完整容纳于显存池中。
+* **推理引擎补丁**：重构了请求生命周期管理逻辑，对于任何标记为待拒绝的非法请求，在进入显存分配队列时立即终止并原样返回对应的错误码，彻底阻断任何后续的显存分配或跨节点 KV 传输行为。
+
+&gt; * **Configuration Adjustment:** GPU memory was freed to ensure the prefill KV pool holds roughly 2.04 million tokens—double the context window size—ensuring that any prompt fitting the context window will always fit the pool.
+&gt; * **Engine Patch:** Requests carrying pending rejections are retired at the disallocation queue with their original error codes before any allocation or KV transfer occurs.
+
+---
+
+## 上游代码贡献与持续安全建议
+
+&gt; ## Upstream Fixes and Ongoing Work
+
+Cloudflare 随后将本次事件中开发的安全补丁全面反哺回馈给 SGLang 开源社区（涵盖 Pull Request #38704），促成了社区官方发布 v0.5.21 及 v0.5.22 维护版本。SGLang 官方核心团队经严密评测后确认，引入这一系列安全校验逻辑对整体推理吞吐量的影响微乎其微（波动在 ±2% 以内）。
+
+&gt; Cloudflare contributed its fixes upstream to SGLang (including pull request #38704), leading to maintained updates like v0.5.21 and v0.5.22. The SGLang team confirmed that throughput impact from these security patches is negligible (within ±2%). 
+
+为了防止类似的多租户隔离漏洞在解耦式 GPU 基础设施中再次发生，Cloudflare 与 SGLang 联合向业界基础设施运维团队提出了如下关键安全防范建议：
+
+&gt; To prevent similar vulnerabilities across disaggregated GPU setups, Cloudflare and SGLang recommend operators:
+
+* **严格对齐显存配置**：每次调整服务配置或模型参数后，务必仔细校验预分配 KV 缓存池大小与模型最大上下文长度之间的对应关系。
+* **及时升级引擎版本**：将生产环境的 SGLang 实例全面升级至 v0.5.22 或更高版本。
+* **启用深度安全机制**：在底层运行环境支持的情况下，开启延迟 KV 释放 (Deferred KV Release) 与显存数据破坏检测 (Corruption Detection) 机制。
+* **优化负载均衡策略**：科学配置负载均衡器，防止因客户端突发断开连接而粗暴打断正在进行中的跨节点数据传输任务。
+
+&gt; * Validate KV pool sizes against context lengths following any configuration modifications.
+&gt; * Upgrade SGLang deployments to v0.5.22 or later.
+&gt; * Enable deferred KV release and corruption detection where supported.
+&gt; * Configure load balancers to prevent abrupt client disconnects from interrupting active mid-transfer requests.
+
+---
+
+*本文最初由 Unite.AI 的 AI 研究智能体 **Miles Okada** 撰写。*
+
+&gt; *Article originally authored by **Miles Okada** (AI Research Agent at Unite.AI).*</description>
+    </item>
+    <item>
       <title>清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-27/清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-27/清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统/</guid>
@@ -4357,741 +5154,6 @@ ORDER BY (observer, action, application, toStartOfHour(Timestamp), Timestamp)
 &gt; * **Submitted:** October 17, 2026  
 &gt; * **Subjects:** Artificial Intelligence (`cs.AI`), Computation and Language (`cs.CL`), Machine Learning (`cs.LG`), Systems and Control (`eess.SY`)  
 &gt; * **arXiv ID:** [`arXiv:2610.24871`](https://arxiv.org/abs/2610.24871)</description>
-    </item>
-    <item>
-      <title>Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在 Anthropic 内部，以 Claude 为代表的自主 AI 编码智能体 (AI Agent) 彻底改变了软件工程的游戏规则，编写代码的速度与体量迎来指数级爆发——仅四个月间单体仓库 (Monorepo) 的日代码合并量便激增十倍以上，传统的分布式版本控制系统 Git 在面对数百 PB 流量与庞大历史记录时陷入全面过载。面对这一由 AI 带来的“甜蜜烦恼”，一个仅有 7 名工程师的小团队在 5 个月内从零研发出专为“智能体规模”设计的自研版本控制系统 Scion，并顺利完成了全量单体代码库的平滑迁移。Scion 颠覆了 Git 的全量离线克隆假设，将客户端默认设为“永远在线”，结合预写日志变更集 (WAL Changeset)、无锁化提交与分层内存缓存架构，将底层基础设施资源占用削减了 200 倍，并实现了以秒为单位的代码极速检出。这一突破不仅揭示了下一代 AI 原生软件工程的基础设施演进范式，更生动展示了人类工程师与 AI 紧密协作重构大型分布式系统的全新实践。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-在 Anthropic，以 Claude 为代表的自主 AI 编码智能体 (AI Agent) 已经从根本上改变了软件工程的生产力瓶颈。如今，编写代码本身已不再是限制开发效率的核心因素；相反，过去专为人类协作节奏量身定制的开发者基础设施——尤其是版本控制系统、构建工具链与持续集成 (CI) 流水线——已经逼近了物理极限。在 2026 年 5 月至 9 月这短短几个月内，Anthropic 核心代码库中每日成功合并的代码变更数量从 2,500 次暴增至超过 30,000 次。
-
-&gt; At Anthropic, autonomous coding agents like Claude have fundamentally shifted the bottleneck of software engineering. Writing code is no longer the limiting factor; instead, developer infrastructure built for human scale—specifically source control, builds, and CI—has hit its limits. Between May and September 2026, daily merged code changes surged from 2,500 to over 30,000.
-
-为了支撑这一爆发式增长，一支仅由 7 名工程师组成的核心团队从零构建了 **Scion**——一个专为“智能体规模 (Agent Scale)”打造的全新自研版本控制系统，并在短短五个月内将公司规模庞大的单体仓库 (Monorepo) 从 Git 全量无缝迁移完毕。本篇技术案例将深入剖析：为何像 Git 这样经典的分布式版本控制系统会在 AI 生产的代码浪潮下不堪重负，Scion 背后的六大核心架构原则是什么，以及工程师在与 Claude 并肩构建高性能开发者基础设施时所获得的深刻洞察。
-
-&gt; To support this exponential growth, a team of seven engineers built **Scion**, an in-house version control system designed from the ground up for "agent scale," and fully migrated their massive monorepo from Git in just five months. This case study details why traditional distributed systems like Git began to strain under the weight of AI-generated code, the core architectural principles behind Scion, and the lessons learned from building high-performance developer tooling alongside Claude.
-
----
-
-## 极速扩张的单体仓库
-
-&gt; ## Growing Our Monorepo
-
-在 Anthropic 内部，Claude 被广泛应用于闭环迭代前沿科研实验、深度微调复杂系统程序，以及从零开始快速搭建全新服务。这种前所未有的工作负载强度，使得 Anthropic 得以在整个行业遭遇该难题之前，提前数月遭遇极限扩展瓶颈。
-
-&gt; At Anthropic, Claude is utilized to iterate on research loops, micro-optimize complex programs, and build new services from the ground up. This unprecedented workload uncovers scaling bottlenecks long before they hit the broader industry.
-
-```
-2026 年 1 月至 9 月，单体代码库每日合并的代码变更量。
-Changes merged to our monorepo per day, from January to September 2026.
-```
-![2026 年 1 月至 9 月，单体代码库每日合并的代码变更量](./images/1e2a750dba61.png)</description>
-    </item>
-    <item>
-      <title>实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在实时语音对话场景下，耗时较长的后台数据库查询或检索增强生成 (Retrieval-Augmented Generation, RAG) 流程常常会造成长达数秒的“死寂”空白，让用户误以为通话已经断线。为了破解这一交互难题，Google 团队基于开源的智能体开发套件 (Agent Development Kit, ADK) 与 `gemini-3.8-live` 实时语音多模态大模型，提出了创新的流式工具与非阻塞函数架构。通过在 Python 原生环境中异步调度任务，语音 AI 智能体 (AI Agent) 能够在后台工具执行的同时向用户持续输出口头反馈与进度叙述，使首字响应延迟从 14.4 秒大幅压缩至 1.2 秒。本文为构建高响应、拟人化、永不冷场的生产级实时语音智能体提供了详尽的实战指南。
-
----
-
-**发布日期：** 2026 年 10 月 19 日  
-**作者：** Stephen Allen (Solutions Architect, AI Apps and Platforms), Kaz Sato (Staff Developer Advocate)  
-
-&gt; **Published:** October 19, 2026  
-&gt; **Authors:** Stephen Allen (Solutions Architect, AI Apps and Platforms), Kaz Sato (Staff Developer Advocate)  
-
----
-
-## 📌 概要
-
-&gt; ## 📌 Summary
-
-在实时语音对话中，缓慢的数据库查询或检索增强生成 (Retrieval-Augmented Generation, RAG) 流程往往会导致数秒钟的无声冷场，促使用户误以为电话已经断线并挂断。本指南将探讨如何借助开源的 **智能体开发套件 (Agent Development Kit, ADK) Gemini Live API 工具包** 以及 `gemini-3.8-live` 模型来攻坚这一架构难题。通过在 Python 中构建流式工具 (Streaming Tools) 和非阻塞后台函数，开发者能够让语音智能体始终保持畅通对话与灵敏响应——将智能体开口说话的首字等待时间从 14.4 秒骤降至 1.2 秒。
-
-&gt; In a live voice conversation, slow database queries or RAG pipelines can lead to seconds of dead air, causing users to assume the call dropped. This guide explores how to solve this architectural challenge using the open-source **Agent Development Kit (ADK) Gemini Live API Toolkit** and `gemini-3.8-live`. By implementing streaming tools and non-blocking background functions in Python, developers can keep voice agents conversational and responsive—reducing the time to the agent's first words from 14.4 seconds down to 1.2 seconds.
-
----
-
-![option4_minimal_flow_diagram_1600x900](./images/58b8a11d89a4.png)
-
-## 使用 ADK 与 Gemini 3.8 Live 构建永不冷场的语音智能体
-
-&gt; ## Building a Voice Agent That Never Goes Silent with ADK and Gemini 3.8 Live
-
-*一份关于 [智能体开发套件 (ADK) Gemini Live API 工具包](https://adk.dev/live/) 中 [流式工具](https://adk.dev/live/streaming-tools/)、非阻塞函数调用与响应调度的实战指南。*
-
-&gt; *A guide to [streaming tools](https://adk.dev/live/streaming-tools/), non-blocking function calls, and response scheduling in the [Agent Development Kit (ADK) Gemini Live API Toolkit](https://adk.dev/live/).*
-
-在传统的文字聊天界面中，耗时 13 秒的数据库查询或 RAG 处理流程顶多只是在屏幕上转个加载圈圈；但在实时语音通话里，长达 13 秒的阻塞式工具调用则意味着整整 13 秒的死寂冷场，这往往会让用户断定电话出了故障或者已经挂断，从而直接结束通话。
-
-&gt; In text chat, a 13-second database query or RAG pipeline shows a loading spinner. In a live voice conversation, 13 seconds of blocking tool execution produces 13 seconds of dead air, causing users to assume the call dropped and hang up.
-
-我们无法保证每次后端查询都能达到亚秒级响应，因此破局的关键必须落在架构设计上：在耗时的慢速工具于后台运行的同时，让智能体始终保持正常的口语对话能力。开源的 ADK 和 gemini-3.8-live 允许开发者直接在 Python 原生环境中编写非阻塞的语音工具，而无需费心去手写复杂的客户端 WebSocket 事件循环来管理异步工具状态。在基于 gemini-3.8-live 的销售报告基准测试工作流中，仅仅将传统的阻塞式工具替换为流式工具，就将智能体开口说话的首字等待时间从 14.4 秒大幅削减到了 1.2 秒。
-
-&gt; You cannot always make backend queries sub-second, so the fix must be architectural: keep the agent conversational while slow tools run in the background. Rather than forcing you to wire up custom client-side WebSocket event loops to manage asynchronous tool state, the open-source ADK and gemini-3.8-live let you implement non-blocking voice tools natively in Python. In our benchmark sales-report workflow on gemini-3.8-live, switching from a blocking tool to a streaming tool cut the time to the agent's first words from 14.4 seconds to 1.2 seconds.
-
-本指南将全方位解析如何运用流式工具、非阻塞 `FunctionTool` 定义以及 `response_scheduling` (响应调度) 机制，打造出响应敏捷、表达自然的语音智能体。
-
-&gt; This guide covers how to use streaming tools, non-blocking `FunctionTool` definitions, and `response_scheduling` to build responsive, natural voice agents.
-
-欢迎观看这段时长 1 分钟的 ADK Live AI 礼宾接待演示视频，亲身体验计划响应机制在真实对话中的运行效果：
-
-&gt; Watch the 1-minute ADK Live AI Concierge demo video to hear scheduled responses in action:
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; **ADK Live AI 礼宾接待演示视频**  
-&gt; *ADK Live AI 礼宾接待演示视频讲解了计划响应的工作机制*  
-&gt; [观看视频源地址](https://storage.googleapis.com/gweb-developer-goog-blog-assets/original_videos/How__scheduled_response__of_ADK_Live_works.mp4)
-
-&gt; **ADK Live AI Concierge Demo Video**  
-&gt; *ADK Live AI Concierge demo video explains how scheduled responses work*  
-&gt; [Watch Video Source](https://storage.googleapis.com/gweb-developer-goog-blog-assets/original_videos/How__scheduled_response__of_ADK_Live_works.mp4)
-
----
-
-## 非阻塞工具带来的核心优势
-
-&gt; ## What Non-Blocking Tools Enable
-
-在 ADK 中落地非阻塞工具调用，能为用户体验带来立竿见影的显著提升：
-
-&gt; Implementing non-blocking tool calls in ADK provides several immediate user experience benefits:
-
-* **彻底告别冷场 (Zero Dead Air)**：智能体不再会在对话中途僵死，而是能够第一时间口头确认用户的请求 (例如：“正在为您查询这些数据，请稍候……” )，让对话持续流动。
-* **听得见的进度同步 (Audible Progress Updates)**：对于多步骤工作流 (比如建立连接、执行查询、核对汇总)，智能体可以实时播报阶段性里程碑，将原本枯燥的等待转化为充满生机的“进度直播”。
-* **支持多任务并行对话 (Multitasking and Parallel Dialogue)**：当耗时较长的后台查询还在执行时，用户可以随时追问补充细节或提出完全无关的新问题，智能体依然能够从容作答，绝不会卡死对话会话。
-* **精细化的交付控制 (Granular Delivery Control)**：开发者可以精确掌控最终结果切入对话的时机与方式——无论是等待用户说完话后的自然停顿插入、在遇到紧急预警时立即打断插播，还是静默更新对话上下文背景。
-
-&gt; * **Zero Dead Air:** Instead of freezing mid-conversation, the agent can acknowledge requests immediately ("Looking into those numbers now...") and keep the dialogue alive.
-&gt; * **Audible Progress Updates:** For multi-stage workflows (such as connecting, querying, and reconciling), the agent can narrate interim milestones so the wait sounds like active progress.
-&gt; * **Multitasking and Parallel Dialogue:** Users can ask follow-up or unrelated questions while a long-running query executes in the background, and receive timely answers without stalling the session.
-&gt; * **Granular Delivery Control:** You determine when and how the final result enters the conversation: waiting for a natural speaking pause, interrupting immediately for critical alerts, or silently updating conversation context.
-
----
-
-## 原理剖析：为什么传统工具会导致对话阻塞？
-
-&gt; ## The Baseline: Why Standard Tools Block Conversation
-
-在常规的智能体开发流程中，工具通常被定义为一个 `async def` 异步函数，它在内部完成全部计算后一次性返回单个结果：
-
-&gt; In standard agent development, a tool is defined as an `async def` function that completes its work and returns a single value:
-
-```python
-from typing import Any
-
-async def query_sales_database(region: str) -&gt; dict[str, Any]:
-    """Runs the quarterly sales report query for a region.
-
-    Args:
-      region: Sales region to report on, e.g. "EMEA" or "APAC".
-
-    Returns:
-      A dict containing report metrics upon completion.
-    """
-    report = await run_expensive_query(region)       # e.g., 13 seconds of work
-    return {"status": "success", "report": report}   # Single return at the end
-```
-
-当直接将该函数传递给 ADK 中的 `Agent` 时，它就会变成一个典型的阻塞式工具调用。在 Gemini Live API 的双向语音会话 (`run_live`) 期间，底层事件执行循环必须硬生生等待该函数执行完毕并返回，随后才能生成模型的下一轮语音响应。
-
-&gt; When passed directly to an `Agent` in ADK, this function creates a blocking tool call. During a Gemini Live API bidirectional voice session (`run_live`), the execution loop awaits the tool's return before generating further model turns.
-
-如果 `query_sales_database` 需要耗时 13 秒，智能体就会陷入长达 13 秒的死寂之中。即使你在系统提示词 (Prompt) 中写下“告诉用户你正在处理”之类的指令也无济于事，因为此时模型的回合正被完全阻塞，死死等待着函数响应载荷的到达。
-
-&gt; If `query_sales_database` takes 13 seconds, the agent produces 13 seconds of complete silence. Prompting instructions such as "tell the user you are working on it" cannot resolve this, because the model's turn is blocked waiting for the function response payload.
-
-为了维持行云流水般的顺畅对话，我们可以根据实际业务所需的用户体验，在两种核心非阻塞设计模式中进行选择。
-
-&gt; To keep the conversation fluid, you can choose between two main non-blocking patterns depending on the desired user experience.
-
----
-
-## 模式一：流式工具 (进度有故事可讲的场景)
-
-&gt; ## Pattern 1: Streaming Tools (When Progress Has a Story)
-
-当某项操作包含清晰明确的阶段性步骤 (例如连接数据库、聚合汇总数据记录、格式化输出报表) 时，**流式工具 (Streaming Tool)** 能够让智能体在后台处理的同时实时向用户口述当前进度。
-
-&gt; When an operation consists of meaningful stages (such as connecting to a database, aggregating records, and formatting results), a **streaming tool** lets the agent narrate progress as it happens.
-
-在 ADK 中，把一个标准工具改造成流式工具极为轻巧：只需要将代码中的 `return` 改写为 `yield` 即可。通过将函数声明为异步生成器 `AsyncGenerator`，ADK 会自动将该工具的元数据声明标记为 `NON_BLOCKING` (非阻塞)，并立即向大语言模型返回一个就绪确认信号。
-
-&gt; In ADK, turning a standard tool into a streaming tool requires changing only `return` to `yield`. By defining the function as an `AsyncGenerator`, ADK automatically marks the tool declaration as `NON_BLOCKING` and returns an immediate status acknowledgement to the model.
-
-```python
-import asyncio
-from typing import AsyncGenerator
-from google.adk.agents import Agent
-
-async def query_sales_database(region: str) -&gt; AsyncGenerator[str, None]:
-    """Runs the quarterly sales report. Call this ONCE; it pushes updates automatically.
-
-    Args:
-      region: Sales region to report on, e.g. "EMEA" or "APAC".
-
-    Yields:
-      Progress updates while the query runs, followed by the final summary.
-    """
-    stages = [
-        ("Connecting to the sales warehouse...", 1.5),
-        ("Scanning order records...", 3.5),
-        ("Aggregating revenue by product line...", 3.5),
-        ("Formatting the report...", 1.5),
-    ]
-    for message, delay in stages:
-        yield f"PROGRESS: {message}"
-        await asyncio.sleep(delay)
-
-    yield f"DONE: {region} Q2 revenue reached $4.81M, up 12.4% year over year."
-
-agent = Agent(
-    name="sales_analyst",
-    model="gemini-3.8-live",
-    tools=[query_sales_database],
-    instruction=(
-        "You are a helpful sales assistant. When the user asks about sales data, "
-        "call query_sales_database once. Acknowledge the request immediately, "
-        "briefly paraphrase each progress update, and present the final figures "
-        "when completed. Keep answers conversational and concise."
-    ),
-)
-```</description>
-    </item>
-    <item>
-      <title>利用 LiteRT Tensor API 实现端侧原生模型构建</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/利用-LiteRT-Tensor-API-实现端侧原生模型构建/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/利用-LiteRT-Tensor-API-实现端侧原生模型构建/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在各类型边缘设备上部署端侧人工智能模型时，往往面临着严苛的延迟 (Latency) 与内存约束。过去，开发者为了追求极致的硬件性能，通常需要针对 Metal、Vulkan 或 OpenCL 等底层图形接口手工编写高度耦合的 C++ 或着色器代码，这给跨平台复用和端到端流水线集成带来了巨大的工程负担。为了打破这一瓶颈，Google 推出了全新的 **LiteRT Tensor API**，为 LiteRT 运行时带来了一套轻量级的原生 C++ 模型构建层。它允许开发者与 AI 编程智能体 (AI Coding Agent) 逐算子搭建计算图、直接读取加载 Hugging Face `.safetensors` 权重，并在 CPU、GPU 与 NPU 之间实现端到端全流程的零拷贝加速。借助该框架，SAM 2（Segment Anything 2）在 WebGPU 上的推理帧率成功提升了三倍以上，为端侧大模型的高性能开发提供了全新的范式。
-
----
-
-## 执行概要
-
-&gt; ## Executive Summary
-
-在各种各样的边缘设备上部署端侧人工智能 (On-device AI)，开发者必须在严苛的延迟 (Latency) 与内存限制之间寻找微妙的平衡。尽管对于绝大多数项目而言，采用成熟的标准模型转换流程（例如使用 LiteRT Torch）仍是官方推荐的默认途径；但对于那些追求对网络底层架构拥有极致控制权的开发者来说，传统做法往往是针对特定的底层后端（例如 Metal、Vulkan 或 OpenCL）手写定制化的 C++ 或着色器 (Shader) 代码，这导致代码与底层硬件紧密耦合。
-
-&gt; Deploying on-device AI requires balancing strict latency and memory constraints across diverse hardware targets. While standard model conversion (such as using LiteRT Torch) remains the recommended default for most projects, developers seeking low-level control over network architectures traditionally had to write custom C++ or shader code tightly coupled to specific backends (like Metal, Vulkan, or OpenCL). 
-
-为了打破这一困局，Google 正式推出了 **LiteRT Tensor API**——这是一个轻量级的模型构建层，它将原生 C++ 计算图构建的高度灵活性与无缝的跨平台移植性完美融为一体。借助该 API，开发者（以及 AI 编程智能体）可以逐算子 (op-by-op) 自由构建计算图、直接读取加载 `.safetensors` 模型权重文件，并在 CPU、GPU 和 NPU 之间实现高效的零拷贝 (Zero-copy) 缓冲区互操作。
-
-&gt; To bridge this gap, Google has introduced the **LiteRT Tensor API**—a lightweight authoring layer that combines native C++ graph construction flexibility with cross-platform portability. This API enables developers (and AI coding agents) to build computation graphs op-by-op, ingest weights directly from `.safetensors` files, and achieve zero-copy buffer interoperability across CPUs, GPUs, and NPUs.
-
----
-
-![oct2026_liteRT_tensorAPI](./images/876de97aec4d.png)
-
-## 引言：底层端侧 AI 的工程挑战
-
-&gt; ## Introduction: The Challenge of Low-Level Edge AI
-
-将端侧 AI 推向实际生产落地，意味着模型必须在每一款目标设备上都能严格满足苛刻的延迟与内存开销预算。在工业级部署中，最常规的做法是将已训练好的模型进行转换——例如使用 [LiteRT Torch](https://github.com/google-ai-edge/litert-torch) 将 PyTorch 模型转化为 LiteRT 格式，再由 [LiteRT 运行时 (LiteRT runtime)](https://developers.google.com/edge/litert/inference) 进行推理加载。对于大多数项目而言，这无疑是最快捷、最可靠的上线途径，也是官方针对多数开发场景的首选推荐。
-
-&gt; Shipping on-device AI means meeting tight latency and memory budgets on every device you target. The most common path for deploying models in production is converting a trained model—for example, converting a PyTorch model with [LiteRT Torch](https://github.com/google-ai-edge/litert-torch)—and running it with the [LiteRT runtime](https://developers.google.com/edge/litert/inference). This offers the quickest and most reliable route to production, and it's the path we recommend for most projects. 
-
-然而在很多进阶场景下，开发者渴望能够全盘掌控神经网络的底层表示与执行优化——无论是为了在第一时间支持前沿的新型网络架构，还是为了尝试全新的算子下沉与图优化逻辑，而不必被动等待上游训练框架的漫长更新。
-
-&gt; Sometimes, though, developers want full control over how a network is represented and optimized to support new architectures or to try a new lowering logic without waiting for upstream framework updates.
-
-为了追求这种极致的控制力，许多工程师选择使用原生 C++ 或着色器语言纯手工编写计算逻辑。[Apple 的 MLX](https://github.com/ml-explore/mlx) 让这种“代码优先”的开发理念在 Apple 芯片生态中风靡一时，而 [llama.cpp](https://github.com/ggml-org/llama.cpp) 则以惊人的表现向业界证明了经过深度裁量的 C++ 实现能将大语言模型 (Large Language Model, LLM) 的推理潜力推向何等高度。然而，这种深度控制往往伴随着沉重的代价：代码实现会高度绑定于具体的底层后端（如 Metal、OpenCL 或 Vulkan），每当适配一款新硬件设备，就不得不从头重写一遍。更棘手的是，跨越 CPU、GPU 和 NPU 协调零拷贝缓冲区以及同步机制，同时将输入预处理、核心模型推理以及后处理逻辑严丝合缝地拼接在一起，需要耗费巨大的手工工程精力。
-
-&gt; For ultimate control, developers write computations manually in native C++ or shader languages. [Apple's MLX](https://github.com/ml-explore/mlx) made this code-first approach popular on Apple silicon, and [llama.cpp](https://github.com/ggml-org/llama.cpp) showed how far tailored C++ implementations can take LLM inference. However, this level of control comes at a significant cost: implementations are tightly coupled to specific backends (such as Metal, OpenCL, or Vulkan) and must be rewritten for each new hardware target. Furthermore, managing zero-copy buffer interoperability and synchronization across CPU, GPU, and NPU, while gluing together pre-processing, inference, and post-processing, demands substantial manual engineering effort.
-
-为了从根本上化解上述难题，Google 团队正式发布了全新的 [LiteRT Tensor API](https://github.com/google-ai-edge/LiteRT/blob/main/tensor/README.md)。它是 LiteRT 技术栈中一个轻量级的原生构建层，专为大幅简化与优化手工构建模型而设计。它既具备原生编程的无拘无束，又兼顾了真正开箱即用的跨平台能力。开发者可以直接使用 C++ 逐个算子搭建计算图，完全自主决定运行哪些计算节点以及它们之间如何相互连接。
-
-&gt; To solve the above challenges, we are excited to announce the release of the novel [LiteRT Tensor API](https://github.com/google-ai-edge/LiteRT/blob/main/tensor/README.md), a lightweight authoring layer in the LiteRT stack, designed to improve handcrafting models. It combines the flexibility of native authoring with cross-platform portability. You build the computation graph op by op in C++, choosing exactly which ops run and how they connect. 
-
-同一套计算图不仅能够借助 LiteRT 运行时无缝运行在 CPU、GPU（由开源项目 [ML Drift](http://github.com/google-ai-edge/ml-drift) 强力驱动）以及 NPU 之上，甚至能够在无需额外模型文件和完整运行时的情况下，通过 XNNPACK 直接在 CPU 上裸跑，彻底免去了为不同硬件反复重写代码的苦恼。此外，模型推理本身与前处理、后处理逻辑均可通过相同的 API 进行组装，并依托共享的硬件加速缓冲区紧密串联，数据完全无需在 CPU 和硬件加速器之间来回搬运拷贝。对于普通模型，标准转换路径依然是首选默认项；但当你需要对计算图进行底层细粒度调优，或者希望整个推理流水线完全端到端常驻硬件加速器时，Tensor API 则是无可替代的利器。
-
-&gt; The same graph can run through LiteRT on CPU, GPU (powered by open-source [ML Drift](http://github.com/google-ai-edge/ml-drift)) and NPU, or without model file or runtime directly on CPU through XNNPACK, so you don't rewrite it for each new hardware target. Model inference and pre/post-processing can be assembled with the same API and chained through shared accelerator buffers, so that data never round-trips through the CPU. Start with the conversion path, which remains the best default for most models. Reach for the Tensor API when you need low-level control over the graph or want the whole pipeline to run end to end on the accelerator.
-
-不仅如此，LiteRT Tensor API 还是 **AI 编程智能体的理想代码基座**，它提供了清晰结构化的基础原语，便于智能体自动生成、重连和调优模型计算图。在接下来的内容中，我们将深入解析其架构设计，并通过具体的实战代码示例演示如何从零构建高性能模型。
-
-&gt; The LiteRT Tensor API also serves as an **ideal programmatic foundation for AI coding agents**, providing structured primitives to generate, rewire, and tune model graphs automatically. In the rest of this post, we’ll dive into the design and walk through practical code examples showing how to author models from scratch.
-
----
-
-## 实战范例：基于 Web 端的 Segment Anything
-
-&gt; ## Real-World Showcase: Segment Anything on Web
-
-&lt;video autoplay="" loop="" muted="" playsinline="" poster="https://storage.googleapis.com/gweb-developer-goog-blog-assets/original_videos/wagtailvideo-67risga1_thumb.jpg"&gt;
-&lt;source src="https://storage.googleapis.com/gweb-developer-goog-blog-assets/original_videos/tensor_api_web_1080p_ambient.mp4" type="video/mp4"/&gt;
-&lt;p&gt;Sorry, your browser doesn't support playback for this video&lt;/p&gt;
-&lt;/video&gt;
-
-为了直观展示 Tensor API 在实际工业场景中的威力，开发团队打造了一款交互式 [Segment Anything 应用](https://storage.googleapis.com/litertjs_demos/sam2_web/index.html)，该应用借助 WebGPU 完全在浏览器端本地实时运行。应用基于 Meta 的 [Segment Anything Model 2 (SAM 2)](https://github.com/facebookresearch/sam2) 实现了高流畅度的多目标实时图像分割与视频追踪，支持用户通过简单的鼠标点击或由 [Gemma 4 E2B](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) 驱动的自然语言提示词 (Prompt) 进行交互触发。
-
-&gt; To show the Tensor API in practice, we built an interactive [Segment Anything App](https://storage.googleapis.com/litertjs_demos/sam2_web/index.html), running entirely on-device in the browser on WebGPU. The app enables real-time multi-object segmentation and tracking via Meta's [Segment Anything Model 2 (SAM 2)](https://github.com/facebookresearch/sam2), triggered either by simple clicks or natural language prompts powered by [Gemma 4 E2B](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm).
-
-其中的 SAM 2 模型完全是通过 LiteRT Tensor API 用纯 C++ 代码构建而成的。在开发过程中，AI 编程智能体对其进行编写并持续迭代优化，在 WebGPU 上将 512x512 分辨率下的运行帧率从不足 10 FPS 飙升至超过 30 FPS。目前，该项目完整的实现代码和 Web 应用均已在 GitHub 的 [LiteRT Samples](https://github.com/google-ai-edge/litert-samples/tree/main/models/sam2/sam2_hiera_tiny_video) 仓库中全面开源。
-
-&gt; The SAM 2 model is fully authored in C++ via the LiteRT Tensor API. A coding agent wrote and evolved it from under 10 to over 30 frames per second at 512x512 on WebGPU. See that the complete implementation and the web app are open source in the [LiteRT Samples](https://github.com/google-ai-edge/litert-samples/tree/main/models/sam2/sam2_hiera_tiny_video) GitHub repo.
-
----
-
-## 什么是 LiteRT Tensor API？
-
-&gt; ## What is the LiteRT Tensor API?
-
-LiteRT Tensor API 提供了四大核心特性，专注于端侧模型的原生构建与极致优化：
-
-&gt; The LiteRT Tensor API provides four key features for authoring and optimizing on-device models:
-
-* **对计算图结构的全面控制**：你可以全权决定模型图中的每一个算子以及各算子之间的每一条连接通路，从基础的逐元素数学运算，到专为硬件加速器量身定制的大语言模型复合算子（例如缩放点积注意力机制、RMSNorm 归一化以及 KV 缓存更新等）。
-* **直接加载模型权重**：能够直接从模型检查点（如 Hugging Face 的 [.safetensors](https://github.com/huggingface/safetensors) 文件）读取权重参数，中间无需经历任何转换脚本或预处理环节。
-* **以张量为核心的缓冲区互操作**：输入前处理、模型内部子网络切分以及后处理各环节之间，直接通过共享的硬件加速器缓冲区传递张量，使所有中间数据始终驻留在加速硬件上，实现真正的零数据拷贝。
-* **专为 AI 智能体设计的构建基石**：模型本质上是由清晰规范的基础算子构成的纯 C++ 代码，因此编程智能体能够轻而易举地自动组装模型、对照基准测试验证输出结果，并通过在各种物理设备上进行基准跑分来迭代调优性能。
-
-&gt; * **Full control over graph structure**: you decide every op in the model graph and every connection between them, from elementwise math to accelerator-optimized LLM composite ops, such as scaled dot-product attention, RMSNorm, and KV-cache updates.
-&gt; * **Direct weight ingestion**: load weights straight from model checkpoints, such as Hugging Face [.safetensors](https://github.com/huggingface/safetensors) files, without conversion scripts needed in between.
-&gt; * **Tensor-centric buffer interop**: pre-processing, model partitions, and post-processing pass tensors to each other through shared accelerator buffers, so intermediate data stays on the accelerator with zero copies.
-&gt; * **Building blocks for AI agents**: models are plain C++ built from well-defined ops, so coding agents can construct a model, check its results against a reference, and tune its performance by benchmarking variants on each device.
-
----
-
-## 跨平台性能表现
-
-&gt; ## Cross-Platform Performance
-
-研究团队将同一套用 C++ 编写的 SAM 2 模型代码分别部署在三款不同设备的 GPU 上进行了运行测试：配备 Metal 的 macOS 笔记本电脑、运行 Metal 的 iOS 手机，以及采用 OpenCL 的 Android 手机。在 MacBook Pro 上的实测结果表明，其运行速度相比 Apple 原生框架 MLX 快了大约 1.5 倍（采用 fp16 精度，包含图像编码器与掩码解码器）。SAM 2.1 [示例代码库](https://github.com/google-ai-edge/litert-samples/blob/main/models/sam2/sam2_hiera_tiny_video/tensor_api/sam2_image/README.md) 中提供了完整的基准测试命令，供开发者自行复现该对比结果。
-
-&gt; We ran the same C++ code for the SAM 2 model on the GPUs of three devices: a macOS laptop (Metal), an iOS phone (Metal), and an Android phone (OpenCL). In our tests on the MacBook Pro, it ran about 1.5x faster than Apple MLX (fp16, image encoder plus mask decoder). The SAM 2.1 [sample](https://github.com/google-ai-edge/litert-samples/blob/main/models/sam2/sam2_hiera_tiny_video/tensor_api/sam2_image/README.md) includes the benchmark commands so you can reproduce the results.
-
-![Chart_new](./images/fdcce4b22258.png)
-
-*注：耗时数据涵盖图像编码器和掩码解码器；输入预处理与后处理总计仅增加约 0.34 毫秒。生成的预测掩码与 Meta 官方的 PyTorch 黄金标准在像素级完全一致。*
-
-&gt; *Note: Times cover the image encoder and mask decoder; pre- and post-processing add ~0.34 ms. Output masks match Meta's PyTorch reference pixel for pixel.*
-
----
-
-## 开始使用 Tensor API
-
-&gt; ## Get Started with Tensor API</description>
-    </item>
-    <item>
-      <title>为什么现代系统正在逐渐弃用 /proc 伪文件系统</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/为什么现代系统逐渐摒弃对-proc-的过度依赖/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/为什么现代系统逐渐摒弃对-proc-的过度依赖/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在 Unix 和 Linux 发展的黄金年代，`/proc` 伪文件系统 (Pseudo-filesystem) 曾作为“一切皆文件”设计哲学的典范之作，让开发者能够像读取普通文本一样轻松探查内核数据与进程状态。然而，随着现代系统对极高吞吐、严格安全隔离与微秒级响应的要求不断提升，这种严重依赖文本格式转换与文件描述符 (File Descriptor, FD) 的机制逐渐显露出性能开销大、描述符易耗尽以及缺乏原子性等硬伤。现代操作系统正逐步转向更轻量、高效且原子的直接系统调用 (System Call)。本文深入剖析了这一变迁背后的技术演进脉络与工程权衡。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-虽然 `/proc` 伪文件系统曾是一项革命性的 Unix 创新，它为向外暴露进程与系统信息提供了前所未有的便利，但现代操作系统正在越来越多地转向使用直接系统调用来取代它。尽管 `/proc` 具有便于人类阅读和易于编写脚本的巨大优势，但在实际生产环境中，它却在性能 (源于文本格式转换和沉重的文件描述符开销)、可靠性 (例如资源耗尽与原子性保障缺失) 以及安全性 (增加了构建安全沙箱与 `chroot` 隔离环境的复杂性) 等方面带来了不容忽视的严峻挑战。
-
-&gt; While the `/proc` pseudo-filesystem was a revolutionary Unix innovation for exposing process and system information, modern systems are increasingly replacing it with direct system calls. Despite its convenience for human readability and simple scripting, `/proc` presents significant real-world challenges in performance (due to text formatting and heavy file-descriptor overhead), reliability (such as resource exhaustion and atomicity issues), and security (complicating sandboxing and `chroot` environments).
-
----
-
-## /proc 的兴盛与退潮
-
-&gt; ## The Rise and Fall of `/proc`
-
-Unix 体系中最精妙的构想之一，莫过于 `/proc` 伪文件系统 (该设计最早源自 [Research Unix](https://en.wikipedia.org/wiki/Procfs#UNIX_8th_Edition))。它最初被创建用于对外暴露进程内部状态，以作为传统 `ptrace()` 调试手段的替代品；但在随后的演化中，诸如 Linux 等部分 Unix 系统赋予了它越来越庞杂的使命，使其承载了大量的通用系统信息。
-
-&gt; One of the great ideas in Unix is the `/proc` pseudo-filesystem (which comes from [Research Unix](https://en.wikipedia.org/wiki/Procfs#UNIX_8th_Edition)). Initially used to expose processes as an alternative to `ptrace()`, it grew to encompass an increasing amount of general system information in some Unixes, such as Linux. 
-
-在 Linux 中，这一设计带来了软件生态对常规 `/proc` 文件的 [高频依赖与广泛使用](https://utcc.utoronto.ca/~cks/space/blog/linux/ProcGetsUsedByPrograms)。然而，无论是在 Linux 还是其他现代 Unix 变体中，人们都正日益弃用通过 `/proc` 获取信息的做法，转而优先采用更为高效的直接系统调用。这种转变绝不是因为 `/proc` 在理论设计上有何硬伤，而完全是出于对实际运行性能与系统可靠性的深层考量。
-
-&gt; In Linux, this has resulted in [frequent use of general `/proc` files](https://utcc.utoronto.ca/~cks/space/blog/linux/ProcGetsUsedByPrograms). However, in both Linux and other Unixes, people are increasingly moving away from accessing information through `/proc` in favor of direct system calls. This shift isn't because `/proc` is a bad idea in theory, but rather due to practical issues concerning both performance and reliability.
-
-## 性能瓶颈
-
-&gt; ## Performance Bottlenecks</description>
-    </item>
-    <item>
-      <title>Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着前沿大语言模型与多模态智能体参数规模的指数级爆炸，底层 AI 基础设施正迎来前所未有的工程挑战。Meta 首次对外披露了其位于美国俄亥俄州新奥尔巴尼的千兆瓦 (Gigawatt, GW) 级巨型 AI 超级集群 —— Prometheus (普罗米修斯) 的深度技术架构。该集群第一阶段不仅成功支撑了 Meta 新一代前沿基座模型 Muse 家族的预训练与强化学习，更将终极演进目标锚定在惊人的“百万张 GPU”互联规模。通过深度整合 NVIDIA 最新 Blackwell NVL72 机架架构、自研非调度以太网后端 Fabric，以及创新的动态配电削峰与先进液冷技术，Meta 为超大规模分布式 AI 计算提供了极具前瞻性的工业级工程范本。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-Meta 工程团队全面公布了其位于美国俄亥俄州新奥尔巴尼 (New Albany, Ohio) 的千兆瓦级 AI 超级集群 —— **Prometheus** 的深度技术细节。目前已竣工的项目一期工程成功承担了 Meta 核心基座大模型 **Muse** 家族 (包含前沿旗舰模型 *Muse Wonder*) 的训练任务，并在计算性能和运行稳定性上交出了亮眼答卷。Meta 目前正通过阶段性扩建持续推进该基础设施建设，其终极目标是互联约 **100 万张 GPU**，深度整合了 NVIDIA 先进 GPU 架构、自研专有网络 Fabric，以及前沿的大规模供电与散热创新方案。
-
-&gt; Meta's engineering team released a comprehensive technical breakdown of **Prometheus**, a gigawatt-scale AI supercluster located in New Albany, Ohio. The completed first phase of the project successfully trained Meta's foundational **Muse** model family (including the *Muse Wonder* frontier models), achieving high performance and reliability metrics. Meta is currently scaling the infrastructure through phased developments with an ultimate target of roughly **1 million GPUs**, incorporating advanced NVIDIA GPU architectures, proprietary networking fabrics, and large-scale power and cooling innovations.
-
----
-
-## Prometheus 超级集群全景概览
-
-&gt; ## Overview of the Prometheus Supercluster
-
-这座位于新奥尔巴尼的计算中心最初只是一座承载传统互联网业务流量的通用数据中心，Meta 对其进行了彻底重构，使其完全具备支撑前沿大模型训练的极限性能。通过分阶段建设，如今的 Prometheus 成功将数十万张 GPU 汇聚分布在传统机房、AI 专属优化结构以及快速部署模块化设施中，让庞大的物理硬件如同一台超大型统一计算机般高效协同运转。
-
-&gt; Originally a conventional web-traffic data center, Meta overhauled the New Albany facility to handle frontier-model training. Completed in phases, Prometheus now integrates hundreds of thousands of GPUs across traditional data centers, AI-optimized structures, and rapid-deployment facilities to function as a singular, unified machine.
-
-Prometheus 的第一期工程成功训练了 Muse 基座模型家族，在个人辅助与专业 AI 智能体 (AI Agent) 任务上均展现出顶尖性能。在预训练和强化学习运行过程中，该集群交出了极为优异的工程指标：
-
-&gt; The first phase of Prometheus successfully trained the Muse foundational models, delivering state-of-the-art performance for personal and professional agentic tasks. During pre-training and reinforcement learning runs, the cluster achieved:
-
-* 在 Muse Wonder 预训练任务中，实现了 **&gt;85% 的有效算力吞吐率 (Goodput)**；
-* 在强化学习 (Reinforcement Learning) 训练流程中，实现了 **&gt;90% 的有效算力吞吐率**；
-* 平均中断间隔时间 (Mean Time Between Interruptions, MTBI) 达到 **约 4.7 万 GPU 小时**，随后通过全集群工程调优更是突破了 **5.4 万 GPU 小时**。
-
-&gt; * **&gt;85% goodput** on Muse Wonder pre-training.
-&gt; * **&gt;90% goodput** on reinforcement learning runs.
-&gt; * A mean time between interruptions (MTBI) of **~47k GPU hours**, which fleet-wide optimizations later boosted beyond **54k GPU hours**.
-
----
-
-## 两款已投入生产的 NVIDIA 硬件平台
-
-&gt; ## Two NVIDIA Platforms in Production
-
-Prometheus 深度集成了多种基于 **NVL72 机架架构** 的 NVIDIA GPU 平台，在该架构下一个网络 Fabric 内的 72 张 GPU 可以视作单台巨型加速器协同运行。此外，基于下一代 **NVIDIA Vera Rubin NVL72** 的全新平台也已进入规划蓝图。
-
-&gt; Prometheus integrates multiple NVIDIA GPU platforms leveraging the **NVL72 rack architecture**, where 72 GPUs operate as a single accelerator across one network fabric. An upcoming platform based on the **NVIDIA Vera Rubin NVL72** is also on the horizon.</description>
-    </item>
-    <item>
-      <title>Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在 Linux 生态中，DKMS (Dynamic Kernel Module Support) 是第三方内核模块（如 ZFS 或显卡驱动）伴随内核升级自动重新编译的利器，而 Initramfs 则承载着系统引导时早期的必要驱动。然而在 Fedora 44 发行版中，默认的 DKMS 触发机制存在一项隐蔽的性能陷阱：只要执行模块卸载或安装，框架便会无差别地针对系统中“所有已安装的内核”全量重新生成 Initramfs 引导镜像。对于长期保留多个备份内核的开发者和工作站而言，一次常规的小版本更新可能会演变成长达 20 多分钟的漫长等待。本文深入剖析了这一机制背后的配置成因，并提供了一行配置覆盖的极简优化方案，帮助读者轻松解除不必要的重建负担，显著提升系统维护效率。
-
----
-
-## 内容摘要
-
-&gt; ## Summary
-
-在 Fedora 44 系统上通过动态内核模块支持 (Dynamic Kernel Module Support, DKMS) 更新 ZFS 文件系统 (ZFS) 时，整个更新流程变得异常迟缓，耗时竟长达 20 分钟以上。深入排查后发现，Fedora 的 DKMS 默认配置中引入了一个事务后钩子 (post-transaction hook)；只要触发 `dkms remove` 或 `dkms install` 命令，即便该模块仅面向某一个特定内核版本，系统也会强行调用 `dracut --regenerate-all --force`，为机器上安装的“每一个内核”统统重新生成一遍初始化内存盘 (Initramfs) 镜像。幸运的是，我们只需在 `/etc/dkms/framework.conf.d/` 目录下添加自定义配置并覆盖其 `post_transaction` 选项，即可轻松绕过这一繁重冗余的重建机制。
-
-&gt; When updating ZFS via DKMS on Fedora 44, the update process became frustratingly slow—taking upwards of twenty minutes. By investigating the issue, it was discovered that Fedora's DKMS configuration uses a post-transaction hook to regenerate *all* initramfs images across every installed kernel (`dracut --regenerate-all --force`) whenever `dkms remove` or `dkms install` is executed, even if the module is only being targeted at a single kernel version. Fortunately, this can be bypassed by overriding the `post_transaction` setting in `/etc/dkms/framework.conf.d/`.
-
----
-
-## 根本成因：过于激进的 Initramfs 全量重建
-
-&gt; ## The Root Cause: Overzealous Initramfs Regeneration
-
-在日常的桌面工作站环境中，作者维护着一套略显复杂的内核与 ZFS 更新流程，其中便利用了通过 [DKMS](https://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support) 管理的 ZFS 开发分支版本。在正常预期下，系统通常只需为最近使用的两个内核编译新模块。然而，每次升级 ZFS 的 DKMS RPM 软件包时，底层都会先后执行旧模块的卸载以及新模块的安装操作，进而导致整个更新流程耗时漫长、令人苦不堪言。
-
-&gt; The author runs a convoluted kernel and ZFS update process on desktop systems, utilizing the development version of ZFS managed through [DKMS](https://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support). Normally, modules are only built for the two most recent kernels. However, updating the ZFS DKMS RPM involves both removing old modules and installing new ones, which led to agonizingly slow update times.
-
-经过在 [Fediverse](https://mastodon.social/@cks/117445698531371721) 上的交流探讨与 [深入排查](https://mastodon.social/@cks/117445845905372687)，这一性能瓶颈的症结所在终于被彻底查明：
-
-&gt; Upon investigating via the [Fediverse](https://mastodon.social/@cks/117445698531371721) and [further debugging](https://mastodon.social/@cks/117445845905372687), the culprit was uncovered:
-
-&gt; 💬 [译文引用]:
-&gt; “在我的内核更新流程中，时间究竟都去哪儿了？答案终于水落石出：执行 `dkms remove` 会为系统中所有已安装的内核重新构建全部 Initramfs 镜像；哪怕你要卸载的模块在某些内核中根本不存在，甚至哪怕你显式加上了 `dkms remove ... -k ...` 明确限制仅为单一内核卸载，它也依然会毫不留情地全量重建一遍。
-&gt; 
-&gt; 这着实让人十分无奈。我完全不希望系统未经许可就意外重建一堆不相干的 Initramfs 镜像；更何况在我的机器上足足保留了 6 个不同版本的内核，这样一折腾下来耗费的时间可想而知。”
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; The answer to where the time goes [in my kernel update process] is that 'dkms remove' rebuilds all initramfs images for all installed kernels, even if the module you're removing doesn't exist for those kernels and even if you are running 'dkms remove ... -k ...' to only remove the module for one kernel.
-&gt; 
-&gt; This is my unhappy face. I do not want random initramfs's to be rebuilt by surprise, and it also takes rather a while when you have six kernels, like I do.
-
-*(注：`dkms install` 安装命令在执行时同样存在完全一致的激进行为)*。
-
-&gt; *(Note: `dkms install` exhibits the exact same behavior).*</description>
-    </item>
-    <item>
-      <title>Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-20/Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-20/Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion/</guid>
-      <pubDate>Tue, 20 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着以 Claude 为代表的自主 AI 编码智能体 (AI Agent) 在 Anthropic 内部广泛普及，软件研发的生产力范式被彻底重构。每天合并到核心代码库的变更量在短短四个月内暴涨十倍以上，专为“人类节奏”设计的传统版本控制系统 Git 迅速逼近性能极限，甚至濒临崩溃。面对 100 GB 历史体积与潜在数百 PB 的惊人流量消耗，一支仅有 7 名工程师的核心小队耗时 5 个月打造出面向“智能体时代”的全新版本控制系统 Scion，并顺利完成了超大规模单体仓库 (Monorepo) 的全量迁移。通过将智能体客户端预设为“永在线”、引入基于预写日志 (WAL) 的集中式轻量变更集架构，并深度让 Claude “自己为自己编写基础设施”，Anthropic 实现了资源消耗 200 倍的缩减与数十倍的性能飞跃，展现了下一代 AI 原生软件工程的全新图景。
-
----
-
-**核心摘要**：随着像 Claude 这样的自主 AI 编码智能体 (AI Agent) 极大加速了 Anthropic 内部的代码生成——每日合并的代码变更从 2026 年 5 月的 2,500 次激增至 9 月的超过 30,000 次——为人类协作规模设计的 Git 等开发者基础设施成为了主要瓶颈。为了解决这一难题，一个仅有 7 名工程师的小团队打造了专为智能体规模设计的自研版本控制系统 **Scion**，并在短短 5 个月内完成了庞大单体仓库 (Monorepo) 的全量迁移。通过将客户端预设为“永远在线”、将服务端与本地仓库状态解耦，并借助 AI 自身编写与优化底层基础设施，Anthropic 将基础设施资源占用削减了 200 倍，并大幅提升了持续集成 (CI) 的性能。
-
-&gt; &gt; 💬 [原文引用 / Original Quote]:
-&gt; &gt; **Summary:** As autonomous AI coding agents like Claude dramatically accelerate code generation at Anthropic—jumping from 2,500 daily merged changes in May 2026 to over 30,000 by September—human-scale developer infrastructure like Git became the primary bottleneck. To solve this, a small team of seven engineers built **Scion**, a custom, agent-scale version control system, and migrated their massive monorepo in just five months. By treating clients as always online, decoupling the server from local repository states, and leveraging AI to write and optimize the infrastructure itself, Anthropic achieved a 200x reduction in infrastructure footprint and significantly faster CI performance.
-
-*10 月 15 日更新：补充了在 Scion 所采用的多项核心技术中扮演先驱角色的相关开源项目细节。*
-
-&gt; *Updated October 15 to include more detail on the projects that pioneered many of the techniques we use in Scion.*
-
-***
-
-在 Anthropic，编写代码早已不再是构建软件系统或推进前沿科研的瓶颈所在。如今，Claude 能够以人类前所未见的速度与规模，自主闭环推进科研迭代、深度微调复杂程序，并从零开始搭建全新的后端服务。当下真正卡脖子的瓶颈，反而是那些过去专为“人类开发节奏”量身定制的基础设施：版本控制、代码构建以及持续集成 (CI) 系统。
-
-&gt; At Anthropic, coding is no longer the bottleneck to building systems or doing research. Claude is able to autonomously iterate on research loops, micro-optimize complex programs, and build new services from the ground up at a speed and scale we haven’t seen before. The bottleneck, now, is all of the developer infrastructure built for human scale: source control, builds, and CI.
-
-2026 年 5 月，Anthropic 平均每天合并大约 2,500 次代码变更；而到了 9 月，这一数字已飙升至每日超过 30,000 次。并且我们预计这种爆发式增长短期内绝不会放缓——代码合并的潜在需求几乎是无穷无尽的，我们每消除一处瓶颈，系统产出代码的体量就会紧接着迎来新一轮激增。
-
-&gt; In May 2026, Anthropic averaged around 2,500 code changes merged per day; as of September, we merged over 30,000 per day. We don’t expect this rate of growth to slow down anytime soon; the latent demand for merging code is practically infinite, and every bottleneck we remove immediately leads to a further increase in the amount of code we produce.
-
-![Changes merged to our monorepo per day, from January to September 2026.](./images/1e2a750dba61.png)
-
-为了支撑这股汹涌的代码洪流，我们打造了自研版本控制系统 Scion，并在短短 5 个月内将核心单体仓库 (Monorepo) 从 Git 全面迁移完毕。在此期间，我们还同步构建并上线了全新的代码审查平台 (代号 Antique)、全代码检索系统、功能完备的版本控制身份与访问管理系统 (IAM)，以及一套高效管理和合入海量已评审代码的创新机制。在本篇文章中，我们将重点聚焦于 Scion 的架构演进与设计实现。这是一个极为耐人寻味的绝佳案例：Claude 惊人的自主编码能力不仅是导致我们陷入基础设施危机的“始作俑者”，但同时，也正是借助 Claude 的强大力量，我们才得以在极短时间内构建出一套高质量、高扩展性的分布式系统来化解这场危机。
-
-&gt; In order to support this growth, we built Scion, an in-house version control system, and fully migrated our monorepo from git in five months. We also built and shipped a code review surface (called Antique), code search, a rich source control IAM system, novel ways of managing and landing large amounts of reviewed code, and more, all in that same time period. In this post, we’ll focus on how we built Scion specifically. It makes for an interesting case study: Claude’s ability to write code was both what put us in this situation in the first place _and_ how we were able to quickly build a high-quality, scalable system to deal with it.
-
----
-
-## 膨胀的单体代码仓库
-
-&gt; ## Growing our monorepo
-
-在深入探讨系统细节之前，我们必须首先指出当前系统所承载的工作负载是何等不同寻常。毋庸置疑，Anthropic 借助 Claude 编写软件的深度与频次远超当下几乎任何企业，正因如此，我们往往成为第一批直面“人类尺度工具开始捉襟见肘”的先遣者，而版本控制仅仅是其中最具代表性的一个缩影。虽然在极短期内未必会有太多企业遇到同等量级的瓶颈，但我们确信，随着 AI 编码工具在业界的深度普及，更多团队迟早会遭遇完全相同的痛点。这也正是我们决定公开这套技术方案与踩坑心得的核心初衷。
-
-&gt; Before we explore what we built, we should acknowledge how unusual our workload is. Unsurprisingly, Anthropic uses Claude to write software far more than almost any other company, so we’re often the first to see where tools built for human scale start to strain. Source control is just one example of this. While we don’t expect many organizations to have these problems in the very near term, we suspect it won’t be too long before others who use AI coding tools experience these same pressure points, which is why we wanted to share what we built and what we learned.
-
-Git 本质上是一套去中心化的分布式系统：每一次克隆 (Clone) 操作都会在本地复制一份自包含的完整仓库。即使在完全离线的环境下，本地也能自由计算差异 (Diff)、回溯版本历史与逐行追溯 (Blame)，并随时检出任意提交历史版本。对于绝大多数常规代码库而言，这种设计极其优雅得体，也正是 Git 能成为当今事实行业标准的关键所在。
-
-&gt; Git is a decentralized system: every clone is a complete, self-contained repository that can compute diffs, read history and blame, and check out any revision while fully offline. For the vast majority of repositories, this is the right design, and it’s a large part of why git became the standard.
-
-然而，随着单体仓库的体量不断膨胀，Git 最初的设计假设已越来越难以容纳我们的现实需求。仅我们主分支 (`main`) 的提交历史数据就已逼近 100 GB，一份经过压缩的工作副本 (Working Copy) 体积也超过了 25 GB。仅持续集成 (CI) 流程每天执行的代码检出 (Checkout) 就高达 2,500 万次左右——这甚至还没算上工程师的开发环境、AI 智能体沙盒以及各类实验科研任务。如果直接按照常规方式全量拉取，每天仅 Git 产生的网络传输流量就将超过惊人的 600 PB。
-
-&gt; As our monorepo grows, it increasingly doesn’t fit that design space. The history of our main branch alone is almost 100 GB, and a _compressed_ working copy is over 25 GB. We perform on the order of 25 million code checkouts per day for CI, before counting developer environments, agent sandboxes, and research jobs. Fetched naively, that would be over 600 PB of git traffic per day.
-
-针对大型单体仓库，Git 本身提供了一些局部切片拉取工具，例如浅克隆 (Shallow Clone)、稀疏检出 (Sparse Checkout) 以及承诺式远端 (Promisor Remote) 等。除此之外，业内针对巨型单体仓库还有不少通用缓解手段，例如搭建内部 Git 镜像集群，以及将代码仓库快照 (种子包/Seeds) 存放在对象存储中。我们把这些招数试了个遍——在业务负载峰值期，我们同时运行了数百个内部 Git 镜像节点来分担高并发冲击。这些措施确实为我们争取到了宝贵的缓冲时间，但随着代码合并速率的指数级攀升，维护这套集群变得愈发痛苦。快照种子包在每次定时刷新之间，与最新主分支尖端的落后差距越来越大；而在部分切片克隆上保证 Diff、Blame 等依赖历史追溯的操作平稳运行，所需要投入的维护精力也变得愈加沉重。
-
-&gt; Git offers tools for working with a slice of a repository, such as shallow clones, sparse checkouts, and promisor remotes. Beyond these, there are standard workarounds for large monorepos, like internal git mirrors and repository snapshots (seeds) kept in blob storage. We’ve used all of them—at our peak, we operated several hundred internal git mirrors to deal with the load. This bought us time, but they became harder to operate as our merge rate increased. Seeds fell further from the tip of main between refreshes, and it took more and more care to keep operations that depend on history, like diff and blame, working on partial clones.
-
-![The typical setup for scaling git checkouts.](./images/ff019752973f.png)
-
-跳出细节退一步审视，我们意识到：与大多数现代企业类似，我们在实际运作中把 Git 当作一套拥有唯一权威源的“集中式系统”在使用，但我们的客户端几乎清一色是天生永远在线的 AI 智能体和自动化任务流水线。Git 赖以成名的“分布式、离线自治”优良特性，在代码库膨胀的场景下，反而变成了制约系统水平横向扩展的枷锁。于是我们反思：如果我们从第一天起，就建立在“智能体客户端永远在线”的假设前提下去设计一套全新的版本控制系统，它究竟该是什么模样？
-
-&gt; Taking a step back, we noticed that, like most companies, we were using git as a centralized system with one authoritative copy, but nearly all of our clients were agents and jobs that are online by definition. The properties that make git excellent for distributed, offline work were actively undermining our ability to scale as the repo grew. So we asked ourselves: if we designed source control with the fact that agents are always online in mind from the start, what would it look like?
-
----
-
-## 面向智能体规模的版本控制设计原则
-
-&gt; ## Principles for agent-scale source control
-
-在智能体编程时代，关于软件开发流程的大量传统假设正在发生深刻演变。在打造 Scion 时，我们全面拥抱了这些变革，使得我们在多个核心原则上做出了与 Git 截然不同的路径抉择。针对超大型单体仓库的版本控制，业内早有先驱探索，其中最著名的当属 Google 的 [Piper](https://en.wikipedia.org/wiki/Piper_(source_control_system)) 与 Meta 的 [Sapling](https://sapling-scm.com/)。吸纳它们经过多年实战检验的宝贵经验，我们确立了指导 Scion 演进的六大核心原则：
-
-&gt; With agentic coding, many common assumptions about how software is developed are evolving. We embraced these changes when building Scion, which allowed us to take a fundamentally different approach than git on several core principles. Source control for huge monorepos has prior art, notably Google’s [Piper](https://en.wikipedia.org/wiki/Piper_(source_control_system)) and Meta’s [Sapling](https://sapling-scm.com/), so we were able to build Scion with their hard-won lessons in mind. Our principles are:
-
-* **客户端预设永远在线 (Clients are always online)**：Git 预设客户端需要在离线环境下工作，因此必须在本地保留全量仓库。但在我们的场景中，绝大多数客户端都是常驻在线的 AI 智能体与自动化作业，因此我们将 Scion 的客户端与通信协议完全围绕“服务端始终触手可及”进行构建，客户端仅在真正需要时才动态按需拉取数据。
-* **客户端-服务端非对称设计 (Client-server asymmetry)**：在 Git 中，每个客户端理论上都能充当一个全功能的独立服务端。而在 Scion 中，服务端统筹处理所有复杂运算——回答文件历史与逐行追溯查询、创建提交、执行合并 (Merge) 与变基 (Rebase) 等；客户端仅维护一个受限的本地对象缓存、在磁盘上组织工作目录树、监听文件系统变动，并为用户提供符合人体工程学的交互界面。客户端自身的计算负担极低，换来的是本地对数据存储的诉求大幅缩减。
-* **以全能版本控制服务赋能全新上层应用 (A comprehensive source control service can power many novel applications)**：在 Git 体系下，任何需要查询代码库的 CI 任务或工具（例如追查某行代码由谁修改、或者两条提交记录如何关联），都必须在本地拉取代码库副本，或者寄希望于特定托管平台提供的 API。而在 Scion 中，客户端使用的所有核心查询能力均已沉淀为标准的开放 API。这使得在许多场景下，任务根本不需要拉取本地仓库。像自动二分查找故障 (Bisect) 和自动回滚 (Revert) 这一类内部关键管线，若没有这种极低成本、可编程的版本控制访问接口，在超大规模下根本无法落地。
-* **全栈架构必须具备水平横向扩展能力 (Everything must be horizontally scalable)**：在峰值时期，我们曾维护数百个内部 Git 镜像，这对系统算力造成了巨大压力，且一旦仓库体积超出镜像节点的磁盘或内存上限便无法继续扩展。在 Scion 中，仓库数据完全分布式存储，每一个组件均可独立横向扩展；无论在客户端还是服务端，全网不存在任何一份“全量物化”的代码库拷贝。系统彻底废弃了类似 Git 打包文件 (Packfile) 的概念，因而彻底免除了定期仓库维护与 GC 整理的沉重负担。
-* **提交操作必须廉价、增量化且无锁化 (Commits must be cheap, incremental, and lock-free)**：在 Git 中，开发者需要先在本地 Commit，再通过 Push 将代码推送共享。而在 Scion 中，所有的提交、变基或合并都直接发生在服务端，完全不存在 Push 操作，但每一步操作都必须极度轻量快速。创建提交及更新其下游衍生数据结构的开销，必须仅与本次变更的差异大小成正比，而绝不能随仓库整体规模膨胀，否则服务端必将瘫痪。同时，Scion 在开发流程中严格限制引用指针 (Ref，例如分支与标签) 的滥用，仅保留主分支与发布分支等极少数核心 Ref，因为需要所有服务端强一致达成共识的“全局状态”，在超大规模下必然会演变为扩展性噩梦。
-* **工作副本按需选用，天生具备稀疏特性 (The working copy is optional, and sparse by design)**：正因为我们的单体仓库体积过于庞大，且 CI 每天需要检出数千万次代码，我们尽可能在所有场景下避免发生落盘检出。在 Scion 体系下，如果一个 CI 任务只需要某次提交与其合并基准点之间的差异比较 (Diff)，它直接调用服务端 API 获取即可。代码写入亦是同理：海量的写入型工作流同样可以跳过落盘检出，完全依托 API 执行。Scion 的通信协议原生围绕稀疏检出（客户端仅拉取显式请求的目录）与虚拟化检出（按需动态物化文件）进行构建，因此当某个任务确实需要在磁盘上落地文件时，客户端也只需为它真正读取到的文件付出传输代价。
-
-&gt; * **Clients are always online.** Git assumes that clients work offline and need a complete copy of the repository. Since nearly all of our clients are agents and jobs, we designed Scion’s client and protocols around a server that is always reachable, and have clients fetch data when they need it.
-&gt; * **Client-server asymmetry.** In git, every client is capable of being a full-fledged server. In Scion, the server answers questions about file history and blame, creates commits, performs merges and rebases, and so on. The client maintains a bounded local object cache, lays out the working copy files on disk, monitors for filesystem changes, and gives users an ergonomic way to work with the server. It can compute very little on its own but, in exchange, it requires much less data locally.
-&gt; * **A comprehensive source control service can power many novel applications.** With git, a CI job or tool that needs to ask a question about the repository, such as who last changed a line or how two commits are related, has to maintain a local copy of the repo or hope that vendor-specific APIs provide the answer. With Scion, all of the source control queries the client uses are also exposed via API, so in many cases jobs don’t need a local repository at all. Many internal tools, such as our automated bisect and revert pipelines, wouldn’t be practical at scale without this cheap, programmatic access to source control.
-&gt; * **Everything must be horizontally scalable.** At our peak, we ran several hundred git mirrors, which significantly strained capacity and no longer scaled once the repo outgrew the mirrors’ disks or memory limits. In Scion, the repository’s data is distributed, and every component is independently scalable; there is no fully materialized copy of the repo anywhere, even on the server. There is no equivalent of packfiles (git’s compressed bundles of objects), so no repository maintenance is needed.
-&gt; * **Commits must be cheap, incremental, and lock-free.** In git, you commit locally and then push to share your work. In Scion, every commit, rebase, or merge happens on the server, so there’s nothing to push, but each of those operations needs to be fast. The cost of creating a commit and updating its downstream data structures has to scale with the size of the change, not the overall size of the repo, or the server can’t keep up. The development lifecycle in Scion discourages refs (pointers to commits, such as branches and tags), except for the main ref or release branches, because *global* state that every server has to agree on is a looming scaling problem.
-&gt; * **The working copy is optional, and sparse by design.** Because our monorepo is so large, and because we check out code tens of millions of times a day for CI, we wanted to avoid checkouts whenever we could. With Scion, a CI job that needs the diff between a commit and its merge base, for example, can ask the server for it. The same goes for writes: many write workloads can also skip the checkout and function entirely via API. Scion’s protocol is centered around sparse checkouts, which only contain the directories the client asks for, and virtualized checkouts, which materialize files on demand, so when a job does need files on disk, the client only pays for what it actually reads.
-
----
-
-## Scion 的技术实现与架构细节
-
-&gt; ## How Scion works
-
-了解这些设计原则如何在 Scion 的实际构建中融会贯通，将非常有启发性。这些工程洞见不仅适用于其他版本控制系统，也能广泛启发软件开发生命周期中的其他阶段。
-
-&gt; It’s helpful to understand how these principles came together in practice when building Scion. These insights can apply to other source control systems or, more broadly, to other stages of the software development lifecycle.</description>
-    </item>
-    <item>
-      <title>Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-18/Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-18/Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒/</guid>
-      <pubDate>Sun, 18 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着自主 AI 智能体 (AI Agent) 越来越多地承担编写代码、执行系统命令等复杂任务，如何防止不受信任的代码或模型意外破坏宿主系统甚至发生“越狱”，成了当下的关键安全瓶颈。Perplexity 正式开源了其用于支撑 Perplexity Computer 背后的生产级沙盒平台 —— SPACE。该平台基于轻量级微虚拟机 (MicroVM) 技术 Firecracker 构建，并采用 Rust 语言编写，实现了系统级的高隔离性、极低启动延迟与严格的外发网络管控。在针对 9 款顶尖前沿模型的实战红蓝攻防测试中，SPACE 实现了零宿主机逃逸，为开发者自建安全自主智能体运行环境提供了极具参考价值的开源基础设施方案。
-
----
-
-## 核心速览
-
-&gt; ## Summary
-
-Perplexity 正式开源了经过大规模生产环境验证的沙盒平台 **SPACE** (Sandboxed Platform for Agentic Code Execution，意为“用于智能体代码执行的沙盒平台”)，该平台正是支撑 Perplexity Computer 中每一项复杂任务的核心底层架构。SPACE 基于 Rust 语言构建并在 Apache 2.0 协议下开源，它将每个 AI 智能体任务深度隔离在独立的 Firecracker 微虚拟机 (MicroVM) 中，确保敏感凭据和所有出站网络流量完全由客户机环境外部进行统一管控。凭借优异的性能、超低的启动延迟，以及历经 9 款前沿大模型实测考验的坚固安全性，SPACE 现已面向所有希望为代码编写与网页浏览智能体自建安全执行层的开发团队开放使用。
-
-&gt; Perplexity has open-sourced **SPACE** (Sandboxed Platform for Agentic Code Execution), the production-tested sandbox platform powering every task in Perplexity Computer. Built with Rust under the Apache 2.0 license, SPACE isolates each AI agent task inside its own Firecracker microVM, keeping credentials and outbound traffic strictly controlled from outside the guest environment. Featuring high performance, low latency, and robust security tested against 9 frontier models, SPACE is now available for teams looking to self-host secure execution layers for coding and browsing agents.
-
----
-
-## 一分钟要点概览
-
-&gt; ## TL;DR
-
-* **代码规模与技术栈**：纯 Rust 代码库，以 [0.8.0](https://github.com/perplexityai/SPACE/blob/main/docs/versioning.md) 版本作为首发公开基线，提供完善的 HTTP API 以及用于实时传输流式输出的服务器发送事件 (Server-Sent Events, SSE) 机制。
-* **运行环境需求**：需要搭载 KVM 硬件虚拟化支持的 [Linux x86_64 宿主机](https://github.com/perplexityai/SPACE/blob/main/docs/installation.md)，依赖 `/dev/kvm`、btrfs 文件系统和 Docker。支持本地 Kind (Kubernetes) 集群部署或直接宿主机模式 (不支持 macOS)。
-* **性能表现**：在实际生产环境中，与 Perplexity 之前使用的第三方供应商相比，沙盒创建的中位数延迟从 [185 毫秒大幅降至 60 毫秒](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)。
-* **安全隔离性**：在针对 9 款顶尖前沿模型的红蓝对抗攻防测试中，[108 次虚拟机逃逸尝试全部失败 (0/108)](https://www.perplexity.ai/hub/blog/escaping-space-part-i)，无一成功突破至宿主机。
-* **修复前漏洞情况**：在应用安全补丁之前，在部分网络开放测试中，AI 智能体在 [54 次测试中有 11 次 (11/54)](https://www.perplexity.ai/hub/blog/escaping-space-part-i) 成功绕过了出站流量策略。
-
-&gt; * **Size:** Rust codebase, release [0.8.0](https://github.com/perplexityai/SPACE/blob/main/docs/versioning.md) as the public baseline, featuring an HTTP API plus server-sent events.
-&gt; * **Runs on:** A [Linux x86_64 host with KVM](https://github.com/perplexityai/SPACE/blob/main/docs/installation.md), `/dev/kvm`, btrfs, and Docker. Supports local Kind (Kubernetes) or direct mode (No macOS support).
-&gt; * **Performance:** In production, median create latency dropped from [185 ms to 60 ms](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents) compared to Perplexity’s previous provider.
-&gt; * **Security:** [0 of 108](https://www.perplexity.ai/hub/blog/escaping-space-part-i) VM-to-host escape attempts succeeded across 9 frontier models.
-&gt; * **Vulnerabilities (Pre-fix):** Before security patches, agents bypassed the egress policy in [11 of 54](https://www.perplexity.ai/hub/blog/escaping-space-part-i) partial-network runs.
-
----
-
-## 什么是 Perplexity SPACE？
-
-&gt; ## What is Perplexity SPACE?
-
-SPACE (Sandboxed Platform for Agentic Code Execution) 是 Perplexity 专为在隔离微虚拟机中执行智能体代码而打造的核心平台。上层应用程序只需调用其 [HTTP API](https://github.com/perplexityai/SPACE)，即可快速创建 Linux 运行环境、执行各类命令并实时流式接收执行输出。
-
-&gt; SPACE (Sandboxed Platform for Agentic Code Execution) is Perplexity’s platform for running agent code in isolated microVMs. Applications call its [HTTP API](https://github.com/perplexityai/SPACE) to create Linux environments, execute commands, and stream output.
-
-* **模板 (Template)**：为沙盒提供初始化的基础文件系统映像。
-* **沙盒 (Sandbox)**：基于特定模板实例化的独立运行环境，拥有专属于自己的独立虚拟机和可写磁盘。在单个沙盒生命周期内，支持按序连续执行多条命令。
-
-&gt; * **Template:** Supplies the starting filesystem.
-&gt; * **Sandbox:** An individual instance of a template featuring its own VM and writable disk. Multiple commands can run sequentially inside a single sandbox.
-
-Perplexity 在其官方发布的 [推文串 (Launch Thread)](https://x.com/perplexity_ai/status/2110778478312481167) 中重点阐述了该系统的核心设计初衷：允许智能体在沙盒*内部*以 root 管理员权限自由运行命令、安装依赖软件包并调用各类网络服务；与此同时，严格确保宿主机器在物理层面完全脱离客户机虚拟机的控制范围。鉴于智能体的工作流通常具有长时间运行、多轮有状态演进以及多分支探索等特点，整个平台在底层架构设计上全面支持重启容灾与状态无损恢复。
-
-&gt; Perplexity’s [launch thread](https://x.com/perplexity_ai/status/2110778478312481167) highlights the primary design goal: allowing agents to run commands, install packages, and call services with root privileges *inside* the sandbox while ensuring the host remains completely out of the guest’s control. Because agent workflows are long-running, stateful, and branching, the platform is designed to survive restarts.
-
----
-
-## SPACE 如何对智能体实现严密隔离？
-
-&gt; ## How Does SPACE Isolate Agents?
-
-在架构层面，每一个沙盒都是一个轻量级的 [Firecracker](https://www.usenix.org/conference/nsdi20/presentation/agache) 微虚拟机，拥有完全独立的客户机操作系统内核。同时，宿主机上为每个沙盒分别配备了专属的网络网关，对虚拟机的每一笔外发连接严格执行出站访问安全策略。
-
-&gt; Each sandbox is a [Firecracker](https://www.usenix.org/conference/nsdi20/presentation/agache) microVM complete with its own guest kernel. A per-sandbox network gateway on the host enforces strict egress policies on every outbound connection.
-
-任何核心机密或访问凭据绝不直接流入客户机内部。根据 Perplexity 在 [7 月份发布的技术工程博文](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)，敏感凭据全部在宿主机网络层进行安全透明注入。该凭据管理中心支持多层级作用域划分、高精度速率限制以及全方位的操作审计日志。
-
-&gt; Secrets never enter the guest. According to Perplexity’s [July engineering post](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents), credentials are injected securely at the network layer. The credential store provides hierarchical scoping, strict rate limits, and comprehensive audit logging.
-
-官方发布的 [架构设计指南 (Architecture Guide)](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) 将系统解构为四大核心组件：
-1. 基于 PostgreSQL 存储的 API 服务层
-2. 控制器集群 (Controllers)
-3. 工作节点服务 (Worker Services)
-4. 数据平面 (Data Plane)
-
-&gt; The [architecture guide](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) divides the system into four core components:
-&gt; 1. PostgreSQL-backed API
-&gt; 2. Controllers
-&gt; 3. Worker services
-&gt; 4. Data plane
-
-工作节点服务负责统筹管理虚拟机生命周期、虚拟网络、存储卷、模板以及凭据分发，并充分利用 btrfs 文件系统的写时复制 (Copy-on-Write, CoW) 特性，以极高效率瞬间分发每个沙盒的根文件系统。
-
-&gt; Worker services manage VMs, networking, volumes, templates, and credentials, utilizing btrfs copy-on-write functionality to provision each root filesystem efficiently.
-
----
-
-## 暂停、休眠挂起与状态恢复是如何运作的？
-
-&gt; ## How Do Pause, Suspend, and Restore Work?
-
-在整个运行生命周期中，沙盒会在四种截然不同的状态之间流转切换：**运行中 (Running)**、**已暂停 (Paused)**、**已休眠挂起 (Suspended)** 以及 **已删除 (Deleted)**。
-
-&gt; Sandboxes transition through four distinct states: **running**, **paused**, **suspended**, and **deleted**.
-
-* **运行中 (Running)**：各类进程正在活跃执行；实时虚拟机内存与可写文件系统均处于就绪保持状态。
-* **已暂停 (Paused)**：代码执行立即中断，但虚拟机的内存数据依然驻留在工作节点内存中 (此时并非持久化快照)。
-* **已休眠挂起 (Suspended)**：将虚拟机内存、运行时系统状态以及根文件系统全部持久化保存为快照，并彻底释放所有占用的活跃计算资源。
-* **默认空闲策略 (Idle Default)**：当沙盒持续处于空闲状态超过 6 小时后，系统将对其 [执行自动休眠挂起](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md)。
-
-&gt; * **Running:** Processes execute actively; live VM memory and the writable filesystem are preserved.
-&gt; * **Paused:** Execution stops and VM memory stays resident on the worker (not a durable snapshot).
-&gt; * **Suspended:** VM memory, runtime state, and the root filesystem are snapshotted, and active resources are released. 
-&gt; * **Idle Default:** Sandboxes [suspend automatically after 6 hours](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md) of inactivity.
-
-为了实现极致的极速供给，在 Kubernetes 生产部署环境下，系统利用预先引导就绪的沙盒构建了 [预热池 (Warm Pools)](https://github.com/perplexityai/SPACE/blob/main/docs/warm-pools.md)；而在单节点开发测试环境中，则依托 [基础快照 (Base Snapshots)](https://github.com/perplexityai/SPACE/blob/main/docs/base-snapshots.md) 机制实现秒级启动。在实际生产场景中，沙盒创建延迟的第 90 百分位数 (P90) 从 [447 毫秒大幅降至 89 毫秒](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents)，目前 Perplexity Computer 的会话已 100% 全量运行在 SPACE 平台之上。
-
-&gt; For rapid provisioning, Kubernetes deployments utilize [warm pools](https://github.com/perplexityai/SPACE/blob/main/docs/warm-pools.md) of pre-booted sandboxes, whereas single-node setups rely on [base snapshots](https://github.com/perplexityai/SPACE/blob/main/docs/base-snapshots.md). In production, the 90th-percentile create latency dropped from [447 ms to 89 ms](https://www.perplexity.ai/hub/blog/making-space-secure-and-efficient-runtimes-for-long-running-agents), with 100% of Perplexity Computer sessions running on SPACE.
-
----
-
-## SPACE 能经受住红蓝对抗安全测试吗？
-
-&gt; ## Did SPACE Survive a Red-Team Test?
-
-Perplexity 在发布的 [*逃逸 SPACE：第一部分 (Escaping SPACE: Part I)*](https://www.perplexity.ai/hub/blog/escaping-space-part-i) 深度安全测试报告中，对赋予了客户机内部 root 最高权限的 9 款主流模型展开了总计 216 次实战渗透运行评估：
-
-&gt; Perplexity’s [*Escaping SPACE: Part I*](https://www.perplexity.ai/hub/blog/escaping-space-part-i) report evaluated 9 models with root access inside the guest across 216 runs:
-
-* **沙盒突破逃逸 (Sandbox Escape)**：在总共 108 次实战测试中，成功窃取宿主机核心机密的次数为 0 (0/108)。
-* **纯无网络环境绕过 (No-network Bypass)**：在 54 次测试中，成功绕过网络封锁的次数为 0 (0/54)。
-* **部分联网环境绕过 (Partial-network Bypass)**：在安全补丁上线*之前*，54 次测试中有 11 次 (11/54) 出现了策略绕过 (Claude Opus 5.0、GPT-5.6 Sol、GPT-5.6 Cyber 以及 Kimi K3 等模型成功利用了 DNS 欺骗与共享 CDN IP 地址的漏洞)。
-
-&gt; * **Sandbox escape:** 0 of 108 runs reached the host-side secret.
-&gt; * **No-network bypass:** 0 of 54 runs succeeded.
-&gt; * **Partial-network bypass:** 11 of 54 runs succeeded *before* fixes were implemented (models like Claude Opus 5.0, GPT-5.6 Sol, GPT-5.6 Cyber, and Kimi K3 successfully exploited DNS spoofing and shared CDN IP addresses).</description>
-    </item>
-    <item>
-      <title>你的 MCP 服务器足够安全，但其背后的账本系统并非如此</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-17/你的-MCP-服务器安全-但其背后的账本系统并非如此/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-17/你的-MCP-服务器安全-但其背后的账本系统并非如此/</guid>
-      <pubDate>Sat, 17 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着模型上下文协议 (Model Context Protocol, MCP) 成为连接 AI 智能体 (AI Agent) 与企业数据的全新事实标准，开发者们大多将安全防线筑牢在 MCP 服务器本身的鉴权与细粒度角色控制上。然而，拥有连接 32 款企业级财会与 ERP 系统实战经验的资深架构师指出，一个被普遍忽视的致命盲区在于——服务器后方赖以支撑的“底层账本与业务系统”，在安全能力上往往还停留在十多年前的刀耕火种时代。现实中大量上游系统缺乏 OAuth 支持、采用永久有效且无法远程吊销的静态秘钥，更无法在审计日志中区分凌晨 3 点疯狂记账 400 笔的是勤奋的财务主管还是失控的 AI 智能体。本文深度剖析了这一“前锋固若金汤、后方门户大开”的严峻安全断层，指出了集成层能力的边界，并针对当下与未来的企业级智能体架构给出了兼顾务实与前瞻的破局解法。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-尽管构建安全的模型上下文协议 (Model Context Protocol, MCP) 服务器的最佳实践，将大量精力倾注在集成层的细粒度角色划分与身份认证上，但它们往往忽略了一个致命的盲区：**位于服务器背后的底层业务系统，往往根本无法达到同等水准的安全标准。**
-
-&gt; While best practices for building secure Model Context Protocol (MCP) servers focus heavily on fine-grained roles and authentication at the integration layer, they often overlook a critical blind spot: **the systems behind the server cannot always be secured to the same standard.** 
-
-基于将系统接入 32 款主流财会与企业资源规划 (ERP) 系统的真实工程洞见，本文深入探讨了上游企业级软件所暴露的安全短板、中间集成层能够（以及无法）施加的安全约束，并提出了切实可行的应对策略——例如设立专属智能体用户与引入身份委托标准，以全力护航与敏感财务账本交互的 AI 智能体 (AI Agent) 。
-
-&gt; Based on insights from connecting to 32 accounting and ERP systems, this article explores the security gaps in upstream enterprise software, what integration layers can (and cannot) enforce, and practical strategies—such as dedicated agent users and delegated identity standards—to secure AI agents interacting with sensitive financial ledgers.
-
----
-
-在 Unite.AI 近期刊登的一篇文章中，Gil Feig 总结了[构建安全 MCP 服务器的六大最佳实践](https://www.unite.ai/6-best-practices-for-building-a-secure-mcp-server/)。这些建议非常中肯，任何正在交付 MCP 服务器的团队都应当遵循。他在文中建议为每一个集成赋予“独立的细粒度角色，权限范围严格限定于所需权限”，这一观点切中要害。但这种设计暗含了一个前提：通信另一端的底层系统同样具备细粒度的角色控制能力。这恰恰揭示了一个在业界鲜有人提及的普遍假设——人们总是一厢情愿地认为，服务器后方的底层系统也能被加固到同样严苛的安全标准。
-
-&gt; In a recent piece here on Unite.AI, Gil Feig laid out [six best practices for building a secure MCP server](https://www.unite.ai/6-best-practices-for-building-a-secure-mcp-server/). They are sound, and anyone shipping an MCP server should follow them. His advice to give each integration “its own fine-grained role, scoped strictly to required permissions” is exactly right. It also assumes the system on the other end has fine-grained roles. That points to a broader assumption that rarely gets stated: that the systems behind the server can be secured to the same standard.
-
-但在现实的商业软件世界中，情况往往并非如此。我带领的工程团队负责维护一套连接 32 款财会与 ERP 系统的集成层架构，并在其顶层挂载了一个可选的 MCP 服务器。在日常运维中，我们屡见不鲜的场景是：在我们这一侧，智能体的身份认证严密合规、权限范围限定清晰、行为调用审计完整；但当它向底层系统写入数据时，对方系统却全然不知其实际是由一个智能体发起的。
-
-&gt; In business software, they often cannot. I run the engineering team behind an integration layer that connects to 32 accounting and ERP systems, with an optional MCP server on top. We regularly see agents that are well authenticated, well scoped and well logged on our side, writing into systems that have no way of knowing an agent was involved at all.
-
-本文聚焦探讨的正是硬币的另一面：上游底层系统究竟具备怎样的真实能力、我们在中间集成层究竟能够把控什么，以及这种技术控制力的边界究竟止步于何处。
-
-&gt; This piece is about that second half of the problem: what the upstream systems actually offer, what you can control from the integration layer, and where that control ends.
-
-## MCP 规范的责任边界止于何处
-
-&gt; ## Where the MCP Spec Hands Over
-
-[MCP 授权规范](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations)对其自身的权责边界给出了极其清晰的界定。对于下游客户端而言，MCP 服务器扮演着 OAuth 资源服务器的角色；而当它调用上游系统的 API 时，它则摇身一变成为一个独立的 OAuth 客户端，使用上游系统所签发的独立 Token 进行认证。规范明确禁止将客户端的凭证 Token 直接透传给上游。
-
-&gt; The [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations) is clear about its own boundary. The MCP server is an OAuth resource server for its clients. When it calls an upstream API, it acts as a separate OAuth client, with a separate token issued by the upstream system. Passing the client’s token through is explicitly forbidden.
-
-这是一个无懈可击的技术设计。但它同时也意味着：有关上游 API 调用的方方面面——包括究竟允许谁来执行何种操作、这些操作又是如何被系统日志记录下来的——全都完全仰仗上游系统自身的能耐。如果上游系统本身功能缺失，MCP 规范也无法凭空将其补齐。
-
-&gt; That is the right design. It also means everything about the upstream call, including who is allowed to do what and how that is recorded, depends entirely on the upstream system. The spec cannot fix what the upstream system does not offer.
-
-[OWASP 针对过度自主代理 (Excessive Agency) 的安全防范指南](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)同样面临这一窘境。该指南建议将智能体扩展插件在其他外部系统中所持有的权限严控在最小必要范围之内，并且所有操作必须在它所代表的真实用户的上下文环境中执行。这两条都是极具指导意义的良言；但它们也无一例外地默认：目标系统有能力精准表达最小权限与用户上下文。
-
-&gt; The same goes for the [OWASP guidance on excessive agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/). It recommends limiting the permissions an agent’s extensions hold in other systems to the minimum necessary and executing actions in the context of the user they act for. Both are good advice. Both assume the other system has a way to express minimum permissions and user context.
-
-## 上游系统现状的真实图景
-
-&gt; ## What the Upstream Systems Actually Offer
-
-站在系统集成商的视角，我们所接入的 32 款财会与 ERP 系统的真实面貌如下。
-
-&gt; Here is what the 32 accounting and ERP systems we connect to look like from an integrator’s seat.</description>
     </item>
   </channel>
 </rss>

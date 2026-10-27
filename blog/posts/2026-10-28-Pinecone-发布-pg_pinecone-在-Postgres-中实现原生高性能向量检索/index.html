@@ -1,0 +1,751 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-10-28-Pinecone-%E5%8F%91%E5%B8%83-pg_pinecone-%E5%9C%A8-Postgres-%E4%B8%AD%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%94%9F%E9%AB%98%E6%80%A7%E8%83%BD%E5%90%91%E9%87%8F%E6%A3%80%E7%B4%A2/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pinecone-pg_pinecone-postgres" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="pinecone-pg_pinecone-postgres">Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索</h1>
+<blockquote>
+<h1 id="pinecone-releases-pg_pinecone-an-open-source-postgres-search-extension">Pinecone Releases Pg_pinecone, an Open-Source Postgres Search Extension</h1>
+</blockquote>
+<p><img alt="Pinecone Releases Pg_pinecone" src=".././images/887dedd14820.jpg" /></p>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着检索增强生成 (Retrieval-Augmented Generation, RAG) 与各类 AI 智能体应用的爆发，如何在传统关系型数据库中低成本、高效率地管理与检索海量高维向量数据，成为了现代数据架构领域的关键命题。尽管主流的 <code>pgvector</code> 扩展提供了基础的向量检索能力，但在面对海量数据集时，基于图拓扑的 HNSW 索引往往面临显存与磁盘占用过大、带条件过滤查询 (Filtered Search) 召回率和延迟急剧劣化的痛点。针对这一工程瓶颈，知名向量数据库厂商 Pinecone 正式开源了基于 Apache 2.0 协议的 Postgres 扩展插件 <strong><code>pg_pinecone</code></strong>。该插件创新性地在 Postgres 内部引入了基于 RaBitQ 量化算法的倒排文件索引架构，使得 100 万条 768 维向量的索引体积压缩至仅 136 MB，比传统 HNSW 缩减数十倍，并彻底解决了预过滤与后过滤的性能与准确率两难困境。此外，<code>pg_pinecone</code> 提供了原生引擎、Pgvector 引擎和托管远程引擎三种模式，帮助开发者无缝实现从单机本地轻量开发到云端无服务器海量扩展的平滑过渡。</p>
+<hr />
+<h2 id="_2">概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>2026 年 10 月 27 日，Pinecone 正式开源了遵循 Apache 2.0 协议的 Postgres 搜索扩展插件 <strong><code>pg_pinecone</code></strong>。该扩展能够直接与现有的 <code>pgvector</code> 向量列深度集成，提供高效率的向量检索 (Vector Search) 能力。根据官方发布的基准测试，对于 100 万条 768 维度的向量，其原生索引所需的存储空间仅为 136 MB——其空间利用效率显著超越了以 HNSW 为代表的传统图基索引。<code>pg_pinecone</code> 旨在将数据完全保留在 Postgres 内部的同时，彻底解决带条件过滤检索常见的不准确问题；它提供了三种差异化的执行引擎（原生引擎、Pgvector 引擎以及远程引擎），支持应用从本地开发环境平滑过渡并扩展至云端托管的无服务器 (Serverless) 基础设施。</p>
+<blockquote>
+<p>On October 27, 2026, Pinecone released <strong><code>pg_pinecone</code></strong>, an open-source Postgres search extension licensed under Apache 2.0. The extension integrates high-efficiency vector search capabilities directly with existing <code>pgvector</code> columns. In company-reported benchmarks, its native index for 1 million 768-dimension vectors requires only 136 MB of storage—significantly outperforming traditional graph-based index sizes like HNSW. Designed to maintain data fully inside Postgres while resolving accuracy issues typical of filtered searches, <code>pg_pinecone</code> offers three distinct engines (Native, Pgvector, and Remote) to scale smoothly from local development to cloud-managed serverless infrastructure.</p>
+</blockquote>
+<hr />
+<h2 id="_3">单一索引背后的三套执行引擎</h2>
+<blockquote>
+<h2 id="three-engines-behind-one-index">Three Engines Behind One Index</h2>
+</blockquote>
+<p><code>pg_pinecone</code> 能够与现有的 <code>pgvector</code> 向量列无缝协作。应用程序可以完全按照常规方式连接到 Postgres，并执行标准 SQL 查询（例如 <code>ORDER BY embedding &lt;=&gt; $1 LIMIT 10</code>）。由于原始数据表和完整高维向量仍然保存在数据库内部，Postgres 继续充当最根本的权威数据源记录系统 (System of Record)。</p>
+<blockquote>
+<p><code>pg_pinecone</code> works seamlessly with vector columns already held in <code>pgvector</code>. Applications connect to Postgres normally and issue standard SQL queries (such as <code>ORDER BY embedding &lt;=&gt; $1 LIMIT 10</code>), leaving tables and full vectors in place so that Postgres remains the system of record.</p>
+</blockquote>
+<p>每个数据库表都可以选择使用以下三种专用引擎之一：</p>
+<ul>
+<li><strong>原生引擎 (Native Engine, 默认配置)</strong>：完全在 Postgres 内部构建索引并执行搜索，不需要注册 Pinecone 账号、配置 API 密钥或发出任何外部网络请求。</li>
+<li><strong>Pgvector 引擎 (Pgvector Engine)</strong>：直接搜索既有的 <code>pgvector</code> 索引（如 HNSW 或 IVFFlat），非常适合那些已建好索引且无需复杂条件过滤的现有数据表。</li>
+<li><strong>远程引擎 (Remote Engine)</strong>：将检索操作卸载分流至 Pinecone 托管服务中的无服务器索引，专为单个 Postgres 数据库服务器无法承载的超大规模负载而量身定制。</li>
+</ul>
+<blockquote>
+<p>Each database table can utilize one of three specialized engines:
+*   <strong>Native Engine (Default):</strong> Builds and searches its index entirely inside Postgres without requiring a Pinecone account, API keys, or external network calls.
+*   <strong>Pgvector Engine:</strong> Searches an existing <code>pgvector</code> index (HNSW or IVFFlat), making it ideal for pre-indexed tables that do not require filtering.
+*   <strong>Remote Engine:</strong> Offloads search operations to a serverless index in Pinecone’s managed service, tailored for workloads that have outgrown a single Postgres server.</p>
+</blockquote>
+<p>只需调用一次 <code>pinecone.set_engine()</code>，即可在不同的引擎之间无缝切换数据表。这一过程完全不会改动上层的业务查询逻辑，并且整个操作是完全可逆的。</p>
+<blockquote>
+<p>Switching a table between engines requires a single call to <code>pinecone.set_engine()</code>, keeping queries unchanged and fully reversible.</p>
+</blockquote>
+<hr />
+<h2 id="_4">原生引擎的检索工作机制</h2>
+<blockquote>
+<h2 id="how-the-native-engine-searches">How the Native Engine Searches</h2>
+</blockquote>
+<p>与 <code>pgvector</code> 的 HNSW 类似，原生引擎同样采用了近似最近邻 (Approximate Nearest Neighbor, ANN) 算法；不同之处在于，它抛弃了传统的图结构，转而采用一种对相似向量进行聚类分组的<strong>倒排文件索引 (Inverted File Index)</strong>。</p>
+<blockquote>
+<p>Like <code>pgvector</code>'s HNSW, the native engine employs an approximate nearest neighbor algorithm, but replaces traditional graphs with an <strong>inverted file index</strong> that clusters similar vectors.</p>
+</blockquote>
+<h3 id="rabitq">核心架构与 RaBitQ 量化技术</h3>
+<blockquote>
+<h3 id="core-architecture-rabitq-quantization">Core Architecture &amp; RaBitQ Quantization</h3>
+</blockquote>
+<p>每个向量都会被压缩并存储为一个量化的 <strong>RaBitQ 编码</strong>——其尺寸约为每个维度仅占用 1 个比特，外加少量的校正值（该技术基于 Gao 和 Long 发表在 SIGMOD 2024 上的学术研究成果）。每个聚类簇内部的编码在物理存储上是连续紧凑排列的，这使得检索操作仅需连续读取少量的磁盘页，而无需在复杂的图拓扑结构中漫无目的地随机跳转寻道。</p>
+<blockquote>
+<p>Each vector is stored as a quantized <strong>RaBitQ code</strong>—approximately one bit per dimension plus a few correction values (based on research by Gao and Long, SIGMOD 2024). Cluster codes are packed contiguously, allowing searches to read a few contiguous pages instead of randomly jumping across a graph structure.</p>
+</blockquote>
+<p>查询检索的执行流程主要分为以下三个步骤：</p>
+<ol>
+<li><strong>探测最近聚类簇 (Probe Nearest Clusters)</strong>：将用户输入的查询向量与每个聚类簇的质心 (Centroid) 进行比对，筛选出空间上最接近的候选簇。</li>
+<li><strong>快速距离预估 (Estimate Distance)</strong>：利用每行数据紧凑的 RaBitQ 编码高效估算距离，初步保留最有潜力的 Top 候选结果。</li>
+<li><strong>精细重排 (Rerank)</strong>：调取数据表中存储的原始完整浮点向量，对候选集合重新精确计算真实距离并完成最终排序。</li>
+</ol>
+<blockquote>
+<p>Searches execute in three steps:
+1.  <strong>Probe Nearest Clusters:</strong> Compare the query vector against each cluster's centroid.
+2.  <strong>Estimate Distance:</strong> Compute an estimated distance for each row using its RaBitQ code to retain top candidates.
+3.  <strong>Rerank:</strong> Finalize candidate scoring using the full vectors stored in the table.</p>
+</blockquote>
+<h3 id="_5">深度融合的条件过滤技术</h3>
+<blockquote>
+<h3 id="advanced-filtering-integration">Advanced Filtering Integration</h3>
+</blockquote>
+<p>传统的 HNSW 后过滤 (Post-filtering) 机制通常先检索出最近邻向量，然后再套用 SQL 中的 <code>WHERE</code> 条件进行筛选。当过滤条件非常严苛时，绝大多数近邻候选都会被直接过滤丢弃，从而迫使系统陷入开销极其高昂的循环迭代扫描。</p>
+<blockquote>
+<p>Traditional HNSW post-filtering evaluates nearest neighbors first and applies <code>WHERE</code> clauses afterward, often discarding most candidates on narrow filters and forcing costly iterative scans.</p>
+</blockquote>
+<p>为了化解这一难题，原生引擎在构建索引时，会将用于过滤的列值直接与每行向量的量化编码并排存储，并统计各行属性的频次分布：</p>
+<ul>
+<li><strong>预过滤 (Pre-filtering)</strong>：对于严苛的狭窄过滤条件（默认筛选结果占总数据行数的 3% 或更少），引擎直接跨所有聚类簇遍历扫描每一个符合条件的行，并使用全尺寸原始向量进行打分，从而保证精准无误的绝对召回。</li>
+<li><strong>单阶段过滤 (Single-stage filtering)</strong>：对于范围更宽泛的过滤条件，系统最多检索空间上最贴近的半数聚类簇，并在对簇内向量进行距离打分前先行验证过滤条件。</li>
+</ul>
+<blockquote>
+<p>The native engine stores a filter-column value alongside each row's code and counts row frequencies at build time:
+*   <strong>Pre-filtering:</strong> For narrow filters (defaulting to 3% of rows or fewer), it scans every matching row across all clusters and scores them with full vectors for exact results.
+*   <strong>Single-stage filtering:</strong> For wider filters, it searches up to half of the nearest clusters and checks conditions within each cluster prior to scoring.</p>
+</blockquote>
+<p>新插入的数据行会自动归入与其最接近的聚类簇，并立即可被检索。当发生大规模数据变更（例如批量导入使数据表体积翻倍）时，管理员可以通过手动运行 <code>REINDEX</code> 或开启自动维护策略，让引擎对各个聚类簇重新进行全局重平衡。</p>
+<blockquote>
+<p>New inserts join the nearest cluster and become searchable immediately. For major updates (such as a bulk load that doubles the table size), running <code>REINDEX</code> or enabling automatic maintenance rebalances the clusters.</p>
+</blockquote>
+<hr />
+<h2 id="pinecone">Pinecone 官方基准测试表现</h2>
+<blockquote>
+<h2 id="benchmarks-reported-by-pinecone">Benchmarks Reported by Pinecone</h2>
+</blockquote>
+<p>Pinecone 官方在包含 100 万条 <code>wiki_dpr</code> 向量（768 维）的数据集上，将原生引擎与 <code>pgvector</code> 的 HNSW 索引（包括全尺寸向量与 <code>halfvec</code> 半精度向量两种模式）进行了基准测试对比。测试环境部署在搭载了 PostgreSQL 17 与 18 的 AWS <code>r6id.4xlarge</code> 实例（配置为 16 个 vCPU、128 GB 内存）上。</p>
+<blockquote>
+<p>Pinecone evaluated the native engine against <code>pgvector</code>'s HNSW index (using full-size vectors and <code>halfvec</code>) on 1 million <code>wiki_dpr</code> vectors (768 dimensions). Tests were performed on an AWS <code>r6id.4xlarge</code> instance (16 vCPUs, 128 GB RAM) running PostgreSQL 17 and 18.</p>
+</blockquote>
+<ul>
+<li><strong>索引存储占用 (Index Size)</strong>：<ul>
+<li><strong>原生引擎</strong>：136 MB</li>
+<li><strong>HNSW (<code>halfvec</code>)</strong>：2.0 GB</li>
+<li><strong>HNSW (全尺寸向量)</strong>：4.1 GB</li>
+</ul>
+</li>
+<li><strong>无过滤条件检索延迟 (Unfiltered Search Latency, <span class="arithmatex">\(k=10\)</span> 下的 p50 延迟)</strong>：<ul>
+<li><strong>原生引擎</strong>：召回率 0.95 时仅需 1.3 ms | 召回率 0.99 时为 2.3 ms</li>
+<li><strong>HNSW (<code>halfvec</code>)</strong>：召回率 0.95 时为 1.7 ms | 召回率 0.99 时为 4.7 ms</li>
+<li><strong>HNSW (全尺寸向量)</strong>：召回率 0.95 时为 2.7 ms | 召回率 0.99 时为 6.7 ms</li>
+</ul>
+</li>
+<li><strong>带条件过滤检索表现 (Filtered Search Performance)</strong>：<ul>
+<li><em>10% 筛选比例</em>：原生引擎在 <strong>12.3 ms</strong> 内达到了 1.000 的完美召回率（单阶段过滤），而 HNSW 借助多次迭代扫描，在 <strong>5.9 ms</strong> 内的最佳召回率仅为 0.920。</li>
+<li><em>1% 筛选比例</em>：原生引擎仅需 <strong>8.3 ms</strong> 即可实现 0.981 的高召回率。</li>
+</ul>
+</li>
+<li><strong>索引构建耗时 (Build Times)</strong>：<ul>
+<li><strong>原生引擎</strong>：45 秒</li>
+<li><strong>HNSW (<code>halfvec</code>)</strong>：62 秒</li>
+<li><strong>HNSW (全尺寸向量)</strong>：79 秒</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Index Size:</strong> <ul>
+<li><strong>Native Engine:</strong> 136 MB</li>
+<li><strong>HNSW (<code>halfvec</code>):</strong> 2.0 GB</li>
+<li><strong>HNSW (Full-size):</strong> 4.1 GB</li>
+</ul>
+</li>
+<li><strong>Unfiltered Search Latency (p50 at <span class="arithmatex">\(k=10\)</span>):</strong><ul>
+<li><strong>Native Engine:</strong> 1.3 ms at 0.95 recall | 2.3 ms at 0.99 recall</li>
+<li><strong>HNSW (<code>halfvec</code>):</strong> 1.7 ms at 0.95 recall | 4.7 ms at 0.99 recall</li>
+<li><strong>HNSW (Full-size):</strong> 2.7 ms at 0.95 recall | 6.7 ms at 0.99 recall</li>
+</ul>
+</li>
+<li><strong>Filtered Search Performance:</strong><ul>
+<li><em>10% Filter:</em> Native engine reached 1.000 recall in <strong>12.3 ms</strong> (single-stage), whereas HNSW reached 0.920 recall at best in <strong>5.9 ms</strong> via iterative scans.</li>
+<li><em>1% Filter:</em> Native engine achieved 0.981 recall in <strong>8.3 ms</strong>.</li>
+</ul>
+</li>
+<li><strong>Build Times:</strong> <ul>
+<li><strong>Native Engine:</strong> 45 seconds</li>
+<li><strong>HNSW (<code>halfvec</code>):</strong> 62 seconds</li>
+<li><strong>HNSW (Full-size):</strong> 79 seconds</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="pinecone_1">可用性与可选的 Pinecone 云端增强特性</h2>
+<blockquote>
+<h2 id="availability-and-optional-pinecone-features">Availability and Optional Pinecone Features</h2>
+</blockquote>
+<p><code>pg_pinecone</code> 要求运行环境为 PostgreSQL 17 或 18，具有超级用户 (superuser) 权限，并且已经安装了 <code>pgvector</code> 扩展插件。</p>
+<ul>
+<li><strong>安装方式</strong>：可通过 GitHub Releases 下载预编译安装包，或直接拉取 Docker Hub 官方镜像 (<code>pineconeteam/pg_pinecone</code>)。如果选择从源码编译，则需要准备 Rust 工具链以及 <code>cargo-pgrx 0.19.2</code>。</li>
+<li><strong>远程引擎运行要求</strong>：如果需要使用远程引擎，必须通过配置 <code>shared_preload_libraries</code> 预加载该扩展模块。配置初始化过程包括启用 <code>vector</code> 和 <code>pg_pinecone</code> 扩展，并执行 <code>pinecone.create_index()</code> 调用。</li>
+</ul>
+<blockquote>
+<p><code>pg_pinecone</code> requires PostgreSQL 17 or 18, superuser privileges, and an installed <code>pgvector</code> extension. 
+*   <strong>Installation:</strong> Available via prebuilt releases on GitHub or the Docker Hub image (<code>pineconeteam/pg_pinecone</code>). Building from source requires a Rust toolchain and <code>cargo-pgrx 0.19.2</code>.
+*   <strong>Remote Engine Requirements:</strong> Requires loading the extension through <code>shared_preload_libraries</code>. Setup involves initializing <code>vector</code> and <code>pg_pinecone</code> extensions and calling <code>pinecone.create_index()</code>.</p>
+</blockquote>
+<h3 id="_6">可选的云端增强功能</h3>
+<blockquote>
+<h3 id="optional-cloud-features">Optional Cloud Features</h3>
+</blockquote>
+<p>在配置了 Pinecone API 密钥之后，用户还可以解锁由云端驱动的高级增强能力：</p>
+<ul>
+<li><strong>后台异步同步 (Background Syncing)</strong>：将嵌入向量异步同步至云端托管的 Pinecone 索引，与此同时本地 Postgres 的检索读写丝毫不受干扰。</li>
+<li><strong><code>embed()</code> 算子</strong>：直接在 SQL 查询语句中调用 Pinecone 的模型推理服务，将纯文本实时转化为向量嵌入。</li>
+<li><strong>BM25 混合检索 (BM25 Hybrid Search)</strong>：在同一张数据表内无缝融合全文关键词检索与向量相似度检索。</li>
+<li><strong><code>rerank()</code> 重排算子</strong>：直接利用 Pinecone 自研的专有重排模型对 Top 搜索结果进行二次精排打分。</li>
+</ul>
+<blockquote>
+<p>With a Pinecone API key, users can unlock advanced cloud-backed capabilities:
+*   <strong>Background Syncing:</strong> Embeddings sync to a managed Pinecone index asynchronously while local Postgres searches remain uninterrupted.
+*   <strong><code>embed()</code>:</strong> Transforms text into embeddings directly from SQL using Pinecone's inference service.
+*   <strong>BM25 Hybrid Search:</strong> Executes full-text search alongside vector search within the same table.
+*   <strong><code>rerank()</code>:</strong> Re-orders top results using Pinecone's proprietary reranking models.</p>
+</blockquote>
+<p>官方文档托管于 <code>docs.pinecone.io</code>，项目的 <a href="https://github.com/pinecone-io/pg_pinecone">GitHub 开源仓库</a> 提供了详尽的 SQL 语法参考、运维操作手册以及灾难恢复指南。Pinecone 官方主导维护该扩展，负责评审 Pull Request，并通过 GitHub Issues、Discord 社群以及每月定期的社区答疑活动 (Office Hours) 推进公开的技术演进路线图。</p>
+<blockquote>
+<p>Official documentation is hosted on <code>docs.pinecone.io</code>, while the project's <a href="https://github.com/pinecone-io/pg_pinecone">GitHub repository</a> includes a SQL reference, operator runbooks, and disaster recovery guides. Pinecone manages the extension, reviews pull requests, and curates its public roadmap through GitHub issues, Discord, and monthly community office hours.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Pinecone</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">pg_pinecone</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">PostgreSQL</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">向量检索</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">pgvector</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
