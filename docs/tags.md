@@ -466,6 +466,7 @@ title: 标签浏览
 - [PETSc 中 AI 生成科学计算代码的智能体评估框架](blog/posts/2026-09-13-PETSc-中-AI-生成科学计算代码的智能体评估框架.md)
 - [terms.txt：面向智能体网络访问的知情同意与补偿协议](blog/posts/2026-09-13-terms-txt-面向智能体网络访问的知情同意与补偿协议.md)
 - [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](blog/posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 
 ## AI检测
 
@@ -1177,6 +1178,7 @@ title: 标签浏览
 ## CUDA优化
 
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 
 ## CVE补丁
 
@@ -1479,6 +1481,7 @@ title: 标签浏览
 
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 
 ## DeepSeek-R1
 
@@ -1768,6 +1771,10 @@ title: 标签浏览
 ## FlashInfer
 
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+
+## FlashMap
+
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## FlashRT-PAI
 
@@ -2841,6 +2848,10 @@ title: 标签浏览
 
 - [Lean Pool：由 AI 智能体自主维护与持续扩充的形式化数学知识库](blog/posts/2026-09-24-Lean-Pool-由-AI-智能体自主维护与持续扩充的形式化数学知识库.md)
 
+## Lean4
+
+- [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
+
 ## Lean定理助手
 
 - [超越编译：评估忠实的自然语言到 Lean 定理形式化](blog/posts/2026-09-05-超越编译：评估忠实的自然语言到 Lean 定理形式化.md)
@@ -3376,6 +3387,7 @@ title: 标签浏览
 - [KernelArc：面向GPU内核优化的多智能体框架](blog/posts/2026-08-25-KernelArc：面向GPU内核优化的多智能体框架.md)
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 - [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
+- [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 
 ## NVIDIA A100
 
@@ -3424,6 +3436,7 @@ title: 标签浏览
 ## Nemotron
 
 - [斩获 IMO 金牌的开源秘籍：面向奥林匹克数学的 Nemotron 训练实践](blog/posts/2026-09-13-斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践.md)
+- [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 
 ## Netflix
 
@@ -4401,6 +4414,7 @@ title: 标签浏览
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 - [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## SHACL
 
@@ -5651,6 +5665,9 @@ title: 标签浏览
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 - [Google 发布基于 TPU 的原生 PyTorch 推理引擎：vLLM 与 SGLang](blog/posts/2026-10-21-Google-发布基于-TPU-的原生-PyTorch-推理引擎-vLLM-与-SGLang.md)
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## visitation measure
 
@@ -10257,6 +10274,7 @@ title: 标签浏览
 - [SRPO：多智能体大语言模型的集合相对策略优化](blog/posts/2026-09-10-SRPO：多智能体大语言模型的集合相对策略优化.md)
 - [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
 - [为每项任务量身定制 Harness：Claude Code 中的动态工作流实战](blog/posts/2026-10-08-为每项任务量身定制-Harness-Claude-Code-中的动态工作流实战.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 
 ## 多智能体协作
 
@@ -11699,6 +11717,8 @@ title: 标签浏览
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 - [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
 - [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## 大语言模型代理
 
@@ -13217,6 +13237,7 @@ title: 标签浏览
 - [Gradium 开源 Phonon：仅 31M 参数的高性能端侧语音合成模型](blog/posts/2026-10-23-Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型.md)
 - [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 - [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
+- [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 
 ## 开源治理
 
@@ -13710,6 +13731,7 @@ title: 标签浏览
 - [携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺](blog/posts/2026-10-22-携带证明合约-PC2-AI-智能体无法违背的硬性承诺.md)
 - [共识算法研究的终结？AI 智能体如何自主发现新一代分布式共识协议](blog/posts/2026-10-23-共识算法研究的终结-AI-智能体如何自主发现新一代分布式共识协议.md)
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
+- [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
 
 ## 形式语言学
 
@@ -14372,6 +14394,7 @@ title: 标签浏览
 - [投机探测：以投机解码成本实现大模型监控](blog/posts/2026-09-01-投机探测：以投机解码成本实现大模型监控.md)
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
 - [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## 投毒抢注
 
@@ -17090,6 +17113,10 @@ title: 标签浏览
 
 - [CASA：基于安全注意力增强分类的鲁棒多模态对齐](blog/posts/2026-08-11-CASA：基于安全注意力增强分类的鲁棒多模态对齐.md)
 
+## 条件记忆
+
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+
 ## 极端上下文
 
 - [SANE：稳定极端上下文Delta规则模型的状态异常中和技术](blog/posts/2026-08-27-SANE：稳定极端上下文Delta规则模型的状态异常中和技术.md)
@@ -18133,6 +18160,10 @@ title: 标签浏览
 - [利用交互作用评估与解释大语言模型的提示词敏感性](blog/posts/2026-08-21-利用交互作用评估与解释大语言模型的提示词敏感性.md)
 - [steering 干扰反映了模型的默认倾向，而非行为方向本身](blog/posts/2026-09-10-steering 干扰反映了模型的默认倾向，而非行为方向本身.md)
 
+## 模型计数
+
+- [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
+
 ## 模型训练
 
 - [优化器状态究竟该存放在哪里？面向内存高效的混合专家模型训练的分层状态分配](blog/posts/2026-08-16-优化器状态究竟该存放在哪里？面向内存高效的混合专家模型训练的分层状态分配.md)
@@ -18245,6 +18276,7 @@ title: 标签浏览
 - [准确率并非全部：基于散度的方法评估量化大语言模型的保真度损失](blog/posts/2026-09-10-准确率并非全部：基于散度的方法评估量化大语言模型的保真度损失.md)
 - [REAL-Q：基于动态梯度下降的端到端大语言模型量化](blog/posts/2026-09-13-REAL-Q-基于动态梯度下降的端到端大语言模型量化.md)
 - [突破 1.58 比特极限：三值大语言模型的极致压缩与加速](blog/posts/2026-09-18-突破-1.58-比特极限-三值大语言模型的极致压缩与加速.md)
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 
 ## 模型错进化
 
@@ -23115,6 +23147,7 @@ title: 标签浏览
 - [开放世界多智能体环境中的自主数学发现](blog/posts/2026-08-27-开放世界多智能体环境中的自主数学发现.md)
 - [Magenta：闭环数学推理与 Lean 形式化验证](blog/posts/2026-09-13-Magenta-闭环数学推理与Lean形式化验证.md)
 - [引入非基项子句学习拓展 SMT 求解能力](blog/posts/2026-09-13-引入非基项子句学习拓展-SMT-求解能力.md)
+- [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
 
 ## 自动形式化
 
@@ -25283,6 +25316,10 @@ title: 标签浏览
 
 - [基于Whisper的波斯语语音情绪识别中ASR自适应与表征降维研究](blog/posts/2026-08-11-基于Whisper的波斯语语音情绪识别中ASR自适应与表征降维研究.md)
 
+## 语音数据集
+
+- [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+
 ## 语音智能体
 
 - [SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境](blog/posts/2026-08-29-SpeechGym：用于通过强化学习训练语音智能体的音频原生训练环境.md)
@@ -25311,6 +25348,7 @@ title: 标签浏览
 - [通过幻觉空间投影减少 Whisper 模型中的幻觉转录](blog/posts/2026-09-08-通过幻觉空间投影减少 Whisper 模型中的幻觉转录.md)
 - [声音去哪儿了？追踪音频条件大语言模型中的声学信息丢失](blog/posts/2026-09-10-声音去哪儿了？追踪音频条件大语言模型中的声学信息丢失.md)
 - [超越提示词工程：基于对数几率空间融合的语音大模型高效鲁棒上下文偏置 (LOGIC)](blog/posts/2026-09-13-超越提示词工程-基于对数几率空间融合的语音大模型高效鲁棒上下文偏置-LOGIC.md)
+- [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 
 ## 语音转工具调用
 
@@ -25964,6 +26002,7 @@ title: 标签浏览
 - [Ecdysis：面向大模型智能体运行时脚手架的高效进化训练](blog/posts/2026-09-13-Ecdysis-面向大模型智能体运行时脚手架的高效进化训练.md)
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 
 ## 软件工程智能体
 
@@ -26284,6 +26323,10 @@ title: 标签浏览
 
 - [作为连续流的工具：演进式智能体推理](blog/posts/2026-08-14-作为连续流的工具：演进式智能体推理.md)
 - [流式推理模型：将流模型转化为高效的循环推理器](blog/posts/2026-09-03-流式推理模型：将流模型转化为高效的循环推理器.md)
+
+## 连续流模型
+
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 
 ## 连续环境
 

@@ -2070,3 +2070,7 @@ title: arXiv论文
 - [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](../posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 - [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](../posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](../posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
+- [count-catcher：从模型计数证书生成 Lean 形式化定理](../posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
+- [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](../posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](../posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+- [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](../posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)

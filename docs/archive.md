@@ -4,6 +4,11 @@
 
 ## 2026-10
 
+- **2026-10-29**: [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
+- **2026-10-29**: [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- **2026-10-29**: [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+- **2026-10-29**: [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+- **2026-10-29**: [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 - **2026-10-28**: [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
 - **2026-10-28**: [基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破](blog/posts/2026-10-28-基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破.md)
 - **2026-10-28**: [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
