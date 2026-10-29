@@ -203,6 +203,7 @@ title: 标签浏览
 ## AI 安全
 
 - [防御蒸馏黑魔法：无监督发现与消除大语言模型中的潜意识学习特征](blog/posts/2026-10-13-防御蒸馏黑魔法-无监督发现与消除大语言模型中的潜意识学习特征.md)
+- [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
 
 ## AI 形式化验证
 
@@ -245,6 +246,7 @@ title: 标签浏览
 - [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
 - [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
+- [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
 
 ## AI 智能体安全
 
@@ -1435,6 +1437,10 @@ title: 标签浏览
 
 - [最佳实践评判器优化 (BPCO)](blog/posts/2026-08-27-最佳实践评判器优化 -BPCO.md)
 
+## DPU
+
+- [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
+
 ## DRY
 
 - [不要重复自己：在采样阶段制止逐字循环](blog/posts/2026-08-26-不要重复自己：在采样阶段制止逐字循环.md)
@@ -1472,6 +1478,10 @@ title: 标签浏览
 
 - [DeepPlanner：通过优势塑造扩展深度研究智能体的规划能力](blog/posts/2026-08-29-DeepPlanner：通过优势塑造扩展深度研究智能体的规划能力.md)
 - [从惯性走向客观：通过噪声隔离提升深度研究智能体的性能](blog/posts/2026-08-29-从惯性走向客观：通过噪声隔离提升深度研究智能体的性能.md)
+
+## DeepGEMM
+
+- [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
 
 ## DeepInfer
 
@@ -1659,6 +1669,10 @@ title: 标签浏览
 ## Eclipse插件
 
 - [Comprendia：AI 增强的代码理解工具](blog/posts/2026-08-14-Comprendia：AI 增强的代码理解工具.md)
+
+## Eclypsium
+
+- [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
 
 ## Ecosyste.ms
 
@@ -1892,6 +1906,10 @@ title: 标签浏览
 ## GPU 算子内核
 
 - [NVIDIA Nsight Python 实战教程：如何系统剖析 GPU 算子内核性能](blog/posts/2026-10-23-NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能.md)
+
+## GPU 训练加速
+
+- [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
 
 ## GPU 部署
 
@@ -2236,6 +2254,10 @@ title: 标签浏览
 ## Haskell
 
 - [顽固派的语言服务器初体验](blog/posts/2026-08-26-顽固派的语言服务器初体验.md)
+
+## Hermit
+
+- [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
 
 ## High-Throughput Serving
 
@@ -3249,6 +3271,10 @@ title: 标签浏览
 - [扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型](blog/posts/2026-09-11-扩展 Raschka 的 GPT-2：在 RTX 3090 上从头训练专家混合（MoE）模型.md)
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
 
+## MoE 算子
+
+- [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
+
 ## MoE 路由
 
 - [超越推理轨迹：将可解释的推理状态读出模块与原生 MoE 路由进行耦合](blog/posts/2026-08-20-超越推理轨迹：将可解释的推理状态读出模块与原生 MoE 路由进行耦合.md)
@@ -3388,6 +3414,7 @@ title: 标签浏览
 - [深入探秘 NVIDIA cuDNN Graph API：基于 Frontend 的算子融合、自动调优与计划复用](blog/posts/2026-09-17-深入探秘-NVIDIA-cuDNN-Graph-API-基于-Frontend-的算子融合-自动调优与执行计划复用.md)
 - [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+- [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 
 ## NVIDIA A100
 
@@ -3437,6 +3464,7 @@ title: 标签浏览
 
 - [斩获 IMO 金牌的开源秘籍：面向奥林匹克数学的 Nemotron 训练实践](blog/posts/2026-09-13-斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践.md)
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+- [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 
 ## Netflix
 
@@ -3866,6 +3894,7 @@ title: 标签浏览
 ## Prime Intellect
 
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
+- [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
 
 ## PrismML
 
@@ -4045,6 +4074,10 @@ title: 标签浏览
 ## Qwen3-27B
 
 - [微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程](blog/posts/2026-08-18-微调 Qwen3-27B 实现 C 到 Rust 代码转换：包含预训练、调试感知 SFT 与特定任务 SFT 的三阶段课程.md)
+
+## Qwen3-TTS
+
+- [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
 
 ## Qwen3.5
 
@@ -9447,6 +9480,10 @@ title: 标签浏览
 
 - [一个向量能容纳多少思维？叠加推理的表征容量](blog/posts/2026-09-16-一个向量能容纳多少思维-叠加推理的表征容量.md)
 
+## 向量运算
+
+- [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
+
 ## 向量量化
 
 - [量化线性映射的亚高斯性：一篇AI辅助的数学手记](blog/posts/2026-08-20-量化线性映射的亚高斯性：一篇AI辅助的数学手记.md)
@@ -10178,6 +10215,10 @@ title: 标签浏览
 ## 声明级验证
 
 - [CLAIR-Fin：用于跨模态金融问答的声明级验证与自适应辩论对抗性多智能体框架](blog/posts/2026-08-20-CLAIR-Fin：用于跨模态金融问答的声明级验证与自适应辩论对抗性多智能体框架.md)
+
+## 声音克隆
+
+- [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
 
 ## 声音质量
 
@@ -12166,6 +12207,10 @@ title: 标签浏览
 
 - [超越单一负样本偏好：面向大模型历史实体链接的多负样本 DPO 方法](blog/posts/2026-09-10-超越单一负样本偏好：面向大模型历史实体链接的多负样本 DPO 方法.md)
 
+## 实战教程
+
+- [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
+
 ## 实时优化
 
 - [完美拟合与虚幻最优：数据驱动模型如何在实时优化中失效](blog/posts/2026-08-27-完美拟合与虚幻最优：数据驱动模型如何在实时优化中失效.md)
@@ -13179,6 +13224,10 @@ title: 标签浏览
 
 - [软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态](blog/posts/2026-10-02-软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态.md)
 
+## 开源内核
+
+- [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
+
 ## 开源后端
 
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
@@ -13219,6 +13268,7 @@ title: 标签浏览
 - [MARC v1：用于临床 AI 推理与协作的开源多智能体框架](blog/posts/2026-08-16-MARC v1：用于临床 AI 推理与协作的开源多智能体框架.md)
 - [谷歌开源 RRSI 框架：让 AI 智能体自主优化 Harness 架构且避免过拟合](blog/posts/2026-09-30-谷歌开源-RRSI-框架-让-AI-智能体自主优化-Harness-架构且避免过拟合.md)
 - [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+- [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
 
 ## 开源模型
 
@@ -13238,6 +13288,7 @@ title: 标签浏览
 - [百度开源 Unlimited OCR 2：支持百页超长文档端到端解析](blog/posts/2026-10-28-百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析.md)
 - [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+- [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 
 ## 开源治理
 
@@ -18737,6 +18788,10 @@ title: 标签浏览
 
 - [相变频率作为 ResNets 测试准确率训练阶段预测指标](blog/posts/2026-09-08-相变频率作为 ResNets 测试准确率训练阶段预测指标.md)
 
+## 测试夹具
+
+- [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
+
 ## 测试工程
 
 - [解密 AI 智能体评估体系：从零构建工程化自动化评测全流程指南](blog/posts/2026-10-08-解密-AI-智能体评估体系-从零构建工程化自动化评测全流程指南.md)
@@ -19156,6 +19211,7 @@ title: 标签浏览
 - [Xiaomi-TabLDM：表格基础模型技术报告](blog/posts/2026-09-05-Xiaomi-TabLDM：表格基础模型技术报告.md)
 - [T1：面向长程终端任务的强化学习智能体](blog/posts/2026-09-13-T1-面向长程终端任务的强化学习智能体.md)
 - [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
+- [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 
 ## 混合序列模型
 
@@ -20697,6 +20753,7 @@ title: 标签浏览
 ## 硬件安全
 
 - [视觉-语言-动作模型的比特翻转攻击：动作解码架构决定漏洞脆弱性](blog/posts/2026-08-19-视觉-语言-动作模型的比特翻转攻击：动作解码架构决定漏洞脆弱性.md)
+- [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
 
 ## 硬件开发
 
@@ -25292,6 +25349,10 @@ title: 标签浏览
 
 - [匿名化而非消除：保留实用性的语音匿名化](blog/posts/2026-09-05-匿名化而非消除：保留实用性的语音匿名化.md)
 
+## 语音合成
+
+- [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
+
 ## 语音基础模型
 
 - [迷失在发声中：将声音质量变异作为语音基础模型评估维度](blog/posts/2026-08-18-迷失在发声中：将声音质量变异作为语音基础模型评估维度.md)
@@ -25349,6 +25410,7 @@ title: 标签浏览
 - [声音去哪儿了？追踪音频条件大语言模型中的声学信息丢失](blog/posts/2026-09-10-声音去哪儿了？追踪音频条件大语言模型中的声学信息丢失.md)
 - [超越提示词工程：基于对数几率空间融合的语音大模型高效鲁棒上下文偏置 (LOGIC)](blog/posts/2026-09-13-超越提示词工程-基于对数几率空间融合的语音大模型高效鲁棒上下文偏置-LOGIC.md)
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
+- [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 
 ## 语音转工具调用
 
@@ -26211,6 +26273,10 @@ title: 标签浏览
 
 - [不要解决，只需比较：用于LLM智能体运行时干预的微型顾问](blog/posts/2026-08-25-不要解决，只需比较：用于LLM智能体运行时干预的微型顾问.md)
 
+## 运行时攻击
+
+- [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
+
 ## 运行时架构
 
 - [连续交互扩散：面向异步工具增强推理的扩散原生运行时](blog/posts/2026-08-14-连续交互扩散：面向异步工具增强推理的扩散原生运行时.md)
@@ -26363,6 +26429,10 @@ title: 标签浏览
 ## 适应度地形
 
 - [PRISM：通过地形诊断进行排列优化的预测性协议](blog/posts/2026-08-12-PRISM：通过地形诊断进行排列优化的预测性协议.md)
+
+## 适配器
+
+- [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
 
 ## 逆事实遗憾最小化
 

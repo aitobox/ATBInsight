@@ -4,6 +4,11 @@
 
 ## 2026-10
 
+- **2026-10-30**: [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
+- **2026-10-30**: [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
+- **2026-10-30**: [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
+- **2026-10-30**: [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
+- **2026-10-30**: [Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出](blog/posts/2026-10-30-Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重.md)
 - **2026-10-29**: [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
 - **2026-10-29**: [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - **2026-10-29**: [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
