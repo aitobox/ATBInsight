@@ -5,6 +5,584 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>基于 Qwen3-TTS 的声音克隆与定制化语音合成实战</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-30/基于-Qwen3-TTS-的声音克隆与定制化语音合成实战/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/基于-Qwen3-TTS-的声音克隆与定制化语音合成实战/</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在如今以大语言模型 (Large Language Model, LLM) 为代表的生成式 AI 浪潮中，语音合成技术正从“机械念稿”向“个性化情感表达”飞速演进。传统文本转语音 (Text-to-Speech, TTS) 工具往往发音千篇一律、语调生硬，难以满足独立游戏、互动剧本或个性化内容创作对独特声音气质的要求。知名开源开发者 Armin Ronacher 在为自己和孩子们动手开发的地牢探险游戏制作配音时，深入挖掘了通义千问开源语音模型 Qwen3-TTS 的底层潜力。他发现，借助说话人向量嵌入 (Speaker Embeddings) 的数学特性，开发者不仅能用一段数十秒的日常演讲音频实现高保真声音克隆，更能跨模型架构组合 Base 与 CustomVoice 模型实现“带情绪指令的声音克隆”，甚至在高维向量空间中对声音的性别与风格特征进行代数加减运算。本文完整梳理了这一兼具趣味与实用价值的技术实战，为开发者探索灵活、低成本的定制化语音生成提供了绝佳范例。
+
+---
+
+## 内容概述
+
+&gt; ## Summary
+
+在这篇文章中，我们将探索如何利用 **Qwen3-TTS** 为我和孩子们自己动手制作的地牢探险游戏打造独一无二的定制旁白配音。市面上标准的 AI 语音听起来往往平淡机械、千人一声，而 Qwen3 则支持通过特征向量嵌入 (Embeddings) 实现高精度的声音克隆。通过巧妙组合 Qwen3 旗下的不同模型变体 (`Base` 基础版、`CustomVoice` 定制版以及 `VoiceDesign` 声音设计版)，开发者不仅能够融合不同声音的特征向量，还能为克隆出的声音附加文字风格指令，甚至通过向量运算 (例如平滑调节声音的性别特征) 创造出极具辨识度、非标准化的特色旁白风格。
+
+&gt; This post explores how to use **Qwen3-TTS** to create unique, custom voice-overs for a home-built dungeon crawler game with kids. While standard AI voices sound generic, Qwen3 supports voice cloning via embeddings. By combining different Qwen3 models (`Base`, `CustomVoice`, and `VoiceDesign`), developers can blend voice embeddings, apply text instructions to cloned voices, and even perform vector arithmetic (like gender shifting) to create distinct, non-standard narration styles.
+
+---
+
+## Qwen3 带来了什么？
+
+&gt; ## What Qwen Offers
+
+在当前的开源生态中，Qwen3 并非唯一的文本转语音 (Text-to-Speech, TTS) 模型——在项目起步时，我们也曾尝试过 [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)——但 Qwen3 之所以脱颖而出，核心在于它对原生声音克隆提供了出色支持。
+
+&gt; Qwen3 is not the only Text-to-Speech (TTS) model available—we initially experimented with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)—but Qwen3 stands out because it supports native voice cloning. 
+
+在工程实践中，Qwen3 官方提供了三种功能各异的模型变体：
+* **`1.7B-Base`** (以及 `0.6B` 版)：仅凭数秒的参考音频片段，即可精准克隆对应声线。
+* **`1.7B-CustomVoice`**：内置了 9 种预设发音人，并支持丰富的语气与风格提示词指令。
+* **`1.7B-VoiceDesign`**：能够纯粹根据一段自然语言文字描述，凭空“设计”并生成全新的声音。
+
+&gt; In practice, Qwen3 ships with three distinct model variants:
+&gt; * **`1.7B-Base`** (and `0.6B`): Clones a voice from a few seconds of reference audio.
+&gt; * **`1.7B-CustomVoice`**: Comes with nine built-in speakers and style instructions.
+&gt; * **`1.7B-VoiceDesign`**: Invents an entirely new voice from a text description.
+
+Base 基础模型既可以通过上下文学习 (In-Context Learning, ICL) 的方式进行克隆，也可以单纯依赖提取出的说话人特征向量 (Speaker Embeddings) 来完成。然而，官方目前并没有提供公开文档或标准接口，来将克隆后的声音与直接的风格提示词指令 (例如要求它“带着悲伤的语气说话”或“轻声耳语”) 结合起来。现阶段官方唯一推荐的替代方案，要么是在单个发音人数据集上对 Base 模型进行监督微调 (Supervised Fine-Tuning, SFT)，要么先用 VoiceDesign 根据描述生成一段音频样本，再将其喂给 Base 模型进行克隆。
+
+&gt; The base model clones either in-context or via speaker embeddings alone. However, there is no official, documented way to combine a cloned voice with direct style instructions (such as telling it to "speak sadly" or "whisper"). Currently, the only official alternatives are fine-tuning the Base model on a single speaker or generating a clip via VoiceDesign and cloning it with Base.
+
+---
+
+## 动手实操体验
+
+&gt; ## Playing With It
+
+在本次实验中，我截取了自己在 [PyAI Conf](https://www.youtube.com/watch?v=8RHYyRUxVrA) 技术大会演讲中的一段 28 秒录音。这段音频截取自两次自然停顿之间，并使用 Whisper 完成了转录对齐。
+
+&gt; For this experiment, I used a 28-second clip of my talk at [PyAI Conf](https://www.youtube.com/watch?v=8RHYyRUxVrA), sliced between two pauses, and transcribed it using Whisper.
+
+技术大会现场的演讲录音显然远远达不到专业录音棚的音质标准，但它恰恰印证了一个极其关键的结论：你根本不需要一尘不染的完美音质或漫长的样本数据，就能为某个人创造出高度逼真、极具说服力的数字声音克隆。
+
+&gt; Conference talk recordings are far from studio quality, but they prove an important point: you don't need pristine audio or long samples to create a convincing digital clone of someone's voice.
+
+不仅如此，你还可以将真实录制的音频样本与通过 VoiceDesign 凭空设计出的虚拟声音进行混合。借助 Qwen 官方的 Python 工具包 [`qwen-tts`](https://pypi.org/project/qwen-tts/) (`pip install qwen-tts`，版本为 `0.1.1`)，我们只需几行代码就能根据文本描述凭空塑造出一段全新声音：
+
+&gt; You can blend a recorded sample with another voice generated via VoiceDesign. Using Qwen’s Python package [`qwen-tts`](https://pypi.org/project/qwen-tts/) (`pip install qwen-tts`, version `0.1.1`), a designed voice can be created like this:
+
+```python
+import torch
+from qwen_tts import Qwen3TTSModel
+
+kw = dict(device_map="mps", dtype=torch.bfloat16, attn_implementation="sdpa")
+design = Qwen3TTSModel.from_pretrained("Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign", **kw)
+wavs, sr = design.generate_voice_design(
+    text=open("voices/transcript.txt").read(), language="English",
+    instruct="A man in his forties with a warm, natural, medium-low voice, speaking "
+             "clearly and calmly at an easy conversational pace, like someone reading "
+             "aloud to a friend.",
+)
+```
+
+&gt; 💬 *&lt;a href="https://lucumr.pocoo.org/2026/10/29/qwen3-custom-voices/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank"&gt;交互式演示：请访问原博文试听音频。&lt;/a&gt;*
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *&lt;a href="https://lucumr.pocoo.org/2026/10/29/qwen3-custom-voices/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank"&gt;Interactive demo: see the post on the website.&lt;/a&gt;*
+
+---
+
+## 声音嵌入向量
+
+&gt; ## Voice Embeddings
+
+Base 基础模型会提取出说话人特征向量嵌入——这是由经过训练的说话人编码器输出的一个 2048 维向量。声音越相似，该向量中的数值分布就越接近，这种特性也使得这些向量在基础的说话人识别与音频切分任务中非常实用。
+
+&gt; The Base model captures a speaker embedding—a 2048-dimensional vector produced by a trained speaker encoder. Similar voices yield similar numbers, which also makes these vectors useful for basic speaker detection and audio segmentation.
+
+正因为这些嵌入本质上是纯粹的数值向量，我们就可以对它们进行向量代数运算。例如，计算两个声音向量之间的加权平均值，就能融合出一个介于两者之间、兼具二者特质的“混血”新声音：
+
+&gt; Because these embeddings are simple numerical vectors, you can perform vector arithmetic on them. For instance, calculating a weighted average between two embeddings creates a hybrid voice sitting midway between the two sources:
+
+```python
+base = Qwen3TTSModel.from_pretrained("Qwen/Qwen3-TTS-12Hz-1.7B-Base", **kw)
+
+def fingerprint(path):
+    prompt = base.create_voice_clone_prompt(ref_audio=path, x_vector_only_mode=True)
+    return prompt[0].ref_spk_embedding
+
+def blend(a, b, t):
+    a, b = a.float(), b.float()
+    mixed = (1 - t) * a + t * b
+    return (mixed / mixed.norm() * ((1 - t) * a.norm() + t * b.norm())).to(torch.bfloat16)
+
+armin, designed = fingerprint("voices/armin.flac"), fingerprint("voices/designed.flac")
+```
+
+&gt; 💬 *&lt;a href="https://lucumr.pocoo.org/2026/10/29/qwen3-custom-voices/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank"&gt;交互式演示：请访问原博文试听音频。&lt;/a&gt;*
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *&lt;a href="https://lucumr.pocoo.org/2026/10/29/qwen3-custom-voices/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank"&gt;Interactive demo: see the post on the website.&lt;/a&gt;*
+
+如果你对合成出来的这种混合新声音感到满意，还可以将其“烘焙”保存为一个标准的声音参考文件：
+
+&gt; If you like a newly synthesized voice blend, you can bake it back into a standard reference file:
+
+```python
+import soundfile as sf
+
+mixed = blend(armin, designed, 0.5)
+audio, rate = say(open("voices/transcript.txt").read(), mixed)  # say() is shown further down
+sf.write("voices/final.flac", audio, rate)
+final = fingerprint("voices/final.flac")
+```</description>
+    </item>
+    <item>
+      <title>Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-30/Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子/</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>混合专家模型 (Mixture-of-Experts, MoE) 虽具备以更低计算成本扩展参数规模的优势，但在分布式训练中，Token 在不同 GPU 专家节点间的频繁跨卡通信往往会造成严重的计算空闲与显卡性能浪费。此前，DeepSeek 开源的 Mega MoE 融合算子虽然大幅优化了前向通信与计算重叠，却缺少训练不可或缺的反向传播 (Backward Pass) 实现。分布式 AI 计算创新机构 Prime Intellect 填补了这一空白，推出了支持完整反向传播的 Prime Mega MoE 融合算子，实现了计算与通信的高效重叠，在 Qwen3 MoE 模型训练中带来高达 55% 的端到端训练步耗时缩短，前向推理加速更达 3.11 倍，为开源大模型训练团队节省了海量宝贵的 GPU 算力资源。
+
+---
+
+## 核心总结
+
+&gt; ## Summary
+
+[Prime Intellect](https://www.primeintellect.ai/) 正式发布了 [Prime Mega MoE](https://www.primeintellect.ai/blog/prime-mega-moe)，这是针对 DeepSeek 融合版 Mega MoE 算子的一项突破性训练级扩展。DeepSeek 最初开源的算子仅支持前向传播 (Forward Pass)，而 Prime Intellect 创新性地引入了超高速且支持通信与计算重叠的反向传播机制，使得这款融合算子能够真正投入到端到端的模型训练当中。在集成到 [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) 训练框架后，针对 Qwen3 混合专家 (Mixture-of-Experts, MoE) 模型的完整训练迭代步耗时最高缩短了 34%——与 PyTorch 官方的 TorchTitan 相比更是快了 55%，直接为 AI 团队大幅削减了昂贵的 GPU 训练时长与算力开销。
+
+&gt; [Prime Intellect](https://www.primeintellect.ai/) has released [Prime Mega MoE](https://www.primeintellect.ai/blog/prime-mega-moe), a groundbreaking training extension for DeepSeek’s fused Mega MoE kernel. While DeepSeek's original kernel was limited to the forward pass, Prime Intellect has introduced a fast, overlapping backward pass, making the fused kernel fully viable for model training. Integrated into the [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) trainer, full training steps on Qwen3 Mixture-of-Experts (MoE) models execute up to 34% faster—and up to 55% faster compared to TorchTitan—providing a direct reduction in GPU hours for AI teams.
+
+---
+
+## 极速速览
+
+&gt; ## TL;DR
+
+* **定位属性**：这是一个专门针对底层优化的 GPU 算子内核，而非独立模型。已在 Qwen3-30B-A3B 与 Qwen3-235B-A22B 架构上经过充分验证 (128 个专家，Top-8 动态路由)。
+* **运行平台**：支持 NVIDIA Hopper (分块 FP8 精度) 与 Blackwell (MXFP8 精度) 架构 GPU，两者均原生支持 BF16。官方公开测试数据均基于 8×H200 节点、共 32 至 128 块 GPU 集群实测。
+* **整体性能**：端到端单步训练时间比 `prime-rl` 基础基准提速 32% 至 34%；比 TorchTitan 快 48% 至 55%。
+* **最佳表现**：在 Qwen3-30B-A3B 的 MoE 层上前向传播提速达 3.11 倍 (耗时从 12.0 毫秒骤降至 3.9 毫秒)。
+* **下限表现**：在规模更大的 Qwen3-235B-A22B MoE 层上反向传播提速 1.24 倍 (耗时从 30.5 毫秒降低至 24.6 毫秒)。
+
+&gt; * **Size:** A GPU kernel, not a model. Tested on Qwen3-30B-A3B and Qwen3-235B-A22B (128 experts, top-8 routing).
+&gt; * **Runs on:** NVIDIA Hopper (blockwise FP8) and Blackwell (MXFP8) GPUs, BF16 on both. Published numbers use 8×H200 nodes, 32 to 128 GPUs.
+&gt; * **Performance:** 32% to 34% faster full training steps than the `prime-rl` baseline. 48% to 55% faster than TorchTitan.
+&gt; * **Best:** 3.11x faster forward pass on a Qwen3-30B-A3B MoE layer (12.0 ms to 3.9 ms).
+&gt; * **Worst:** 1.24x backward pass on a Qwen3-235B-A22B MoE layer (30.5 ms to 24.6 ms).
+
+---
+
+## 什么是 Prime Mega MoE？
+
+&gt; ## What is Prime Mega MoE?
+
+Prime Mega MoE 是一款专为大模型训练量身打造的算子融合与计算通信重叠 (Overlapping) MoE 内核。它直接脱胎于 DeepSeek 开源的高性能矩阵计算库 [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) 中的 Mega MoE 算子，并完成了关键的训练能力补全。
+
+&gt; Prime Mega MoE is a fused, overlapping MoE kernel designed specifically for training. It builds directly upon the Mega MoE kernel found in DeepSeek’s open-source [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) library.
+
+---
+
+## 为什么 MoE 模型的训练极易受限于跨卡通信？
+
+&gt; ## Why is MoE Training Communication-Bound?
+
+在混合专家 (MoE) 架构中，输入的每个 Token 仅会被路由分发给一小部分特定专家，而这些专家通常分散驻留在集群中不同的 GPU 显卡上。正因如此，每一个 MoE 神经网络层在执行时，都必须经历“将 Token 打包发送出去、在目标专家处执行矩阵计算、再把处理结果传回汇聚”的往返过程。更为关键的是，这一复杂的跨卡流转闭环在模型的前向传播和反向传播阶段均会发生一次。
+
+&gt; In a Mixture-of-Experts (MoE) architecture, each token is routed to a small subset of experts distributed across different GPUs. Consequently, every layer must send tokens out, perform expert computations, and send the results back—a cycle that occurs during both the forward and backward passes.
+
+在业界的标准实现中，上述各个步骤往往是割裂且串行运作的：GPU 必须先花费时间对 Token 进行排序重组，接着停下计算干等通信传输层完成数据跨卡搬运；等数据全到了才开始计算，算完又要把结果交还给网络并再次陷入漫长的等待。这种计算与通信脱节的状态，导致极为昂贵的 GPU 核心长期处于空转等待的低效状态。
+
+&gt; In standard setups, these steps operate independently. The GPU sorts tokens and waits on the transport layer, performs computations, hands results back, and waits again, resulting in idle GPU time.
+
+---
+
+## 融合算子究竟是如何高效运转的？
+
+&gt; ## How Does the Fused Kernel Work?
+
+[DeepSeek 开源的 Mega MoE](https://github.com/deepseek-ai/DeepGEMM) 彻底颠覆了这种碎片化的串行调用链路，将其收敛整合进单次算子调用中。它将专家并行分发 (Dispatch)、专家内两层线性投影层计算、SwiGLU 激活函数以及最终的特征组合 (Combine) 步骤高度融合在一起。在底层调度上，当一组 Token 还在网络中飞速传输时，内核已经同步在对先前已抵达的 Token 组展开高并发计算；同时通过显存原生的临时暂存区 (Scratch Buffers) 彻底规避了中间张量的反复存取。然而，DeepSeek 最初开源的官方版本仅实现了前向推理，并没有提供训练必不可少的反向传播算子。
+
+&gt; [DeepSeek’s Mega MoE](https://github.com/deepseek-ai/DeepGEMM) replaces this fragmented chain with a single kernel call. It fuses expert-parallel dispatch, the two expert linear layers, SwiGLU, and combination steps. While one token group is in transit, the kernel computes on a group that has already arrived, skipping intermediate tensors by using GPU-only scratch buffers. However, it originally shipped without a backward implementation.
+
+Prime Intellect 团队精准补全了这块关键拼图：他们全新编写了缺失的反向传播内核，并同样赋予了其强大的计算与通信异步重叠能力。该算子全面支持多种前沿数据类型，涵盖 BF16、MXFP8 (专供 Blackwell 架构) 以及分块式 FP8 (专供 Hopper 架构)。在 [prime-rl 配置项](https://github.com/PrimeIntellect-ai/prime-rl) 中，用户甚至可以启用极具性价比的 `fp8_bwd` 混合精度模式 (即前向使用 BF16 保持高精度，反向传播采用 FP8 极致加速)。
+
+&gt; Prime Intellect solved this by writing the missing backward kernel, which also features overlapping execution. Supported data types include BF16, MXFP8 (Blackwell only), and blockwise FP8 (Hopper only). The [prime-rl config](https://github.com/PrimeIntellect-ai/prime-rl) also supports an `fp8_bwd` mode (BF16 forward, FP8 backward).
+
+---
+
+## Prime Mega MoE 的实际加速表现究竟有多快？
+
+&gt; ## How Fast is Prime Mega MoE?
+
+以下所有性能指标均由 Prime Intellect 官方团队实测公布，基准测试环境采用 8×H200 计算节点、FP8 精度、16,384 长度的 Token 序列，并开启了全激活重计算 (Full Activation Checkpointing)。各项数据均为训练第 6 步至第 20 步实测值的算术平均值。
+
+&gt; All metrics below are self-reported by Prime Intellect, utilizing 8×H200 nodes, FP8, 16,384-token sequences, and full activation checkpointing. Each result represents the mean of steps 6 through 20.</description>
+    </item>
+    <item>
+      <title>NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型，仅需约 4B 激活参数</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-30/NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型/</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>长期以来，语音识别领域大多依赖传统的级联系统，将语音转录、说话人区分、时间戳对齐等任务拆分到不同模块中，不仅部署繁琐，也难以根据上下文灵活调整输出格式。NVIDIA 此次开源的 Nemotron 3.5 Transcribe 突破性地将 40 种语言的自动语音识别、说话人日志、时间戳对齐与多语种翻译统一集成到单个混合专家大模型 (MoE) 架构中。该模型总参数达 34B，但得益于稀疏激活机制，单次推理仅需约 4.3B 激活参数，甚至可通过量化在消费级显卡上流畅运行。这一开源成果在多项基准测试中刷新了开源模型纪录，不仅极大降低了长音频会议转录与多模态交互的门槛，也为开源语音大模型技术树立了崭新的里程碑。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+NVIDIA 正式推出了 **Nemotron 3.5 Transcribe**，这是一款前沿的开源权重语音大语言模型 (Large Language Model, LLM)，旨在化繁为简、重塑语音转录全流程。该模型支持 40 种主流语言，单次能够处理长达 1 小时的完整音频，将自动语音识别 (Automatic Speech Recognition, ASR)、说话人日志 (Speaker Diarization，即分辨谁在什么时间说了什么)、时间戳强制对齐以及跨语种翻译全部整合进统一的模型架构中。借助纯文本提示词 (Prompt) 驱动，用户可以随心所欲定制转录格式与风格——无论是分毫不差的原声逐字转录、规范的书面整理格式，还是带有精准说话人标记、融合上下文背景的意译均可轻松胜任。尽管该模型在主流 ASR 公开评测基准中刷新了开源模型的领先纪录，但它目前仅支持离线批处理，且在复杂的多人远场普通话会议场景下仍存在一定的准确率短板。
+
+&gt; NVIDIA has introduced **Nemotron 3.5 Transcribe**, a cutting-edge, open-weights speech Large Language Model (LLM) designed to streamline transcription tasks. Capable of handling 40 languages and recordings up to one hour in length, the model unifies automatic speech recognition (ASR), speaker diarization, alignment, and translation into a single framework. Driven by text instructions, users can customize output styles—ranging from verbatim and written forms to speaker-attributed and context-aware translations. While it outperforms existing open-weights models on major ASR leaderboards, it operates strictly offline and exhibits lower accuracy in complex multi-speaker Mandarin meeting scenarios.
+
+---
+
+## 核心速览 (TL;DR)
+
+&gt; ## TL;DR
+
+* **模型规模**：总参数量达 34B，推理时动态激活约 4.3B 参数；原生支持 65,536 个 Token 的超长上下文窗口，单次最大支持 1 小时音频。
+* **硬件要求**：BF16 精度下可在单张 H100 80 GB GPU 上运行。官方还提供了深度优化的 FP8 (约 35 GB 显存) 和 NVFP4 (约 21 GB 显存) 权重，其中 NVFP4 版本可在消费级 RTX 5090 显卡上流畅部署。此外还提供专为 `NeMo-Speech.cpp` 定制的 GGUF 格式。
+* **基准性能**：在英语及多语种 Open ASR 排行榜上全面领跑主流开源模型，但与业界顶尖的商业闭源 API 相比仍有微弱差距。
+* **核心优势**：在 9 个公开的英语 Open ASR 评测集上创下平均 4.71% 词错误率 (Word Error Rate, WER) 的顶尖成绩，显著优于此前开源模型的 4.94%。
+* **主要短板**：在 AliMeeting 中文远场多人会议场景下的串联字错误率 (cpCER) 高达 34.95%，识别能力有待提升。
+* **总结评价**：一款集文本转录、说话人角色标签、精准时间戳与跨语种翻译于一体的顶尖开源语音模型，虽然目前仅限离线部署且中文会议场景表现相对偏弱，但综合实用价值极高。
+
+&gt; * **Size:** 34B total parameters and ~4.3B active parameters; supports a 65,536-token context window and audio lengths up to 1 hour.
+&gt; * **Hardware Requirements:** Runs on 1x H100 80 GB in BF16. Optimized FP8 (~35 GB) and NVFP4 (~21 GB) checkpoints are available (with NVFP4 capable of running on an RTX 5090). GGUF files are tailored for `NeMo-Speech.cpp`.
+&gt; * **Performance:** Leads open-weights models on English and multilingual Open ASR Leaderboards, though top commercial APIs still maintain an edge.
+&gt; * **Strengths:** Achieves a leading 4.71% mean WER across 9 public English Open ASR sets (surpassing the previous open model benchmark of 4.94%).
+&gt; * **Weaknesses:** Registers 34.95% cpCER on AliMeeting Mandarin far-field meetings.
+&gt; * **Bottom Line:** A unified open model providing transcripts, speaker labels, timestamps, and translation, though limited to offline deployment with weaker Mandarin meeting performance.
+
+---
+
+## 什么是 Nemotron 3.5 Transcribe？
+
+&gt; ## What is Nemotron 3.5 Transcribe?
+
+Nemotron 3.5 Transcribe 是由 NVIDIA 研发的语音增强语言模型 (Speech-Augmented Language Model, SALM)，它能够将输入的音频与文本指令直接转化为结构化的文本输出。通过将音频编码特征直接注入大模型解码器，该模型让语音转录天生具备了“可提示词调优 (Promptable)”的强大能力。正如 NVIDIA 在其[技术研究报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf)中所述，语音转录本质上具有极强的主观性——例如数字是写成阿拉伯数字还是中文汉字、是否过滤口头语气词、专业术语如何规范书写等，都高度取决于阅读者的实际意图。因此，NVIDIA 将这款模型精准定位于专注于语音转录任务的“超级专家”，而非面面俱到的通用聊天助手。
+
+&gt; Nemotron 3.5 Transcribe is a speech-augmented language model (SALM) developed by NVIDIA that translates audio inputs and text instructions into structured text outputs. By routing audio embeddings through an encoder directly into an LLM decoder, the model makes transcription natively promptable. According to NVIDIA’s [technical research report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf), transcription is inherently subjective—formatting choices like numbers, fillers, and domain-specific terms depend heavily on the reader's intent. Consequently, NVIDIA positions this model as a dedicated transcription specialist rather than a general-purpose assistant.
+
+---
+
+## 它的底层架构是如何运作的？
+
+&gt; ## How Does the Architecture Work?
+
+该模型的核心架构主要由以下三大组件构成：
+
+&gt; The model’s architecture consists of three primary components:
+
+* **并行专家编码器 (Parallel Expert Encoder)**：由一个可训练的 0.6B Transformer 语音识别编码器，与一个冻结权重的 [Nemotron 3 Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization) 说话人日志模型并行运行。该日志模块能够同时追踪多达 8 位说话人，每隔 80 毫秒将说话人活跃度特征无缝融入 ASR 特征中。这使得大语言模型无需改动核心架构，便能在原生状态下敏锐捕捉说话人轮替与转换。
+* **大模型主干网络 (LLM Backbone)**：基于 [Nemotron 3.5 Lightning 30B-A3B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) 混合架构，融合了 Mamba-2 与 Transformer 混合专家模型 (Mixture of Experts, MoE)。模型共包含 52 层网络 (23 层 Mamba-2、23 层 MoE 以及 6 层自注意力机制 Attention 层)。每一层 MoE 都会将 Token 动态路由至 128 个专家中的 6 个，并外加 1 个共享专家。大幅精简注意力层使得处理长达一小时的超长音频时，键值缓存 (KV Cache) 依然保持极其轻量紧凑。
+* **功能扩展插件 (Add-ons)**：配备了一个共享的多 Token 预测 (Multi-Token Prediction, MTP) 层，用于在投机解码 (Speculative Decoding) 中快速生成候选 Token；同时集成了参数量仅为 50M 的 CTC 适配器模块，用于在转录完成后将文本与原始音频强制对齐，从而输出毫秒级的精准字词时间戳。
+
+&gt; * **Parallel Expert Encoder:** A trainable 0.6B Transformer ASR encoder running alongside a frozen [Nemotron 3 Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization) model. The diarizer tracks up to 8 speakers, feeding speaker activity directly into the ASR features every 80 ms. This allows the LLM to inherently recognize speaker turns without altering its core architecture.
+&gt; * **LLM Backbone:** Built on the [Nemotron 3.5 Lightning 30B-A3B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) hybrid Mamba-Transformer Mixture-of-Experts (MoE). It contains 52 layers (23 Mamba-2, 23 MoE, and 6 attention layers). Each MoE layer routes tokens to 6 of 128 experts plus 1 shared expert. The minimal use of attention layers keeps the KV cache compact for hour-long audio files.
+&gt; * **Add-ons:** Includes a shared multi-token prediction (MTP) layer to draft tokens for speculative decoding, alongside a 50M-parameter CTC adapter that force-aligns completed transcripts with audio to provide precise word timestamps.
+
+虽然官方将其命名为“30B-A4B”，但该模型的实际检查点文件总计包含约 340 亿参数，多出的部分主要来自 1.3B 的 MTP 模块与音频前置处理组件。在训练流程上，团队首先在由 256 张 H100 GPU 组成的高性能集群上进行了 28,500 步的监督微调 (Supervised Fine-Tuning, SFT)，随后执行了精炼的强化学习阶段 (以 $1 - \text{WER}$ 为奖励指标进行了 400 次 GSPO 策略更新)。在整个训练周期内，模型累计学习了约 172 万小时各不相同的真实音频 (计入多轮重复训练后累计达 650 万小时)。
+
+&gt; Although named "30B-A4B," the checkpoint contains roughly 34 billion parameters, with the additional weight driven by the 1.3B MTP module and audio components. Training utilized a supervised fine-tuning stage across 256 H100 GPUs for 28,500 steps, followed by a brief reinforcement learning stage (400 GSPO updates using a reward metric of $1 - \text{WER}$). The model was exposed to ~1.72M unique hours of audio (6.5M hours including repeats).
+
+---
+
+## 基准测试性能表现
+
+&gt; ## Benchmark Performance
+
+*所有指标数据均源自 NVIDIA 在其[技术研究报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf)中公布的实测结果。*
+
+&gt; *All metrics are self-reported by NVIDIA in their [technical research report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf).*
+
+* **英语公开 ASR 评测 (9 个公开数据集)**：取得 4.71% 的平均词错误率 (WER)，超越了此前表现最优的开源模型 [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) (4.94%)；而顶尖的闭源商业系统 (如 OtterAI speech-v3.1) 则仍以 3.88% 保持领先。
+* **多语种公开 ASR 评测 (7 种主流语言)**：测得 4.62% 的平均 WER，大幅优于 Qwen3-ASR-1.7B 的 6.49%；该类别的榜首由商业系统 ElevenLabs Scribe v2 以 3.56% 占据。
+* **长音频 ASR 转录**：平均 WER 达到 10.98%，显著超越 Parakeet-TDT-0.6B-v3 (13.37%)。
+* **完整多人会话场景**：平均串联词错误率 (Concatenated Permutation WER, cpWER) 达到 15.80%，击败了基于 DiariZen 的 DiCoW v3.3 传统方案 (16.83%)，成为该领域首个性能超越传统级联方案的语音增强大模型 (SALM)。
+* **上下文感知 ASR**：通过在提示词中附加专业实体列表，ContextASR-Bench 评测上的命名实体识别错误率从 12.21% 骤降至 2.20%。
+
+&gt; * **English Open ASR (9 public sets):** Achieves a mean Word Error Rate (WER) of 4.71%, beating the next best open model, [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) (4.94%). Commercial systems like OtterAI speech-v3.1 still lead at 3.88%.
+&gt; * **Multilingual Open ASR (7 languages):** Records a mean WER of 4.62%, compared to 6.49% for Qwen3-ASR-1.7B. ElevenLabs Scribe v2 leads this category at 3.56%.
+&gt; * **Long-form ASR:** Scores 10.98% mean WER, outperforming Parakeet-TDT-0.6B-v3 (13.37%).
+&gt; * **Multi-speaker Full Sessions:** Reaches 15.80% mean cpWER, beating DiCoW v3.3 with DiariZen (16.83%), making it the first SALM to outperform cascaded systems in this domain.
+&gt; * **Contextual ASR:** Utilizing an entity list reduces named-entity WER on ContextASR-Bench from 12.21% down to 2.20%.
+
+---
+
+## 如何部署 Nemotron 3.5 Transcribe
+
+&gt; ## How to Deploy Nemotron 3.5 Transcribe
+
+目前，模型完整权重已正式上线 Hugging Face，提供 [BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)、[FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-FP8)、[NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-NVFP4) 以及 [GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-GGUF) 多种格式，同时还配套了可选的 [DFlash2 草稿模型](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-DFlash2)。开源协议遵循对商业应用十分友好的 [OpenMDW-1.1 开源协议](https://openmdw.ai/license/1-1/)。
+
+&gt; Model weights are available on Hugging Face in [BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B), [FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-FP8), [NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-NVFP4), and [GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-GGUF) formats, with an optional [DFlash2 draft model](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-DFlash2). Usage is governed by the commercial-friendly [OpenMDW-1.1 license](https://openmdw.ai/license/1-1/).
+
+在推理运行时方面，该模型已支持 vLLM 0.32.0 (需配合 [NeMo Speech 插件](https://github.com/NVIDIA-NeMo/Speech))、Hugging Face Transformers 以及 [SGLang-Omni 0.2.0](https://sgl-project.github.io/sglang-omni/cookbook/nemotron_transcribe.html)；其中 vLLM 还提供了与 OpenAI 完全兼容的标准 API 接口。
+
+&gt; Supported runtimes include vLLM 0.32.0 (with the [NeMo Speech plugin](https://github.com/NVIDIA-NeMo/Speech)), Hugging Face Transformers, and [SGLang-Omni 0.2.0](https://sgl-project.github.io/sglang-omni/cookbook/nemotron_transcribe.html), with vLLM providing an OpenAI-compatible API.
+
+若追求极限吞吐量，搭载 NVFP4 精度与 DFlash2 的 Nemotron Transcribe NIM 微服务可在单张 RTX PRO 6000 Blackwell 服务器版 GPU 上达到每秒处理 2,238 秒音频的惊人速度，转录一段 30 秒的语音片段仅需 0.13 秒。虽然基于开源 vLLM 的实现方案速度约为 NIM 的一半，但单张 H100 在 BF16 精度搭配 MTP2 下依然能实现约 410 倍实时转录速率 (RTFx)。
+
+&gt; For maximum throughput, the Nemotron Transcribe NIM (utilizing NVFP4 and DFlash2) enables an RTX PRO 6000 Blackwell Server Edition to process 2,238 seconds of audio per second, returning a 30-second clip in just 0.13 seconds. While open-source vLLM implementations run roughly twice as slow, a single H100 in BF16 with MTP2 achieves approximately 410 RTFx.
+
+---
+
+## 与其他主流开源 ASR 模型的横向对比
+
+&gt; ## Comparison with Other Open ASR Models
+
+| 特性 (Feature) | **Nemotron 3.5 Transcribe** | [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) | [Canary-Qwen-2.5B](https://huggingface.co/nvidia/canary-qwen-2.5b) | [Whisper-large-v3](https://huggingface.co/openai/whisper-large-v3) |
+| :--- | :--- | :--- | :--- | :--- |
+| **参数量 (Parameters)** | 总计 34B，激活约 4.3B | 1.7B | 2.5B | 1.55B |
+| **支持语言数 (Languages)** | 40 种 | 30 种 + 22 种中文方言 | 仅限英语 | 99 种 (HF 标签) |
+| **单次请求最大音频时长** | 1 小时 | 未公开 | 训练时为 40 秒 | 30 秒窗口 (长音频分块切片) |
+| **说话人归属识别** | 原生内置 (支持多达 8 位说话人) | 未列出 | 未列出 | 未列出 |
+| **字词级时间戳** | 原生内置 (CTC 适配器) | 需外接独立 ForcedAligner-0.6B | 未列出 | 支持 (词级) |
+| **开源许可协议** | OpenMDW-1.1 | Apache-2.0 | CC-BY-4.0 | Apache-2.0 |
+| **英语 Open ASR (9个公开集，平均 WER)** | **4.71%** | 4.94%\* | 5.38%\* | 6.66%\* |
+| **多语种 Open ASR (7种语言，平均 WER)** | **4.62%** | 6.49%\* | 不适用 (仅限英语) | 7.94%\* |
+| **参考运行硬件** | 1 张 H100 80 GB (BF16) | 未公开 | 已在 A6000、A100、RTX 5090 上测试 | 未公开 |
+
+*\*更新后的 9 集排行榜上的竞品分数引自 NVIDIA 技术报告，参考了 2026 年 10 月的 Hugging Face 排行榜评测结果。*\*
+
+&gt; *\*Competitor scores on the updated 9-set leaderboard are sourced from NVIDIA's technical report, referencing Hugging Face leaderboard evaluations from October 2026.\*
+
+---
+
+## 核心要点总结
+
+&gt; ## Key Takeaways
+
+* **全功能一体化整合**：在单一开源模型中完整囊括了 40 种语言的基础文本转录、说话人日志、毫秒级时间戳以及跨语种翻译。
+* **领跑开源生态的顶尖性能**：在英语语音识别开源方案中斩获 4.71% 的领先 WER，不过头部商业闭源 API 仍保持着微弱优势。
+* **灵活适配不同算力硬件**：仅需约 4.3B 动态激活参数，适配弹性极广——既可以在数据中心以 BF16 跑在 H100 上，也能通过 NVFP4 量化本地部署在消费级 RTX 5090 显卡上。
+* **出色的上下文精准度**：只需在提示词中附带专业术语或实体词表，即可将命名实体识别错误率从 12.21% 锐减至 2.20%。
+* **当前存在的技术局限**：目前仅支持离线批处理模式，且在中文普通话远场会议以及中英混杂 (Code-Switching) 场景下的错误率相对偏高。
+
+&gt; * **All-in-One Capability:** Handles raw transcriptions, speaker diarization, timestamps, and translations across 40 languages within a single open model.
+&gt; * **Top-Tier Open Performance:** Achieves a leading 4.71% English WER among open-weights solutions, though commercial APIs maintain a slight advantage.
+&gt; * **Flexible Footprint:** Features ~4.3B active parameters that scale across environments—from BF16 on an H100 down to NVFP4 running locally on an RTX 5090.
+&gt; * **Contextual Precision:** Providing an entity list drastically reduces named-entity error rates from 12.21% down to 2.20%.
+&gt; * **Current Limitations:** Restricted to offline batch processing, with notably higher error rates on Mandarin meetings and code-switching tasks.
+
+---
+
+## 资源链接
+
+&gt; ## Resource Links
+
+* **技术文档与代码**：[技术报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf) | [项目主页](https://research.nvidia.com/labs/nemotron/NVIDIA-Nemotron-3.5-Transcribe/) | [在线演示 (Live Demo)](https://huggingface.co/spaces/nvidia/nemotron-transcribe)
+* **模型权重下载**：[Hugging Face 权重集合](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)
+
+&gt; * **Documentation &amp; Code:** [Technical Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf) | [Project Page](https://research.nvidia.com/labs/nemotron/NVIDIA-Nemotron-3.5-Transcribe/) | [Live Demo](https://huggingface.co/spaces/nvidia/nemotron-transcribe)
+&gt; * **Model Weights:** [Hugging Face Collection](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)</description>
+    </item>
+    <item>
+      <title>Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-30/Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit/</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在当前的 AI 智能体 (AI Agent) 研发中，想要提升智能体在特定复杂任务中的表现，开发者通常面临两难困境：要么微调大语言模型 (Large Language Model, LLM) 底层权重（成本高昂且容易破坏通用泛化能力），要么大改智能体的闭源或精密代码脚手架（极易引发组件冲突）。卡内基梅隆大学 (CMU) 博士后 Haizhong Zheng 等人主导的 Infini-AI-Lab 团队正式开源了 Hermit 框架，创新性地提出了“测试夹具适配器 (Harness Adapter)”概念。它就像给智能体的外部运行环境穿上一套轻量、可插拔的“技能外骨骼”，在完全冻结基座大模型和原有脚手架的前提下，通过强化学习驱动的演进循环自动优化提示词、记忆、工具与协同逻辑，极大降低了智能体针对新任务持续进化的技术门槛。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+Infini-AI-Lab 推出了开源 Python 框架 **Hermit** (v0.1.0)。该框架旨在保持底层基础大语言模型 (Large Language Model, LLM) 与智能体测试夹具 (Agent Harness) 完全冻结的前提下，为 AI 智能体 (AI Agent) 训练外置的“测试夹具适配器 (Harness Adapter)”。该项目由 CMU 博士后 Haizhong Zheng 发布，提供了一套统一的训练循环机制，用以系统化优化指令、技能、记忆、工具以及执行逻辑。开发者无需微调基座模型权重，也无需分叉修改现有代码库，只需通过 PyPI 执行 `pip install hermit-harness`，即可轻松将 Codex 或 Claude Code 等主流编程智能体适配到全新的复杂任务中。
+
+&gt; Infini-AI-Lab has introduced **Hermit** (v0.1.0), an open-source Python framework designed to train external "harness adapters" for AI agents while keeping the underlying foundation model and agent harness completely frozen. Announced by CMU postdoc Haizhong Zheng, Hermit provides a unified training loop to optimize instructions, skills, memory, tools, and execution logic. Developers can easily adapt popular coding agents—such as Codex or Claude Code—to new tasks via PyPI (`pip install hermit-harness`) without the need to fine-tune weights or fork codebases.
+
+---
+
+## 核心要点速览
+
+&gt; ## TL;DR
+
+* **极小占用 (Footprint)**：作为轻量级 Python 框架，本身不包含任何原生模型参数。采用 Apache-2.0 开源许可协议，可通过 `pip install hermit-harness` 一键安装。
+* **硬件要求 (Hardware Requirements)**：离线快速入门 (Quick Start) 无需任何 GPU、模型账号或外部数据集。生产环境支持任意 API 后端，亦可通过 vLLM、SGLang 或 Ollama 进行本地推理部署。
+* **基准性能 (Performance)**：在 OfficeQA、CL-Bench 以及 ServeLearnBench 评估测试中（以 GLM 5.3 Flash 为测试模型），相较无适配器的基线方案展现出了显著的性能提升。
+* **核心亮点 (Highlights)**：
+  * *最佳表现*：MetaWorld Model (MWM) 适配器在 CL-Bench 数据库探索任务中取得了 **0.795 的准确率**（相比之下，上下文学习基线仅为 0.580）。
+  * *最低表现*：仅依赖提示词的适配器 (Prompt-only Adapter) 在同一基准测试中仅取得 **0.470**，甚至低于标准基线表现。
+* **一句话总结 (Bottom Line)**：Hermit 提供了支持 5 种不同夹具演进方法的统一训练循环，不过目前披露的多数成果仍来自于单次自测运行数据。
+
+&gt; * **Footprint:** A lightweight Python framework with no native parameters of its own. Available under the Apache-2.0 license via `pip install hermit-harness`.
+&gt; * **Hardware Requirements:** The offline Quick Start requires no GPU, model account, or external dataset. Production runs support any API backend or local serving setups via vLLM, SGLang, or Ollama.
+&gt; * **Performance:** Demonstrates notable improvements over no-adapter baselines across OfficeQA, CL-Bench, and ServeLearnBench (evaluated using GLM 5.3 Flash).
+&gt; * **Highlights:** 
+&gt;   * *Best Performer:* The MetaWorld Model (MWM) adapter hits **0.795 accuracy** on CL-Bench database exploration (compared to 0.580 for the in-context baseline).
+&gt;   * *Lowest Performer:* The prompt-only adapter scores **0.470** on the same benchmark, falling below the standard baseline.
+&gt; * **Bottom Line:** Hermit offers a single training loop supporting 5 distinct harness evolution methods, though most reported results currently stem from single, self-reported runs.
+
+---
+
+## 什么是测试夹具适配器？
+
+&gt; ## What is a Harness Adapter?
+
+[测试夹具适配器 (Harness Adapter)](https://infini-ai-lab.github.io/hermit/) 的功能类似于为现有智能体运行环境量身定制的可训练插件。传统的模型适配器（例如 LoRA）是通过修改底层神经网络的权重来提升能力的，而**测试夹具适配器**则是对包裹在大模型外部的智能体系统框架进行适配与改造。
+
+&gt; A [harness adapter](https://infini-ai-lab.github.io/hermit/) functions similarly to a trainable plugin for existing agent environments. While model adapters (like LoRA) modify the underlying neural network weights, a **harness adapter** adapts the surrounding agentic framework.
+
+该适配器将提示词指令、操作技能、记忆状态、外部工具、可执行代码以及多智能体协同逻辑封装在一起——本质上充当了模块化的代码仓库扩展包。它的规范定义了可学习的参数空间与校验标准，而将基座大模型和底层运行环境完整保留，完全无需任何改动。
+
+&gt; The adapter encapsulates instructions, operational skills, memory states, tools, executable code, and agent coordination logic—essentially acting as a modular repository extension. Its specification defines learnable parameters and validation criteria, leaving the base model and harness entirely untouched.
+
+Infini-AI-Lab 强调了采用这种设计架构的三大核心考量：
+
+&gt; Infini-AI-Lab highlights three core motivations for this design:
+
+1. 业界许多先进的智能体运行环境与支撑脚手架至今仍处于闭源状态。
+2. 直接修改开源运行环境中的代码，往往会破坏其内部经过精细调优的脆弱组件联动关系。
+3. 一旦训练出成熟的适配器，就可以无缝迁移到其他兼容的大模型和运行环境中。
+
+&gt; 1. Many agent harnesses remain closed-source.
+&gt; 2. Direct modifications to open harnesses frequently break fragile, finely-tuned component interactions.
+&gt; 3. A learned adapter can be seamlessly ported across compatible models and harnesses.
+
+---
+
+## Hermit 是如何训练适配器的？
+
+&gt; ## How Does Hermit Train an Adapter?
+
+Hermit 采用了一套强化学习 (RL) 风格的训练闭环，核心由三大组件构成：
+
+&gt; Hermit utilizes an RL-style training loop comprising three primary components:
+
+1. **训练器 (Trainer)**：使用当前版本的适配器，驱动实际执行动作的智能体批量运行任务。
+2. **裁判员 (Judge)**：对智能体的执行输出进行打分评估，并生成结构化的反馈意见。
+3. **演进器 (Evolver)**：深度分析执行轨迹与反馈日志，进而提出经过优化演化后的新一代适配器方案。
+
+&gt; 1. **Trainer:** Runs batches of tasks through the acting agent using the current adapter version.
+&gt; 2. **Judge:** Evaluates outputs and provides structured feedback.
+&gt; 3. **Evolver:** Analyzes execution trajectories and feedback to propose updated adapter iterations. 
+
+训练器会在将演进方案提交保存为新版本之前，依据预设模板对其进行严格验证。每一个版本的适配器都会妥善存储在一个内部 Git 树结构中，便于开发者随时检视演化过程、回滚历史版本或将特定迭代快速交付投产。在运行学习程序的环境沙箱方面，需要在 Linux 系统中配备 `bubblewrap` 隔离工具。
+
+&gt; The Trainer validates these proposals against a predefined template before committing them as the next version. Every adapter version is stored within an internal git tree, allowing developers to inspect, roll back, or ship any historical iteration. Sandbox execution of learner programs requires Linux with `bubblewrap`.</description>
+    </item>
+    <item>
+      <title>Eclypsium 最新研究：受损计算硬件可在运行时篡改 AI 模型输出</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-30/Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/Eclypsium-最新研究-受损硬件可在运行时篡改-AI-模型权重/</guid>
+      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
+      <description>以往针对 AI 系统的安全防范大多聚焦于上层软件与数据，例如防止提示词注入或训练数据投毒，业界普遍假定只要保存在磁盘中的模型权重文件未经篡改便是安全的。然而网络安全机构 Eclypsium 的最新概念验证研究打破了这一固有假设：在受控的 NVIDIA Grace Hopper 架构环境中，攻击者利用受损的数据处理器 (DPU) 与特定的内存隔离配置，无需触动磁盘文件即可在运行时直接篡改内存中的模型权重，并操纵大语言模型 (Large Language Model, LLM) 的推理输出。这项突破性研究暴露出传统安全防护中的“AI 基础设施保障鸿沟”，警示整个行业必须将底层硬件、固件与运行时的物理隔离配置纳为 AI 安全防御的核心边界。
+
+---
+
+![Conceptual illustration of altered runtime model memory reached through an infrastructure processor while stored data remains unchanged.](./images/e5c8c5c6e8a2.png)  
+*AI 生成的概念示意图。*
+
+&gt; *AI-generated conceptual illustration.*
+
+## 内容概要
+
+&gt; ## Summary
+
+Eclypsium 的最新研究表明，遭到入侵的底层计算基础设施可以在推理过程中悄然改变 AI 模型的行为，而保存在磁盘上的原始模型文件却能保持毫发无损。在受控的 NVIDIA Grace Hopper 环境中，研究人员利用被攻破的数据处理单元 (Data Processing Unit, DPU) 以及宽松的内存隔离配置，成功修改了运行时的模型权重，并且完全没有触发传统的文件哈希校验或数字签名警报。这一研究结果凸显了“AI 基础设施保障鸿沟” (AI Infrastructure Assurance Gap) 的严峻性，有力证明了硬件、固件以及底层设备配置必须被视作 AI 整体安全边界中不可分割的关键组成部分。
+
+&gt; Recent research by Eclypsium demonstrates that compromised computing infrastructure can subtly alter an AI model’s behavior during inference while leaving its original files on disk entirely intact. By leveraging a compromised data processing unit (DPU) and permissive memory isolation in a controlled NVIDIA Grace Hopper environment, researchers successfully modified runtime model weights without triggering standard file-hash or digital signature verifications. This finding underscores the "AI Infrastructure Assurance Gap," proving that hardware, firmware, and device configurations must be treated as critical components of the AI security boundary.
+
+---
+
+## 篡改 AI 模型的另类隐秘路径
+
+&gt; ## A Different Route to Changing an AI Model
+
+关于 AI 安全的讨论往往聚焦于恶意提示词 (Prompt)、被投毒的训练数据以及存在安全隐患的工具调用。而这项研究则将目光投向了更底层的盲区：即在模型运行过程中，负责存储和传输模型参数的计算基础设施本身。
+
+&gt; AI security discussions often focus on malicious prompts, poisoned training data, and unsafe tool use. This research examines a lower layer: the infrastructure that holds and moves a model’s parameters while it runs.
+
+权重是决定模型如何组织语言与生成回答的核心数值参数。磁盘上原本合法完整的文件一旦被加载到内存中，就可能被具有极高系统特权的基础设施组件暗中篡改。即便后续针对磁盘原始文件的校验依然显示字节完全正确，模型实际输出的回答却已经基于被篡改后的内存运行状态生成了。
+
+&gt; Weights are the numerical parameters that shape a model’s responses. A valid file on disk can be loaded into memory and subsequently changed by a sufficiently privileged component. A later check of the original file still sees the expected bytes, even though an answer was generated using an altered runtime state.
+
+在 Eclypsium 的实验演示中，研究人员成功诱导模型改变了对某一地缘政治问题的分析回答。更令人担忧的是，这种运行时篡改手段可能会波及代码生成、自动化决策等其他高敏感场景。当然，这些潜在风险与实验室环境下展示的具体攻击行为在范围上仍有所区别。
+
+&gt; Eclypsium’s demonstration visibly changed analytical output on a geopolitical question. The broader concern is that runtime manipulation could affect other sensitive uses, including generated code and automated decisions. Those possibilities should be distinguished from the specific behavior shown in the laboratory.
+
+这里所谓的“隐蔽未被察觉”同样有其明确边界：演示中所采用的静态模型完整性校验确实无法发现内存中的变动，但这并不代表攻击行为能够彻底绕过所有形式的系统监控或深度取证审查。
+
+&gt; The claim of remaining undetected also has a defined scope: the stored-model integrity checks used in the demonstration did not reveal the memory changes. That does not establish invisibility to every form of monitoring or forensic examination.
+
+## 攻击成立的核心前提条件
+
+&gt; ## The Attack Conditions Matter
+
+该测试是在一套 NVIDIA Grace Hopper 架构环境中进行的。其直接内存访问 (Direct Memory Access, DMA) 路径依赖于已被攻破的特权组件，以及允许访问敏感内存的特殊配置。研究人员指出，输入输出内存管理单元 (Input-Output Memory Management Unit, IOMMU) 直通模式与宽松的 PCIe 隔离策略是促成该攻击的关键前提，并明确强调这些并非 Linux 系统的默认配置。
+
+&gt; The test used a NVIDIA Grace Hopper environment. Its direct-memory-access path depended on a compromised privileged component and configuration settings that allowed access to sensitive memory. The researchers identify IOMMU passthrough and permissive PCIe isolation as important conditions, explicitly noting that these were not the default Linux settings.
+
+IOMMU 的核心作用在于控制外设可以访问的具体内存区域。在研究人员测试的高强度隔离配置下，上述直接篡改路径就完全无法生效。因此，这一结果更加凸显了核验生产环境实际配置的重要性——不能仅仅因为系统具备某项安全功能，就默认它已经在生产中主动筑牢了防御边界。
+
+&gt; An IOMMU helps control which memory a peripheral can reach. In the stronger isolation configuration tested by the researchers, the same direct path was unavailable. The result therefore underscores the importance of verifying actual deployment settings, rather than assuming that an installed security capability is actively enforcing a boundary.
+
+DPU 是一种专门用于网络、存储和安全服务的可编程基础设施处理器。它高效传输数据的硬件能力极具价值，但这些原本服务于正规基础设施功能的超高权限，一旦被攻击者所控制，就会转变为极具杀伤力的攻击利器。
+
+&gt; A DPU is a programmable infrastructure processor used for networking, storage, and security services. Its ability to move data efficiently is valuable, but privileges that serve legitimate infrastructure functions can become dangerous if an attacker gains control of the component.
+
+## NVIDIA 官方回应：必须严格验证信任边界
+
+&gt; ## NVIDIA’s Response: Verify the Trust Boundaries
+
+在谈及与 Eclypsium 的合作调查时，NVIDIA 详细介绍了旗下 BlueField DPU 所具备的安全认证启动、硬件信任根、硬件隔离、固件更新防护及远程证明 (Attestation) 等多重安全机制。同时 NVIDIA 也强调，不同的云服务运营商会根据自身的信任模型选择差异化的安全配置。
+
+&gt; In its account of the collaboration, NVIDIA describes BlueField’s authenticated boot, hardware-rooted trust, isolation, firmware-update protections, and attestation. It also emphasizes that cloud operators choose different security configurations for different trust models.
+
+两家公司共同传递出的核心警示在于：运维人员必须为其安全策略的选择提供严密的证据链。内存访问控制、设备隔离以及带外管理接口，都必须在具体部署的威胁模型框架下进行细致评估。仅仅因为硬件支持某项安全功能，绝不意味着它在当前环境中已经被正确配置并生效。
+
+&gt; The companies’ message is that operators need evidence about those choices. Memory-access controls, device isolation, and management interfaces must be assessed in the context of a deployment’s threat model. A feature’s availability alone does not show that it is correctly configured.
+
+NVIDIA 和 Eclypsium 还特别指出，这一挑战远不止局限于单一厂商。现代 AI 系统的正常运转高度依赖于具有高特权的主机软件、硬件加速卡固件、基板管理控制器 (BMC) 以及底层数据传输机制。虽然不同硬件架构之间的具体通信路径各异，但必须将这些底层组件纳入安全管控的需求是完全一致的。
+
+&gt; NVIDIA and Eclypsium also describe the issue as extending beyond a single vendor. AI systems depend on privileged host software, accelerator firmware, management controllers, and data-transfer mechanisms. The exact paths differ by architecture; the need to account for those components does not.
+
+## 为何 AI 智能体安全同样生死系于基础设施
+
+&gt; ## Why Agent Security Also Depends on Infrastructure Security
+
+当大语言模型演进为能够调用外部工具、访问企业内部敏感数据甚至自主发起关键操作的 AI 智能体 (AI Agent) 时，潜在的安全风险呈指数级放大。如果底层基础设施遭受篡改，应用层所设计的各种安全护栏预设——比如“当前正在运行的正是经过严格对齐的安全模型”——都将瞬间化为泡影。
+
+&gt; The stakes grow when a model can call tools, access enterprise data, or initiate actions. Infrastructure tampering can undermine assumptions made by application-level safeguards about which model is actually running.
+
+NVIDIA 推出的 Open Agent Safety Platform 正是应对此类威胁的分层防御典型范例。其中，OpenShell 负责应用运行时的安全治理，而搭载在 BlueField DPU 上的 NVIDIA Sentry 则运行在独立于主机和智能体的硬件隔离安全域中。这种系统架构旨在通过一个完全独立的底层控制点，来监控智能体行为并执行强制性安全策略。
+
+&gt; NVIDIA’s Open Agent Safety Platform illustrates the layered response. OpenShell provides runtime governance, while NVIDIA Sentry on BlueField operates from a hardware-isolated security domain outside the host and agent. The architecture aims to monitor behavior and enforce policy from a separate control point.
+
+然而，这种独立的控制地位也衍生出全新的安全责任：负责执行监管的硬件及其自带的软件栈本身必须具备绝对的可信度。将安全控制权移出应用层虽然打破了单点依赖，但同时也成倍提高了对受托执行管控的底层组件进行完整性验证的重要性。
+
+&gt; That independent position creates another security responsibility: the enforcement hardware and its software stack must themselves remain trustworthy. Moving a control outside the application reduces one dependency while increasing the importance of verifying the component entrusted with that control.
+
+## 从硬件资产清点走向持续安全保障
+
+&gt; ## From Hardware Inventory to Continuous Assurance
+
+Eclypsium 将业界单纯注重模型算法校验与忽视底层硬件完整性之间的断层称为“AI 基础设施保障鸿沟”。其推出的基础设施保障平台能够全面清点系统硬件组件、评估固件和底层配置、对比设备状态与白名单安全基线，并持续监控异常变动。该公司将这些防御能力定位为对现有应用层和模型层安全护栏的关键补充。
+
+&gt; Eclypsium calls the disconnect between model-focused assurance and infrastructure integrity the “AI Infrastructure Assurance Gap.” Its infrastructure assurance platform inventories components, assesses firmware and configuration, compares device state with approved baselines, and monitors changes. The company positions those capabilities as complementary to existing application and model safeguards.
+
+对数据中心与云运营商而言，务实的防御工作应当从将 DPU、GPU、基板管理控制器及其固件作为独立资产纳管开始。每一类硬件设备都需要明确权属责任、进行严格的版本追踪、开展持续的漏洞评估，并建立完善清晰的升级更新流程。此外，管理平面的访问控制权限以及运行在基础设施处理器上的第三方软件，也必须全部纳入严格的安全审计范围。
+
+&gt; For operators, the practical work begins with treating DPUs, GPUs, management controllers, and their firmware as individually managed assets. Each needs ownership, version tracking, vulnerability assessment, and an understood update process. Management-plane access and third-party software on infrastructure processors belong in that review.
+
+安全校验还应当贯穿硬件从初始部署、日常升级、应急恢复到重新分配流转的整个全生命周期。一个干净无毒的操作系统镜像本身，并不能证明其下层运行的每一个硬件组件都处于合规安全的状态。尤其在多租户共享计算基础设施的云环境中，由于底层硬件可能先后服务于不同的客户，这种全生命周期的可信校验显得格外至关重要。
+
+&gt; Checks should also follow the hardware through deployment, updates, incident recovery, and reassignment. A clean operating-system image does not by itself establish that every lower-level component is in an approved state. Shared infrastructure makes that lifecycle especially consequential because hardware may serve successive customers.
+
+## 校验运行中的系统，而非仅仅校验静态文件
+
+&gt; ## Checking the Running System, Not Just the Artifact
+
+数字签名与文件校验依然十分重要，它们回答了“正要加载的模型文件是否合法可信”这一核心问题。然而，安全启动 (Secure Boot)、远程证明、运行时内存隔离以及持续态势监控，回答的则是关于“执行该模型的底层系统是否可信”的完全不同的关键问题。在纵深防御体系中，任何一种机制都绝不能被视作可以替代其他机制的万能灵药。
+
+&gt; Model signatures remain useful: they answer an important question about the artifact being loaded. Secure boot, attestation, runtime isolation, and continuous monitoring answer different questions about the system that executes it. None should be treated as a substitute for all the others.
+
+Eclypsium 这项研究的划时代意义在于揭示了一个残酷现实：即便模型能够顺利通过传统的文件完整性校验，其运行执行链条上的其他底层环节依然可能已被暗中调包。对于那些正在将 AI 深度部署到关键业务工作流中的企业而言，基础设施层面的动态验证必须与模型本身的评估全程同步进行。
+
+&gt; The significance of Eclypsium’s research is that a model can pass one integrity check while another part of its execution chain has changed. For organizations deploying AI into consequential workflows, infrastructure verification needs to accompany model evaluation throughout operation.
+
+---</description>
+    </item>
+    <item>
       <title>count-catcher：从模型计数证书生成 Lean 形式化定理</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-29/count-catcher-从模型计数证书生成-Lean-形式化定理/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-29/count-catcher-从模型计数证书生成-Lean-形式化定理/</guid>
@@ -4852,338 +5430,6 @@ ECE 越低越好，而 AUROC 越高越好。两项指标相辅相成，共同揭
 我们采用 **F1 分数**（准确率与召回率的调和平均数）来综合衡量模型的整体表现，该分值越高，代表模型在查准与查全之间的平衡做得越出色。
 
 &gt; We measure performance using the **F1 score** (the harmonic mean of precision and recall), where higher scores indicate better balance.</description>
-    </item>
-    <item>
-      <title>基于受信任虚拟机的机密推理：Anthropic 构筑用户隐私与模型权重安全屏障</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/基于受信任虚拟机的机密推理-Anthropic-构筑用户隐私与模型权重安全屏障/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>数以百万计的用户每天向大语言模型 (Large Language Model, LLM) 交付私有代码、商业战略等高敏感数据，如何在享受顶尖 AI 生产力的同时实现绝对的数据保密，已成为 AI 产业亟待攻克的信任基石。为此，Anthropic 携手 Pattern Labs 展开前沿安全研究，正式公布了名为“机密推理 (Confidential Inference)”的技术框架。该方案依托基于硬件隔离的受信任虚拟机 (Trusted Virtual Machine) 与密码学度量机制，构建起端到端的强信任链，确保敏感数据——无论是用户输入的提示词还是前沿模型自身的核心权重，除在受到硬件密码学隔离与代码签名远程验证的极小执行区瞬时解密外，在其余所有传输与存储链路中始终保持全密文形态。这项突破性探索不仅从根本上化解了云端隐私外泄的隐忧，更为主权级模型资产保护树立了全新的技术标杆。
-
----
-
-## 摘要
-
-&gt; ## Summary
-
-Anthropic 正在积极研发**机密推理 (Confidential Inference)** 技术，这是一套旨在通过密码学手段为用户数据隐私和模型权重安全提供绝对保障的核心工具集。在与 Pattern Labs 的合作研发中，该项目确保了各类敏感数据（如用户提交的提示词和模型核心专有权重）在整个系统生命周期内全程处于高强度加密状态，仅在受限、可验证且由硬件物理隔离的专属环境中进行实际计算时才被短暂解密。
-
-&gt; Anthropic is researching and developing **Confidential Inference**, a set of tools designed to provide cryptographic guarantees for user data privacy and model weight security. Published in collaboration with Pattern Labs, this initiative ensures that sensitive data (such as user prompts and proprietary model weights) remains encrypted everywhere except inside restricted, verifiable, and hardware-isolated environments during active processing.
-
----
-
-## 前言
-
-&gt; ## Introduction
-
-每天有数以百万计的用户将高度敏感的信息交付给 Claude，涵盖专有核心代码、商业战略规划乃至机密企业情报。为了将这种基于人际合同的信任升华为密码学级别的确定性保障，Anthropic 正全力研发**机密推理 (Confidential Inference)** 框架——该架构能够确保加密数据只在那些具备密码学自证能力的受信任服务器内部被解密与计算。
-
-&gt; Millions of users entrust Claude with sensitive information, ranging from proprietary code to confidential business strategies. Anthropic is researching ways to make this trust cryptographically guaranteed through **Confidential Inference**—a framework that processes encrypted data only within servers that can prove themselves trustworthy.
-
-引入这套机密计算工具主要服务于两大核心目标：
-
-1. **模型权重安全 (Model Weight Security)**：全面保护 Claude 等前沿模型的核心资产，抵御高级持续性威胁 (APT) 攻击者的窃取；
-2. **用户数据安全 (User Security)**：在密码学层面严格证实用户的敏感数据享有绝对隐私，不受任何第三方及云端宿主的窥探。
-
-&gt; Adopting these tools serves two primary purposes:
-&gt; 1. **Model Weight Security:** Securing frontier models like Claude against advanced threat actors.
-&gt; 2. **User Security:** Proving that sensitive user data remains private.
-
-*阅读完整学术白皮书：[机密推理技术论文 (Confidential Inference Paper)](https://assets.anthropic.com/m/c52125297b85a42/original/Confidential_Inference_Paper.pdf)*。
-
-&gt; *Read the full [Confidential Inference Paper](https://assets.anthropic.com/m/c52125297b85a42/original/Confidential_Inference_Paper.pdf).*
-
----
-
-## 推理服务体系架构
-
-&gt; ## Inference Service
-
-机密推理的核心准则在于：所有敏感数据除在实际发生计算的瞬时点外，必须在任何环节均处于加密状态。为了落地这一铁律，Anthropic 融合了前沿的机密计算 (Confidential Computing) 理念，在系统内部构建起牢不可破的信任链 (Chain of Trust)。
-
-&gt; The core principle of Confidential Inference is that sensitive data must remain encrypted except at the exact point of processing. To enforce this, Anthropic uses confidential computing principles to build a chain of trust.
-
-对于用户输入的数据，全系统仅在以下两个阶段短暂接触明文 (Cleartext)：
-
-* **API 服务器 (The API Server)**：接收原始提示词，将其编码转换为 Token，并执行处理 Claude API 请求所必需的控制流逻辑。
-* **推理服务器 (The Inference Server)**：在专用硬件加速器上运行 Claude 的核心神经网络“大脑”，进而自回归生成最终的补全 Token。（*对于专有模型权重而言，仅有推理服务器有权触碰这些关键敏感资产*）。
-
-&gt; For user data, cleartext (unencrypted text) handling occurs at two points:
-&gt; * **The API Server:** Handles prompts, transforms them into tokens, and operates logic behind Claude API requests.
-&gt; * **The Inference Server:** Runs the "brains" of Claude on hardware accelerators to generate completion tokens. *(For model weights, only the Inference Server receives sensitive data).*
-
-鉴于目前市面上绝大部分底层硬件加速器尚未完全原生普及机密计算特性，Anthropic 另辟蹊径，在受信任执行环境中部署了一个小巧而坚固的**“模型加载与调用器 (Model Loader and Invoker)”**来作为安全桥梁。
-
-&gt; To work around hardware accelerators that do not yet fully support confidential computing, Anthropic is exploring a small, secure **"model loader and invoker"** running within a trusted environment.</description>
-    </item>
-    <item>
-      <title>借助 Model Explorer 为定制端侧编译器引入可视化计算图调试</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/借助-Model-Explorer-为定制端侧编译器引入可视化计算图调试/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>将现代机器学习模型部署到各类低功耗边缘设备时，通常需要经历量化、图下沉 (Graph Lowering)、算子融合与硬件委派 (Delegation) 等复杂的编译链路。然而，编译器底层生成的中间表示 (Intermediate Representation, IR) 往往极其晦涩，工程师过去只能通过解析生硬的二进制 Flatbuffers 或海量文本日志来排查算子异常和硬件回退，过程繁琐且极易出错。为此，Arm 团队与 Google 深度合作，借助 Google AI Edge Model Explorer 的层级图可视化与插件架构，开发了一系列针对 TOSA、VGF 和 PTE 等专用中间格式的开源适配器。本文详细介绍了 Arm 如何通过分屏对照、节点级性能追踪热力图等可视化调试工作流，秒级定位意外引入的转置算子、精准验证 NPU 硬件加速委派，并一目了然地捕捉时钟周期级的硬件延迟瓶颈。
-
----
-
-## 摘要
-
-&gt; ## Summary
-
-Model Explorer 的能力不仅限于展示高层级模型计算图，更能为本地端侧机器学习部署流水线提供深度的可视化洞察。本文将深入探讨 Arm 如何将 Google AI Edge Model Explorer 与定制编译器中间表示 (Intermediate Representation, IR)——例如 TOSA、VGF 和 PTE 等深度集成，从而通过并排分屏比对验证 NPU 硬件委派情况，并将周期级 (Cycle-level) 性能剖析追踪数据直接映射至底层执行图中。
-
-&gt; Model Explorer extends beyond high-level model graphs to provide deep visibility into local edge machine learning pipelines. This article explores how Arm integrated Google AI Edge Model Explorer with custom compiler intermediate representations (IRs)—such as TOSA, VGF, and PTE—to verify NPU hardware delegation side-by-side and map cycle-level profiling traces directly onto execution graphs.
-
----
-
-## 前言
-
-&gt; ## Introduction
-
-从低功耗边缘设备、游戏显卡到具身物理 AI 系统，机器学习模型正运行在日益多样化的本地硬件环境之中。要在这些目标平台上实现高效推理，离不开一系列关键的编译步骤，例如模型量化、图下沉 (Graph Lowering)、算子融合以及针对专用加速器的硬件委派。
-
-&gt; Machine learning models run locally on a wide range of hardware, from low-power edge devices to gaming graphics and physical AI systems. Running models efficiently on these targets requires compilation steps such as quantization, graph lowering, operator fusion, and hardware delegation.
-
-为了让开发者能够对这些复杂的流水线拥有清晰的可视化掌控力，Arm 引入了 **[Google AI Edge Model Explorer](https://developers.google.com/edge/model-explorer)**。依托 Model Explorer 出色的分层计算图可视化能力与灵活的插件架构，Arm 打造了多款开源适配器，让端侧模型的各项编译转换过程变得直观易审。
-
-&gt; Arm used **[Google AI Edge Model Explorer](https://developers.google.com/edge/model-explorer)** to give developers visibility into these pipelines. With Model Explorer's hierarchical graph visualization and plugin architecture, Arm built several open-source adapters that make edge model transformations easier to inspect.
-
-![Arm MEX_Blog Hero (1)](./images/c16d4baf977d.png)
-
----
-
-## 核心痛点与挑战
-
-&gt; ## The Challenge
-
-在将模型部署至端侧硬件的过程中，上游框架的细微改动或算子约束条件的微调，都可能导致最终导出的执行图结构发生剧烈变化。工程师往往必须回答以下三个关键问题：
-
-&gt; When deploying a model to edge hardware, a framework change or operator constraint can alter the exported execution graph. Engineers often need to answer three critical questions:
-
-* **图结构完整性 (Structural integrity)**：图下沉编译过程是否意外引入了多余算子（例如未经计划的布局转置算子）？
-* **硬件加速委派 (Hardware delegation)**：模型是否已全量委派至 NPU 或 GPU 硬件加速器运行？还是有部分不被支持的子图悄悄回退 (Fallback) 到了 CPU 上？
-* **时钟周期级性能瓶颈 (Cycle-level bottlenecks)**：在下沉后的执行图中，究竟是哪些计算节点消耗了最多的硬件时钟周期？
-
-&gt; * **Structural integrity:** Did graph lowering introduce unintended operators such as extra layout transposes?
-&gt; * **Hardware delegation:** Is the model fully delegated to the NPU or GPU, or are unsupported subgraphs falling back to the CPU?
-&gt; * **Cycle-level bottlenecks:** Which nodes in the lowered graph take the most compute cycles?
-
-以往仅凭肉眼阅读原始 Flatbuffers 二进制结构或滚动翻阅海量文本日志来解答这些问题，不仅效率极其低下，而且面对大语言模型 (Large Language Model, LLM) 以及深层神经网络时更是如同大海捞针。Arm 迫切需要一款直观的可视化工具，用于深入审查 Arm 特有的中间表示与底层硬件性能分析追踪。
-
-&gt; Answering these questions by reading raw flatbuffers or text logs takes time, especially for large language models (LLMs) and neural networks. Arm needed a visual tool to inspect Arm-specific intermediate representations and hardware profiling traces.
-
----
-
-## Arm 如何构建 Model Explorer 可视化调试工作流
-
-&gt; ## How Arm Used Model Explorer's Visual Debugging Workflows
-
-为了攻克上述端侧部署难题，Arm 为 Google AI Edge Model Explorer 量身开发了多款定制适配器，全面支持多种关键模型格式（如 **[TOSA](https://www.mlplatform.org/tosa/tosa_spec.html)**、**[VGF](https://docs.pytorch.org/executorch/stable/tutorial-arm-vgf.html)** 和 **[PTE](https://docs.pytorch.org/executorch/stable/pte-file-format.html)**），从而建立起一套端到端设备端优化可视化工作流。借助这些扩展，工程团队可以直接在模型计算图上校验导出流水线、核验硬件加速委派状态，并秒级锁定周期级性能瓶颈：
-
-&gt; To address these deployment challenges, Arm developed custom adapters for Google AI Edge Model Explorer to support several model formats (i.e., **[TOSA](https://www.mlplatform.org/tosa/tosa_spec.html)**, **[VGF](https://docs.pytorch.org/executorch/stable/tutorial-arm-vgf.html)**, and **[PTE](https://docs.pytorch.org/executorch/stable/pte-file-format.html)**), establishing a comprehensive visual workflow for on-device optimization. Using these extensions, engineering teams can validate exported pipelines, verify accelerator delegation, and pinpoint cycle-level performance bottlenecks directly on the model graph:</description>
-    </item>
-    <item>
-      <title>TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，深度学习开发者在使用 Google 自研的张量处理单元 (Tensor Processing Unit, TPU) 时，往往面临着框架生态割裂的痛点——主流的 PyTorch 模型在迁移至 TPU 平台时，经常遭遇繁琐的环境适配门槛或运行时效率折损。为了彻底打破这一算力生态壁垒，Google 与 Meta 两大科技巨头展开前所未有的深度开源合作，联合推出了专为 Google TPU 量身定制的原生后端架构 **TorchTPU**。该架构创造性地融合了动态即时执行 (Eager Execution) 优化与现代 `torch.compile` 图编译加速技术，不仅让海量现成 PyTorch 模型无需任何代码改动即可在 TPU 集群上“开箱即用”极速运转，更在模型推理与分布式训练中释放出具备行业顶尖竞争力的硬件性能。这项重磅突破理顺了 PyTorch 开发者迈向 TPU 算力底座的平滑迁移之路，标志着全球顶级 AI 硬件与主流算法生态正加速走向深度的底层大融合。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-**TorchTPU** 是 Google 与 Meta 联手推出的开源重大合作成果，旨在为 Google 张量处理单元 (Tensor Processing Unit, TPU) 构建一套原生且符合设计规范的 PyTorch 官方级硬件后端。通过创造性地结合动态即时执行 (Eager Execution) 优化、`torch.compile` 深度编译集成与底层原生硬件加速，该架构为大模型的实时推理与大规模训练注入了极具行业竞争力的顶尖性能，同时大幅简化了现有 PyTorch 模型的开箱即用运行与 TPU 迁移流程。
-
-&gt; **TorchTPU** is an open-source collaboration between Google and Meta designed to introduce a native, principled PyTorch backend for Google Tensor Processing Units (TPUs). By combining eager execution optimizations, `torch.compile` integration, and native hardware acceleration, the architecture delivers industry-competitive performance for both model inference and training while streamlining out-of-the-box model execution and TPU migration.
-
----
-
-## 论文详细信息
-
-&gt; ## Paper Information
-
-* **arXiv 编号 (arXiv ID)：** [arXiv:2610.24161](https://arxiv.org/abs/2610.24161) [cs.AI]
-* **DOI 标识 (DOI)：** [10.48550/arXiv.2610.24161](https://doi.org/10.48550/arXiv.2610.24161)
-* **提交时间 (Submitted On)：** 2026 年 10 月 16 日
-* **主要学科 (Primary Subject)：** 人工智能 (`cs.AI`)
-* **论文篇幅 (Length)：** 23 页，包含 5 幅插图
-* **论文作者 (Authors)：** Claudio Basile, Michael Voznesensky, Gunhyun Park, Ben Wilson, Parker Holloway, Zhanyong Wan, Vlad Belous, Manish Khanna, Paul Ganssle, Kevin Gleason, Andrew Dame, Brendan Folie, Bhavya Bahl, Haifeng Jin, Pedro Goncalves Mokarzel, Arian Arfaian, Luke Boyer, Chi Zhang, Yiling Yuan, Adam Mainz, Aditya Patel, Huangze Tang, Jay Gan, Lizzie Liang, Will Froom, Tushar Agarwal, Karlo Basioli, Theotime Combes, Emilio Cota, Minos Papadopoulos, Tudor Pipernea, Yarong Mu, Qi Zhou, Yaoshiang Ho, Aleksey Vlasenko, Alexander Brauckmann, Ziyin Huang, Jack Oh, Jerry Hsu, Tanvi Bajpai, Jialei Chen, Wenjun Gu, Chintan Shah, Chris Chan, Sayce Falk, Chris Jones, Rob Torres, Kat Ko, Lee Howes, Freya Azad, Andi Gavrilescu, Joe Pamer, Bill Jia (共 53 位作者)
-
-&gt; * **arXiv ID:** [arXiv:2610.24161](https://arxiv.org/abs/2610.24161) [cs.AI]
-&gt; * **DOI:** [10.48550/arXiv.2610.24161](https://doi.org/10.48550/arXiv.2610.24161)
-&gt; * **Submitted On:** October 16, 2026
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Length:** 23 pages, 5 figures
-&gt; * **Authors:** Claudio Basile, Michael Voznesensky, Gunhyun Park, Ben Wilson, Parker Holloway, Zhanyong Wan, Vlad Belous, Manish Khanna, Paul Ganssle, Kevin Gleason, Andrew Dame, Brendan Folie, Bhavya Bahl, Haifeng Jin, Pedro Goncalves Mokarzel, Arian Arfaian, Luke Boyer, Chi Zhang, Yiling Yuan, Adam Mainz, Aditya Patel, Huangze Tang, Jay Gan, Lizzie Liang, Will Froom, Tushar Agarwal, Karlo Basioli, Theotime Combes, Emilio Cota, Minos Papadopoulos, Tudor Pipernea, Yarong Mu, Qi Zhou, Yaoshiang Ho, Aleksey Vlasenko, Alexander Brauckmann, Ziyin Huang, Jack Oh, Jerry Hsu, Tanvi Bajpai, Jialei Chen, Wenjun Gu, Chintan Shah, Chris Chan, Sayce Falk, Chris Jones, Rob Torres, Kat Ko, Lee Howes, Freya Azad, Andi Gavrilescu, Joe Pamer, Bill Jia (53 authors total)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; TorchTPU 是 Google 与 Meta 联手打造的开源合作成果，旨在为 Google TPU 引入一套原生且符合设计规范的 PyTorch 后端。通过融合动态即时执行优化、`torch.compile` 图编译集成与原生硬件加速能力，它不仅支持模型免修改开箱即用运行与极简 TPU 迁移，更在模型推理与训练任务中提供了具备行业顶尖竞争力的卓越性能。
-&gt;
-&gt; TorchTPU is an open-source collaboration between Google and Meta that introduces a native and principled PyTorch backend for Google TPUs. It enables seamless out-of-the-box model execution and TPU migration while delivering industry-competitive inference and training performance through eager execution optimizations, [torch.compile](http://torch.compile) integration, and native hardware acceleration.
-
----
-
-## 全文与外部资源
-
-&gt; ## Full-Text and External Resources
-
-* **PDF 全文访问 (PDF Access)：** [查看 PDF 论文](https://arxiv.org/pdf/2610.24161)
-* **HTML 在线版本 (HTML Version)：** [arXiv HTML (实验性)](https://arxiv.org/html/2610.24161v1)
-* **TeX 源码包 (TeX Source)：** [arXiv 源码归档](https://arxiv.org/src/2610.24161)
-* **开源授权 (License)：** [非排他性分发协议许可](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)
-
-&gt; * **PDF Access:** [View PDF](https://arxiv.org/pdf/2610.24161)
-&gt; * **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2610.24161v1)
-&gt; * **TeX Source:** [arXiv Source Archive](https://arxiv.org/src/2610.24161)
-&gt; * **License:** [Non-exclusive distribution license](http://arxiv.org/licenses/nonexclusive-distrib/1.0/)</description>
-    </item>
-    <item>
-      <title>Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，PyTorch 开发者若想使用 Google 强大的 TPU 算力集群，往往受制于 `torch_xla` 复杂的惰性求值图与 JAX 的学习成本，难以像在 GPU 上那样随心所欲。随着 **TorchTPU** 原生后端的推出，TPU 正式成为了 PyTorch 的一等公民设备 (`torch.device("tpu")`)。Hugging Face 宣布全面支持该特性，Transformers、Diffusers 和专有 Kernels 库均已原生适配 TPU，开发者仅需一行 `device_map="tpu"` 或 `.to("tpu")` 即可开箱运行最新前沿模型。无论是百亿多模态生成、高吞吐 MoE 解码，还是结合 Pallas 定制算子加速，开发者都能享受到与原生 PyTorch 完全一致的丝滑开发体验。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-随着 **TorchTPU** 的横空出世，Google 的张量处理单元 (Tensor Processing Unit, TPU) 终于能够作为原生 PyTorch 设备直接调用。这项集成彻底摆脱了以往受制于 `torch_xla` 或 JAX 的固有约束，使得 Hugging Face 旗下的核心开源库（包括 Transformers、Diffusers 以及定制算子库 Kernels）能够直接在 TPU 上开箱即用——开发者只需简单指定 `device_map="tpu"` 或调用 `.to("tpu")` 即可畅行无阻。
-
-&gt; With the introduction of **TorchTPU**, Google's Tensor Processing Units (TPUs) can now act as native PyTorch devices. This integration bypasses the historical constraints of `torch_xla` or JAX, allowing Hugging Face libraries like Transformers, Diffusers, and specialized Kernels to run seamlessly on TPUs out of the box—just by targeting `device_map="tpu"` or `.to("tpu")`.
-
----
-
-![The Hugging Face mascot and a smiling PyTorch logo cheering over a glowing chip, on a manga-style background.](./images/e168966f02f0.jpg)
-
-如果你曾经尝试过在 TPU 上运行 PyTorch 代码，很大概率不得不经历将代码大改迁移至 `torch_xla` 的痛苦，或者最终被迫从零去学 JAX。而随着原生 PyTorch 后端 [TorchTPU](https://github.com/google-pytorch/torch_tpu) 的发布，TPU 如今变成了与常规设备无异的又一个标准计算目标。这为 Hugging Face 生态全面拥抱 TPU 铺平了道路：Transformers、Diffusers 以及 Kernels 均已实现 TPU 原生运行。只需从 Hub 上挑选你中意的模型，将其分配至 `"tpu"`，一切便大功告成。
-
-&gt; If you ever tried to run PyTorch on a TPU, you probably ported your code to `torch_xla`, or you ended up having to learn JAX. With [TorchTPU](https://github.com/google-pytorch/torch_tpu), a native PyTorch backend, TPU is now just another device. It opens up native support of TPU in the Hugging Face ecosystem. Transformers, Diffusers and Kernels run natively on TPU. Pick a model from the Hub, send it to `"tpu"`, and you're done.
-
-## 等等，到底什么是 TPU？ 🤔
-
-&gt; ## Wait, what's a TPU? 🤔
-
-TPU 是 [张量处理单元 (Tensor Processing Unit)](https://cloud.google.com/tpu) 的英文缩写。TPU 是 Google 自主研发的专用 AI 加速芯片，其设计初衷纯粹为了极致做好一件事：加速神经网络耗时最集中的矩阵数学运算。Google 研发设计 TPU 已有大约十年时间，并长期使用它们来训练和服务自家的大规模旗舰模型，包括著名的 Gemini。
-
-&gt; TPU stands for [Tensor Processing Unit](https://cloud.google.com/tpu). TPUs are Google's own AI accelerators. They are chips built for one job: the matrix math that neural networks spend most of their time on. Google has been designing them for about ten years, and uses them to train and serve its own models, including Gemini.
-
-开发者可以在 [Google Cloud](https://docs.cloud.google.com/tpu/docs/intro-to-tpu) 上随时取用 TPU 算力，从小到单个独立芯片，大到由数千颗芯片构成的 Pod 超级集群均可调用。当你在模型训练或大规模推理服务中需要澎湃算力时，TPU 的强大性能便能大放异彩。
-
-&gt; TPUs are available on [Google Cloud](https://docs.cloud.google.com/tpu/docs/intro-to-tpu), from a single chip up to pods of thousands of chips. They shine when you need a lot of compute, for training or for serving at scale.
-
-但一直以来的瓶颈在于软件生态。TPU 的软件栈最早完全是围绕 TensorFlow 和 JAX 逐步生长起来的，这使得习惯了 PyTorch 的开发者想要接入 TPU 往往要克服很高的门槛。
-
-&gt; The catch has always been software. The TPU stack grew up around TensorFlow and JAX, and PyTorch users had to work harder to get in.
-
-## 过去传统的开发模式
-
-&gt; ## The old way
-
-在此之前，在 TPU 上跑 PyTorch 意味着必须通过 PyTorch/XLA (`torch_xla`) 中间层。虽然它能够正常工作，但存在诸多难以回避的特异行为：张量计算是惰性求值 (Lazy Evaluation) 的，你的代码并不总是像预想的那样立即执行；极其微小的代码变动都可能触发计算图的昂贵重编译；而排查调试问题时，代码执行逻辑更是晦涩难懂。
-
-&gt; Until now, running PyTorch on TPUs meant going through PyTorch/XLA (`torch_xla`). It worked, but it had its quirks. Tensors were lazy, so your code didn't always run when you thought it did. Small changes could trigger graph recompilations, and debugging was hard to reason about.
-
-为了减轻开发者的负担，我们此前打造了 Optimum TPU，为 Hugging Face 模型在 TPU 上的推理与训练提供桥接支持。而如今 TorchTPU 带来了底层原生支持，开发者在使用 Transformers 和 Diffusers 运行模型时，已经不再需要额外依赖 Optimum TPU 了。
-
-&gt; To make life easier, we built Optimum TPU. It gave Hugging Face models inference and training support on TPUs. Now that TorchTPU brings native support, Optimum TPU is not required anymore to run Hugging Face models with Transformers and Diffusers.
-
-## 迎接 TorchTPU 登场 🚀
-
-&gt; ## Enter TorchTPU 🚀
-
-[TorchTPU](https://github.com/google-pytorch/torch_tpu) 将 TPU 作为全新原生后端直接接入了 PyTorch。你可以继续书写真正纯正的 PyTorch 代码。它不仅内置了针对 TPU 深度优化的 Pallas 算子内核，全面支持分布式训练，还深度集成了 `torch.compile` 以便在需要极致性能时一键提速。在 TPU 虚拟机 (VM) 上的安装仅需一行简单命令：
-
-&gt; [TorchTPU](https://github.com/google-pytorch/torch_tpu) adds TPU as a new backend to PyTorch. You write regular PyTorch code. It comes with Pallas kernels tuned for TPUs, support for distributed training, and a `torch.compile` integration for when you want more speed. Installing it on a TPU VM takes one command:
-
-```shell
-pip install torch-tpu --extra-index-url https://download.pytorch.org/whl/cpu
-```
-
-这里指定的额外索引源提供了针对 CPU 编译优化的精简版 `torch`。如果不加这个参数，pip 会默认拉取体积庞大得多的 CUDA 编译版本，而这在 TPU 环境中完全是不必要的。
-
-&gt; The extra index gives you the CPU build of `torch`. Without it, pip pulls the much bigger CUDA build, which you don't need on a TPU.
-
-## 你所钟爱的开源库，如今已全面支持 TPU
-
-&gt; ## Your favourite libraries, now on TPU</description>
-    </item>
-    <item>
-      <title>Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，在硬件生态中直接以原生体验运行 PyTorch 往往是 NVIDIA GPU 的专属特权，而 Google Cloud TPU 则长期依赖于相对繁琐且存在诸多局限的 PyTorch/XLA 静态图录制方案。在 2026 年 10 月 20 日举行的 PyTorch 开发者大会上，Google 携手 Meta 联合宣布正式开源下一代原生软硬件后端 TorchTPU。TorchTPU 基于 PyTorch 的 PrivateUse1 扩展机制构建，开发者如今仅需一行简短的 `torch.device("tpu")`，即可让 TPU 享受与 GPU、CPU 平起平坐的原生设备级待遇。该后端彻底取代了原有的 PyTorch/XLA，不仅提供开箱即用的即时执行 (Eager Mode) 体验，还通过 `torch.compile` 深度整合了 OpenXLA 编译优化，并在高达 8,192 颗 Ironwood 芯片集群上斩获了 52% 的 MFU 算力利用率，标志着 TPU 深度学习软件生态迈入了全面原生化的崭新纪元。
-
----
-
-Google 正式开源了面向 Cloud TPU 的原生 PyTorch 后端 [TorchTPU](https://github.com/google-pytorch/torch_tpu)。该项目由 Google 与 Meta 的 PyTorch 团队联合开发，并于 [2026 年 10 月 20 日举行的 PyTorch 开发者大会上正式发布](https://cloud.google.com/blog/topics/ai-infrastructure/torchtpu-is-now-open-source-run-native-pytorch-on-tpus)。现有的 PyTorch 代码库如今只需简单声明标准设备 `torch.device("tpu")`，即可将 TPU 作为原生设备直接调用，使其在 PyTorch 生态中与 GPU 和 CPU 享受同等的“一等公民”待遇。根据 Google 团队的说明，TorchTPU 已经全面[取代了旧有的 PyTorch/XLA](https://docs.cloud.google.com/tpu/docs/pytorch-on-tpu)，成为所有新业务与新工作负载的官方推荐首选。
-
-&gt; Google has open-sourced [TorchTPU](https://github.com/google-pytorch/torch_tpu), a native PyTorch backend for Cloud TPUs. Co-developed with the PyTorch team at Meta, it was [announced at PyTorch Conference 2026 on October 20, 2026](https://cloud.google.com/blog/topics/ai-infrastructure/torchtpu-is-now-open-source-run-native-pytorch-on-tpus). Existing PyTorch code can now target a TPU simply through a standard `torch.device("tpu")`, placing TPUs right beside GPUs and CPUs as a native PyTorch device. According to the Google team, TorchTPU [replaces PyTorch/XLA](https://docs.cloud.google.com/tpu/docs/pytorch-on-tpu) and is now recommended for all new workloads.
-
----
-
-## 📌 执行摘要
-
-&gt; ## 📌 Executive Summary
-
-* **核心定位**：一套完备的原生软件技术栈（基于 Apache 2.0 协议开源，支持 Python 3.11+，当前 PyPI 发布版本为 `v0.2.0`），涵盖 4 个开源代码仓库：`TorchTPU`、`vLLM-TorchTPU`、`SGLang-TorchTPU` 以及 `TorchTitan`。
-* **硬件支持范围**：面向 Google Cloud TPU 硬件平台，已在 [v5e 及后续各代硬件](https://arxiv.org/abs/2610.24161) 上完成充分验证，最大可水平扩展至 8,192 颗 Ironwood (TPU7x) 芯片，并为 FP8、MXFP4 和 NVFP4 量化权重提供推理部署支持。
-* **性能特性**：提供用于直观调试的即时执行模式 (Eager Mode)，以及用于支撑工业级吞吐量的 `torch.compile` 编译加速模式。
-* **亮点与权衡**：在 Ironwood 集群上使用 TorchTitan 训练 Qwen 3 8B 模型时，实现了高达 52% 的模型浮点运算利用率 (Model FLOPs Utilization, MFU)；但在未经任何优化的纯 Eager 模式下初始执行较慢（例如调优前单步耗时 11.49 秒，而经过完整编译调优后仅需 2.78 秒）。
-
-&gt; * **What it is:** A native software stack (Apache 2.0, Python 3.11+, currently `v0.2.0` on PyPI) spanning 4 open repositories: `TorchTPU`, `vLLM-TorchTPU`, `SGLang-TorchTPU`, and `TorchTitan`.
-&gt; * **Hardware Support:** Google Cloud TPUs, tested from [generation v5e onwards](https://arxiv.org/abs/2610.24161), scaling up to 8,192 Ironwood (TPU7x) chips with serving support for FP8, MXFP4, and NVFP4 checkpoints.
-&gt; * **Performance Profile:** Offers Eager mode for straightforward debugging and `torch.compile` for production-level throughput.
-&gt; * **Highlights &amp; Trade-offs:** Achieved up to 52% Model Flops Utilization (MFU) training Qwen 3 8B using TorchTitan on Ironwood. Conversely, out-of-the-box eager execution can be slower initially (e.g., 11.49s per step un-tuned vs. 2.78s fully tuned).
-
----
-
-## 什么是 TorchTPU？
-
-&gt; ## What is TorchTPU?
-
-TorchTPU 是一款专为在 TPU 硬件上原生运行 PyTorch 模型而设计的开源后端。它通过 PyTorch 官方规范的 [PrivateUse1 扩展接口](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/) 实现了无缝接入。
-
-&gt; TorchTPU is an open-source PyTorch backend designed to run PyTorch models natively on TPUs. It integrates seamlessly via PyTorch’s [PrivateUse1 interface](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/). 
-
-* **原生张量 (Native Tensors)**：张量即为标准的 PyTorch 原生对象，完全不需要任何自定义子类或额外的封装壳。
-* **状态保真 (State Preservation)**：采用单设备单进程模型运行，同时完美保留了张量视图 (Tensor Views) 与就地修改 (In-place Mutation) 语义。
-
-&gt; * **Native Tensors:** Tensors are ordinary PyTorch objects without custom subclasses or wrappers.
-&gt; * **State Preservation:** It operates on a one-process-per-device model while preserving tensor views and in-place mutations.
-
-相比之下，其前身 **PyTorch/XLA** 依赖于惰性张量 (Lazy Tensor) 图录制机制，强制要求开发者手动标注可编译的计算区域，且[仅支持纯单程序多数据 (SPMD) 模式](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/)；而 TorchTPU 则原生支持具有分支分支分歧的多程序多数据 (MPMD) 执行范式。
-
-&gt; Unlike its predecessor, **PyTorch/XLA**—which relied on lazy-tensor graph recording, forced developers to manually mark compilable regions, and [only supported pure SPMD code](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/)—TorchTPU natively supports divergent MPMD execution as well.
-
----
-
-## TorchTPU 如何执行 PyTorch 代码？
-
-&gt; ## How Does TorchTPU Execute PyTorch Code?
-
-TorchTPU 提供了[三种即时执行模式 (Eager Execution Modes)](https://docs.cloud.google.com/tpu/docs/pytorch-on-tpu)：
-
-&gt; TorchTPU provides [three eager execution modes](https://docs.cloud.google.com/tpu/docs/pytorch-on-tpu):
-
-1. **严格模式 (Strict，默认)**：在严格遵循标准 PyTorch 语义的同时，对每个算子进行异步分派；
-2. **调试模式 (Debug)**：采用同步阻塞执行，并内置张量边界与越界检查；
-3. **延迟融合模式 (DeferAndFuse)**：将连续执行的 Eager 算子自动融合，以最大程度减少高带宽内存 (High Bandwidth Memory, HBM) 的数据搬运。根据 [TorchTPU 论文](https://arxiv.org/abs/2610.24161) 数据，该模式相比默认严格模式可带来 50% 甚至更高的性能提升。
-
-&gt; 1. **Strict (Default):** Dispatches each operator asynchronously while adhering to standard PyTorch semantics.
-&gt; 2. **Debug:** Runs synchronously and includes built-in tensor bounds checking.
-&gt; 3. **DeferAndFuse:** Fuses consecutive eager operators to minimize High Bandwidth Memory (HBM) traffic. According to the [TorchTPU paper](https://arxiv.org/abs/2610.24161), this can yield performance boosts of 50% or more over Strict mode.</description>
     </item>
   </channel>
 </rss>
