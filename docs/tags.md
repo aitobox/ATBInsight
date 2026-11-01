@@ -469,6 +469,7 @@ title: 标签浏览
 - [terms.txt：面向智能体网络访问的知情同意与补偿协议](blog/posts/2026-09-13-terms-txt-面向智能体网络访问的知情同意与补偿协议.md)
 - [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](blog/posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 
 ## AI检测
 
@@ -597,6 +598,7 @@ title: 标签浏览
 
 - [编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？](blog/posts/2026-08-29-编码智能体是否需要可执行世界模型、简化和验证来解决 ARC-AGI-3？.md)
 - [基于循环流的思考：通过动态计算分配提升深度推理能力](blog/posts/2026-09-13-基于循环流的思考-通过动态计算分配提升深度推理能力.md)
+- [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
 
 ## ARC-AGI-2
 
@@ -1492,6 +1494,7 @@ title: 标签浏览
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
 - [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
+- [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 
 ## DeepSeek-R1
 
@@ -2865,6 +2868,7 @@ title: 标签浏览
 - [ProofLoom：基于证明义务驱动的随机优化理论形式化构建系统](blog/posts/2026-09-30-ProofLoom-基于证明义务驱动的随机优化理论形式化构建系统.md)
 - [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
+- [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
 
 ## Lean Pool
 
@@ -2917,6 +2921,7 @@ title: 标签浏览
 - [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
 - [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
+- [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 
 ## Linux 系统安全
 
@@ -4217,6 +4222,7 @@ title: 标签浏览
 - [基于可验证奖励的同策略蒸馏 (OPDVR)](blog/posts/2026-08-27-基于可验证奖励的同策略蒸馏 -OPDVR.md)
 - [F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解](blog/posts/2026-09-05-F-GRPO：别让你的策略只学显而易见的常识，而遗忘那些稀缺的解.md)
 - [在模型动摇处分叉：面向树状结构强化学习的信念转移分支策略](blog/posts/2026-09-13-在模型动摇处分叉-面向树状结构强化学习的信念转移分支策略.md)
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 
 ## RMSNorm
 
@@ -4917,6 +4923,10 @@ title: 标签浏览
 
 - [TRUSS：迈向任务可靠与用户安全的自动化智能体技能生成](blog/posts/2026-08-20-TRUSS：迈向任务可靠与用户安全的自动化智能体技能生成.md)
 
+## TTFT
+
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
+
 ## TTS
 
 - [Gradium 开源 Phonon：仅 31M 参数的高性能端侧语音合成模型](blog/posts/2026-10-23-Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型.md)
@@ -5223,6 +5233,7 @@ title: 标签浏览
 ## Ubuntu
 
 - [Systemd 启动缓慢之谜：一次排查经历](blog/posts/2026-08-20-Systemd 启动缓慢之谜：一次排查经历.md)
+- [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 
 ## Ubuntu 26.04
 
@@ -5518,6 +5529,7 @@ title: 标签浏览
 
 - [考量 system.slice 与内核所需的内存容量](blog/posts/2026-08-27-考量 system.slice 与内核所需的内存容量.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
+- [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 
 ## claude.ai
 
@@ -5625,6 +5637,10 @@ title: 标签浏览
 
 - [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
 
+## pass@k
+
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
+
 ## performance
 
 - [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
@@ -5678,6 +5694,7 @@ title: 标签浏览
 - [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
 - [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
+- [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 
 ## terms.txt
 
@@ -5986,6 +6003,7 @@ title: 标签浏览
 - [ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序](blog/posts/2026-09-10-ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序.md)
 - [学习用于部分可观测性下具身推理的反事实世界模型](blog/posts/2026-09-10-学习用于部分可观测性下具身推理的反事实世界模型.md)
 - [QuantWM：面向世界模型与视频生成的时序一致性 2-Bit KV Cache 量化技术](blog/posts/2026-09-25-QuantWM-面向世界模型与视频生成的时序一致性-2-Bit-KV-Cache-量化技术.md)
+- [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
 
 ## 世界行动模型
 
@@ -11760,6 +11778,7 @@ title: 标签浏览
 - [在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距](blog/posts/2026-10-28-在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距.md)
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 
 ## 大语言模型代理
 
@@ -13308,6 +13327,7 @@ title: 标签浏览
 
 - [Agentao：面向嵌入式工具使用大模型智能体的策略治理运行时框架](blog/posts/2026-09-01-Agentao：面向嵌入式工具使用大模型智能体的策略治理运行时框架.md)
 - [Meta 开源 Rebalancer：日均求解四千万次超大规模资源放置问题的 C++ 求解器](blog/posts/2026-10-08-Meta-开源-Rebalancer-日均求解四千万次超大规模资源放置问题的-C++-求解器.md)
+- [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 
 ## 异常检测
 
@@ -13648,6 +13668,7 @@ title: 标签浏览
 - [Kyutai 开源 Voice of Reason：首个通过强化学习原生解算数学题的端到端语音大模型](blog/posts/2026-09-24-Kyutai-开源-Voice-of-Reason-首个通过强化学习原生解算数学题的端到端语音大模型.md)
 - [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 
 ## 强化学习与SFT
 
@@ -13783,6 +13804,7 @@ title: 标签浏览
 - [共识算法研究的终结？AI 智能体如何自主发现新一代分布式共识协议](blog/posts/2026-10-23-共识算法研究的终结-AI-智能体如何自主发现新一代分布式共识协议.md)
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 - [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
+- [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
 
 ## 形式语言学
 
@@ -14049,6 +14071,7 @@ title: 标签浏览
 - [两周提速三倍：Anthropic 团队如何利用 Claude 爬坡优化 claude.ai 核心体验](blog/posts/2026-10-08-两周提速三倍-Anthropic-团队如何利用-Claude-爬坡优化-claude.ai-核心体验.md)
 - [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 - [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 
 ## 性能分析
 
@@ -14791,6 +14814,10 @@ title: 标签浏览
 ## 推理时防御
 
 - [视觉语言模型中基于方向的推理时防御机制的跨架构审计](blog/posts/2026-08-26-视觉语言模型中基于方向的推理时防御机制的跨架构审计.md)
+
+## 推理服务
+
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 
 ## 推理期概率聚合
 
@@ -19612,6 +19639,10 @@ title: 标签浏览
 
 - [使用合成数据训练热红外图像中的无人机检测](blog/posts/2026-08-20-使用合成数据训练热红外图像中的无人机检测.md)
 
+## 熵坍塌
+
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
+
 ## 熵测量
 
 - [维度平衡提升大规模时空预测性能](blog/posts/2026-08-16-维度平衡提升大规模时空预测性能.md)
@@ -19992,6 +20023,7 @@ title: 标签浏览
 ## 理论研究
 
 - [你的概率式JEPA暗中其实是一个隐马尔可夫模型：联合嵌入预测学习的状态空间解释](blog/posts/2026-08-18-你的概率式JEPA暗中其实是一个隐马尔可夫模型：联合嵌入预测学习的状态空间解释.md)
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 
 ## 理论计算机科学
 
@@ -21648,6 +21680,10 @@ title: 标签浏览
 - [A-SR：基于分层协同的自进化智能体大模型符号回归](blog/posts/2026-08-07-A-SR：基于分层协同的自进化智能体大模型符号回归.md)
 - [看见、假设与验证：用于发现控制偏微分方程的多模态智能体框架](blog/posts/2026-09-01-看见、假设与验证：用于发现控制偏微分方程的多模态智能体框架.md)
 
+## 符号推理
+
+- [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
+
 ## 符号等价性检查
 
 - [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
@@ -22606,6 +22642,7 @@ title: 标签浏览
 - [个性化技能能帮助编程智能体吗？开发者交互历史的实证研究](blog/posts/2026-08-14-个性化技能能帮助编程智能体吗？开发者交互历史的实证研究.md)
 - [语言服务器能为编程智能体节省Token吗？测量方法与初步研究](blog/posts/2026-08-18-语言服务器能为编程智能体节省Token吗？测量方法与初步研究.md)
 - [工程化可靠的编程智能体：评估与运维模型周边的系统](blog/posts/2026-08-18-工程化可靠的编程智能体：评估与运维模型周边的系统.md)
+- [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 
 ## 编程竞赛
 
@@ -23668,6 +23705,10 @@ title: 标签浏览
 ## 蒙古世界
 
 - [当名称跨越文字：蒙古世界历史实体对齐的源头依据基准](blog/posts/2026-08-26-当名称跨越文字：蒙古世界历史实体对齐的源头依据基准.md)
+
+## 蒙特卡洛仿真
+
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 
 ## 蒙特卡洛方法
 
@@ -26246,6 +26287,10 @@ title: 标签浏览
 
 - [深度解析 Ubuntu 26.04 对 Apache systemd 服务的安全限制收紧与避坑指南](blog/posts/2026-09-24-深度解析-Ubuntu-26.04-对-Apache-systemd-服务的安全限制收紧与避坑指南.md)
 - [Linux 程序对 proc 目录的隐秘依赖远超想象：systemd 沙盒限制与审计实战](blog/posts/2026-09-25-Linux-程序对-proc-目录的隐秘依赖远超想象-systemd-沙盒限制与审计实战.md)
+
+## 运维架构
+
+- [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 
 ## 运行壳演化
 

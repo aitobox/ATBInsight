@@ -7,6 +7,8 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-11-02**: [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
+- **2026-10-31**: [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 - **2026-10-30**: [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 - **2026-10-29**: [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 - **2026-10-28**: [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)

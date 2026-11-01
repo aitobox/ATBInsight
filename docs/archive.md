@@ -2,8 +2,15 @@
 
 这里按发布日期整理了所有的历史文章，方便您按时间线回顾动态。
 
+## 2026-11
+
+- **2026-11-02**: [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 ## 2026-10
 
+- **2026-10-31**: [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
+- **2026-10-31**: [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
+- **2026-10-31**: [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
+- **2026-10-31**: [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 - **2026-10-30**: [Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent](blog/posts/2026-10-30-Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit.md)
 - **2026-10-30**: [基于 Qwen3-TTS 的声音克隆与定制化语音合成实战](blog/posts/2026-10-30-基于-Qwen3-TTS-的声音克隆与定制化语音合成实战.md)
 - **2026-10-30**: [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)

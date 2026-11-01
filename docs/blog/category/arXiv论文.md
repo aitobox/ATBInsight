@@ -2074,3 +2074,6 @@ title: arXiv论文
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](../posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](../posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](../posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
+- [代数世界模型：从环境探索到形式化数学证明](../posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
+- [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](../posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
+- [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](../posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
