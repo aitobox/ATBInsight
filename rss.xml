@@ -5,6 +5,406 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</guid>
+      <pubDate>Mon, 02 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在当前的软件工程与自动化浪潮中，主流代码智能体多依赖单会话模式工作，面对高并发的消息轰炸与复杂的任务流时，开发者的注意力往往成为制约效率的最大瓶颈。DeepSeek 团队正式开源了研究级原型项目 **dsh-superagent**，创新性地采用“路由调度-多工并发 (Router-Worker)”架构。主路由长驻监听来自 GitHub 与 Feishu 的事件流，并按需解耦为完全隔离的独立工单 (Tickets)，交由各执行节点并行推进，不仅能主动感知未指派的潜在需求，还能全自动化静默执行并交付拉取请求 (Pull Request, PR)。模拟测试显示，该框架在海量并发请求下将任务交付时长缩短了近一半，展示了未来全自主代码仓库管家的全新范式。
+
+---
+
+## 📋 概要
+
+&gt; ## 📋 Summary
+
+DeepSeek Harness 团队正式开源了 **dsh-superagent**。这是一个基于 MIT 协议发布的研究原型项目，专为单个 GitHub 代码仓库打造全自动、主动式编程 AI 智能体 (AI Agent)。该系统采用了创新的 **Router-Worker 架构**，能够实时监听来自 GitHub 与 Feishu 的事件消息流，并智能地将复杂需求拆解为相互隔离、支持并行处理的独立任务工单 (Tickets)。仿真测试数据显示，在高负载的消息洪峰下，这种超级智能体架构的任务交付速度比传统的单会话基线方案快了将近一倍 (p95 耗时仅为 15.7 分钟，而基线方案需要 29.5 分钟)，有效化解了 AI 辅助编程场景中人类工程师精力无法兼顾多任务的注意力瓶颈。
+
+&gt; The DeepSeek Harness team has open-sourced **dsh-superagent**, an MIT-licensed research prototype designed to act as a proactive coding agent for a single GitHub repository. Operating on a **Router-Worker architecture**, the agent listens to GitHub and Feishu event streams, automatically breaking down requests into parallelized, isolated work items (Tickets). Simulations indicate that the super-agent framework completes tasks nearly twice as fast as single-session baselines (p95 of 15.7 minutes vs. 29.5 minutes) under heavy message streams, mitigating human attention bottlenecks in AI-assisted development.
+
+---
+
+## 📌 核心速览 (TL;DR)
+
+&gt; ## 📌 TL;DaR (Too Long; Didn't Read)
+
+* **它是什么？** 一套基于 MIT 开源协议发布的 TypeScript v0.1.0 代码包，可灵活适配 DeepSeek Harness 配置支持的任意底层大模型。
+* **环境要求**：以专用的 DeepSeek Harness 配置文件形式在本地运行。系统需预装 Node.js (22.19+ 或 24+)、Git (2.32+)、Python 3.8+、tmux 以及 GitHub CLI (2.48+)。
+* **性能表现**：在处理高并发、杂乱的消息流时，效率显著超越传统的单会话智能体。
+  * **最佳战绩**：任务完成耗时 p95 为 15.7 分钟，对比单会话基线的 29.5 分钟，提速约 1.9 倍。
+  * **当前局限**：目前主要在合成消息流和模拟工具环境下完成测试，在真实工业级编程场景中的代码交付质量尚待进一步检验。
+
+&gt; * **What is it?** A TypeScript v0.1.0 bundle released under the MIT license, adaptable to any model supported by DeepSeek Harness profiles.
+&gt; * **System Requirements:** Runs locally as a dedicated DeepSeek Harness profile. Requires Node.js (22.19+ or 24+), Git (2.32+), Python 3.8+, tmux, and GitHub CLI (2.48+).
+&gt; * **Performance:** Handles noisy message streams significantly faster than single-session agents.
+&gt;   * **Best Case:** p95 task completion in 15.7 minutes vs. 29.5 minutes for the single-session baseline (~1.9x faster).
+&gt;   * **Limitations:** Tested primarily on synthetic messages and simulated tools; real-world coding quality remains unmeasured.
+
+---
+
+## 什么是 DeepSeek dsh-superagent？
+
+&gt; ## What is DeepSeek dsh-superagent?
+
+`dsh-superagent` 是一款既能“有求必应”又兼具“主动出击”能力的 GitHub 智能体。一旦被授权用户唤醒，它便会立即创建一个名为 **Ticket** (任务工单) 的专属工作单元。每个工单都会在完全独立、隔离的会话和工作目录中运行，互不干扰，最终将执行成果——通常是一份准备就绪的拉取请求 (Pull Request, PR) ——自动汇报给最初的发起会话。此外，它还配备了一个本地 Web 操作看板，专为少数确实需要人类介入决策的节点提供集中管控入口。
+
+&gt; `dsh-superagent` is a reactive and proactive GitHub agent. When triggered by an authorized user, it initializes a dedicated work item called a **Ticket**. Each Ticket executes in its own isolated session and directory, returning results—often in the form of pull requests—back to the original conversation thread. A local web panel provides a centralized interface for tasks requiring human intervention.
+
+根据官方 [README](https://github.com/deepseek-ai/dsh-superagent-prototype) 与 [设计哲学文档 (Philosophy Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/000-philosophy.md) 的说明，系统的核心工程哲学在于：**在创造最大实用价值的同时，将人类的注意力开销降至最低**。智能体在接收并确认需求后便会“静默深耕”，在代码编写和调试过程中绝不无故打扰用户；唯有在最终呈现成果、遇到必须由人裁决的阻塞卡点，或是汇报执行异常时，才会主动与开发者交互。
+
+&gt; According to the official [README](https://github.com/deepseek-ai/dsh-superagent-prototype) and [Philosophy Documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/000-philosophy.md), the core design philosophy centers on **maximizing value while minimizing human attention overhead**. The agent confirms requests once, operates silently during execution, and communicates only when presenting results, blocking questions, or reporting failures.
+
+---
+
+## DeepSeek 为何要打造超级智能体？
+
+&gt; ## Why Did DeepSeek Build a Super-Agent?
+
+当前主流的 AI 编程智能体通常把“单一交互会话”作为不可分割的工作基本单元。然而在实际工作场景中，人类程序员能够同时兼顾、有效跟踪的活跃会话上限通常只有 3 到 5 个。正如相关研究与 [凤凰网报道 (reported by ifeng)](https://tech.ifeng.com/c/8xg9tbvWnnf) 所强调的那样：在多任务并发的智能体工作流中，**制约整体效率的头号瓶颈已不再是底层大模型的能力上限，而是人类极其有限的注意力资源**。
+
+&gt; Mainstream AI coding agents traditionally treat a single session as the atomic unit of work. However, human developers can effectively monitor and manage only 3 to 5 active sessions simultaneously. As highlighted in research [reported by ifeng](https://tech.ifeng.com/c/8xg9tbvWnnf), **human attention—rather than model capability—becomes the primary bottleneck** for multitasking in agentic workflows.
+
+---
+
+## Router-Worker 架构是如何运作的？
+
+&gt; ## How Does the Router-Worker Architecture Work?
+
+该研究原型实现了一种优雅解耦的双层分工架构：
+
+&gt; The research prototype implements a decoupled, two-layer architecture:
+
+1. **路由器 (Router)**：负责全天候长驻运行，专门接管外界交互、研判事件价值并进行工单派发；
+2. **工作节点 (Workers)**：各个相互隔离的执行会话，专职并行执行被指派的具体编码任务。
+
+&gt; 1. **The Router:** A long-running session responsible for handling interaction, event evaluation, and task dispatching.
+&gt; 2. **Workers:** Isolated sessions that execute specific tasks in parallel.
+
+根据 [领域模型文档 (Domain Model Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/001-domain.md) 的定义，整体工作流转过程如下：
+
+&gt; As defined in the [domain model documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/001-domain.md), the workflow proceeds as follows:
+
+* **数据源 → 触发器 (Source → Trigger)**：系统自动摄入并监听来自 GitHub 或 Feishu 的事件消息；
+* **评估机制 (Evaluation)**：系统审视并研判传入的触发事件是否值得转化为新的开发工作；
+* **工单创建 (Ticket)**：一旦确认立项，系统便生成一个获得明确授权的工作单元，并附带一份不可篡改的 **任务授权书 (Mandate)**，明确划定其职责范围与权限边界；
+* **事件订阅 (Subscription)**：后续若在相关拉取请求 (PR) 下追加讨论或评论，系统会自动将其路由至负责该任务的原专属 Worker 会话，无需人类开发者反复重新 @ 智能体。
+
+&gt; * **Source → Trigger:** Events are ingested from GitHub or Feishu.
+&gt; * **Evaluation:** The system assesses whether incoming triggers warrant new work.
+&gt; * **Ticket:** An authorized unit of work accompanied by an immutable **Mandate** outlining its scope and permissions.
+&gt; * **Subscription:** Follow-up comments on pull requests are automatically routed to the correct Worker without requiring fresh mentions.
+
+在具体运行中，主会话加载轻量级工具集的 `dsh-superagent-router` 预设，而各个具体的 Worker 节点则执行 `dsh-superagent-worker`。正如 [执行指南 (Execution Guide)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/003-execution.md) 中所强调的，为了保证主交互通道永远保持丝滑顺畅与持续响应，所有 Shell 命令行操作在执行满 5 秒后都会被自动转入后台异步运行。
+
+&gt; The main session runs the `dsh-superagent-router` preset with a lightweight toolset, while individual Workers execute `dsh-superagent-worker`. To maintain continuous responsiveness, shell commands are automatically backgrounded after 5 seconds, as outlined in the [execution guide](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/003-execution.md).
+
+智能体的主动执行行为受到极其严格的用户权限约束。根据 [权限授权文档 (Authorization Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/docs/002-authorization.md) 的规定，系统提供了三种接收模式：
+
+&gt; Proactive operations are strictly governed by user permissions. The [authorization documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/docs/002-authorization.md) specifies three accept modes:
+
+* `off`：完全关闭主动操作；
+* `observe` (默认模式，智能体只在日志中记录其“本打算”采取的操作，而不实际执行)；
+* `auto`：完全开启自动执行模式。
+
+&gt; * `off`
+&gt; * `observe` (default mode, which logs actions the agent *would* have taken)
+&gt; * `auto`
+
+---
+
+## 性能测试与效果评估
+
+&gt; ## Performance &amp; Evaluation
+
+DeepSeek 团队利用模拟群聊和 GitHub CI 事件流对该系统进行了严格评测。在连续 5 轮迭代测试中，每轮测试均注入了约 300 条模拟消息 (其中穿插了约 20 条真实的有效开发请求)。
+
+&gt; DeepSeek evaluated the system using simulated group chat and GitHub CI event streams, with each run containing approximately 300 messages (including ~20 legitimate work requests) across five iterative test runs.
+
+* **超级智能体表现**：任务交付周期的 p50 为 12.4 分钟，p95 为 15.7 分钟；
+* **单会话 + 子智能体 (中性提示词基线)**：任务交付周期的 p95 为 29.5 分钟 (未披露 p50 数据)。在中性提示词条件下，基线模型在全部 5 轮测试中调用子智能体的次数为 0 次；
+* **路由器负载伸缩能力**：当外部事件到达速率从每分钟 1 次激增至 40 次时，系统的平均批处理规模从 1.0 增至 2.8，而单次请求的处理延迟仅从 2.5 秒温和微增到 3.9 秒；
+* **消融实验 (Ablation Study)**：若移除事件直接透传通道，将导致路由器的决策次数增加约 30%，同时缓存读取 Token 数量增加约 37% (从 2323 万 Token 暴增至 3177 万 Token)。
+
+&gt; * **Super-Agent Performance:** p50 of 12.4 minutes; p95 of 15.7 minutes.
+&gt; * **Single Session + Subagents (Neutral Prompt):** p95 of 29.5 minutes (p50 metrics were not disclosed). Under neutral prompts, the baseline model invoked subagents 0 times across 5 runs.
+&gt; * **Router Load Scaling:** As arrival rates increased from 1 to 40 events per minute, average batch sizes grew from 1.0 to 2.8, while per-request latency increased modestly from 2.5 to 3.9 seconds.
+&gt; * **Ablation Study:** Removing direct event pass-through resulted in a ~30% increase in router decisions and a ~37% increase in cache-read tokens (jumping from 23.23M to 31.77M). 
+
+* (注：以上所有数据均为基于该研究成果二次分析所得的自测公开数据。) *
+
+&gt; *(Note: All figures are self-reported via secondary analyses of the research findings.)*
+
+---
+
+## 横向对比一览：dsh-superagent 与其他编程智能体
+
+&gt; ## Comparative Overview: dsh-superagent vs. Other Coding Agents
+
+| 特性 (Feature) | DeepSeek dsh-superagent | GitHub Copilot Cloud Agent | Claude Code Action | OpenAI Codex |
+| :--- | :--- | :--- | :--- | :--- |
+| **触发机制 (Trigger Mechanism)** | 白名单用户 @ 唤醒；严格的书面规则触发 | Issue 指派、聊天界面、API、Slack 等 | `@claude` 唤醒、Issue 指派、工作流提示词 | Slack 中 `@Codex`；云端任务 |
+| **主动式 (无需提问) 工作 (Proactive Work)** | 支持，受规则门控约束 (默认处于 `observe` 观察模式) | 支持，通过自动化流程 | 支持，通过工作流事件 | 未披露 |
+| **并行隔离会话 (Parallel Isolated Sessions)** | 支持，每个工单对应 1 个独立会话 | 未披露 | 未披露 | 未披露 |
+| **执行环境 (Execution Environment)** | 本地机器 (Harness 专用配置文件) | 云端托管 (GitHub 后台运行) | GitHub Actions 运行器 (Runner) | Codex 云端 |
+| **聊天工具集成 (Chat Integrations)** | Feishu (可选) | Slack, Microsoft Teams | 未披露 | Slack |
+| **开源协议 (License)** | MIT | 未披露 | MIT | CLI 智能体开源 |
+| **可用性与获取门槛 (Availability)** | 研究原型项目 | 需订阅 Copilot 付费套餐 | 自备 API Key / 云服务商 | ChatGPT Plus 及更高订阅级别 |
+
+---
+
+## 核心要点总结
+
+&gt; ## Key Takeaways
+
+* **开创性的主动式原型**：DeepSeek 发布的 `dsh-superagent` 是一份基于 MIT 协议的开源蓝图，展示了实现自主化代码仓库治理的前沿探索；
+* **解耦式并发扩展**：通过核心中央路由器进行任务智能研判与派发，并在完全隔离的 Worker 节点中并行执行，实现了优雅的横向扩容；
+* **显著的效率跃升**：在模拟高负载测试中，任务交付效率大幅领先传统模式 (p95 耗时仅 15.7 分钟，而传统单会话基线高达 29.5 分钟)；
+* **安全防护与沙箱隔离**：由于智能体在执行时拥有完整的用户级操作系统权限，在实际生产环境中部署前，强烈建议配置严格的安全隔离与沙箱运行机制。
+
+&gt; * **Proactive Prototype:** DeepSeek released `dsh-superagent` as an MIT-licensed blueprint for autonomous repository management.
+&gt; * **Decoupled Scaling:** Work is intelligently dispatched via a central Router and executed concurrently across isolated Worker sessions.
+&gt; * **Efficiency Gains:** Simulated workloads demonstrated significantly faster task completion (p95: 15.7 mins vs. 29.5 mins for traditional single sessions).
+&gt; * **Security &amp; Isolation:** Because the agent executes with full user-level OS access, proper containment and sandboxing are strongly recommended before deployment.
+
+---</description>
+    </item>
+    <item>
+      <title>代数世界模型：从环境探索到形式化数学证明</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-31/代数世界模型-从环境探索到形式化数学证明/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/代数世界模型-从环境探索到形式化数学证明/</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着形式化数学与自动化定理证明技术的飞速发展，现代 AI 已经在已知公理体系下解决了大量高难度数学问题。然而在真实的探索场景中，更关键的挑战在于：面对一个完全未知的陌生环境，AI 智能体 (AI Agent) 能否自主总结抽象规律并完成严密的形式化数学推理？清华大学与图灵奖得主 Andrew Chi-Chih Yao 等人联合提出的“代数世界模型” (Algebraic World Model, AWM) 首次架起了这一关键桥梁。该框架让 AI 能够像科学家一样，从主动环境交互中迭代提取 Python 经验假设，再借助范畴论进行结构化化简，并将其转化为经 Lean 4 内核校验的严格证明。在具有挑战性的 ARC-AGI-3 基准测试中，AWM 展现出跨越经验的卓越泛化能力，为迈向兼具数学洞察与可靠性保证的下一代通用人工智能 (AGI) 提供了全新范式。
+
+---
+
+## 论文摘要概览
+
+&gt; ## Abstract Summary
+
+现代人工智能已经在数学领域取得了令人瞩目的里程碑式突破，不仅能够成功求解极具挑战性的前沿数学难题，还能生成经过机器严格验证的形式化证明代码 (例如使用 Lean 语言) 。然而，现有的推理系统普遍高度依赖于预先设定好的人类数学公理定义与形式化规范。这就引出了一个最为根本的核心问题：**AI 智能体 (AI Agent) 究竟能否在一个完全未知的陌生世界中，自主展开严密的形式化数学推理？**
+
+&gt; Modern AI has achieved remarkable milestones in mathematics, successfully solving challenging problems paired with machine-checkable proofs (such as in Lean). However, these systems traditionally rely on pre-existing mathematical definitions and formal specifications. This introduces a fundamental question: **Can an AI agent rigorously reason about an entirely unknown world?**
+
+本篇论文提出了**代数世界模型** (Algebraic World Model, AWM) ，这是一套全新的理论与工程框架，成功弥合了“主动环境探索”与“显式形式化数学推理”之间的鸿沟。
+
+&gt; This paper introduces the **Algebraic World Model (AWM)**, a novel framework that bridges the gap between active environment exploration and explicit, formal mathematical reasoning.</description>
+    </item>
+    <item>
+      <title>Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-31/Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析/</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着 Ubuntu 26.04 正式跟进上游 systemd 的默认设计，系统中的临时目录 `/tmp` 已默认被挂载为基于内存的临时文件系统 (tmpfs) 。在个人电脑与内存充裕的工作站上，这一改动不仅能显著加快临时小文件的读写吞吐，还能有效减少固态硬盘 (SSD) 的擦写磨损。然而在多用户共享的算力服务器以及自动化运行的 AI 智能体 (AI Agent) 业务场景中，程序或用户极易无意识地向 `/tmp` 倾倒动辄数十 GB 的大文件，进而引发剧烈的系统内存雪崩。更棘手的是，由于 systemd 控制组 (cgroups) 在用户会话注销 (session teardown) 时的统计漏洞，残留的 tmpfs 内存会脱离单用户资源配额 (`MemoryMax=`) 的管控，使单用户限额机制形同虚设。本文深入拆解了该机制背后的底层机理，并给出了通过屏蔽服务或设置全局 slice 限额等行之有效的工程应对方案。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+本文深入探讨了 Ubuntu 26.04 将 `/tmp` 默认挂载为 `tmpfs` (基于内存的文件系统) 所引发的一系列意外问题。这一调整继承自上游 systemd 的默认行为。虽然对于物理内存 (RAM) 充裕或渴望降低固态硬盘 (SSD) 写入磨损的设备而言此举颇具优势，但在多人共享的计算服务器环境中，普通用户或大语言模型智能体 (LLM Agent) 往往会在不知情的情况下向 `/tmp` 写入庞大的文件，从而引发严重的系统内存压力。本文进一步分析了 `tmpfs` 机制下的 `/tmp` 使用量与 systemd 控制组 (cgroups) 内存记账之间的交互影响，指出了在用户会话注销清理 (session teardown) 和资源配额管控方面存在的关键隐患。
+
+&gt; This article explores the unexpected issues arising from Ubuntu 26.04’s default behavior of mounting `/tmp` as a `tmpfs` (in-memory filesystem), a change inherited from systemd. While beneficial for systems with abundant RAM or those seeking to reduce SSD wear, it causes significant memory pressure on shared compute servers where users or LLM agents unknowingly park massive files in `/tmp`. The post also examines how `tmpfs` `/tmp` usage interacts with systemd cgroup memory accounting, highlighting critical gaps in user session teardown and resource limits.
+
+---
+
+## `tmpfs /tmp` 遭遇的骨感现实
+
+&gt; ## The Unexpected Reality of `tmpfs /tmp`
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; **理论预期：** “/tmp 目录是放小文件的地方，所以把它挂载为 tmpfs 完全合情合理。”
+&gt; 
+&gt; **现实打脸：** 我们一台计算服务器的 `/tmp` 目录里赫然堆积了整整 33 GB 的数据。想来大概没人通知过使用服务器的各位用户关于 `/tmp` 变成内存盘这回事吧。
+&gt; 
+&gt; *(更准确地说，根本没人告诉过他们所运行的程序——包括一大堆正在跑的大语言模型智能体 (LLM Agent)——关于 `/tmp` 的这个变化。)*
+&gt; 
+&gt; **Theory:** "/tmp is for small files, so that's why we can make it a tmpfs."
+&gt; 
+&gt; **Actual reality:** 33 GB parked in `/tmp` on one of our compute servers. I guess no one told the people using it about that `/tmp` thing, eh.
+&gt; 
+&gt; *(More exactly no one told the programs they're running about that `/tmp` thing. Including a bunch of LLM agents.)*
+
+将 `/tmp` 挂载为 `tmpfs` 的配置是 Ubuntu 26.04 中的一项全新默认行为，源于其跟进并采纳了上游 systemd 的默认设定。正如 [Arch Wiki](https://wiki.archlinux.org/title/Tmpfs) 中所记录的，可以通过以下命令禁用 systemd 的这一默认行为：
+
+&gt; This `tmpfs` `/tmp` setup is a new default in Ubuntu 26.04, stemming from its adoption of upstream systemd defaults. As documented in [the Arch Wiki](https://wiki.archlinux.org/title/Tmpfs), this systemd behavior can be disabled with:
+
+```bash
+systemctl mask tmp.mount
+```
+
+执行该命令后需要重启系统方可生效。尽管在正在承载业务的活跃计算服务器上执行重启可能会造成中断，但通过屏蔽 (mask) 挂载服务，能够确保在后续的每次系统重启中都不会再出现该问题。
+
+&gt; Followed by a system reboot. While rebooting active compute servers can be disruptive, applying the mask ensures the issue will not return upon subsequent reboots.
+
+---
+
+## tmpfs 何时锦上添花，何时又适得其反？
+
+&gt; ## When `tmpfs` Helps vs. When It Hurts
+
+将 `/tmp` 挂载为 `tmpfs` 在某些特定场景下确实非常合理且具备优势：
+
+&gt; A `tmpfs` `/tmp` makes reasonable sense in specific scenarios:
+
+* 系统拥有非常充裕的物理内存 (RAM) ；
+* 希望最大程度降低根文件系统所在的固态硬盘 (SSD) 写入磨损；
+* 业务场景对 `/tmp` 目录有着极致的输入输出 (I/O) 读写速度需求。
+
+&gt; * You have abundant RAM.
+&gt; * You want to minimize SSD write wear on the root filesystem.
+&gt; * You require exceptionally fast `/tmp` I/O.
+
+然而，在多用户共享的服务器（例如集中式计算集群）上，这种设计的短板便暴露无遗。普通用户与自动化脚本程序经常会向 `/tmp` 目录中写入数十甚至数百 GB 的庞大数据，并且一放就是好几天，不知不觉中便悄悄蚕食掉了大量极其宝贵的物理内存。
+
+&gt; However, on shared servers—such as compute clusters—it falls short. Users and automated applications frequently write gigabytes of data to `/tmp` and leave it there for days, silently consuming valuable RAM.
+
+---
+
+## 与 systemd 控制组及内存记账机制的交互影响
+
+&gt; ## Interaction with Systemd Cgroups and Memory Accounting
+
+如果你通过 [systemd 对控制组实施内存配额限制](https://utcc.utoronto.ca/~cks/space/blog/linux/StrictOvercommitNoLongerUsing) ，那么挂载为 `tmpfs` 的 `/tmp` 又是如何与这些资源限制相互作用的呢？
+
+&gt; If you enforce [systemd memory limits on cgroups](https://utcc.utoronto.ca/~cks/space/blog/linux/StrictOvercommitNoLongerUsing), how does a `tmpfs` `/tmp` interact with those restrictions?</description>
+    </item>
+    <item>
+      <title>RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-31/RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价/</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>在以 DeepSeek-R1 和 OpenAI o1 为代表的推理大模型浪潮中，基于可验证奖励的强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR) 凭借在数学与代码任务上的卓越表现成为了当之无愧的焦点。然而学界长期观察到一个诡异的“倒挂”现象：强化学习虽然能大幅提升模型的单次解题成功率 (`pass@1`)，但一旦放宽采样次数 (`pass@k`)，经过强化微调的模型在多次采样下的总体解题率反而落后于原始基座模型。这究竟是训练未收敛的暂时缺陷，还是不可逾越的底层法则？来自学者 Yinuo Liu 的最新研究通过严格的数学推导，正式确立了 RLVR 的“没有免费午餐定理”——每一次 `pass@1` 的指标跃升，都在数学层面上严格对应着某些困难提示词上解题能力的衰退与多样性损失。这一里程碑式的理论成果不仅揭示了强化学习并不能向外凭空拓宽模型的推理前沿，而且将“熵坍塌”与“熵-性能定律”统一在指数倾斜框架之下，为大模型推理优化的边界认知与评测方法树立了全新的理论基石。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+基于可验证奖励的强化学习 (RLVR) 通常能显著提高语言模型初次尝试的成功率 (`pass@1`)，但当给予多次采样尝试 (`pass@k`) 时，其表现却往往会逊色于基座模型。
+
+&gt; Reinforcement Learning with Verifiable Rewards (RLVR) typically increases a language model's success rate on the first try (`pass@1`), but often causes it to underperform relative to the base model when given multiple sampling attempts (`pass@k`). 
+
+来自 Yinuo Liu 的这篇论文平息了长期以来的争论：这种权衡取舍究竟只是训练过程中的暂态阶段，还是一种根本性的固有局限？通过最新建立的严格定理，作者从数学上证明了这种性能反转其实是一种精确的、受数学上界约束的必然代价：
+
+&gt; This paper by Yinuo Liu settles the ongoing debate over whether this trade-off is a transient training phase or a fundamental limitation. Through a newly established theorem, the author proves that this reversal is an exact, mathematically bounded cost:
+
+* **权衡取舍具有根本性**：在排他性特化机制下，模型策略的每一次旨在提升 `pass@1` 的参数更新，都必定会严格降低某些提示词 (Prompt) 上的解题成功率。
+* **紧致的数学上界**：性能曲线发生交叉反转的次数，受到各提示词成功率变化之符号变异数 (Sign Variation) 的严格约束 (这是一个全正且紧致的数学上界)。
+* **统一的底层机制**：同一个指数倾斜恒等式 (Exponential Tilt Identity) 将强化学习中的“熵坍塌”与“熵-性能定律”纳入到了单一而优美的数学框架之中。
+
+&gt; * **The Trade-Off is Fundamental:** Every update that increases `pass@1` strictly lowers the success rate of some prompts under exclusive specialization.
+&gt; * **Tight Mathematical Bounds:** The number of crossovers is bounded by the sign variation of the shift in per-prompt success (a totally positive, tight bound).
+&gt; * **Unified Mechanism:** The same exponential tilt identity bridges entropy collapse and the entropy-performance law under a single mathematical framework.
+
+归根结底，强化学习 (Reinforcement Learning) 并不能向外拓宽大语言模型 (Large Language Model, LLM) 的推理前沿；相反，它只是让模型沿着既有的能力边界移动，而且必须付出可精确量化的代价。
+
+&gt; Ultimately, reinforcement learning does not widen the reasoning frontier; rather, it allows models to move along it at a quantifiable price.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 编号**：[arXiv:2610.39295 [cs.LG]](https://arxiv.org/abs/2610.39295)
+* **论文作者**：Yinuo Liu
+* **提交日期**：2026 年 10 月 29 日
+* **主分类**：机器学习 (`cs.LG`)
+* **次分类**：人工智能 (`cs.AI`)；优化与控制 (`math.OC`)；统计机器学习 (`stat.ML`)
+* **代码与验证工具包**：已开源于 [GitHub](https://github.com/yliusci/no-free-lunch-rlvr) (全部 34/34 项自动化检查均已通过)
+
+&gt; * **arXiv ID:** [arXiv:2610.39295 [cs.LG]](https://arxiv.org/abs/2610.39295)
+&gt; * **Authors:** Yinuo Liu
+&gt; * **Submitted:** October 29, 2026
+&gt; * **Primary Subject:** Machine Learning (`cs.LG`)
+&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`); Optimization and Control (`math.OC`); Machine Learning (`stat.ML`)
+&gt; * **Code &amp; Verification Package:** Available on [GitHub](https://github.com/yliusci/no-free-lunch-rlvr) (34/34 automated checks passed)
+
+---
+
+## 摘要
+
+&gt; ## Abstract
+
+基于可验证奖励的强化学习 (RLVR) 往往会让语言模型陷入一种奇特的境地：它在“单次尝试”下的解题表现更加出色，但在“多次尝试”下的成功率反而下滑——换言之，强化学习大幅拉高了模型的 `pass@1`，但在采样预算 $k$ 较大时，未经微调的基座模型却能在 `pass@k` 上完成反超。这究竟暴露出强化学习未能真正赋予模型推理能力，还是仅仅是可以通过延长训练时间就能自然化解的暂态现象？本文通过建立一个严谨的数学定理彻底平息了这场争议。研究表明，这种性能反转绝非偶然失误，而是优化过程中必然付出的“代价”，并且我们在文中精确推导出了这一代价的定量速率。将 RLVR 建模为在跨提示词共享策略空间上对基座策略的“指数倾斜 (Exponential Tilt)”，我们证明在排他性特化 (Exclusive Specialization) 机制下，任何旨在提升 `pass@1` 的参数更新，都必定会严格降低某些提示词上的解题成功率；基于凸分析中的 Stiemke 对偶性 (Stiemke Duality)，提示词上存在严格正的边际代价，正是这种特化权衡的充分必要条件，并且数学证明表明，仅仅在某个提示词上成为最优策略，根本不足以抵消这种代价。当优化损失传导至难度最高的提示词时，便会不可避免地触发 `pass@k` 性能曲线的交叉反转，而曲线发生交叉反转的次数上限，受到各个提示词成功率变化向量之“符号变异数 (Sign Variation)”的严格约束；这是一个基于全正性 (Totally Positive) 的紧致数学上界，并且在保持偏序的特殊情形下，该定理完美还原了既有文献中所报道的“单次交叉”结论。这种性能交叉绝不是可以通过打补丁修复的工程缺陷：在受限优化路径下，参数更新轨迹精确勾勒出了 `pass@1` 与 `pass@k` 之间的能力帕累托前沿；如果强行要求完全消除这种交叉，就必须彻底牺牲掉模型在 `pass@1` 上取得的全部增益！此外，同一个指数倾斜恒等式还能自然导出“熵坍塌 (Entropy Collapse)”现象以及具有可辨识指数的“熵-性能定律 (Entropy-Performance Law)”，从而用同一套底层数学机制将两大独立的研究领域完美统一起来。强化学习无法向外拓展模型的推理前沿，它所能做的仅仅是沿着既有的能力边界滑动——我们还设计了一套诊断工具，只需分析任意评测日志，便可直接计算出理论边界、执行保序检验并量化实际代价。天下没有免费的午餐，一切皆有代价。
+
+&gt; Reinforcement learning with verifiable rewards (RLVR) makes a language model solve more problems on the first try and fewer when given many tries: it raises `pass@1` while the base model overtakes it at large sampling budget $k$. Is this a failure of RL to add reasoning, or a transient that more training removes? We settle the question with a theorem. The reversal is a price, and we compute its exact rate. Modeling RLVR as an exponential tilt of a base policy over strategies shared across prompts, we prove that under exclusive specialization every update that raises `pass@1` strictly lowers the success of some prompt; a strictly positive price on prompts (Stiemke duality) is the exact condition, and being merely the best strategy on a prompt is provably not enough. When the loss reaches the hardest prompts, it forces a `pass@k` crossover, and the number of crossings is at most the sign variation of the shift in per-prompt success, a totally positive bound that is tight and that recovers the known single-crossover result as its order-preserving case. The crossover is not a bug to patch: a constrained update traces the exact `pass@1` versus `pass@k` frontier, and removing the crossover entirely costs the entire `pass@1` gain. The same tilt identity yields entropy collapse and the entropy-performance law with an identifiable exponent, unifying two literatures under one mechanism. Reinforcement cannot widen the reasoning frontier; it can only move along it, at a price we make measurable by a diagnostic that reads the bound, the order-preserving test, and the price from any evaluation log. There is no free lunch, only a price.
+
+---
+
+## 核心结论与主要贡献
+
+&gt; ## Key Takeaways &amp; Contributions
+
+1. **精确量化代价速率**：将 RLVR 形式化建模为策略分布上的“指数倾斜”，从数学上严格证明了模型在简单或特定目标提示词上取得的性能提升，必定以牺牲其他提示词的成功率为严格代价。
+2. **揭示 Stiemke 对偶条件**：严谨论证了在各个提示词上存在严格正的影子价格 (基于 Stiemke 对偶性)，是模型发生策略特化权衡取舍的充要条件。
+3. **建立全正性数学紧界**：确立了 `pass@k` 性能曲线交叉反转的次数，受到每个提示词成功率变化向量之“符号变异数”的严格约束，给出了紧致的全正性数学上界。
+4. **构建熵坍塌统一理论**：借助统一的指数倾斜恒等式，将强化学习策略优化中的权衡博弈、熵坍塌现象以及熵-性能经验定律无缝桥接在同一理论框架之下。
+
+&gt; 1. **Exact Rate Calculation:** Formulates RLVR as an exponential tilt of a base policy over strategies, proving that performance gains on easy or targeted prompts come at a strict cost to others.
+&gt; 2. **Stiemke Duality Condition:** Demonstrates that a strictly positive price on prompts is the exact condition for specialization trade-offs.
+&gt; 3. **Totally Positive Bound:** Establishes that the number of `pass@k` crossovers is tightly bounded by the sign variation of the shift in per-prompt success.
+&gt; 4. **Unified Theory of Entropy Collapse:** Connects policy optimization trade-offs with entropy collapse and the entropy-performance law via a unified tilt identity.</description>
+    </item>
+    <item>
+      <title>GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-10-31/GAUSS-面向大语言模型推理服务的负载感知仿真器/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/GAUSS-面向大语言模型推理服务的负载感知仿真器/</guid>
+      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 深度融入生产级应用，如何在保障严格服务等级目标 (SLO) 的同时降低昂贵的算力成本，成为基础设施架构的核心挑战。传统的推理评估往往依赖单一的吞吐量指标，无法捕捉生成式两阶段（预填充与解码）耦合及持续批处理机制所引发的非线性长尾延迟。为此，研究团队推出了名为 GAUSS 的新型负载感知分析与蒙特卡洛仿真器。它通过为预填充和解码构建专属延迟曲面，结合 Lindley 递归排队理论与集成蒙特卡洛采样，实现了对首字延迟 (Time-to-First-Token, TTFT) 与字间延迟 (Time-Between-Tokens, TBT) 全性能分布的精确预测。该工作为未部署硬件评估、新型请求调度算法验证以及精准容量规划提供了兼顾精度与效率的仿真基准。
+
+---
+
+## 📌 内容概要
+
+&gt; ## 📌 Summary
+
+当前，大语言模型 (LLM) 推理已演进为一项核心的企业级生产负载，需要针对延迟服务等级目标 (SLO) 进行严谨的资源供给、性能监控以及用量计费。然而，传统的单一吞吐量指标在这一场景下往往失效——这是因为生成式服务将预填充 (prefill) 与解码 (decode) 这两个特征截然不同的阶段紧密耦合，而持续批处理 (continuous batching) 机制更是从根本上重构了实际的服务处理流程。
+
+&gt; Large language model (LLM) inference has evolved into a core operational workload requiring strict provisioning, monitoring, and billing against latency Service-Level Objectives (SLOs). Traditional single-throughput metrics fall short because generative serving couples two distinct phases (prefill and decode) with vastly different characteristics, while continuous batching fundamentally alters the effective service process.
+
+针对这些局限性，作者团队推出了 **GAUSS**——一个兼具工作负载感知能力的解析与蒙特卡洛 (Monte-Carlo) 仿真器。该仿真器旨在针对特定工作负载、推理引擎与硬件加速器，精准预测完整的性能分布——尤其是**首字延迟 (Time-to-First-Token, TTFT)** 与**字间延迟 (Time-Between-Tokens, TBT)**，并给出系统可稳定承载的可持续请求速率。
+
+&gt; To address these limitations, the authors introduce **GAUSS**, a workload-aware analytical and Monte-Carlo simulator designed to predict full performance distributions—specifically **Time-to-First-Token (TTFT)** and **Time-Between-Tokens (TBT)**—alongside sustainable request rates for specific workloads, engines, and accelerators.
+
+---
+
+## 🔑 核心特性与方法论
+
+&gt; ## 🔑 Key Features &amp; Methodology
+
+* **阶段专属延迟曲面 (Phase-Specific Latency Surfaces)**：为预填充和解码阶段分别配备校准后的专属延迟曲面模型。
+* **Lindley 递归排队模型 (Lindley-Recurrence Queueing Model)**：精准建模随机请求到达场景下的排队动态与等待行为。
+* **集成蒙特卡洛采样 (Ensemble Monte-Carlo Sampling)**：借助高鲁棒性的蒙特卡洛采样而非单纯重放孤立的历史追踪日志来评估系统性能，从而赋能运维团队：
+  * 对尚未部署的新型硬件、全新路由策略及假设性工作负载进行前瞻性建模；
+  * 精准捕捉传统追踪驱动型仿真器往往采样不足的长尾延迟 (Latency Tails)。
+* **高级容量规划 (Advanced Capacity Planning)**：强力支撑关键的运维决策，包括最优工作点选取、流量智能分流，以及基于最短剩余处理时间 (SRPT) 的高效调度策略。
+
+&gt; * **Phase-Specific Latency Surfaces:** Pairs calibrated latency models for prefill and decode phases.
+&gt; * **Lindley-Recurrence Queueing Model:** Accurately models queueing behavior under stochastic request arrivals.
+&gt; * **Ensemble Monte-Carlo Sampling:** Estimates performance through robust sampling rather than replaying isolated historical traces, enabling operators to:
+&gt;   * Model undeployed hardware, novel routing policies, and hypothetical workloads.
+&gt;   * Accurately capture latency tails that trace-driven simulators typically under-sample.
+&gt; * **Advanced Capacity Planning:** Supports critical operational decisions including operating-point selection, traffic segmentation, and shortest-remaining-processing-time (SRPT) scheduling.
+
+---
+
+## 🔗 快速链接与资源
+
+&gt; ## 🔗 Quick Links &amp; Resources
+
+* **全文阅读：** [查看 PDF](https://arxiv.org/pdf/2610.37989)
+* **音频解读：** [收听音频概要](/audio/2610.37989)
+* **授权协议：** [知识共享署名 4.0 国际许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) `&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;`
+* **外部学术引用：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.37989) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.37989) | [SciX](https://scixplorer.org/abs/arXiv:2610.37989)
+
+&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.37989)
+&gt; * **Audio Summary:** [Listen to Audio Summary](/audio/2610.37989)
+&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) `&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;`
+&gt; * **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.37989) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.37989) | [SciX](https://scixplorer.org/abs/arXiv:2610.37989)</description>
+    </item>
+    <item>
       <title>基于 Qwen3-TTS 的声音克隆与定制化语音合成实战</title>
       <link>https://insight.aitobox.com/blog/posts/2026-10-30/基于-Qwen3-TTS-的声音克隆与定制化语音合成实战/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-10-30/基于-Qwen3-TTS-的声音克隆与定制化语音合成实战/</guid>
@@ -4836,600 +5236,6 @@ GPU 算子内核是现代人工智能实现极致计算性能的心脏。然而�
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.28429)
 &gt;   * [SciX](https://scixplorer.org/abs/arXiv:2610.28429)</description>
-    </item>
-    <item>
-      <title>Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 智能体与复杂强化学习 (Reinforcement Learning, RL) 任务的兴起，传统的轮询负载均衡策略在面对极度依赖上下文缓存的复杂请求时显得捉襟见肘，极易导致严重的显存浪费与高延迟。为了攻克这一工业界普遍痛点，Google Cloud 联合 Red Hat、IBM、CoreWeave 以及 NVIDIA 等行业巨头，正式推出了首个开源且云原生 (Kubernetes-native) 的分布式推理框架 llm-d 1.0。llm-d 打破了过去 vLLM 与 SGLang 等模型服务端各自为政的碎片化局面，创新性地引入了前缀感知智能路由、多级分层缓存解耦以及预填充/解码分离编排机制，将模型服务器统一纳管为协同工作的资源池。在高达 17,000 节点的 Google Kubernetes Engine (GKE) 超大规模集群测试中，llm-d 将总体吞吐量提升了 2.9 倍，并在 Ironwood 等新一代 TPU 芯片上将首字延迟削减逾 85%，标志着面向 AI 智能体时代的企业级分布式推理迈向了高可靠、超弹性的生产就绪阶段。
-
----
-
-## 📌 执行摘要
-
-&gt; ## Executive Summary
-
-Google Cloud 携手 Red Hat、IBM、CoreWeave 以及 NVIDIA，正式联合发布了 **llm-d 1.0**——这是其开源、云原生 (Kubernetes-native) 分布式推理技术栈的首个正式稳定版本。在北美 PyTorch 开发者大会 (PyTorch Conference North America) 上亮相的 llm-d，能够将碎片化的 vLLM 与 SGLang 模型服务器整合为一个统一协调的弹性资源池。传统轮询负载均衡在应对苛刻的私有化部署 AI 智能体 (AI Agent) 与强化学习工作负载时往往捉襟见肘，而 llm-d 专为此类场景量身打造，1.0 版本不仅带来了生产级别的稳定性，还引入了前沿的多租户流控机制以及跨多集群的企业级卓越性能。
-
-&gt; Google Cloud, in collaboration with Red Hat, IBM, CoreWeave, and NVIDIA, has officially released **llm-d 1.0**—the first stable version of its open-source, Kubernetes-native distributed inference stack. Announced at the PyTorch Conference North America, llm-d unifies fragmented vLLM and SGLang model servers into a single coordinated pool. Designed specifically to handle demanding self-hosted agent and reinforcement learning (RL) workloads where traditional round-robin load balancing fails, version 1.0 introduces production-grade reliability, advanced multi-tenant flow control, and enterprise-scale multi-cluster performance.
-
----
-
-## 什么是 llm-d 1.0？
-
-&gt; ## What is llm-d 1.0?
-
-**llm-d** 诞生于 2025 年，由 Red Hat、IBM 和 Google 联合主导发起，目前已迅速成长为一个蓬勃发展的开源生态，汇聚了来自 25 家以上机构的 500 多名贡献者。该项目于 2026 年 3 月 12 日被正式接纳为 **云原生计算基金会 (CNCF) 沙箱项目 (Sandbox project)**，并严格遵循 **Apache 2.0 开源许可协议**。
-
-&gt; Founded in 2025 and led jointly by Red Hat, IBM, and Google, **llm-d** has grown into a thriving ecosystem featuring over 500 contributors from 25+ organizations. It was accepted as a **CNCF Sandbox project** on March 12, 2026, and is licensed under the **Apache 2.0 license**.
-
-尽管在早期的迭代版本中，团队已经陆续探索并引入了诸如前缀感知路由 (Prefix-Aware Routing)、键值缓存 (KV Cache) 卸载转储、预填充/解码分离解耦 (Prefill/Decode Disaggregation)、超宽专家并行 (Wide Expert Parallelism) 以及批量推理等基石特性，但 **1.0 正式版本** 的核心焦点在于对这些模块进行工业级加固，全面支撑企业在日常生产环境下的持续运维管理 (Day-2 Operations)。
-
-&gt; While earlier iterations introduced foundational features—such as prefix-aware routing, KV cache offloading, prefill/decode disaggregation, wide expert parallelism, and batch inference—**Version 1.0** focuses heavily on hardening these components for production environments (Day-2 operations).
-
----
-
-## llm-d 1.0 带来哪些全新突破？
-
-&gt; ## What's New in llm-d 1.0?
-
-* **多租户服务质量保障 (QoS)**：兼具优先级与公平感知的 [流量控制机制 (Flow Control)](https://llm-d.ai/docs/well-lit-paths/foundations/flow-control)，有效杜绝了偶发性迸发的智能体循环调用抢占算力、导致对延迟敏感的普通用户请求发生饥饿的现象。
-* **稳固的 v1 核心基石**：全链路加固的请求调用路径与标准化的稳定 API，已在多种云平台环境以及异构硬件加速芯片上完成全方位生产验证。
-* **零宕机平滑升级**：由热备方案保障的高可用路由网关，辅以创新的 [DisaggregatedSet](https://llm-d.ai/docs/dev/architecture/model-server-orchestration/disaggregatedset) 资源编排机制，支持预填充 (Prefill) 与解码 (Decode) 服务池的安全协同滚动更新。
-* **智能体感知服务体系**：具备会话感知的路由策略、话轮优先级调度机制，以及原生的 Responses API 状态管理能力。
-* **异步推理处理架构**：通过 [llm-d-async-processor](https://github.com/llm-d/llm-d-async) 处理器，能够自动从 Google Cloud Pub/Sub 或 Redis 中无缝拉取批处理作业，充分压榨集群中的闲置潮汐算力。
-* **扩展的 TPU 原生支持**：深度集成 [TorchTPU](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/)，让 PyTorch 模型能够在 Google TPU 上的上游 vLLM 与 SGLang 实例中原生高能效运行。
-
-&gt; * **Multi-Tenant Quality of Service (QoS):** Priority and fairness-aware [flow control](https://llm-d.ai/docs/well-lit-paths/foundations/flow-control) prevents bursty agent loops from starving latency-sensitive user requests.
-&gt; * **Stable v1 Foundation:** Hardened request paths and stable APIs validated across multiple cloud environments and diverse hardware accelerators.
-&gt; * **Zero-Downtime Upgrades:** Router high availability backed by hot standby options, alongside the [DisaggregatedSet](https://llm-d.ai/docs/dev/architecture/model-server-orchestration/disaggregatedset) mechanism, which safely rolls prefill and decode pools together.
-&gt; * **Agent-Aware Serving:** Session-aware routing, turn-priority scheduling, and native Responses API state management.
-&gt; * **Asynchronous Inference:** The [llm-d-async-processor](https://github.com/llm-d/llm-d-async) pulls jobs seamlessly from Google Cloud Pub/Sub or Redis into available slack capacity.
-&gt; * **Expanded TPU Support:** [TorchTPU](https://developers.googleblog.com/torchtpu-running-pytorch-natively-on-tpus-at-google-scale/) integration enables PyTorch models to run natively inside upstream vLLM and SGLang instances on Google TPUs.
-
----
-
-## llm-d 如何进行智能请求路由？
-
-&gt; ## How Does llm-d Route Requests?
-
-llm-d 路由器基于 Kubernetes Gateway API 推理扩展 (Inference Extension) 深度构建。它能够动态追踪并掌握各个副本节点分别缓存了哪些特定的上下文提示词前缀，结合当前各服务器的实际负载水线与预估延迟，将新传入的请求毫秒级精准投递至已驻留对应上下文的节点上。
-
-&gt; The llm-d router builds on top of the Kubernetes Gateway API Inference Extension. It dynamically tracks which replicas hold specific cached prefixes, factors in current server loads and predicted latencies, and routes requests precisely where the necessary context already lives. 
-
-当硬件加速芯片的高带宽内存 (High Bandwidth Memory, HBM) 接近饱和时，KV Cache 会通过专用连接组件——如 vLLM 的 `OffloadingConnector`、`Mooncake` 或是 SGLang 的 `HiCache`——平滑转储至宿主机 CPU 内存、本地高速 NVMe SSD 乃至托管的 Lustre (Managed Lustre) 分布式存储中。此外，架构将算力密集的 **预填充 (Prefill)** 任务与显存带宽受限的 **解码 (Decode)** 任务进行彻底物理分离，分别部署在相互独立的优化资源池中，互不干扰。
-
-&gt; When accelerator HBM (High Bandwidth Memory) fills up, the KV cache seamlessly migrates to host CPU memory, local SSDs, or Managed Lustre storage using connectors like vLLM’s `OffloadingConnector`, `Mooncake`, or SGLang’s `HiCache`. Furthermore, compute-heavy **prefill** operations and memory-bound **decode** operations are split into distinct, optimized pools.
-
----
-
-## 性能基准测试亮点
-
-&gt; ## Benchmark Highlights
-
-已公布的基准测试结果（由 Google、Snap 以及 Zenteiq 官方实测披露）展现了惊人的性能跃升：
-
-&gt; Published benchmarks (self-reported by Google, Snap, and Zenteiq) highlight massive performance gains:
-
-* **Ironwood TPU (TPU 7x)**：前缀感知路由与宿主机内存卸载技术的双剑合璧，将中位数首字延迟 (Time to First Token, TTFT) 大幅削减了 **85% 以上**；与标准 Kubernetes 服务相比，总体吞吐量实现了 **2.4 倍** 的飞跃。
-* **Gemini 平台**：提示词前缀缓存命中率直接翻倍，从 **35% 飙升至 70%**。在代码编程智能体场景下，首字延迟降低了超过 35%；在突发高并发对话流量冲击下，P95 首字延迟更是下降了 **50% 以上**。
-* **17,000 节点 GKE 超大集群部署**：在跨越 3 个独立计算集群的超大规模部署中，聚合吞吐量提升了 **2.9 倍**，在额外系统开销低于 1% 的前提下始终保持 **99.9% 的请求成功率**。
-* **A3 Mega 服务器集群 (70B 模型实测)**：借助托管 Lustre 与宿主机 CPU RAM 内存卸载技术，在处理 50k 超长 Token 提示词时将 TTFT 缩短了 **约 40%**，端到端延迟降低 30%，整体 GPU 机时成本缩减近 60%。
-* **强化学习时间片复用 (RL Time-Slicing)**：将推理任务巧妙穿插进强化学习训练的空闲周期中，使硬件加速芯片的有效占空比 (Duty Cycle) 从约 40% **跃升至 70% 以上**。
-
-&gt; * **Ironwood TPU (TPU 7x):** Prefix-aware routing combined with host memory offloading slashed median TTFT (Time to First Token) by **over 85%**, while boosting total throughput **2.4x** compared to standard Kubernetes services.
-&gt; * **Gemini Platform:** Prefix cache hit rates doubled from **35% to 70%**. TTFT dropped by over 35% for coding agents, and P95 TTFT fell **over 50%** under bursty chat traffic.
-&gt; * **17,000-Node GKE Deployment:** Scaled aggregate throughput **2.9x** across 3 distinct clusters, maintaining a **99.9% success rate** with under 1% overhead.
-&gt; * **A3 Mega (70B Model):** Managed Lustre and CPU RAM offloading improved TTFT by **~40%** on 50k-token prompts, reducing end-to-end latency by 30% and GPU-hours by nearly 60%.
-&gt; * **RL Time-Slicing:** Interleaving inference into idle reinforcement learning cycles lifted the accelerator duty cycle **above 70%** (up from ~40%).
-
-早期采用者的实测数据同样印证了这些里程碑式的提升：**Snap** 报告其前缀缓存命中率攀升至 75%～80%；**Zenteiq** 实现了超过 **4 倍的吞吐量暴涨**（每 1,000 颗 TPU v6e 芯片的日处理 Token 量从 14.7 亿狂飙至 59.7 亿）；而 IBM 的一项实际演示更是成功并发支撑了 **3,000 个编程智能体** 同时高效运行，成本仅为传统标准商业 API 调用的极小一部分。
-
-&gt; Adopter results mirror these milestones: **Snap** reports prefix cache hit rates reaching 75–80%, **Zenteiq** achieved over **4x throughput** (surging from 1.47B to 5.97B daily tokens per 1,000 TPU v6e chips), and an IBM demonstration successfully served **3,000 concurrent coding agents** at a fraction of standard API pricing.
-
----
-
-## 方案横向对比：llm-d vs. NVIDIA Dynamo vs. AIBrix
-
-&gt; ## Comparative Analysis: llm-d vs. NVIDIA Dynamo vs. AIBrix
-
-| 特性维度 | llm-d 1.0 | NVIDIA Dynamo | AIBrix |
-| :--- | :--- | :--- | :--- |
-| **最新版本** | 1.0 (2026 年 10 月 20 日) | [v1.5.1 (2026 年 10 月 6 日)](https://docs.nvidia.com/dynamo/reference/compatibility) | [v0.7.0 (2026 年 6 月 16 日)](https://github.com/vllm-project/aibrix/releases/tag/v0.7.0) |
-| **开源协议** | Apache 2.0 | Apache 2.0 | Apache 2.0 |
-| **治理模式** | CNCF 沙箱项目 | NVIDIA 主导 (`ai-dynamo` 组织) | vLLM 项目组织 (源自 ByteDance) |
-| **支持引擎** | vLLM, SGLang | SGLang, TensorRT-LLM, vLLM | vLLM, SGLang, TensorRT-LLM |
-| **适配芯片** | [NVIDIA, AMD, Intel GPU 与 Google TPU](https://presentations.cncf.io/projects/llm-d/) | NVIDIA GPU (Blackwell, Hopper, Ada, Ampere) | 异构/混合 GPU 算力 |
-| **缓存感知路由** | 支持 (前缀与负载联合感知) | 支持 (KV 感知) | 支持 (网关级路由) |
-| **分层缓存体系** | HBM, CPU, SSD, Managed Lustre | GPU 显存, CPU, SSD, 远端存储 (KVBM) | 分布式 KV 缓存 |
-| **P/D 预填充与解码解耦** | 支持 (`DisaggregatedSet`) | 支持 | 支持 |
-| **代表性基准成果** | 17,000 节点下吞吐量提升 2.9 倍 (官方实测) | Qwen3-Coder 480B 首字延迟减半 ([Baseten](https://www.baseten.co/blog/how-baseten-achieved-2x-faster-inference-with-nvidia-dynamo/)) | 未披露 |
-
-&gt; | Feature | llm-d 1.0 | NVIDIA Dynamo | AIBrix |
-&gt; | :--- | :--- | :--- | :--- |
-&gt; | **Latest Version** | 1.0 (Oct 20, 2026) | [v1.5.1 (Oct 6, 2026)](https://docs.nvidia.com/dynamo/reference/compatibility) | [v0.7.0 (Jun 16, 2026)](https://github.com/vllm-project/aibrix/releases/tag/v0.7.0) |
-&gt; | **License** | Apache 2.0 | Apache 2.0 | Apache 2.0 |
-&gt; | **Governance** | CNCF Sandbox | NVIDIA-led (`ai-dynamo` org) | vLLM project org (ByteDance origin) |
-&gt; | **Engines** | vLLM, SGLang | SGLang, TensorRT-LLM, vLLM | vLLM, SGLang, TensorRT-LLM |
-&gt; | **Accelerators** | [NVIDIA, AMD, Intel GPUs, Google TPU](https://presentations.cncf.io/projects/llm-d/) | NVIDIA GPUs (Blackwell, Hopper, Ada, Ampere) | Mixed/Heterogeneous GPUs |
-&gt; | **Cache-Aware Routing** | Yes (Prefix &amp; load-aware) | Yes (KV-aware) | Yes (Gateway routing) |
-&gt; | **KV Cache Tiers** | HBM, CPU, SSD, Managed Lustre | GPU, CPU, SSD, remote storage (KVBM) | Distributed KV cache |
-&gt; | **P/D Disaggregation** | Yes (`DisaggregatedSet`) | Yes | Yes |
-&gt; | **Headline Result** | 2.9x throughput, 17k nodes (self-reported) | 2x faster TTFT, Qwen3-Coder 480B ([Baseten](https://www.baseten.co/blog/how-baseten-achieved-2x-faster-inference-with-nvidia-dynamo/)) | Not disclosed |
-
-*注：这些分布式推理框架之间是相互补充而非互斥割裂的关系。例如，像 CoreWeave 这样的 AI 云基础设施提供商已将 llm-d 与 Dynamo 协同部署，而 NVIDIA 也在积极将 Dynamo 中的优秀组件反哺贡献至 llm-d 开源生态中。*
-
-&gt; *Note: These tools are complementary rather than mutually exclusive. For instance, infrastructure providers like CoreWeave deploy llm-d alongside Dynamo, and NVIDIA actively contributes Dynamo components back into the llm-d ecosystem.*
-
----
-
-## 如何上手部署 llm-d 1.0？
-
-&gt; ## How to Deploy llm-d 1.0
-
-在 Google Cloud 平台上，[GKE 推理网关 (GKE Inference Gateway)](https://cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway#llm-d-router) 将 llm-d 路由能力包装为全托管云服务，原生支持跨越 [多个集群与不同可用区 (Multiple Clusters and Regions)](https://cloud.google.com/kubernetes-engine/docs/how-to/setup-multicluster-inference-gateway) 运行并提供全球故障转移容灾。系统结合 KEDA 与 HPA，根据任务排队深度与预估响应延迟动态弹性伸缩工作节点池，同时借助 Kueue 精细化管控每个具体模型的配额。
-
-&gt; On Google Cloud, the [GKE Inference Gateway](https://cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway#llm-d-router) provides the llm-d router as a fully managed service capable of spanning [multiple clusters and regions](https://cloud.google.com/kubernetes-engine/docs/how-to/setup-multicluster-inference-gateway) with global failover. KEDA and HPA scale worker pools based on queue depth and predicted latency, while Kueue manages granular per-model quotas. 
-
-对于私有或自定义的 Kubernetes 基础架构环境，官方提供的经过生产验证的 Helm Charts 允许工程团队在统一接入端点后方，轻松快速拉起混合部署的 TPU 与 GPU 算力集群。Google 官方推荐采用循序渐进的分阶段落地策略：
-1. **起步阶段**：首先在现有的 vLLM 或 SGLang 部署前端引入前缀感知路由层；
-2. **深化阶段**：按需逐步叠加多租户流量控制、[多级分层 KV 缓存卸载转储](https://llm-d.ai/docs/well-lit-paths/foundations/tiered-prefix-cache) 以及预填充与解码解耦架构。
-
-&gt; For custom Kubernetes environments, verified Helm charts allow teams to spin up mixed TPU and GPU fleets behind a unified endpoint. Google recommends a staged adoption path:
-&gt; 1. Begin by placing prefix-aware routing in front of an existing vLLM deployment.
-&gt; 2. Incrementally layer in flow control, [tiered KV offloading](https://llm-d.ai/docs/well-lit-paths/foundations/tiered-prefix-cache), and prefill/decode disaggregation.
-
----
-
-## 核心要点总结
-
-&gt; ## Key Takeaways
-
-* **生产就绪的工业级基石**：llm-d 1.0 带来稳定的 v1 核心 API，专为应对复杂企业级 AI 智能体与大规模强化学习管线进行了深度优化。
-* **高阶算力与服务编排**：全面解锁多租户流控保障、路由器高可用热备以及 `DisaggregatedSet` 预填充与解码协同滚动发布等关键架构能力。
-* **超大规模实战验证**：在工业级海量负载中久经淬炼——成功将 Google Gemini 平台的提示词前缀缓存命中率翻倍至 70%，并在 17,000 个节点的 GKE 超大集群中斩获了 2.9 倍的吞吐量跃升。
-
-&gt; * **Production-Ready Foundation:** llm-d 1.0 delivers stable v1 APIs optimized for complex enterprise agent and RL pipelines.
-&gt; * **Advanced Orchestration:** Features new capabilities like multi-tenant flow control, router high availability, and `DisaggregatedSet` rollouts.
-&gt; * **Proven Scale:** Validated on massive deployments—doubling Gemini prefix cache hit rates to 70% and scaling a 17,000-node GKE cluster by 2.9x.
-
----
-
-## 参考资料与相关链接
-
-&gt; ## References &amp; Resources
-
-* 阅读官方发布公告：[Google Cloud 官方博客](https://cloud.google.com/blog/topics/ai-infrastructure/llm-d-1-0-an-open-source-stack-for-distributed-inference) | [IBM Research 官方专栏](https://research.ibm.com/blog/llmd-1-0-is-ready-for-production-inference-serving)
-* 探索开源代码：[GitHub 代码仓库](https://github.com/llm-d/llm-d)
-* 查阅官方文档：[GKE 架构文档](https://llm-d.ai/docs/infrastructure/providers/gke) | [Prism 基准测试横向对比](https://prism.llm-d.ai/)
-
-&gt; * Read the official announcements: [Google Cloud Blog](https://cloud.google.com/blog/topics/ai-infrastructure/llm-d-1-0-an-open-source-stack-for-distributed-inference) | [IBM Research Post](https://research.ibm.com/blog/llmd-1-0-is-ready-for-production-inference-serving)
-&gt; * Explore the code: [GitHub Repository](https://github.com/llm-d/llm-d)
-&gt; * Official documentation: [GKE Docs](https://llm-d.ai/docs/infrastructure/providers/gke) | [Prism Benchmark Comparison](https://prism.llm-d.ai/)
-
-*(原始报道发布于 [MarkTechPost](https://www.marktechpost.com/2026/10/20/llm-d-1-0-open-source-distributed-inference-stack/)。)*
-
-&gt; *(Original coverage published by [MarkTechPost](https://www.marktechpost.com/2026/10/20/llm-d-1-0-open-source-distributed-inference-stack/).)*</description>
-    </item>
-    <item>
-      <title>重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>当前主流的推理模型即便能够输出详尽严密的“思维链”步骤，往往也无法可靠地感知并表达自己答案的把握程度 —— 容易出现“一本正经地胡说八道”或盲目自信的问题。针对这一痛点，研究团队提出了创新的置信度校准方法 CALIBER。该方法训练推理模型在解题全流程中给出两个解耦的置信度评分：解题前评估问题难易度的“初始置信度”，以及推导完成后评估答案正确性的“最终置信度”。实验表明，通过协同奖励正确答案与精准的不确定性感知，CALIBER 在数学和通用问答基准测试上将校准误差大幅削减了一半以上，显著增强了大模型“心中有数”的自我认知与差错识别能力。
-
----
-
-## 核心概述
-
-&gt; ## Summary
-
-传统的推理模型常常难以可靠地评估并传达自身的不确定性，即使在生成极其详尽的逐步逻辑推导时也是如此。本文提出了 **CALIBER**，一种训练推理模型输出两个独立置信度得分的全新方法：一是在着手解题前评估整体掌控度的**初始置信度** (Initial Confidence)，二是在完成逻辑推理后评估最终输出正确率的**最终置信度** (Final Confidence)。通过同时对准确答案与校准后的不确定性进行奖励，CALIBER 显著降低了校准误差，并在数学及通用问答基准测试中大幅提升了模型区分正确答案与潜在错误的能力。
-
-&gt; Standard reasoning models often struggle to reliably assess and communicate their own uncertainty, even when producing detailed step-by-step logic. This article introduces **CALIBER**, a novel method that trains reasoning models to provide two distinct confidence scores: an **initial confidence** score before solving a problem (judging overall manageability) and a **final confidence** score evaluated after reasoning (assessing the correctness of the final output). By rewarding both accurate answers and calibrated uncertainty, CALIBER significantly reduces calibration error and improves the model's ability to distinguish correct answers from mistakes across math and general question-answering benchmarks.
-
----
-
-## 引言
-
-&gt; ## Introduction
-
-你掷出两枚质地均匀的六面骰子。它们的点数之和至少为 10 的概率是多少？
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; *You roll two fair six-sided dice. What is the probability that their sum is at least 10?*
-
-面对这个问题，模型起初可能会略显迟疑。随后它开始盘点所有可能的情况：点数和为 10 的情况有 3 种，和为 11 的情况有 2 种，和为 12 的情况有 1 种。在总计 36 种可能的结果中共有 6 种符合要求。*最终答案是 1/6*。
-
-&gt; A model might hesitate at first. Then it counts the possibilities: three ways to roll 10, two ways to roll 11, and one way to roll 12. Six outcomes out of 36. *The answer is 1/6*.
-
-在这个直观示例中，模型刚看到题目时的初始置信度仅为 25%，而在推导完毕后置信度跃升到了 88%。这些百分比描述的是模型对“自己给出正确答案”的把握程度，而非掷骰子事件本身的概率。逐步推演问题的全过程彻底改变了它对自己表现的判断。
-
-&gt; In our illustrative example, the model starts at 25% confidence and finishes at 88%. Those percentages describe its confidence in getting the answer right, not the probability of the dice outcome. Working through the problem has changed its assessment.
-
-置信度的变化当然也可能走向相反的方向。在仔细推敲一道初看十分简单的题目时，深入推导可能会暴露出原本隐含的错误假设或逻辑矛盾。一个真正实用的置信度评估机制，应当能够敏锐捕捉并反映出这种心路历程的变化，即便模型最终依然可能给出错误答案。然而，现有的标准推理模型通常并不具备这种能力：能够生成详尽的推导过程，并不等同于模型能可靠地感知并传达自身的不确定性。
-
-&gt; Confidence can move the other way, too. Reasoning through a solution that initially looks straightforward may reveal a mistaken assumption or a contradiction. A useful confidence estimate should be able to reflect that change, even when the model still gives the wrong answer. However, standard reasoning models do not necessarily come with this ability: producing a detailed reasoning process does not guarantee that a model can reliably assess and communicate its uncertainty.
-
-&lt;img alt="" class="w-full rounded-lg" height="338" sizes="(max-width: 768px) 100vw, 800px" src="./images/d3934eaa02fb.svg" width="785"/&gt;
-
-这正是我们提出 [CALIBER](https://arxiv.org/abs/2606.24281) 方法的核心初衷：训练推理模型在动笔前先预估自己的成功概率，并在完成具体解答后重新评估该答案的可靠性。在我们的数学基准测试 (Benchmark) 中，经过校准的 7B 模型在该指标上将校准误差降低了一半以上，大幅超越表现最优的单置信度基线。其关键诀窍在于：这两个置信度评估回答的其实是截然不同的两个问题。
-
-&gt; This is the idea behind our method [CALIBER](https://arxiv.org/abs/2606.24281): train a reasoning model to estimate its chance of success before it begins, then assess its particular answer afterwards. On our math benchmark, the calibrated 7B model reduces calibration error by more than half compared with the best single-confidence baseline on this metric. The key is that the two confidence estimates answer different questions.
-
----
-
-## 单一置信度掩盖了两个核心问题
-
-&gt; ## One Confidence Score Hides Two Questions
-
-在正式推理前，大语言模型 (Large Language Model, LLM) 仅浏览了题目内容。它能够识别该问题所属的领域主题，并判断这道题对自己而言是否可控。此时的置信度回答的是：*“我有多大把握能解出这道题？”*
-
-&gt; Before reasoning, the model has only seen the question. It can recognise the topic and judge whether the problem looks manageable. Its confidence answers: *“How likely am I to solve this?”*
-
-而在推理完成之后，模型有了更加具体的评估对象：它自己实际推导出的解答过程。此时面临的问题转变成了：*“这个推导出的答案有多大可能是正确的？”*
-
-&gt; After reasoning, it has something more specific to assess: the solution it actually produced. Now the question is: *“How likely is this answer to be correct?”*
-
-这两个预测维度虽然紧密相关，但承担的职能截然不同。初始置信度向用户表明模型是否预期自己能顺利拿下该任务；最终置信度则帮助用户研判产出的具体答案是否需要进一步严密审查。模型在平时可能常常做对同类问题，但在这次尝试中依然可能偶尔失手；反之，它也可能在面对一道棘手难题时起初十分谨慎，随后却找到了一条逻辑闭环、可供自查的精妙解法。
-
-&gt; These predictions are related, but they serve different purposes. Initial confidence gives an indication of whether the model expects to handle the question successfully. Final confidence helps a user judge whether the resulting answer needs closer scrutiny. A model might often solve this kind of problem and still make a mistake on this attempt. Or it might approach a difficult question cautiously, then find a solution it can check.
-
-[CALIBER](https://arxiv.org/abs/2606.24281) 训练模型在同一次回复中完整呈现两项评估：初始置信度、逐步推理、最终答案以及最终置信度。由于推理过程为模型注入了全新的评估信息，前后两个数值完全可以不一致。该机制的终极目标，是让这些置信度打分具有实质的参考价值，从而辅助用户或下游系统科学决策：是直接采纳答案、进行验证复核，还是主动寻求人类专家或外部工具协助。
-
-&gt; [CALIBER](https://arxiv.org/abs/2606.24281) trains the model to report both estimates in one response: initial confidence, reasoning, an answer, and final confidence. The two numbers can disagree because reasoning gives the model new information to assess. The goal is to make these estimates meaningful enough to support decisions about when to accept an answer, verify it, or seek help.
-
-&lt;img alt="" class="w-full rounded-lg" height="358" sizes="(max-width: 768px) 100vw, 800px" src="./images/01580dde0711.svg" width="785"/&gt;
-
----
-
-## 明确置信度学习的目标信号
-
-&gt; ## Teaching Confidence What to Predict
-
-为了训练模型的初始置信度，我们让模型对同一道题目进行多次尝试。如果在 10 次尝试中有 7 次答对，那么 70% 就会作为初始置信度的训练目标值。这准确刻画了当前模型在尚未明确具体解答步骤前，解决该问题的整体命中率。
-
-&gt; To train initial confidence, we let the model try the same question several times. If seven out of ten attempts succeed, 70% becomes the training target. That captures how often the current model can solve the question, before we know which particular attempt it will produce.
-
-而最终置信度瞄准的目标则截然不同：即该次具体解答到底是对还是错。针对同一道题目的成功推演与失败推演，共享相同的初始置信度目标，但其最终置信度目标完全不同。下图清晰展示了这一工作机制。
-
-&gt; Final confidence gets a different target: whether that individual answer is correct. A successful and an unsuccessful attempt at the same question share an initial-confidence target, but receive different final-confidence targets. The figure below shows how this works.
-
-&lt;img alt="" class="w-full rounded-lg" height="405" sizes="(max-width: 768px) 100vw, 800px" src="./images/bbfe854e2afc.svg" width="785"/&gt;
-
-在此示例中，4 次尝试中有 3 次成功解出，对应的初始置信度目标值为 75%。第 4 次尝试得出了错误答案，因此其最终置信度目标为 0。图中展示的 60% 与 20% 是模型给出的预测值。训练过程通过奖励机制促使这些预测值更加逼近各自对应的真实目标。
-
-&gt; In this example, three of four attempts succeed, giving an initial-confidence target of 75%. The fourth attempt produces a wrong answer, so its final-confidence target is 0. The displayed 60% and 20% are the model’s predictions. Training rewards it for moving those predictions closer to their respective targets.
-
-我们将上述置信度奖励与回答正确性的奖励相结合。模型既被激励努力解对题目，又被鼓励精准评估自己的胜算。即使回答错误，只要模型准确识别到了推导的不确定性并调低置信度，也能获得一部分置信度奖励，但它无法获得正确答案的高额奖励。这种设计旨在让置信度更加具备实用参考价值，同时确保模型始终将解题正确性放在首位。
-
-&gt; We combine these confidence rewards with a reward for answering correctly. The model is encouraged both to solve the problem and to assess its chances accurately. Recognizing uncertainty about a wrong answer can improve its confidence reward, but it does not earn the reward for a correct solution. The aim is to make confidence more useful while keeping the model focused on getting the answer right.
-
----
-
-## 为什么每次都说“70% 把握”毫无意义
-
-&gt; ## Why Saying 70 Percent Every Time Is Not Enough
-
-设想有这样一个模型：它回答问题的综合正确率为 70%，并且对每一次作答都一律汇报 70% 的置信度。从统计学上看，它的置信度与全局平均准确率完美契合。但如果你时间有限，只能抽检少数几个答案，这种千篇一律的分数根本无法为你提供任何筛选依据。
-
-&gt; Imagine a model that answers 70% of questions correctly and reports 70% confidence every time. Its confidence matches its overall accuracy perfectly. But if you only have time to check a few answers, those identical scores give you no way to choose.
-
-现在设想另一个具备同等全局准确率的模型：它对其中一半的答案给出 90% 的置信度，对另一半给出 50% 的置信度。如果这两个子集实际对应的准确率恰好分别为 90% 和 50%，那么这个模型同样是校准的。但显然，后者的置信度要实用得多：它能帮助你将审核精力精准聚焦在最可能出现纰漏的作答上。
-
-&gt; Now imagine another model with the same overall accuracy. It assigns 90% confidence to half its answers and 50% to the other half. If those groups are correct 90% and 50% of the time, respectively, this model is also calibrated. Its confidence is more useful, though: it helps you focus your checks on the answers more likely to contain mistakes.
-
-因此，我们在评估模型时综合考察两项指标：
-
-* **期望校准误差 (Expected Calibration Error, ECE)**：衡量置信度与实际观察到的准确率是否吻合 —— 在被赋予约 80% 置信度的所有答案中，约 80% 应当是真正正确的。
-* **AUROC**：衡量正确答案获得的置信度是否普遍高于错误答案的置信度。
-
-&gt; We therefore evaluate two properties together:
-&gt; * **Expected Calibration Error (ECE)** measures whether confidence matches observed accuracy: among answers assigned roughly 80% confidence, roughly 80% should be correct. 
-&gt; * **AUROC** measures whether correct answers tend to receive higher confidence than incorrect ones. 
-
-ECE 越低越好，而 AUROC 越高越好。两项指标相辅相成，共同揭示了置信度数值本身是否足够真实可靠，以及它们能否有效帮助用户甄别潜在的错误。
-
-&gt; Lower ECE and higher AUROC are better. Together, they show whether the confidence values are reliable and whether they help identify likely errors.
-
-&lt;img alt="" class="w-full rounded-lg" height="288" sizes="(max-width: 768px) 100vw, 800px" src="./images/25e309268724.svg" width="785"/&gt;
-
----
-
-## 在数学及更广泛基准上的卓越表现
-
-&gt; ## Better Confidence on Math and Beyond
-
-我们在 30,000 道数学题上对 7B 和 30B 参数规模的模型进行了训练，并在 1,000 道保留测试题以及 3 个通用问答基准测试上进行了全面评估。所有对比模型均采用相同的训练配置；“lite”基线则是对早期前人方法的轻量化改进版本。对于 CALIBER，文中报告的校准指标均基于模型的最终置信度进行计算。
-
-&gt; We trained 7B and 30B models on 30,000 math problems and evaluated them on 1,000 held-out problems, plus three question-answering benchmarks. Our comparisons use a shared training setup; the *“lite”* baselines are simplified adaptations of earlier methods. For CALIBER, the reported calibration metrics evaluate final confidence.
-
-在 BigMathDigits 基准上，7B 模型的 ECE 指标从表现最强的单置信度基线的 0.059 骤降至 CALIBER 的 0.028 —— **降幅高达 52.5%**。与此同时，CALIBER 还斩获了最优的 AUROC (0.806) 与 Brier 评分 (0.130)，这表明置信度不仅与实际准确率契合得更紧密，其区分正误的能力也大幅提升。
-
-&gt; On BigMathDigits, the 7B model’s ECE falls from 0.059 for the strongest single-confidence baseline to 0.028 for CALIBER – **a 52.5% reduction**. CALIBER also achieves the best AUROC (0.806) and Brier score (0.130), showing improvements both in how closely confidence matches accuracy and in how well it distinguishes correct answers from mistakes.
-
-这种能力的飞跃并不局限于数学领域。在未进行任何额外训练或任务特定检查点筛选的情况下，与各数据集上表现最强的单置信度基线相比，7B 模型的校准误差在 **GPQA 上降低了 26.8%，TriviaQA 上降低了 32.2%，SimpleQA 上降低了 36.2%**。
-
-&gt; The improvements extend beyond math. Without further training or task-specific checkpoint selection, the 7B model reduces calibration error by **26.8% on GPQA, 32.2% on TriviaQA, and 36.2% on SimpleQA**, compared with the strongest single-confidence baseline on each dataset.
-
-30B 模型的测试结果则有力证明了为何这两个指标必须协同参考。在 BigMathDigits 上，CALIBER 的 ECE 为 0.022，仅略微优于 CoCA-lite 的 0.023。然而 CALIBER 的 AUROC 达到了 0.797，相比之下 CoCA-lite 仅有 0.508 —— 两者在区分正确答案与错误答案的能力上展现出了天壤之别。其他基线在 AUROC 上虽然略高于 CALIBER，但综合效益完全取决于我们衡量的核心侧重点。
-
-&gt; The 30B results show why the metrics matter together. On BigMathDigits, CALIBER’s ECE of 0.022 is only slightly better than CoCA-lite’s 0.023. But its AUROC is 0.797, compared with 0.508 for CoCA-lite: a large difference in how well confidence distinguishes correct from incorrect answers. Other baselines achieve slightly higher AUROC than CALIBER, so the benefit depends on which property we measure.
-
-&lt;img alt="" class="w-full rounded-lg" height="408" sizes="(max-width: 768px) 100vw, 800px" src="./images/364128f0b512.svg" width="785"/&gt;
-&lt;figcaption class="mt-3 font-body text-web3-12"&gt;30B 模型在 BigMathDigits 上的置信度与实际观察准确率对比。曲线越贴近对角虚线，说明校准效果越优异。&lt;/figcaption&gt;
-
----
-
-## 置信度的动态变化揭示了什么
-
-&gt; ## What a Change in Confidence Tells Us
-
-引入双重评估机制使我们能够直观观察到模型在经历推导后，是如何修正自身判断的。在 BigMathDigits 上，针对回答正确的题目，7B 模型的平均置信度从初始的 78.5% 攀升至 83.5%；而针对回答错误的题目，其平均置信度则从 62.6% 跌落至 54.5%。在其他数据集上，模型在推理后有时会对两类题目的置信度均有所下调，但错误作答的下调幅度显著更大。
-
-&gt; Having two estimates lets us see whether the model revises its assessment after reasoning. On BigMathDigits, the 7B model’s mean confidence rises from 78.5% to 83.5% for correct answers and falls from 62.6% to 54.5% for incorrect answers. On other datasets, it sometimes lowers confidence for both groups, with a larger decrease for incorrect answers.
-
-因此，置信度的上升或下降是一个背景线索，而非最终判决。两份最终置信度均为 70% 的解答，表达的都是该答案有相同的正确预估概率，哪怕其中一份是从低分上升而来，另一份是从高分滑落而至。最终估值评估的是答案本身；而估值的动态变化则揭示了模型评估心智的演进过程。
-
-&gt; A rise or fall is therefore context, not a verdict. Two answers that finish at 70% confidence express the same estimated probability of correctness, even if one estimate rose and the other fell. The final estimate assesses the answer; the change tells us how the model’s assessment evolved.
-
-在本次实验中，我们主要在单次推理过程的前后进行了测算。随之而来的下一个核心问题是：可靠的置信度动态更新，是否能够有效引导模型自主决策何时进行验证核查、何时检索更多外部信息，亦或何时主动弃权弃答？我们在本项工作中尚未对此类扩展应用进行验证。CALIBER 提供了一个坚实的全新起点：训练置信度以真实反映模型在推理各个阶段所能感知的客观状态。
-
-&gt; Our experiments take this measurement before and after a single reasoning process. A next question is whether reliable confidence updates could help a model decide when to verify, retrieve more information, or abstain. We have not tested those uses here. CALIBER provides a starting point: confidence trained to reflect what the model can assess at each stage of reasoning.
-
-想要了解完整的实验设置与基准数据，请参阅原论文：[CALIBER](https://arxiv.org/abs/2606.24281)。
-
-&gt; Read the paper for the full experimental setup and results: [CALIBER](https://arxiv.org/abs/2606.24281).</description>
-    </item>
-    <item>
-      <title>统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在以大模型为核心的人工智能浪潮中，云端算力基础设施已高度标准化，然而端侧 AI (Edge AI) 领域却长期面临着数百种专有芯片架构与互不兼容的编译器工具链割裂的困境，这就是开发者苦不堪言的“碎片化税”。为了打破这一行业桎梏，Google Research 正式推出了 **Coral NPU** 开源软硬件统一标准。本次重磅进展标志着完整 32 位 Coral NPU 硬件架构规范的正式收官，同步发布了首个生产级 v1.0 IREE/MLIR 统一编译器工具链，并联合 Synaptics 推出 Astra SR200 商用级低功耗芯片与全新 Coralboard 开发板。该标准让开发者只需一次调优，即可将轻量大模型无缝部署在各类极低功耗的边缘智能终端与可穿戴设备中，推动端侧通用智能迎来跨硬件平台的新时代。
-
----
-
-## 执行概要
-
-&gt; ## Executive Summary
-
-当今的云端 AI 基础设施已经高度收敛于成熟的标准软件栈之上，但端侧 AI (Edge AI) 领域却依然深陷于数百种专有芯片架构与互不兼容的编译工具链的严重碎片化泥潭中。为了彻底消除这一阻碍技术落地的“碎片化税 (Fragmentation Tax)”，Google Research 正式推出了 **Coral NPU**——这是一套专为统一端侧计算生态而设计的开放软硬件标准。
-
-&gt; While cloud AI infrastructure has converged around standardized software stacks, edge AI remains heavily fragmented across hundreds of proprietary chip architectures and incompatible toolchains. To solve this "fragmentation tax," Google Research introduced the **Coral NPU**—an open hardware and software standard designed to unify the edge. 
-
-本文重点梳理了 Coral 生态系统近期达成的重大里程碑，包括：32 位 Coral NPU 硬件架构的全面竣工、v1.0 版本 IREE/MLIR 统一编译器的正式发布、Synaptics 打造的全新商用芯片，以及进一步拓展的 Coralboard 开发者套件。这些突破性的软硬件进展，让机器学习 (ML) 开发者只需对模型进行一次调优，即可轻松跨越不同的硬件平台与功耗约束进行无缝部署。
-
-&gt; This post highlights major milestones in the Coral ecosystem, including the completion of the 32-bit Coral NPU architecture, the release of the v1.0 IREE/MLIR compiler, new silicon from Synaptics, and expanded Coralboard developer kits. These advancements allow ML developers to optimize a model once and seamlessly deploy it across diverse hardware targets and power envelopes.
-
----
-
-## 软硬件协同设计：在精准的功耗区间内释放极致性能
-
-&gt; ## Co-designing Silicon and Software: The Right Performance at the Right Power Envelope
-
-![blog-header-image-1600x900](./images/3d25c71ec922.jpg)
-
-端侧 AI 是云端计算架构不可或缺的重要补充：它通过模型级联 (Model Cascading) 机制，能够为用户提供超低延迟、强隐私保护以及离线可靠的实时计算体验。然而，长期以来，面向边缘设备开发 AI 一直饱受芯片架构碎片化的严重拖累——但凡遇到专用硬件不支持的神经网络算子，系统就只能无奈退回至通用 CPU 上执行，从而导致电池电量急剧消耗、响应延迟成倍飙升。
-
-&gt; Edge AI complements cloud infrastructure by providing ultra-low-latency, private, and reliable real-time processing through model cascading. However, building for the edge has historically been hindered by chip fragmentation, where unsupported neural network layers fall back to general-purpose CPUs, draining batteries and increasing latency. 
-
-为此，Google 在设计 Coral NPU 硬件架构的同时，同步推进了对应编译器的协同研发。我们不再盲目追求芯片规格书上那些虚高的峰值算力指标，而是将全部重心聚焦于**具备实际能效价值的可用算力 (Energy-viable Compute)**——在严苛受限的功耗区间内，交付最贴合实际应用场景的最佳性能。
-
-&gt; Google designed the Coral NPU architecture and its compiler concurrently. Rather than chasing inflated peak-compute metrics on spec sheets, the focus is on **energy-viable compute**—delivering optimal performance within strict power envelopes.
-
-![architecture_overview](./images/ce2e3b24cb31.png)
-
----
-
-## 32 位 Coral NPU 硬件架构全面收官
-
-&gt; ## Completing the Coral NPU 32-bit Architecture
-
-![Copy of components_detail_notitle](./images/4a279fcf788a.png)
-
-随着**矩阵执行单元 (Matrix Execution Unit，里程碑 4)** 的正式发布，完整的 32 位 Coral NPU 硬件架构现已正式定型。该架构的演进历程涵盖四大关键里程碑：
-
-&gt; With the release of the **Matrix Execution Unit (Milestone 4)**, the complete 32-bit Coral NPU architecture is finalized. The milestones comprise:
-
-1. **里程碑 1 (Milestone 1)：** 支持 C 语言直接编程的 RISC-V 标量前端，用于灵活的控制流调度；
-2. **里程碑 2 (Milestone 2)：** 支持 RVV v1.0 规范的矢量协处理器，用于高效执行 SIMD (单指令多数据流) 运算；
-3. **里程碑 3 (Milestone 3)：** 具备浮点运算原生支持的高速紧耦合内存子系统；
-4. **里程碑 4 (Milestone 4)：** 矩阵执行单元（遵循 VME 规范），配备专用的外积乘加 (MAC) 硬件引擎，能够在局部寄存器内部单周期完成完整的 2D 分块计算（每时钟周期可执行 256 次乘加运算）。
-
-&gt; 1. **Milestone 1:** A C-programmable RISC-V scalar frontend for control flow.
-&gt; 2. **Milestone 2:** An RVV v1.0 vector co-processor for SIMD operations.
-&gt; 3. **Milestone 3:** A tightly coupled memory subsystem with floating-point support.
-&gt; 4. **Milestone 4:** The Matrix Execution Unit (VME specification), featuring a dedicated outer-product multiply-accumulate (MAC) engine capable of computing a full 2D tile (256 MACs per cycle) inside local registers.
-
-在低于 10 毫瓦 (sub-10 mW) 的极致微功耗区间下，该架构能够仅依靠微型电池供电，持续稳定运行各类多模态 (Multimodal) 复杂工作负载——例如 Gemma 等轻量级 Transformer 大模型、端侧实时语音翻译，以及高保真空间音频降噪滤波等。目前，完整的 [32 位 RTL 硬件描述代码已在 GitHub 全面开源](https://github.com/google-coral/coralnpu)。
-
-&gt; Operating under a sub-10 mW power envelope, this architecture enables continuous multimodal workloads—such as compact transformer models like Gemma, real-time voice translation, and spatial audio filtering—on small batteries. The complete [32-bit RTL is available on GitHub](https://github.com/google-coral/coralnpu).
-
----
-
-## 借助 v1.0 IREE/MLIR 编译器打通“算法模型至物理芯片”的桥梁
-
-&gt; ## Bridging Models to Silicon with the v1.0 IREE/MLIR Compiler
-
-![mlir-compiler-coral (1)](./images/4a6387098d47.jpg)
-
-为了让开发者彻底告别繁琐痛苦的手写汇编编码，Google 正式推出了其 [开源 MLIR/IREE 编译器工具链](https://github.com/google-coral/coralnpu-compiler) 的 v1.0 基石版本。
-
-&gt; To eliminate the need for custom assembly coding, Google is releasing the v1.0 foundation of its [open-source MLIR/IREE compiler toolchain](https://github.com/google-coral/coralnpu-compiler). 
-
-该工具链能够将基于 JAX、PyTorch 和 TensorFlow 等主流框架构建的模型（通过 StableHLO 与 TOSA 中间表示）直接编译并映射至 Coral NPU 硬件上运行。编译器会自动接管算子工作负载切分、算子融合以及矩阵分块调优，使其精准匹配片上局部 SRAM 与累加器的物理规格。结合开源的 MPACT 仿真器与参考 FPGA 设计方案，研发团队在物理芯片流片之前，即可对模型运行表现进行全面基准评测，并对芯片硬件配置进行精细微调。
-
-&gt; This toolchain brings models from frameworks like JAX, PyTorch, and TensorFlow (via StableHLO and TOSA) directly to the Coral NPU. It handles workload partitioning, operator fusion, and matrix tiling to fit local SRAM and accumulators. Combined with the open-source MPACT simulator and reference FPGA designs, teams can benchmark models and tune silicon configurations prior to fabrication.
-
----
-
-## 产业生态落地：商用芯片与硬件载体齐头并进
-
-&gt; ## The Ecosystem in Action: Commercial Silicon and Hardware
-
-要将一项开放硬件标准真正推向全球市场，离不开半导体全产业链的深度合作与协同创新：
-
-&gt; Bringing an open standard to market requires deep collaboration across the semiconductor supply chain:
-
-* **晶圆代工与设计服务合作：** 携手 VeriSilicon 推进设计实现与验证工作，并与 GlobalFoundries 合作基于其 12LP+ FinFET 先进制程进行流片制造。
-* **Synaptics Astra® SR200 系列芯片：** 已成功完成流片并于本月正式发布，该芯片深度集成了第二代 Coral NPU IP，在面向可穿戴设备与工业传感器的超低功耗微控制器 (MCU) 封装中，提供了高达 400 GOPS 的算力输出。
-* **Coralboard™ SR 开发板：** 搭载 Astra SR200 系列芯片的全新开发套件，专为具身智能 (Physical AI) 与端侧边缘计算的快速原型开发量身打造。
-* **Coralboard™ SL 开发板（全球正式商用发售）：** 核心采用 Astra SL2619 处理器，内嵌算力达 1 TOPS 的 Torq™ / Coral NPU 子系统，目前已通过 [DigiKey](https://www.digikey.com/en/products/detail/synaptics-coralboard/720-KDVSL2619-11/29784108) 面向全球市场全面现货发售。
-
-&gt; * **Foundry Partnerships:** Partnering with VeriSilicon for design implementation and verification, and working with GlobalFoundries on their 12LP+ FinFET process.
-&gt; * **Synaptics Astra® SR200 Series:** Taped out and launching this month, integrating second-generation Coral NPU IP to deliver 400 GOPS in an ultra-low-power MCU package for wearables and industrial sensors.
-&gt; * **Coralboard™ SR:** A new developer kit powered by the Astra SR200 series for rapid Physical AI and Edge prototyping.
-&gt; * **Coralboard™ SL (General Availability):** Powered by the Astra SL2619 processor with a 1 TOPS Torq™ / Coral NPU subsystem, now generally available worldwide via [DigiKey](https://www.digikey.com/en/products/detail/synaptics-coralboard/720-KDVSL2619-11/29784108).
-
----
-
-## 开启 Coral NPU 开发之旅
-
-&gt; ## Start Building with Coral NPU
-
-随着 32 位架构规范与 v1.0 编译器软件栈的全面确立，新一代 64 位 Coral NPU 硬件架构以及具备 CHERI 内存安全机制支持的研发工作已全面启动。
-
-&gt; With the 32-bit architecture and v1.0 compiler stack established, development is already underway for a 64-bit Coral NPU architecture and CHERI security support. 
-
-* **阅读官方文档：** 访问 [developers.google.com/coral](https://developers.google.com/coral) 获取架构指南与上手教程。
-* **探索开源代码：** 访问 GitHub 获取 [32 位 RTL 硬件代码](https://github.com/google-coral/coralnpu)、[v1.0 IREE/MLIR 编译器](https://github.com/google-coral/coralnpu-compiler) 以及 [MPACT 硬件仿真器](https://github.com/google-coral/coralnpu-mpact)。
-* **选购开发套件：** 在 DigiKey 选购 [Synaptics Coralboard SL](https://www.digikey.com/en/products/detail/synaptics-coralboard/720-KDVSL2619-11/29784108)，并通过 [Synaptics Coralboard 开发者专区](https://www.synaptics.com/coralboard-developer) 深入了解 Astra SR200 系列。
-
-&gt; * **Read the Docs:** Visit [developers.google.com/coral](https://developers.google.com/coral) for architecture guides and tutorials.
-&gt; * **Explore the Code:** Access the [32-bit RTL](https://github.com/google-coral/coralnpu), [v1.0 IREE/MLIR compiler](https://github.com/google-coral/coralnpu-compiler), and [MPACT simulator](https://github.com/google-coral/coralnpu-mpact) on GitHub.
-&gt; * **Get a Devkit:** Order the [Synaptics Coralboard SL](https://www.digikey.com/en/products/detail/synaptics-coralboard/720-KDVSL2619-11/29784108) on DigiKey and explore the Astra SR200 series via the [Synaptics Coralboard Developer page](https://www.synaptics.com/coralboard-developer).
-
----
-
-**发布栏目：** 移动终端、人工智能、官方发布、行业动态、解决方案、探索发现、前沿影响、问题解决  
-**原文标签：** 物联网 (IoT)、Google Research、OpenXLA、Coral NPU、Synaptics Astra、MLIR、Gemma、机器学习、可穿戴设备、端侧 AI、RISC-V、IREE、开源生态、设备端 AI、Coralboard
-
-&gt; **Posted in:** Mobile, AI, Announcements, Industry Trends, Solutions, Explore, Influence, Solve  
-&gt; **Tags:** IoT, Google Research, OpenXLA, Coral NPU, Synaptics Astra, MLIR, Gemma, Machine Learning, Wearables, Edge AI, RISC-V, IREE, Open Source, on-device AI, Coralboard</description>
-    </item>
-    <item>
-      <title>将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代生成式人工智能研发中，大规模基础模型的预训练与微调极度依赖高效、可扩展的分布式计算集群。过去，开发者若想在 Google Cloud TPU 上训练 PyTorch 模型，往往面临两难：要么将整个代码库彻底重构为 JAX，要么受困于复杂的 `torch_xla` 适配工作。为了彻底打通这一壁垒，Google 与 Meta 联合推出了 **TorchTPU** 并深度集成到 **TorchTitan** 中，正式将 TPU 作为原生设备 (`torch.device("tpu")`) 接入 PyTorch 核心架构。通过引入全计算图捕获的 Graph Trainer、对编译器极为友好的 SimpleFSDP 并行机制以及基于 Pallas 的专用高性能算子内核（如 Splash Attention），在 Llama 3、FLUX.1 及 Qwen3 等顶尖大模型上实现了比肩甚至超越 JAX 的极致训练性能与吞吐量。这一重大突破为广大 PyTorch 开发者在大规模 TPU 算力集群上进行前沿模型的高效训练与对齐提供了生产级参考标杆。
-
----
-
-## 执行概要
-
-&gt; ## Executive Summary
-
-本文详细介绍了将 **TorchTPU** 深度集成至 Meta 旗下分布式训练框架 **TorchTitan** 的全过程，为在 Google Cloud TPU 上训练大规模生成式 AI (Generative AI) 模型构建了原生 PyTorch 后端 (`torch.device("tpu")`)。通过双方联合研发的 TPU 原生执行优化通道 (Execution Passes)、对编译器极为友好的 `SimpleFSDP` 实现方案、全训练步计算图捕获 (Full Training-step Graph Capture)，以及针对 TPU 深度优化的 Pallas 算子内核（例如 Splash Attention），开发者如今能够在 Llama 3、FLUX.1 和 Qwen3 等代表性旗舰模型上，获得与 JAX 旗鼓相当的高性能表现。
-
-&gt; This article details the integration of **TorchTPU** into Meta’s **TorchTitan**, establishing a native PyTorch backend (`torch.device("tpu")`) for training large-scale generative AI models on Google Cloud TPUs. By leveraging co-developed TPU-native execution passes, compile-friendly implementations like `SimpleFSDP`, full training-step graph capture, and optimized Pallas kernels (such as Splash Attention), developers can now achieve near-parity performance with JAX on flagship models like Llama 3, FLUX.1, and Qwen3.
-
----
-
-![Torch Titan Header Image](./images/386080ba06cc.jpg)
-
-## 引言
-
-&gt; ## Introduction
-
-过去数年间，Meta 打造的 **TorchTitan** 已发展成为 PyTorch 生态中最顶尖的“净室”参考基准平台，专为超大规模生成式 AI 模型的分布式训练而生。TorchTitan 完全基于 PyTorch 原生的扩展原语构建，不仅免去了繁杂的外部依赖，还提供了高度模块化的架构范例，用于预训练诸如 Llama 3、Qwen 3 和 FLUX 等主流稠密模型以及混合专家模型 (Mixture-of-Experts, MoE)。
-
-&gt; Over the past years, Meta’s **TorchTitan** has emerged as the PyTorch ecosystem’s premier clean-room reference platform for large-scale generative AI model training. Built entirely on PyTorch-native scaling primitives, TorchTitan provides an unencumbered, highly modular showcase for pre-training flagship dense and Mixture-of-Experts (MoE) architectures like Llama 3, Qwen 3, and FLUX.
-
-在以往，想要在 **Google Cloud TPU** 上训练 PyTorch 模型的开发者往往面临着艰难抉择：要么将全部代码重写为 JAX 语言，要么硬着头皮去调试老旧复杂的 `torch_xla` 框架。如今，这一技术困境已成为历史。随着 **TorchTPU** 的正式发布，Cloud TPU 拥有了直接集成在 PyTorch 核心接口中的原生后端 (`torch.device("tpu")`)。训练脚本若想调用 TPU 硬件，只需对设备初始化代码进行微小的改动即可。
-
-&gt; Historically, developers looking to train PyTorch models on **Google Cloud TPUs** faced some challenges: either undertake a complete codebase rewrite into JAX, or grapple with legacy `torch_xla`. That paradigm has officially shifted. With the launch of **TorchTPU**, Cloud TPUs now feature a native backend (`torch.device("tpu")`) integrated directly into PyTorch's core interface. Enabling a training script to use TPUs now only requires minimal changes to your device initialization code. 
-
-然而，实现硬件设备的兼容只是打赢了“上半场”；开发者在实际生产中更迫切需要的，是开箱即用、高性能且经过实战检验的分布式训练方案 (Distributed Training Recipes)。这正是 **TorchTitan on TPU** 的核心使命。**TorchTitan TPU** 是基于 Meta 官方 TorchTitan 代码库专为适配 Google Cloud TPU 模型训练而深度定制的开源分支，项目已开源托管至 [https://github.com/google-pytorch/torchtitan/](https://github.com/google-pytorch/torchtitan/)。
-
-&gt; Providing device compatibility, however, is only half the battle; developers also need high-performance, production-grade, distributed training recipes. This is where **TorchTitan on TPU** comes in. **TorchTitan TPU** is a fork of Meta’s TorchTitan implementation adapted to enable model training on Google Cloud TPUs, available at [https://github.com/google-pytorch/torchtitan/](https://github.com/google-pytorch/torchtitan/).
-
-## 为什么选择 TorchTitan on TPU
-
-&gt; ## Why TorchTitan on TPU
-
-工程团队不再需要从零开始发明定制化的 TPU 模型切分策略 (Sharding Strategies)，也无需手动编写底层的 XLA 通信优化通路。Google 与 Meta 团队直接在 TorchTitan 内部深度联合研发了 TPU 原生执行通道。TorchTitan 顺理成章地成为了在 Google Cloud TPU 上扩展 PyTorch 训练规模的权威核心载体。
-
-&gt; Rather than requiring engineering teams to invent custom TPU sharding strategies or hand-craft low-level XLA communication passes from scratch, Google and Meta co-developed TPU-native execution passes directly inside TorchTitan. TorchTitan serves as the definitive vehicle for scaling PyTorch on Google Cloud TPUs.
-
-![image1 (7)]("./images/b9386a24c142.png")</description>
-    </item>
-    <item>
-      <title>如何使用决策模型进行自动化评估：平衡成本、性能与置信度</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-21/如何使用决策模型进行自动化评估/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-21/如何使用决策模型进行自动化评估/</guid>
-      <pubDate>Wed, 21 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 在各类业务系统中的广泛落地，如何低成本、高效率地对其输出质量进行自动化评估 (Evals) 成为了工业界的核心痛点。传统方案往往依赖昂贵且耗时的大模型裁判 (LLM Judge)，而专门的“决策模型 (Decision Models)”以其轻量、低延迟和低成本的分类能力正在快速崛起。本文通过真实智能体业务链路的测试数据，深入对比了 Perplexity、Liquid、Cloudflare 及 OpenAI 等主流决策模型的性能与成本权衡，并系统介绍了阈值微调与概率校准的关键实战技巧，为开发者搭建高性价比的自动化评估流水线提供了清晰指南。
-
----
-
-## 核心内容摘要
-
-&gt; ## Summary
-
-决策模型（例如 TypeSafe 的 Jev、Perplexity 的 Decider、Liquid 的 d1、Cloudflare 的 Clef 以及 OpenAI 的 Decisions API）作为传统大语言模型裁判 (LLM Judge) 的替代方案迅速崛起。它们在自动化评估场景中表现出分类速度快、调用成本极低的优势。然而，它们能否真正发挥效能，很大程度上取决于你对成本、性能以及延迟 (Latency) 的具体业务需求。
-
-&gt; Decision models—such as TypeSafe’s Jev, Perplexity’s Decider, Liquid’s d1, Cloudflare’s Clef, and OpenAI’s Decisions API—have emerged as fast, inexpensive classification alternatives to traditional LLM judges for automated evaluations. However, their effectiveness depends heavily on your specific requirements for cost, performance, and latency. 
-
-本指南深入探讨了如何合理配置与评估决策模型，而不是盲目依赖默认设置。核心要点包括：
-
-&gt; This guide explores how to properly configure and evaluate decision models instead of relying on default settings. Key takeaways include:
-
-* **阈值调优 (Threshold Tuning)**：系统默认的 0.50 决策阈值往往无法充分发挥模型潜力。根据具体的准确率 (Precision) 和召回率 (Recall) 目标调优阈值，能够显著改善评估效果。
-* **成本与性能权衡**：在本次实测中，虽然 OpenAI Decisions 取得了最高的 F1 分数，但调用成本相对较高；而 Perplexity 与 Liquid d1-ultra 则提供了性价比极佳的轻量替代方案。
-* **概率校准 (Probability Calibration)**：决策模型输出的分数不仅能做判决，还可作为置信度预估。然而，这些原生概率往往需要经过校准（如采用 Platt 缩放算法），才能真实映射现实中的失败率。
-* **持续迭代优化**：将特定业务领域的提示词 (Prompt) 与严谨的阈值调优、概率校准手段相结合，能确保自动化评估结果与人类的真实偏好高度对齐。
-
-&gt; * **Threshold Tuning:** The default decision threshold of 0.50 often leaves performance on the table. Tuning thresholds based on your precision and recall goals significantly improves outcomes.
-&gt; * **Cost vs. Performance:** While OpenAI Decisions delivered the highest F1 score in our tests, it came at a higher price point, whereas models like Perplexity and Liquid d1-ultra offer budget-friendly alternatives.
-&gt; * **Probability Calibration:** Decision model scores can double as confidence estimates, but they often require calibration (such as Platt scaling) to accurately reflect observed failure rates.
-&gt; * **Iterative Improvement:** Combining domain-specific prompts with rigorous threshold and calibration checks ensures your automated evals closely align with human preferences.
-
----
-
-## 实测方案设计
-
-&gt; ## What We Tested
-
-我们从一个真实的公寓租赁 AI 智能体 (AI Agent) 业务流中抽取了 100 条追踪记录 (Traces，即完整的对话与工具调用行为日志)，旨在精准识别各类交互错误，例如预约看房失败或未能及时转接人工客服等。每个决策模型都会针对每条追踪记录输出一个失败概率。
-
-&gt; We used 100 traces (logs of conversations and actions) from an apartment leasing agent to identify errors, such as a failed booking or a missed handoff to a human. Each decision model returned a failure probability for each trace. 
-
-我们在完全一致的评估准则下，对 **Jev 1.13**、**Perplexity Decider 1.1 27B**、**Liquid d1 和 d1-ultra**、**Cloudflare Clef Flash** 以及 **OpenAI Decisions (GPT-6 Luna)** 进行了横向评测。所有模型均围绕两大核心维度展开对比：
-
-&gt; We tested **Jev 1.13**, **Perplexity Decider 1.1 27B**, **Liquid d1 and d1-ultra**, **Cloudflare Clef Flash**, and **OpenAI Decisions (GPT-6 Luna)** using identical evaluation criteria. Models were compared across two core dimensions:
-
-* **性能表现**：将模型的预测判断与经过人工复核的通过/失败 (Pass/Fail) 真实标签进行对照。
-* **调用成本**：依据 Token 使用量及各家服务商的定价方案计算实际 API 支出。
-
-&gt; * **Performance:** Comparing model predictions against human-reviewed pass/fail labels.
-&gt; * **Cost:** Calculating API costs based on token usage and provider pricing.
-
----
-
-## 深入理解决策模型与判断阈值
-
-&gt; ## Understanding Decision Models and Thresholds
-
-我们为每条追踪日志赋予二元的通过/失败标签，以此建立清晰明确、与人类偏好保持一致的评判标准。决策模型会输出一个介于 0 到 1 之间的概率分值，用于表示该用例发生失败的可能性。
-
-&gt; We assign each trace a binary pass/fail label, encouraging clear criteria that align with human preferences. Decision models output a score from 0 to 1 indicating the likelihood of a failure. 
-
-在默认情况下，各家 API 通常采用 **0.50 作为决策阈值**，即只要分值达到或超过 0.50 就判定为失败。然而，如果不结合自身数据分布就直接套用默认阈值，往往会导致较差的评估效果。挑选恰当的阈值，本质上是在以下两个关键指标之间寻找平衡：
-
-&gt; By default, APIs use a **decision threshold of 0.50**, flagging anything at or above this mark as a failure. However, accepting this default without checking your data can lead to poor results. Choosing the right threshold requires balancing:
-
-* **准确率 (Precision)**：在模型标记为失败的所有用例中，真正存在已知缺陷的比例。
-* **召回率 (Recall)**：在所有已知存在的真实缺陷中，被模型成功捕捉拦截的比例。
-
-&gt; * **Precision:** The share of flagged traces that contain a known failure.
-&gt; * **Recall:** The share of known failures successfully caught by the model.
-
-我们采用 **F1 分数**（准确率与召回率的调和平均数）来综合衡量模型的整体表现，该分值越高，代表模型在查准与查全之间的平衡做得越出色。
-
-&gt; We measure performance using the **F1 score** (the harmonic mean of precision and recall), where higher scores indicate better balance.</description>
     </item>
   </channel>
 </rss>
