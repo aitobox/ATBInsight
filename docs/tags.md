@@ -470,6 +470,7 @@ title: 标签浏览
 - [摄像头优先的 AI 智能体应当如何运作？瞬态交互与双截止期架构](blog/posts/2026-10-16-摄像头优先的-AI-智能体应当如何运作-瞬态交互与双截止期架构.md)
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
 
 ## AI检测
 
@@ -1058,6 +1059,7 @@ title: 标签浏览
 - [Supabase CLI v2：实现配置即代码 (Config as Code)](blog/posts/2026-08-13-Supabase CLI v2：实现配置即代码 -Config as Code.md)
 - [Forgejo 技巧 #2：与 Read the Docs 集成](blog/posts/2026-09-01-Forgejo 技巧 #2：与 Read the Docs 集成.md)
 - [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
+- [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
 
 ## CLAUDE.md
 
@@ -1711,6 +1713,10 @@ title: 标签浏览
 
 - [解密 AI 智能体评估体系：从零构建工程化自动化评测全流程指南](blog/posts/2026-10-08-解密-AI-智能体评估体系-从零构建工程化自动化评测全流程指南.md)
 
+## Exo
+
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
+
 ## Expo
 
 - [使用 Expo 和 Legend-State 构建本地优先的实时应用](blog/posts/2026-08-13-使用 Expo 和 Legend-State 构建本地优先的实时应用.md)
@@ -2049,6 +2055,7 @@ title: 标签浏览
 ## Gemini
 
 - [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
 
 ## Gemma 3
 
@@ -2132,6 +2139,7 @@ title: 标签浏览
 ## Google Cloud
 
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
 
 ## Google Discover
 
@@ -2291,6 +2299,7 @@ title: 标签浏览
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
+- [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
 
 ## Humanize
 
@@ -4912,6 +4921,7 @@ title: 标签浏览
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 - [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
+- [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
 
 ## TRL
 
@@ -5163,6 +5173,7 @@ title: 标签浏览
 - [句法与语义：Transformer如何学习深层依赖](blog/posts/2026-08-29-句法与语义：Transformer如何学习深层依赖.md)
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
+- [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
 
 ## Transformers.js
 
@@ -5448,6 +5459,10 @@ title: 标签浏览
 - [智能压实：通过湖仓表元数据预测压实效用](blog/posts/2026-08-12-智能压实：通过湖仓表元数据预测压实效用.md)
 - [SENTRY：面向IT变更管理的确定性智能风险评估](blog/posts/2026-08-25-SENTRY：面向IT变更管理的确定性智能风险评估.md)
 
+## XLA
+
+- [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
+
 ## YAML
 
 - [不要让模型直接写 YAML：基于大模型字段变更的确定性、最小差异 GitOps 修复方案](blog/posts/2026-09-03-不要让模型直接写 YAML：基于大模型字段变更的确定性、最小差异 GitOps 修复方案.md)
@@ -5524,6 +5539,9 @@ title: 标签浏览
 - [Mooncake：面向大模型服务的 KVCache 中心化分离架构设计与 Kimi 生产实战](blog/posts/2026-10-10-Mooncake-面向大模型服务的-KVCache-中心化分离架构设计与-Kimi-生产实战.md)
 - [StoreBench：面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境](blog/posts/2026-10-10-StoreBench-面向自主运营智能体长程规划与经济决策的实时电商仿真评测环境.md)
 - [算子失配困境：跨平台可移植 GPU 计算在自动驾驶 BEV 感知部署中的突破](blog/posts/2026-10-10-算子失配困境-跨平台可移植-GPU-计算在自动驾驶-BEV-感知部署中的突破.md)
+- [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
+- [GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统](blog/posts/2026-11-04-GURU-用于关键任务数字工程的神经符号多智能体系统.md)
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
 
 ## cgroups
 
@@ -9603,6 +9621,10 @@ title: 标签浏览
 - [以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法](blog/posts/2026-08-11-以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法.md)
 - [DECOWAM：面向四足移动操作的解耦式全身世界-动作模型](blog/posts/2026-08-25-DECOWAM：面向四足移动操作的解耦式全身世界-动作模型.md)
 
+## 回归测试
+
+- [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
+
 ## 回音室效应
 
 - [揭露人工智能多智能体系统中的对话偏见](blog/posts/2026-08-16-揭露人工智能多智能体系统中的对话偏见.md)
@@ -10334,6 +10356,7 @@ title: 标签浏览
 - [Stellar Colosseum：面向数学与理论计算机科学长程研究的多智能体竞技框架](blog/posts/2026-09-17-Stellar-Colosseum-面向数学与理论计算机科学长程研究的多智能体竞技框架.md)
 - [为每项任务量身定制 Harness：Claude Code 中的动态工作流实战](blog/posts/2026-10-08-为每项任务量身定制-Harness-Claude-Code-中的动态工作流实战.md)
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- [GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统](blog/posts/2026-11-04-GURU-用于关键任务数字工程的神经符号多智能体系统.md)
 
 ## 多智能体协作
 
@@ -12951,6 +12974,10 @@ title: 标签浏览
 
 - [大语言模型在工艺流程图工程中的应用：从最优PFD到验证级P&ID](blog/posts/2026-08-14-大语言模型在工艺流程图工程中的应用：从最优PFD到验证级P&ID.md)
 
+## 差分模糊测试
+
+- [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
+
 ## 差分隐私
 
 - [Google Research 将联邦学习引入机密计算：Gboard 现已支持外部可验证的差分隐私训练](blog/posts/2026-10-05-Google-Research-将联邦学习引入机密计算-Gboard-现已支持外部可验证的差分隐私训练.md)
@@ -14220,6 +14247,7 @@ title: 标签浏览
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编程任务中Token消耗的影响.md)
 - [你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响](blog/posts/2026-08-29-你的AI Agent能更省钱吗？探究任务规范对智能体编码任务中Token消耗的影响.md)
 - [面向语音大模型服务的可扩展上下文编排](blog/posts/2026-09-08-面向语音大模型服务的可扩展上下文编排.md)
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
 
 ## 成本控制
 
@@ -14769,6 +14797,10 @@ title: 标签浏览
 
 - [Why2Speak：拒绝行动策略的忠实推理](blog/posts/2026-08-25-Why2Speak：拒绝行动策略的忠实推理.md)
 
+## 推理思考
+
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
+
 ## 推理扩展
 
 - [分歧-收敛推理：通过结构化解决方案合成扩展测试期计算](blog/posts/2026-08-19-分歧-收敛推理：通过结构化解决方案合成扩展测试期计算.md)
@@ -15272,6 +15304,10 @@ title: 标签浏览
 - [用于家禽养殖福利约束控制的混合边缘云数字孪生系统](blog/posts/2026-08-25-用于家禽养殖福利约束控制的混合边缘云数字孪生系统.md)
 - [运行级数字孪生诊所：实现具身智能基于任务的评估](blog/posts/2026-08-26-运行级数字孪生诊所：实现具身智能基于任务的评估.md)
 - [DNative-Twin：用于可重建智能体决策的决策图与数字孪生](blog/posts/2026-09-05-DNative-Twin：用于可重建智能体决策的决策图与数字孪生.md)
+
+## 数字工程
+
+- [GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统](blog/posts/2026-11-04-GURU-用于关键任务数字工程的神经符号多智能体系统.md)
 
 ## 数字幻觉
 
@@ -16350,6 +16386,8 @@ title: 标签浏览
 - [Dalek：构建式智能体机器](blog/posts/2026-09-05-Dalek：构建式智能体机器.md)
 - [面向嵌套企业级架构的成本感知自然语言转SQL智能体架构与全新基准测试](blog/posts/2026-09-08-面向嵌套企业级架构的成本感知自然语言转SQL智能体架构与全新基准测试.md)
 - [扩展托管智能体：解耦大脑与双手的操作系统级架构演进](blog/posts/2026-10-08-扩展托管智能体-解耦大脑与双手的操作系统级架构演进.md)
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
 
 ## 智能体框架
 
@@ -18301,6 +18339,7 @@ title: 标签浏览
 
 - [模型路由看似简单，实则不然](blog/posts/2026-08-07-模型路由看似简单，实则不然.md)
 - [并非所有 Token 都是平等的：面向智能体 LLM 系统的感知通胀路由](blog/posts/2026-08-18-并非所有 Token 都是平等的：面向智能体 LLM 系统的感知通胀路由.md)
+- [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
 
 ## 模型轻量化
 
@@ -18365,6 +18404,10 @@ title: 标签浏览
 - [愚人金：针对开源模型去安全化攻击的防御性欺骗策略](blog/posts/2026-08-20-愚人金：针对开源模型去安全化攻击的防御性欺骗策略.md)
 - [TriShieldRAG：检索增强生成分层防御中的三层护盾与盲区](blog/posts/2026-08-29-TriShieldRAG：检索增强生成分层防御中的三层护盾与盲区.md)
 - [TriShieldRAG：检索增强生成分层防御中的三重防护网与一个盲点](blog/posts/2026-08-29-TriShieldRAG：检索增强生成分层防御中的三重防护网与一个盲点.md)
+
+## 模型集成测试
+
+- [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
 
 ## 模型预测控制
 
@@ -21093,6 +21136,7 @@ title: 标签浏览
 
 - [推理捷径与价值对称性：对称性允许什么、架构实现什么以及优化选择什么](blog/posts/2026-08-14-推理捷径与价值对称性：对称性允许什么、架构实现什么以及优化选择什么.md)
 - [通过形式化抽象提升资源受限语言模型中的自然语言组合优化准确率](blog/posts/2026-08-21-通过形式化抽象提升资源受限语言模型中的自然语言组合优化准确率.md)
+- [GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统](blog/posts/2026-11-04-GURU-用于关键任务数字工程的神经符号多智能体系统.md)
 
 ## 神经符号计算
 
@@ -22674,6 +22718,7 @@ title: 标签浏览
 - [Nova：面向深度学习的端到端 MLIR 编译器](blog/posts/2026-09-04-Nova：面向深度学习的端到端 MLIR 编译器.md)
 - [标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机](blog/posts/2026-09-16-标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机.md)
 - [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
+- [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
 
 ## 编译器优化
 
@@ -23416,6 +23461,7 @@ title: 标签浏览
 - [INFUSER：影响引导的自我进化提升大模型推理能力](blog/posts/2026-08-25-INFUSER：影响引导的自我进化提升大模型推理能力.md)
 - [Ecdysis：面向大模型智能体运行时脚手架的高效进化训练](blog/posts/2026-09-13-Ecdysis-面向大模型智能体运行时脚手架的高效进化训练.md)
 - [自我进化的算法设计智能体：基于种群筛选策略优化打破上下文进化停滞](blog/posts/2026-10-02-自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞.md)
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
 
 ## 自我进化智能体
 
@@ -23636,6 +23682,10 @@ title: 标签浏览
 ## 航空航天
 
 - [AeroCopilotBench：在交互式虚拟座舱环境中评估大模型智能体作为航空副驾驶的双层基准](blog/posts/2026-08-19-AeroCopilotBench：在交互式虚拟座舱环境中评估大模型智能体作为航空副驾驶的双层基准.md)
+
+## 航空航天仿真
+
+- [GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统](blog/posts/2026-11-04-GURU-用于关键任务数字工程的神经符号多智能体系统.md)
 
 ## 航空运输
 
@@ -26308,6 +26358,10 @@ title: 标签浏览
 ## 运行时契约
 
 - [智能体安全性应当是一项运行时契约](blog/posts/2026-08-14-智能体安全性应当是一项运行时契约.md)
+
+## 运行时学习
+
+- [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
 
 ## 运行时安全
 
