@@ -1,0 +1,631 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-04-XLA%E5%AE%9E%E6%88%98%E7%BB%8F%E9%AA%8C-%E8%B6%85%E5%A4%A7%E8%A7%84%E6%A8%A1TPU%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD%E4%B8%8B%E7%9A%84%E7%BC%96%E8%AF%91%E5%99%A8%E6%AD%A3%E7%A1%AE%E6%80%A7%E4%BF%9D%E9%9A%9C/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#xla-tpu" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="xla-tpu">XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障</h1>
+<blockquote>
+<h1 id="xla-from-the-trenches-correctness-on-tpu-workloads-at-scale">XLA from the Trenches: Correctness on TPU Workloads at Scale</h1>
+<p><strong>arXiv ID:</strong> <a href="https://arxiv.org/abs/2611.00624">arXiv:2611.00624</a> [cs.AI]<br />
+<strong>Submitted:</strong> October 31, 2026<br />
+<strong>Subjects:</strong> Artificial Intelligence (<code>cs.AI</code>); Machine Learning (<code>cs.LG</code>); Programming Languages (<code>cs.PL</code>)<br />
+<strong>Authors:</strong> Ignacio Cano, Amir Saadat, Rishipal Singh Bhatia, Samuel Ginzburg, Patrick C. Toulme, Ioannis Zarkadas, Praveen Narayanan, Pratik Bhatu, Nicolas Basile, Alexander Dietmüller, Ruishan Wang, Jacob Wahlgren, Victor Barros, Subhankar Shah, Michael Kuperstein, Farzin Houshmand, Emma Sevastian, Peter Gavin, Karthik Srinivasa Murthy, Berkin Ilbeyi, Amit Sabne, Eli Bendersky  </p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在当今前沿基础大模型不断膨胀的背景下，专用编译器 (如 Google 的 XLA:TPU) 正扮演着“幕后引擎”的关键角色，通过高度复杂的优化流水线将庞大计算图转化为硬件极致性能。然而，一旦编译器在代码生成阶段潜藏细微缺陷，往往不会抛出任何传统报错，却会导致静默的数值漂移或内存损坏，足以让耗资数百万美元的分布式训练前功尽弃。来自 Google 的核心编译器团队在这篇实战论文中，首次系统公开了在超大规模 TPU 集群上保障 XLA 编译器绝对正确性的工业级全套方案，深度融合了真实运行轨迹与合成程序的混合模糊测试、自主 AI 智能体集群调试，以及多层级差分计算图二分定位算法。该体系已在生产环境中成功锁定并修复了超过 142 个隐蔽编译器缺陷，为全球超大规模异构 AI 编译工程树立了兼顾极致性能与坚实正确性的全新工业标杆。</p>
+<hr />
+<h2 id="_2">摘要概览</h2>
+<blockquote>
+<h2 id="abstract-summary">Abstract Summary</h2>
+</blockquote>
+<p>随着现代基础大模型的体量持续膨胀，领域专用编译器 (Domain-Specific Compilers) 愈发依赖繁复且多层级的优化流水线来榨取硬件的极致算力。然而，在追求巅峰性能与确保绝对正确性之间取得平衡，是一项极其艰巨的挑战。代码生成 (Code Generation, Codegen) 阶段潜藏的细微缺陷，往往不会触发传统的编译崩溃或报错，却会导致静默的数值精度衰退、内存异常或缓冲区损坏——这种“无声故障”足以直接击垮耗资数百万美元的大规模分布式模型训练，并悄然破坏线上实时模型推理结果的准确性。</p>
+<blockquote>
+<p>As modern foundation models continue to grow, domain-specific compilers increasingly rely on intricate, multi-tiered optimization pipelines. However, balancing peak performance with absolute correctness presents significant challenges. Subtle code-generation (codegen) defects can lead to silent numerical degradation, memory issues, or buffer corruption—disrupting expensive multi-million-dollar training runs and impairing live model inference without throwing traditional compiler errors.</p>
+</blockquote>
+<p>本篇论文详尽阐述了一套历经严苛实战考验的自动化验证与缺陷分流方法论，专门面向在超大规模 (Hyperscale) 环境中运行的 Google XLA:TPU 编译器而设计。其核心贡献包括：</p>
+<blockquote>
+<p>This paper details a battle-tested verification and triage methodology designed for Google's XLA:TPU compiler operating at hyperscale. Key contributions include:</p>
+</blockquote>
+<ul>
+<li><strong>混合模糊测试 (Hybrid Fuzzing)</strong>：创新性地将合成程序生成机制与线上真实生产运行轨迹 (Production Traces) 深度融合；</li>
+<li><strong>自主 AI 智能体 (Autonomous AI Agents)</strong>：部署协同作战的 AI 智能体 (AI Agents) 集群，实现自主构建压力测试用例、精准复现失败场景并草拟修复补丁；</li>
+<li><strong>多层级差分流水线 (Hierarchical Differential Pipeline)</strong>：采用高精度的计算图二分定位算法，将庞大的计算图层层下钻剖析至融合算子 (Fused Kernels) 内的具体失败原子操作，高效隔离根本致错原因。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Hybrid Fuzzing:</strong> Combining synthetic program generation with real-world production traces.</li>
+<li><strong>Autonomous AI Agents:</strong> Deploying swarms of AI agents to autonomously construct stress tests, replicate failures, and draft patches.</li>
+<li><strong>Hierarchical Differential Pipeline:</strong> Bisecting massive computation graphs down to individual failing operations within fused kernels to isolate root causes.</li>
+</ul>
+</blockquote>
+<p>在实际生产部署中，该框架已成功推动解决了 <strong>超过 142 个编译器缺陷 (Compiler Bugs)</strong>，另有 <strong>103 项新发现的潜在问题正处于审查确认中</strong>，为超大规模 AI 系统的编译器工程化落地贡献了极具实操价值的宝贵经验。</p>
+<blockquote>
+<p>In production deployment, this framework successfully drove the resolution of <strong>over 142 compiler bugs</strong>, with another <strong>103 findings currently under review</strong>, yielding valuable pragmatic lessons for compiler engineering at scale.</p>
+</blockquote>
+<hr />
+<h2 id="_3">论文元数据</h2>
+<blockquote>
+<h2 id="article-metadata">Article Metadata</h2>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">字段 (Field)</th>
+<th style="text-align: left;">详情 (Details)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>引用方式 (Cite As)</strong></td>
+<td style="text-align: left;"><code>arXiv:2611.00624 [cs.AI]</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DOI</strong></td>
+<td style="text-align: left;"><a href="https://doi.org/10.48550/arXiv.2611.00624">10.48550/arXiv.2611.00624</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>全文链接 (Full-Text Links)</strong></td>
+<td style="text-align: left;"><a href="https://arxiv.org/pdf/2611.00624">查看 PDF (View PDF)</a> | <a href="https://arxiv.org/html/2611.00624v1">HTML 版本 (HTML Version)</a> | <a href="https://arxiv.org/src/2611.00624">TeX 源码 (TeX Source)</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>附加功能 (Additional Features)</strong></td>
+<td style="text-align: left;">可通过 arXiv 获得音频摘要 (Audio Summary available via arXiv)</td>
+</tr>
+</tbody>
+</table>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">XLA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">TPU</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">编译器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">差分模糊测试</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">arXiv论文</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

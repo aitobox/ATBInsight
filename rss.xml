@@ -5,6 +5,458 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在自主编程智能体 (AI Agent) 快速普及的当下，每次微小决策都直接调用昂贵的高思考深度推理模型，导致企业账单急剧攀升。本文由 Google Cloud AI 的技术专家 Sergio Villani 撰写，针对大模型落地的真实痛点，提出了从“单 Token 成本”转向以“任务成功成本 (Cost Per Task)”为核心的衡量体系。文章深入剖析了基于正则或 Token 长度等初级路由策略的失效机理，并开创性地引入 TypeSafe Jev 等极低成本分类器，通过极速判断任务复杂度，将常规任务分流至轻量模型或浅层思考模式，仅在必要时才升级调用深度推理。这一动态分流架构在维持顶尖基准测试 (Benchmark) 准确率的同时，大幅降低了计算开销与响应延迟，为企业构建高性价比、高可用的智能体系统提供了极具指导意义的工程实践方案。
+
+---
+
+## 核心摘要
+
+&gt; ## Executive Summary
+
+尽管各大模型的每 Token 调用单价持续走低，但在实际部署中，自主编程智能体消耗的工程账单却不降反升。在真实的生产实践中，真正决定经济效益的黄金指标早已不是“每百万 Token 多少钱”，而是**任务成功成本 (Cost Per Task)** ——即智能体在所有循环轮次、工具调用、错误重试以及内部思维链推理中所产生的总支出，除以最终顺利通过验证的任务总数。
+
+&gt; As per-token API prices continue to fall, engineering bills for autonomous coding agents are climbing. The metric that truly governs production economics is no longer price per million tokens, but **cost per successful task**: the total spend across every loop iteration, tool call, retry, and internal thinking pass divided by the number of tasks that pass verification. 
+
+为了避免在每一个微小的决策节点上都大动干戈地调用高思考深度的推理配置，工程团队可以引入一层轻量级路由层——例如使用 TypeSafe 开发的极低成本分类器 Jev，或是 Google 原生判别模型——在日常平淡无奇的常规决策流向昂贵的推理模型之前将其精准拦截。
+
+&gt; To prevent the unnecessary overhead of calling high-thinking reasoning configurations for every micro-decision, teams can use a lightweight routing layer—such as a cheap classifier like TypeSafe’s Jev or Google-native discriminative models—to intercept routine decisions before they reach an expensive reasoning model.
+
+---
+
+## 1. 基于正则与 Token 长度的简易路由在未知智能体任务上全面溃败
+
+&gt; ## 1. Regex and token-length harness routers collapse on unseen agent tasks
+
+单纯依赖简单的提示词 (Prompt) 长度启发式规则，或者靠关键词硬匹配 (例如检查是否包含 `sequence` 或 `modulo` 等特定词汇) ，在面对现实世界真实的智能体流量时往往不堪一击。在从未见过的留出测试集上，这类简陋的关键词启发式规则准确率会出现灾难性下滑：许多看似繁琐却毫无难度的常规任务往往篇幅较长、词数极多；而一些结构精炼但逻辑极为复杂的紧凑型多步骤代码追踪任务，却压根不会出现人工预设的那些“解谜”标志词。
+
+&gt; Relying on naive prompt-length heuristics or simple keyword-matching (e.g., checking for words like `sequence` or `modulo`) quickly degrades when exposed to real-world agent traffic. On unseen held-out tasks, simple keyword heuristics drop significantly in accuracy because normal, straightforward tasks often exceed word counts, while concise multi-step code traces lack hardcoded puzzle words.
+
+相反，将复杂的任务判断拆解为“原子级”的微观判定——例如通过评估一个二元概率指标 (在 Jev 分类器中称为 `noul`) 来判断当前任务是否需要多步连续计算、模拟或逻辑推演——能够取得令人惊艳的高精度分类表现。
+
+&gt; Decomposing broad questions into atomic checks—such as evaluating a binary probability statement (`noul`) regarding whether a task requires multiple sequential calculations—yields vastly superior classification results.
+
+```python
+def call_jev(question_text):
+    body = {
+        "state": question_text,
+        "model": "jev-latest",
+        "questions": {
+            "multi_step": {
+                "type": "noul",
+                "instructions": (
+                    "Answering this requires performing more than one "
+                    "sequential calculation, simulation step, or logical "
+                    "deduction, rather than a single direct lookup, format "
+                    "check, or one-step classification."
+                ),
+            }
+        },
+    }
+    # Send the request above to the classifier's API.
+    # response.answers["multi_step"].noul is the probability used to route.
+```
+
+![table_1_task_routing_sample](./images/62e28af3cba1.jpg)
+
+![table_2_benchmark_split_agreement](./images/b9defa5a041c.jpg)
+
+---
+
+## 2. MaxOutputTokens 是硬性输出上限，绝非控制思考预算的调节旋钮
+
+&gt; ## 2. MaxOutputTokens is a ceiling, not a thinking-budget dial
+
+许多开发者容易陷入一个误区，以为在推理模型上将 `maxOutputTokens` 调小，就能“强迫”模型在简单任务上节省算力与思考预算。然而事实恰恰相反，输出上限仅仅是一道刚性的“天花板”：简单任务原本生成的回复就极为简短，根本触碰不到设定的上限阀值，因此模型消耗的思考 Token 与输出开销完全没有减少；反而是当遇到真正复杂的困难任务时，被人为压低的上限会导致输出在推演半途被生硬截断，直接引发任务崩溃。
+
+&gt; A common misconception is that setting a low `maxOutputTokens` cap on a reasoning model will force it to spend fewer resources on easy tasks. However, output caps act strictly as ceilings; easy answers never approach the limit, meaning token and thinking spend remain virtually identical while artificially restricted caps risk truncating or breaking hard tasks.
+
+![table_3_easy_task_configuration](./images/f3c63b5a2852.jpg)
+
+&gt; 💬 [原文说明 / Note]:
+&gt; *注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。*
+&gt;
+&gt; *Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.*
+
+---
+
+## 3. 性能基准实测：Jev 分流方案对决最强无路由配置
+
+&gt; ## 3. Benchmark Jev against the strongest setup without a router
+
+将轻量化模型策略 (例如直接使用 Flash-Lite，或是将 Gemini Flash 设置为较低的思考深度) 与引入智能路由的配置方案进行基准测试对比，可以清晰揭示：在核心大模型处理前加入极低成本的智能预处理分流，是如何在大幅压低延迟的同时实现惊人的成本优化的。
+
+&gt; Benchmarking lightweight options (such as Flash-Lite or Gemini Flash set to low thinking levels) against routing configurations reveals how intelligent preprocessing can optimize both latency and cost.
+
+![table_4_strategy_performance_comparison](./images/f4b22d599756.jpg)
+
+&gt; 💬 [原文说明 / Note]:
+&gt; *注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。*
+&gt;
+&gt; *Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.*
+
+![table_5_task_bucket_breakdown (1)](./images/d36ffbe95b2e.jpg)
+
+* **Jev 路由表现优异**：默认将所有日常任务首先分配给 Flash-Lite 处理，仅对被 Jev 标记为高复杂度的任务进行动态升级；这种策略在完美达到顶级基准准确率的同时，彻底免去了简单任务上毫无必要的深度思考等待时间。
+* **智慧升级原则**：只有当低梯度的模型或配置确实无力解决任务时，调用计算开销更大的重量级升级模型才具有切实的经济与效果价值。
+
+&gt; * **The Jev router succeeded:** By sending every task to Flash-Lite first and escalating complex items flagged by Jev, it matched top-tier baseline accuracy while reducing unnecessary deep-reasoning wait times.
+&gt; * **Escalating smartly:** A heavier escalation target is only beneficial when lower-tier settings begin to fail.
+
+---
+
+## 4. 单 Token 标价掩盖的工程真相：缓存与模型特性的深层博弈
+
+&gt; ## 4. Price per token doesn't tell the whole story
+
+* **动态路由与上下文缓存互有权衡**：在处理大型代码仓库目录映射或繁杂的工具定义时，上下文缓存 (Context Caching) 能呈数量级削减 Token 支出，但缓存必须绑定特定的具体模型。如果在 Flash-Lite 与 Flash 之间进行高频来回切换，反而会击穿并破坏缓存复用效率。因此，动态路由器最适合应用于那些简短、自包含且上下文独立的离散子任务中。
+* **模型选型严格匹配业务负载特性**：像 Gemini Pro 这样的深度推理模型，应当被专门保留给那些需要多步推演、复杂归纳的高难度攻坚场景；而针对绝大多数常规检索、快速查询与信息抽取操作，直接交给轻快的 Flash 基础配置即可游刃有余。
+
+&gt; * **Routing and caching pull in opposite directions:** Context caching dramatically reduces token costs for large repository maps or tool definitions, but caches are bound to specific models. Frequent switching between Flash-Lite and Flash can break caching efficiency. Reserve routers for short, self-contained tasks.
+&gt; * **Match the model to the workload:** Deep reasoning models like Gemini Pro are best reserved for complex multi-step reasoning, whereas quick lookups and extractions belong on Flash configurations.
+
+---
+
+## 总结与落地工程建议
+
+&gt; ## Summary Recommendations
+
+1. **优先尝试 Flash 的 `low` 低思考配置**：在急于搭建复杂的自定义路由组件之前，不妨先直接测试较低的思考深度档位 (例如设置 `thinkingLevel: "LOW"`) ，因为在很多工程场景下，它仅需默认配置极小一部分的成本，就能以极高成功率攻克绝大部分任务。
+2. **在简短独立任务中引入 Jev 分类器**：利用细粒度原子化“是/否”判定问题，将简单任务精准分流至 Flash-Lite，遇到复杂难题再动态转交至开启浅思考的 Flash 方案。
+3. **建立全局端到端智能体成本监控体系**：借助 Google Cloud 的 Cloud Logging 与 BigQuery 全程追踪调用追踪链 (Trace) 与思考 Token 真实开销，始终紧扣“单次成功任务成本”这一关键商业指标来评估系统综合表现。
+
+&gt; 1. **Start with Flash on `low` thinking:** Before building a custom router, test lower thinking levels directly (`thinkingLevel: "LOW"`), as they frequently solve tasks successfully at a fraction of default costs.
+&gt; 2. **Use Jev for short, standalone tasks:** Direct simple tasks to Flash-Lite and hard tasks to Flash (low thinking), leveraging atomic yes-or-no classification questions.
+&gt; 3. **Measure true agent expenditures:** Track traces and thinking tokens via Cloud Logging and BigQuery to monitor performance against actual costs per successful task.
+
+---
+![image3 (1)](./images/85cf26014b0f.jpg)</description>
+    </item>
+    <item>
+      <title>XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-04/XLA实战经验-超大规模TPU工作负载下的编译器正确性保障/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/XLA实战经验-超大规模TPU工作负载下的编译器正确性保障/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在当今前沿基础大模型不断膨胀的背景下，专用编译器 (如 Google 的 XLA:TPU) 正扮演着“幕后引擎”的关键角色，通过高度复杂的优化流水线将庞大计算图转化为硬件极致性能。然而，一旦编译器在代码生成阶段潜藏细微缺陷，往往不会抛出任何传统报错，却会导致静默的数值漂移或内存损坏，足以让耗资数百万美元的分布式训练前功尽弃。来自 Google 的核心编译器团队在这篇实战论文中，首次系统公开了在超大规模 TPU 集群上保障 XLA 编译器绝对正确性的工业级全套方案，深度融合了真实运行轨迹与合成程序的混合模糊测试、自主 AI 智能体集群调试，以及多层级差分计算图二分定位算法。该体系已在生产环境中成功锁定并修复了超过 142 个隐蔽编译器缺陷，为全球超大规模异构 AI 编译工程树立了兼顾极致性能与坚实正确性的全新工业标杆。
+
+---
+
+## 摘要概览
+
+&gt; ## Abstract Summary
+
+随着现代基础大模型的体量持续膨胀，领域专用编译器 (Domain-Specific Compilers) 愈发依赖繁复且多层级的优化流水线来榨取硬件的极致算力。然而，在追求巅峰性能与确保绝对正确性之间取得平衡，是一项极其艰巨的挑战。代码生成 (Code Generation, Codegen) 阶段潜藏的细微缺陷，往往不会触发传统的编译崩溃或报错，却会导致静默的数值精度衰退、内存异常或缓冲区损坏——这种“无声故障”足以直接击垮耗资数百万美元的大规模分布式模型训练，并悄然破坏线上实时模型推理结果的准确性。
+
+&gt; As modern foundation models continue to grow, domain-specific compilers increasingly rely on intricate, multi-tiered optimization pipelines. However, balancing peak performance with absolute correctness presents significant challenges. Subtle code-generation (codegen) defects can lead to silent numerical degradation, memory issues, or buffer corruption—disrupting expensive multi-million-dollar training runs and impairing live model inference without throwing traditional compiler errors.
+
+本篇论文详尽阐述了一套历经严苛实战考验的自动化验证与缺陷分流方法论，专门面向在超大规模 (Hyperscale) 环境中运行的 Google XLA:TPU 编译器而设计。其核心贡献包括：
+
+&gt; This paper details a battle-tested verification and triage methodology designed for Google's XLA:TPU compiler operating at hyperscale. Key contributions include:
+
+* **混合模糊测试 (Hybrid Fuzzing)**：创新性地将合成程序生成机制与线上真实生产运行轨迹 (Production Traces) 深度融合；
+* **自主 AI 智能体 (Autonomous AI Agents)**：部署协同作战的 AI 智能体 (AI Agents) 集群，实现自主构建压力测试用例、精准复现失败场景并草拟修复补丁；
+* **多层级差分流水线 (Hierarchical Differential Pipeline)**：采用高精度的计算图二分定位算法，将庞大的计算图层层下钻剖析至融合算子 (Fused Kernels) 内的具体失败原子操作，高效隔离根本致错原因。
+
+&gt; * **Hybrid Fuzzing:** Combining synthetic program generation with real-world production traces.
+&gt; * **Autonomous AI Agents:** Deploying swarms of AI agents to autonomously construct stress tests, replicate failures, and draft patches.
+&gt; * **Hierarchical Differential Pipeline:** Bisecting massive computation graphs down to individual failing operations within fused kernels to isolate root causes.
+
+在实际生产部署中，该框架已成功推动解决了 **超过 142 个编译器缺陷 (Compiler Bugs)**，另有 **103 项新发现的潜在问题正处于审查确认中**，为超大规模 AI 系统的编译器工程化落地贡献了极具实操价值的宝贵经验。
+
+&gt; In production deployment, this framework successfully drove the resolution of **over 142 compiler bugs**, with another **103 findings currently under review**, yielding valuable pragmatic lessons for compiler engineering at scale.
+
+---
+
+## 论文元数据
+
+&gt; ## Article Metadata
+
+| 字段 (Field) | 详情 (Details) |
+| :--- | :--- |
+| **引用方式 (Cite As)** | `arXiv:2611.00624 [cs.AI]` |
+| **DOI** | [10.48550/arXiv.2611.00624](https://doi.org/10.48550/arXiv.2611.00624) |
+| **全文链接 (Full-Text Links)** | [查看 PDF (View PDF)](https://arxiv.org/pdf/2611.00624) \| [HTML 版本 (HTML Version)](https://arxiv.org/html/2611.00624v1) \| [TeX 源码 (TeX Source)](https://arxiv.org/src/2611.00624) |
+| **附加功能 (Additional Features)** | 可通过 arXiv 获得音频摘要 (Audio Summary available via arXiv) |</description>
+    </item>
+    <item>
+      <title>Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-04/Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在开源大模型生态中，Hugging Face 的 Transformers 库已支持超过 750 种主流模型架构，每天仅 GPU 测试用例就超过 20 万个，给持续集成系统带来了极为庞大的算力负担。受限于高昂的硬件资源成本，开发团队难以在每一次拉取请求 (Pull Request, PR) 中都跑完全量 GPU 集成测试，导致部分隐蔽的注意力机制与训练回归 Bug 潜入主分支长达数周。为此，Hugging Face 推出了“模型集成契约 (Model Integration Contracts, MIC)”轻量化测试体系。该体系通过将吉字节 (GB) 级的庞大模型压缩为保留完整网络拓扑结构的几十兆轻量测试夹具 (Fixtures)，结合标准化的端到端使用路径与经专家严格审阅的黄金基准线，成功将集成测试迁移至极低成本的 CPU 运行节点上，做到了在代码合入主分支前快速捕获破坏性变更，为大模型软件工程与质量保障提供了极具参考价值的轻量化实践。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+在像 Hugging Face Transformers 这样庞大的开源生态中，模型测试面临着极其严峻的挑战：一方面其支持的模型种类多达 750 多种，另一方面每次拉取请求 (Pull Request, PR) 都要在 GPU 上运行全量集成测试，其计算资源开销令人难以承受。这种高昂的测试成本导致了意外的回归 Bug 频发——例如 UMT5 中曾出现的一个注意力机制缺陷，竟导致模型在训练阶段能够“偷窥”到未来的 Token，这一严重漏洞在主分支 (main) 中潜伏了数周都未被察觉。
+
+&gt; Model testing in large ecosystems like Hugging Face Transformers is challenging due to the massive scale of supported models (750+ types) and the high resource cost of running full integration tests on GPUs for every pull request. As a result, regressions—such as a UMT5 attention bug that allowed the model to peek at future tokens during training—can slip into the main branch undetected for weeks. 
+
+为了化解这一难题，**模型集成契约 (Model Integration Contracts, MIC)** 框架引入了一种轻量且健壮的全新解决方案：
+1. **将庞大模型瘦身为测试夹具 (Fixtures)**：在完整保留模型所有架构层类型以及分词器 (Tokenizer) 配置的前提下，对模型进行极致瘦身 (例如将原本重达 1,227 MB 的 UMT5 检查点缩减为仅 66 MB、适配 CPU 快速执行的测试夹具)；
+2. **打包封装标准化使用路径 (Usage Paths)**：提供一系列可直接运行的代码用例，全面覆盖文本生成、训练损失 (Loss) 计算以及梯度健康检查等核心环节；
+3. **比对人工审阅的基准测试线 (Baselines)**：在低廉的 CPU 运行节点上快速验证输出一致性，确保在任何破坏性变更合并到 `main` 分支前将其扼杀在摇篮中。
+
+&gt; To solve this, the **Model Integration Contracts (MIC)** framework introduces a lightweight, robust approach:
+&gt; 1. **Shrink models into fixtures** (e.g., reducing a 1,227 MB UMT5 checkpoint into a 66 MB CPU-friendly fixture) while preserving all architecture layer types and tokenizer configurations.
+&gt; 2. **Package standardized usage paths** (runnable code examples testing text generation, training loss, and gradient checks).
+&gt; 3. **Validate against human-reviewed baselines** to catch breaking changes on cheap CPU runners before they hit `main`.
+
+---
+
+## 为什么 Bug 能神不知鬼不觉地溜进主分支？
+
+&gt; ## Why Bugs Reach Main
+
+[Transformers](https://github.com/huggingface/transformers) 目前已支持超过 750 种模型类型，维护着一个规模空前的庞大测试套件，其中包括 **主分支上的 88,000 多项 CPU 测试，以及每日定时运行的 200,000 多项 GPU 测试**，覆盖了推理管道 (Pipelines)、模型训练、分布式执行、量化以及各类注意力算子内核 (Attention Kernels)。
+
+&gt; [Transformers](https://github.com/huggingface/transformers) supports over 750 model types, maintaining a massive test suite consisting of **88,000+ CPU tests on main and 200,000+ GPU tests in daily runs**, spanning pipelines, training, distributed execution, quantization, and attention kernels.
+
+![Transformers testing diagram](/blog/assets/transformers-mic/ci-test-suite.svg)
+
+由于完整的集成测试必须在真实硬件设备上加载真实的权重检查点 (Checkpoints)，为每一次 PR 都完整执行这套测试流程在计算成本上几乎是不切实际的。而等到每日定时排期的测试流水线终于暴露出回归问题时，产生问题的提交往往早已合入了 `main` 主分支。
+
+&gt; Because integration tests require loading real checkpoints on real hardware, running everything on every pull request is computationally impractical. By the time scheduled runs surface a regression, it has often already merged into `main`.
+
+为了解决这一困境，团队将模型压缩为极其轻量级的 **测试夹具 (Fixtures)**——完整保留原始的配置结构、分词器 (Tokenizer) 和处理器 (Processor) 文件，但大幅度削减网络深度与各层的隐层宽度。这使得我们能够在廉价的 CPU 执行机上流畅跑完“快速集成测试”。以实验性的 UMT5 夹具为例，相比原版高达 1,227 MB 的庞大权重，瘦身后的测试夹具仅有区区 66 MB，即便面对超大规模架构也能实现闪电般的自动化验证。
+
+&gt; To mitigate this, we shrink models into lightweight **fixtures**—retaining the configuration structure, tokenizer, and processor files, but significantly scaling down depth and layer width. This allows us to run "fast integration tests" on inexpensive CPU runners. For example, an experimental UMT5 fixture weights only 66 MB compared to its 1,227 MB source checkpoint, enabling fast testing even for otherwise massive models.
+
+---
+
+## 认识“模型集成契约” (MIC)
+
+&gt; ## Introducing Model Integration Contracts
+
+开源项目 [transformers-mic](https://github.com/huggingface/transformers-mic) 将这些轻量化的校验逻辑进行了标准化封装。一份模型集成契约 (Model Integration Contract, MIC) 包含三个核心要素：
+* **测试夹具 (Fixture)**：经过精心缩减尺寸、固定版本的小型模型；
+* **使用路径 (Usage Path)**：一段可直接运行的 Markdown 格式示例代码，演示模型的典型真实用法 (如文本生成或单步训练)；
+* **基准记录 (Baselines)**：经过人工严密审阅认可的标准输出记录。
+
+&gt; [transformers-mic](https://github.com/huggingface/transformers-mic) standardizes these lightweight validation checks. A Model Integration Contract (MIC) consists of three parts:
+&gt; * A **fixture**: The shrunk, pinned model.
+&gt; * A **usage path**: A runnable Markdown example demonstrating practical usage (e.g., text generation or training steps).
+&gt; * **baselines**: Human-reviewed output records.
+
+一份契约锁定的目标是某一种模型架构和具体的工作流，而非局限于某个单独的模型检查点。例如，SmolLM 模型的契约会使用诸如 *“The capital of France is”* 之类的提示词来验证 Token 的生成过程，并将生成的 Token ID 序列与基准记录进行逐一比对：
+
+&gt; A contract targets an architecture and a workflow rather than a single checkpoint. For instance, the SmolLM contract verifies token generation using prompts like *"The capital of France is"* and compares output token IDs against a recorded answer:
+
+```python
+inputs = tokenizer("The capital of France is", return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=4, do_sample=False)
+new_tokens = outputs[:, inputs["input_ids"].shape[1]:]
+print(tokenizer.batch_decode(new_tokens, skip_special_tokens=True))
+```
+
+此外，契约还会严密监控训练损失 (Loss) 的变化、确保反向传播中的梯度数值有限 (即杜绝 NaN 或 Inf)，并验证优化器步进操作能够正确更新模型权重。
+
+&gt; It also tracks training loss, ensures gradients are finite, and verifies that optimizer steps correctly update model weights.
+
+---
+
+## 真实案例复盘：UMT5 注意力机制回归 Bug
+
+&gt; ## The UMT5 Regression
+
+在 PyTorch 的缩放点积注意力 (Scaled Dot-Product Attention, SDPA) 算子被引入 T5 模型的过程中，引入了一个极其隐蔽的 Bug：它无意间导致 UMT5 的解码器在训练反向计算时竟能关注到未来的 Token (破坏了自回归因果遮蔽)。由于标准的模型前向传递代码没有产生任何崩溃报错，这个严重的静默错误竟然在主分支 `main` 中潜伏了将近两个月。
+
+&gt; When PyTorch's scaled dot-product attention (SDPA) was enabled for T5, a bug inadvertently allowed UMT5's decoder to attend to future tokens during training. Because standard forward passes did not crash, the bug remained in `main` for nearly two months.
+
+而当使用轻量级的 UMT5 测试夹具对历史提交进行回放测试时，该回归问题在每一个包含缺陷的代码提交上都被精准揪出！测试数据显示，标签对数概率 (Log-probabilities) 与人工审阅的基准线偏离了 `1.22`，训练损失的偏差也达到了约 `0.20`，异常无所遁形。
+
+&gt; When historical commits were replayed using the small UMT5 fixture, the regression was successfully flagged on every single broken commit. Label log-probabilities diverged from the reviewed baseline by `1.22`, and training loss by roughly `0.20`. 
+
+---
+
+## 模型“缩身术”：轻量测试夹具的制作秘籍
+
+&gt; ## How Models Are Shrunk
+
+为了确保瘦身后的夹具能够忠实地反映真实模型架构的行为特性，团队总结了一套四步工作流：
+1. **缩减网络配置 (Configuration)**：削减隐层维度 (Hidden Sizes)、注意力头数与网络深度，同时坚决保留所有独具特色的层类型 (例如滑动窗口注意力与全注意力的混合层，或 MoE 专家混合层)；
+2. **预处理完全保持原样**：逐字节完整复制分词器 (Tokenizer) 与处理器 (Processor) 的原始文件，百分之百保留词表、特殊 Token 以及输入维度；
+3. **构建并校验初始权重**：采用固定的随机种子初始化权重 (必要时在极小批次上进行针对性过拟合训练)，并严格校验前向输出、损失值与梯度值是否均为正常有限数值；
+4. **冻结版本并持久化归档**：保存已通过验收的权重，对照已知的健康版本精准记录基准输出，并对外发布一份带版本锁定的快照资产。
+
+&gt; To ensure fixtures accurately reflect true architecture behavior, we follow a 4-step recipe:
+&gt; 1. **Shrink the configuration:** Reduce hidden sizes, attention heads, and depth while preserving all unique layer types (such as mixtures of sliding/full attention or MoE layers).
+&gt; 2. **Keep preprocessing unchanged:** Preserve vocabularies, special tokens, and input dimensions by copying tokenizer/processor files byte-for-byte.
+&gt; 3. **Build and validate weights:** Initialize with seeded random weights (or overfit on small batches if necessary) and verify that outputs, losses, and gradients are finite.
+&gt; 4. **Freeze and record:** Save accepted weights, measure outputs against a known-good build, and publish a pinned snapshot.
+
+---
+
+## 借助 AI 智能体自动化构建契约
+
+&gt; ## Building MICs with Agents
+
+官方提供的命令行工具 `tmic` 能够极大程度地实现契约与测试夹具创建过程的自动化：
+
+&gt; The CLI tool `tmic` helps automate the creation of contracts and fixtures:
+
+```sh
+pip install "transformers-mic[runtime]" "hf-doc-builder @ git+https://github.com/huggingface/doc-builder.git"
+hf auth login
+tmic run org/model --local-only --fixtures-only --no-history --bill-to ''
+```
+
+在流水线中，团队利用大语言模型 (Large Language Model, LLM) 来自动起草使用路径代码与配置清单，但所有作为最终判定准则的基准数据，都必须经过人工专家的严苛审阅与把关。
+
+&gt; LLMs are used to draft usage codes and manifests, but all expected baselines strictly undergo human review.
+
+---
+
+## 随机权重与过拟合权重之争
+
+&gt; ## Random vs Overfit Weights
+
+尽管随机初始化的权重对于绝大多数常规架构已足够胜任，但像 Whisper 这样涉及跨模态处理的模型，则需要针对性的微调 (即在极简的音频-文本对上进行微量过拟合)，以确保底层音频通路发生任何细微变动时都能引发可观察的显式输出偏移。虽然这两种权重构建策略都能精准捕获绝大多数人造故障，但团队依然倾向于优先选用纯随机权重，除非特定任务对敏感度有极高要求或输出结果必须具备可读性才采用过拟合方案。
+
+&gt; While random weights work well for general architectures, models like Whisper require targeted fine-tuning (overfitting on simple audio-to-text pairs) to ensure audio pathway changes trigger visible output shifts. While both approaches catch the vast majority of synthetic faults, we prefer random weights unless enhanced sensitivity or readable outputs demand overfitting.
+
+---
+
+## 悬而未决的探索与开放性思考
+
+&gt; ## Open Questions
+
+将模型集成契约深度接入持续集成 (CI) 体系，也引发了一系列值得长期探索的关键课题：
+* 相比于事后针对历史提交的回放排查，在 PR 阶段它能在真实场景中实时拦截多少潜在 Bug？
+* 误报率 (False Alarms) 的发生频率如何？人工审阅与更新基准测试线会带来多大的长期维护负担？
+* 真实模型检查点的完整权重究竟在多大程度上能够发现微缩测试夹具无法感知的极端边界故障？
+
+&gt; Integrating MICs into CI raises key questions moving forward:
+&gt; * How many real-world bugs will be caught on PRs compared to replays?
+&gt; * What is the frequency of false alarms and the maintenance overhead of baseline reviews?
+&gt; * To what extent do real weights uncover edge-case bugs that smaller fixtures might miss?
+
+该项目十分欢迎开源社区的参与——开发者们可以前往 [覆盖率看板 (Coverage Space)](https://huggingface.co/spaces/huggingface-mic/mic-coverage) 探索当前的测试覆盖现状，挑选一个尚未覆盖的模型，共同贡献全新的使用路径代码或参与契约审阅！
+
+&gt; Contributions are welcome—developers can explore the [coverage space](https://huggingface.co/spaces/huggingface-mic/mic-coverage), pick an uncovered model, and contribute new usage paths or contract reviews!</description>
+    </item>
+    <item>
+      <title>GURU：面向高可靠数字工程与运维的神经符号分层多智能体系统</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-04/GURU-用于关键任务数字工程的神经符号多智能体系统/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/GURU-用于关键任务数字工程的神经符号多智能体系统/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在航空航天、复杂计算流体动力学与空间态势感知等关键任务场景中，传统黑盒驱动的大语言模型 (Large Language Model, LLM) 往往因输出幻觉与不可控的推断而无法直接用于安全决策。为此，本论文提出了 GURU——一个具备严格验证意识的神经符号分层多智能体系统 (Hierarchical Neuro-Symbolic Multi-Agent System) 。GURU 创新性地确立了权责严格划分的闭环控制机制：由神经网络模型负责提议并加速动作，由符号规则引擎在动作落地前强制核验安全硬边界，最终由经过校验的高保真物理仿真引擎对系统状态做出终局判定。实验表明，该系统在未见过的复杂飞行器几何构型仿真收敛率上实现了从不足 1% 到 74% 的质的飞跃，并在超级计算机集群上展现出可扩展至 8000 个计算节点的强大工程落地能力。
+
+---
+
+## 执行摘要
+
+&gt; ## Executive Summary
+
+“AI 能够比任何人类都更快地找出安全行动方案，但它绝不能由自己来界定何为安全标准。”
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *“An AI can find a safe action faster than any human, but it must never decide what counts as safe.”*
+
+**GURU** 是一套专为关键任务数字工程与运维量身打造的分层神经符号多智能体系统。它严格实行权责隔离制度：
+
+&gt; **GURU** is a hierarchical neuro-symbolic multi-agent system designed for mission-critical digital engineering and operations. It enforces a strict partition of authority:
+
+1. **学习型模型 (Learned models)**：负责提议、排列优先级并加速候选行动；
+2. **符号规则引擎 (Symbolic rules engine)**：在执行任何关键动作之前，依据严苛的硬性边界指标逐项核验；
+3. **真实物理验证 (Validated physics)**：对最终系统状态进行校准并作出权威裁定。
+
+&gt; 1. **Learned models** propose, rank, and accelerate actions.
+&gt; 2. **A symbolic rules engine** checks every consequential action against hard limits prior to execution.
+&gt; 3. **Validated physics** confirms and decides the final state.
+
+GURU 作为闭环控制系统运转，调度各司其职的专业 AI 智能体 (负责导航寻径的 Navigation、负责执行操作的 Action 与负责规划策略的 Planning) ，各个智能体之间共享统一的内部通用语言 (Common Internal Language) 与一体化模型训练平台。
+
+&gt; Operating as a closed control loop, GURU utilizes specialized agents (Navigation, Action, and Planning) that share a Common Internal Language and a unified training factory. 
+
+---
+
+## 核心性能与实验结果
+
+&gt; ## Key Performance &amp; Experimental Results
+
+* **计算流体力学 (Computational Fluid Dynamics, CFD) ：** 
+  * 在 100 个单次尝试的基准测试用例中，将此前从未见过的复杂飞行器几何构型仿真收敛率从**不足 1% 大幅跃升至 74%**；
+  * 跨越三处研究设施，成功实测完成了最高达 6 马赫 (Mach 6) 的 **54 个真实工况用例**；
+  * 消融实验证实，符号规则层的加入直接带来了边界层捕捉能力 **13 个百分点的提升**；
+  * 依托知识图谱检索与角色适配器技术，将 ParaView 科学可视化工具的控制成功率从 **55% 提升至 75%**。
+
+* **空间态势感知 (Space Domain Awareness) ：** 
+  * 针对大语言模型在关键安全决策中缺乏可信度的痛点，给出了高可靠的自主工程解决方案；
+  * 采用冻结权重的自监督世界模型与经严格校验的物理轨道外推相结合，在空间交会碰撞风险评估中斩获**五种参评方法中的最高得分** (性能显著优于全面微调的大语言模型) ，同时展现出**极低的随机种子方差**。
+
+* **系统扩展性与现实工程落地：** 
+  * 在 2026 年的一次航天器再入大气层真实事件中，分阶段完整验证了从雷达探测到轨道机动避让的全流程空间碎片防御链条；
+  * 在高保真仿真环境中成功协同指挥了包含 **200 架飞行器**的大规模集群编组；
+  * 模型训练规模在突破 **1,000 个 Aurora 超算节点**后依然展现出近乎线性的扩展效率，并成功在 **8,000 个计算节点**上实现超大规模集群稳定运行；
+  * 该架构能自然拓展至控制级微型核反应堆数字孪生系统，始终坚持以经过严谨验证的真实物理法则 (而非纯粹基于黑盒学习的经验拟合) 作为不可动摇的最高安全基石。
+
+&gt; * **Computational Fluid Dynamics (CFD):** 
+&gt;   * Raised the converged-simulation rate on unseen aircraft geometries from **under 1% to 74%** over 100 single-attempt cases.
+&gt;   * Successfully ran **54 live cases** up to Mach 6 across three facilities.
+&gt;   * Ablation studies demonstrated that the symbolic layer accounts for a **13-point increase** in boundary-layer capture.
+&gt;   * Knowledge-graph retrieval and role adapters improved ParaView control success from **55% to 75%**.
+&gt; 
+&gt; * **Space Domain Awareness:** 
+&gt;   * Addressed scenarios where language models cannot be trusted with autonomous decision-making. 
+&gt;   * A frozen, self-supervised world model coupled with validated propagation scored **highest among five methods** for conjunction risk assessment (outperforming fully fine-tuned language models) while exhibiting **significantly lower seed variance**.
+&gt; 
+&gt; * **Systems Scalability &amp; Real-World Application:** 
+&gt;   * Demonstrated a radar-to-avoidance debris pipeline in stages during a 2026 reentry event.
+&gt;   * Coordinated simulated teams of **200 aircraft**.
+&gt;   * Training scaled near-linearly past **1,000 Aurora nodes** and successfully executed at scale on **8,000 nodes**.
+&gt;   * Extends naturally to control-grade microreactor digital twins, utilizing validated physics—rather than learned approximations—as the ultimate safety basis.
+
+---
+
+## 附加元数据
+
+&gt; ## Additional Metadata
+
+* **主要学科领域：** 人工智能 (`cs.AI`)
+* **次要学科领域：** 计算工程、金融与科学 (`cs.CE`)；多智能体系统 (`cs.MA`)；系统与控制 (`eess.SY`)
+* **文档技术规格：** 82 页，50 张图表，7 张表格
+* **全文获取与授权：** [查看 PDF 原文](https://arxiv.org/pdf/2611.01001) | [授权协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/)
+
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Secondary Subjects:** Computational Engineering, Finance, and Science (`cs.CE`); Multiagent Systems (`cs.MA`); Systems and Control (`eess.SY`)
+&gt; * **Document Specifications:** 82 pages, 50 figures, 7 tables
+&gt; * **Full-Text &amp; Access:** [View PDF](https://arxiv.org/pdf/2611.01001) | [License (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/)
+
+---
+
+*注：如需了解系统完整实现细节、架构拓扑设计以及数学公式推导，请参阅 [arXiv 官方发表论文](https://arxiv.org/abs/2611.01001)。*
+
+&gt; *Note: For complete implementation details, architectural schemas, and mathematical formulations, please refer to the [official arXiv publication](https://arxiv.org/abs/2611.01001).*</description>
+    </item>
+    <item>
+      <title>Exo：面向系统运行时持续自我进化的智能体架构</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-04/Exo-运行时自进化智能体架构设计/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/Exo-运行时自进化智能体架构设计/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 在实际系统中的广泛部署，AI 智能体 (AI Agent) 的环境治理机制 (Harness，即规范模型如何与外部环境安全交互的控制中枢) 成为决定任务成败与运行成本的关键。然而，传统的手工调优极其繁琐昂贵，现有的自动化优化手段又强依赖静态数据集和高开销的离线执行。来自 UC Berkeley 等机构的研究团队提出了创新的运行时智能体架构 **Exo**，其核心突破在于将优化循环直接折叠进正在执行的任务流程中，使智能体能够在实际工作中安全、自主地持续修改自身的治理机制与求解策略。通过极简受保护机制层对执行历史与策略激活进行安全隔离与审计，Exo 在开放世界游戏、AppWorld 以及 SREGym 等多个极具挑战性的基准测试中，将模型成本削减高达 12% 至 82%，大幅缩短了任务排障与执行时间。这一工作标志着 AI 智能体正式由“离线预设固定系统”迈向“线上自主协同进化”的新阶段。
+
+---
+
+## 📌 内容概要
+
+&gt; ## 📌 Summary
+
+对于 AI 智能体而言，纯手工编写环境治理机制 (Agent Harness，用以规范大语言模型与外部环境交互行为的控制策略) 是一项极其复杂的系统工程；而传统的自动化优化手段，往往需要专门构建代表性的离线数据集并承担高昂的重复执行成本。本文提出了 **Exo**——一种专为智能体在日常实际执行过程中实现安全学习与自适应演化而设计的创新运行时架构。
+
+&gt; Designing agent harnesses (which govern how language models interact with environments) manually is exceptionally difficult, while traditional automated techniques demand representative datasets and costly executions. This paper introduces **Exo**, an innovative agent runtime architecture designed for safe learning during ongoing work.
+
+通过将优化反馈循环直接嵌入并压缩到任务执行流程之中，Exo 赋能智能体在运转中动态迭代其环境治理机制以及解决问题的具体策略。系统内部设计了一个极简的受保护机制层，在安全封存完整执行历史的同时严密把控策略的激活生效，确保环境治理机制通过完全透明、可审查的代码变更实现平稳进化。
+
+&gt; By collapsing the optimization loop directly into task execution, Exo empowers agents to dynamically revise both their harnesses and problem-solving strategies. A minimal protected mechanism layer safely preserves execution history and governs policy activation, ensuring that the harness evolves smoothly through inspectable code changes.</description>
+    </item>
+    <item>
       <title>DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</guid>
@@ -4730,512 +5182,6 @@ for name, res in RESULTS.items():
 虽然 Debian 发行版的 `Built-Using` 元数据字段以及 CycloneDX 的 `pedigree` 规格规范在理论上提供了追踪静态打包依赖的机制，但绝大多数标准 SBOM 生成工具目前仍严格只读取 lockfile 声明。其直接后果是，现有的自动化漏洞扫描器在机制上根本无法察觉：某款应用在其庞杂的依赖树深处，其实正默默信任着一整套早已被吊销或废弃的危险 CA 根证书。
 
 &gt; While Debian's `Built-Using` field and CycloneDX's `pedigree` specification offer theoretical mechanisms to track static inclusions, standard SBOM generators rely strictly on lockfiles. Consequently, vulnerability scanners remain fundamentally unequipped to detect when an application is silently trusting revoked or outdated Certificate Authorities hidden deep within its dependency tree.</description>
-    </item>
-    <item>
-      <title>携带证明合约 (PC2)：AI 智能体无法违背的硬性承诺</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/携带证明合约-PC2-AI-智能体无法违背的硬性承诺/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/携带证明合约-PC2-AI-智能体无法违背的硬性承诺/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着自主 AI 智能体 (AI Agent) 逐渐深入人类社会的方方面面，它们开始代表用户自主购买服务、交换核心信息并委派协作任务。然而，目前业界仅依靠自然语言指令或静态文本策略来约束智能体行为，存在严重的可靠性隐患——智能体既可能产生逻辑失误或目标偏离，也容易沦陷于提示词注入 (Prompt Injection) 攻击。针对这一协作信任瓶颈，研究团队开创性地提出了“携带证明合约 (Proof-Carrying Contracts, PC2)”体系，将模糊的行为准则升华为机器可严格检验的数学约束。任何智能体在执行关键动作前，都必须出具一份完备的数学证明，并经由名为“气闸 (Airlock)”的系统核验放行，从而在赋予智能体充分策略自由度的同时，筑牢了坚不可摧的底层安全防线。
-
----
-
-## 📌 内容概要
-
-&gt; ## 📌 Summary
-
-随着 AI 智能体 (AI Agent) 越来越普遍地代表用户自主行动——从采购各类服务、交换关键数据到委托分派工作——单纯依靠文本形式的指令或规则策略，根本无法确保其行为绝对合规。智能体随时可能产生失误、受到提示词注入 (Prompt Injection) 攻击而被恶意诱导，甚至转而追求与用户冲突的其他目标。
-
-&gt; As AI agents increasingly act autonomously on behalf of users—purchasing services, exchanging information, and delegating work—relying solely on textual instructions or policies is insufficient to guarantee compliance. Agents can make mistakes, be manipulated by prompt injection, or pursue conflicting interests. 
-
-为了彻底破局，论文作者提出了**携带证明合约 (Proof-Carrying Contracts, PC2)**：这是一种全新的系统框架，能够在智能体与外部系统的交互全生命周期中，以严谨的数学手段强制执行既定约束。在执行任何请求的操作之前，智能体必须先提供一份机器可自动核验的数学证明，以确保该操作在任何可能的情境下均能严格维持既定约束。名为**气闸 (Airlock)** 的底层执行系统会在放行该操作前对证明进行快速核查；这种机制既能让智能体灵活地自适应调整求解策略，又能为规则底线的绝对守序提供确定性保障。
-
-&gt; To solve this, the authors introduce **Proof-Carrying Contracts (PC2)**: a novel framework that makes agreed constraints mathematically enforceable throughout an agent's interactions. Before executing any requested operation, the agent must supply a machine-checkable proof confirming that the operation preserves all agreed-upon constraints. An execution system called the **Airlock** verifies this proof before granting access, freeing the agent to adapt its strategy while ensuring absolute constraint adherence.
-
----
-
-## 📋 论文摘要
-
-&gt; ## 📋 Abstract
-
-AI 智能体正日益代表人类或其他智能体独立行动，参与购买服务、互通信息以及委派工作。智能体必须恪守的底线通常写在指令、规则策略或协议条款中，但光凭冰冷的文字本身并不能强制其完全顺从。智能体可能在执行中犯错、被读取的恶意输入篡改意图，或是追求与委托方相背离的利益。若想让这类智能体构成的协作经济生态真正运转起来，各参与方亟需一种坚实可靠的契约形式，即便无需费力审查对方智能体的内部实现或盲目托付信任，也能安心建立协作。
-
-&gt; AI agents increasingly act on behalf of people or other agents, purchasing services, exchanging information and delegating work. What an agent must respect is written in instructions, policies or agreements, but text alone cannot make it comply. It may make mistakes, be redirected by what it reads, or pursue different interests. For an economy of such agents to function, parties need agreements they can rely on without inspecting or trusting one another's agents. 
-
-我们在此提出**携带证明合约 (Proof-Carrying Contracts, PC2)**，这是一个能够让约定的约束条件在智能体与系统交互全过程中具备强制执行效力的架构。在任何被请求的操作得以运行之前，智能体必须主动递交一份机器可自动检验的数学证明，证明提议的操作在其行为模型所允许的每一种可能情况下，均能严格保留既定约束。名为**气闸 (Airlock)** 的执行系统将对该证明展开严格校验，并以此掌控对底层操作权限的开放与拦截。
-
-&gt; We introduce **Proof-Carrying Contracts (PC2)**, a framework for making agreed constraints enforceable throughout an agent's interactions with a system. Before a requested operation can run, the agent must supply a machine-checkable proof that it preserves the agreed constraints in every case allowed by its model. An execution system called the **Airlock** checks the proof and controls access to the operation. 
-
-在这一体系中，协作各方只需专注明确需要保留的安全条件，而智能体自身则负责提供证明其决策合法性所需的推理逻辑，同时享有自如调整策略的充分空间。这避免了为系统费力设计繁复的静态权限策略，并逐项证明其允许的每个决策都安全可靠的工程负担。我们在理论上证明，即便面对恶意对抗的智能体，这些约束在运行周期的每一个瞬间都能严格成立，并厘清了何时能将该数学安全性平移至现实世界的实际安全。此外，可复用的能力模块为合约的组装提供了现成的工具库与理论保障。PC2 框架为未来的智能体经济打下了可信基石，使达成的协议既能有效保护委派工作的发起方，也能切实保障具体承担任务的智能体本身。
-
-&gt; The parties specify the conditions to preserve, while the agent supplies the reasoning needed to justify its decisions and remains free to adapt its strategy. This avoids having to design a separate permission policy and prove that every decision it permits is safe. We prove that the constraints hold at every instant during execution, even for an adversarial agent, and identify when this implies safety in the world. Reusable capability modules provide tools and guarantees from which contracts can be constructed. PC2 provides a foundation for an agent economy whose agreements protect both those delegating work and those carrying it out.
-
----
-
-## 🔗 全文与相关资源
-
-&gt; ## 🔗 Full-Text &amp; Resources
-
-* **阅读 PDF 论文：** [arXiv:2610.28484 PDF](https://arxiv.org/pdf/2610.28484)
-* **网页 HTML 版：** [arXiv HTML (Experimental)](https://arxiv.org/html/2610.28484v1)
-* **数字对象唯一标识符 (DOI)：** [10.48550/arXiv.2610.28484](https://doi.org/10.48550/arXiv.2610.28484)
-* **许可协议：** [知识共享署名 4.0 国际许可 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/)  
-  &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="30"&gt;
-
-&gt; * **View PDF:** [arXiv:2610.28484 PDF](https://arxiv.org/pdf/2610.28484)
-&gt; * **HTML Version:** [arXiv HTML (Experimental)](https://arxiv.org/html/2610.28484v1)
-&gt; * **DOI:** [10.48550/arXiv.2610.28484](https://doi.org/10.48550/arXiv.2610.28484)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/)  
-&gt;   &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" width="30"&gt;</description>
-    </item>
-    <item>
-      <title>局部允许，全局拒绝：为什么单动作授权在 LLM 智能体中无法组合</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/局部允许-全局拒绝-为什么单动作授权在-LLM-智能体中无法组合/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在让 AI 智能体 (AI Agent) 自主调用工具、收发邮件和查询数据库时，主流业界普遍采用“单动作授权 (Per-Action Authorization)”护栏——即每当智能体发起一次工具调用，安全守卫就孤立地审查这一步是否违规并决定放行与否。然而，本论文揭示了一个颠覆性的安全盲区：“局部安全放行，绝不等于全局安全”，这种孤立审查机制在组合场景下必然失效。研究团队在理论上严格证明，跨越多次执行的意图与合规违规属于“2-安全超属性 (2-Safety Hyperproperties)”，在单条执行轨迹中根本无法归咎于任何单独一步动作；同时，基于 SAT/SMT 形式化方法研发的 **AL-SYNTH** 综合器成功合成了能够完全避开 9 种顶尖大语言模型审查的最小攻击反例。这一突破性研究敲响了警钟：现有的单一工具拦截护栏在架构上存在根本性缺陷，智能体安全防御必须从“单步排查”全面跃升至“跨执行轨迹的全局动态关联比对”。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-当今的自主大语言模型 (Large Language Model, LLM) 智能体在与现实世界交互时，绝大多数依赖所谓的“单动作授权 (Per-Action Authorization)”机制——这就像是在智能体的每个工具调用前派驻了一位本地保安，孤立地盘查当前这一步操作是否越界。然而，本研究深刻地指出：**局部的合规放行，根本无法自然组合成全局的安全保障**。
-
-&gt; Autonomous Large Language Model (LLM) agents typically rely on "per-action authorization"—a local security guard that screens each individual tool call in isolation. This paper demonstrates that **local authorization does not compose into global authorization**.
-
-作者团队将这种现象形式化定义为**组合式授权失效 (Compositional Authorization Failure, CAF)**：智能体在单次或成对的执行轨迹中，每一步工具调用都能顺利通过局部安全审查，但整体行为却粗暴违反了涵盖真实意图、使用目的、数据溯源、用户知情同意与权限委托的全局安全策略。论文引入了一款名为 **AL-SYNTH** 的 SAT/SMT 形式化综合器 (Synthesizer)，并在数学上证明了关系型目的违规本质上属于“2-安全超属性 (2-Safety Hyperproperties)”，在孤立的单条轨迹中根本找不到任何一个能单独“背锅”的责任点。其致命结论是：如果监视器不追踪跨执行的关联信息，那么它要么对这类越权违规彻底失明，要么就只能以大量“捕风捉影”的误报为代价。
-
-&gt; The authors define a **Compositional Authorization Failure (CAF)** as an execution (or pair of executions) that passes local checks while violating a broader global policy (covering intent, purpose, provenance, consent, and delegation). Through the introduction of **AL-SYNTH**—a SAT/SMT synthesizer—the study proves that relational purpose violations form 2-safety hyperproperties that lack any per-trace locus of blame. Consequently, single-action monitors cannot detect them without cross-execution tracking or accepting false alarms.
-
----
-
-## 元数据与参考信息
-
-&gt; ## Metadata &amp; Reference Information
-
-* **arXiv 编号：** [arXiv:2610.27620](https://arxiv.org/abs/2610.27620) [cs.CR]
-* **论文作者：** Anmol Pandey, Aditya Jain, Liang Chen, Carsten Maple
-* **提交时间：** 2026 年 10 月 20 日
-* **主要学科领域：** 密码学与安全 (`cs.CR`)
-* **交叉学科领域：** 人工智能 (`cs.AI`)、计算机科学中的逻辑学 (`cs.LO`)
-* **ACM 分类号：** D.4.6; F.3.1; I.2.11
-* **会议收录背景：** 本文为第 8 届 IEEE 智能系统与应用中的信任、隐私与安全国际会议 (IEEE TPS 2026) 录用论文的扩展版本。
-* **相关资源：** [GitHub 仓库 (AL-SYNTH)](https://github.com/anmolpandey299/al-synth) | [论文 PDF 原文](https://arxiv.org/pdf/2610.27620)
-
-&gt; * **arXiv Identifier:** [arXiv:2610.27620](https://arxiv.org/abs/2610.27620) [cs.CR]
-&gt; * **Authors:** Anmol Pandey, Aditya Jain, Liang Chen, Carsten Maple
-&gt; * **Submitted:** 20 October 2026
-&gt; * **Primary Subject:** Cryptography and Security (`cs.CR`)
-&gt; * **Secondary Subjects:** Artificial Intelligence (`cs.AI`), Logic in Computer Science (`cs.LO`)
-&gt; * **ACM Classifications:** D.4.6; F.3.1; I.2.11
-&gt; * **Conference Context:** Extended version of a paper accepted at the 8th IEEE International Conference on Trust, Privacy and Security in Intelligent Systems and Applications (IEEE TPS 2026).
-&gt; * **Resources:** [GitHub Repository (AL-SYNTH)](https://github.com/anmolpandey299/al-synth) | [View PDF](https://arxiv.org/pdf/2610.27620)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-自主大语言模型智能体通常在单动作授权的保护下通过工具行使权力：局部安全守卫会逐一且孤立地审查每一次工具调用。我们在本文中证明，局部授权无法自动组合为全局授权。所谓组合式授权失效 (Compositional Authorization Failure, CAF)，是指这样一种执行轨迹（或成对的执行轨迹）：其中的每一次工具调用都能被局部防护判定为合法，但整体执行组合起来后，却违背了涵盖意图、目的、数据溯源、知情同意以及权限委托的全局策略。
-
-&gt; Autonomous LLM agents act through tools under per-action authorization: a local guard screens each tool call in isolation. We show that local authorization does not compose into global authorization. A compositional authorization failure (CAF) is a locally authorized execution, or a pair of locally authorized executions, that violates a global policy spanning intent, purpose, provenance, consent, and delegation.
-
-我们从两个维度对 CAF 进行了系统刻画：其一是表达能力（单轨迹安全性对比关系型 k-安全性），其二是可观测性（从低到高的监视器能力层级阶梯）。我们的核心研究结论是一个形式化的不可行定理：关系型目的违规在数学形式上构成一种“2-安全超属性”，在单条执行轨迹内部没有任何一个动作可以被单独定罪为违规原因。因此，任何力求做到“零误报”的单动作监视器，无论底层换用多么强大的模型或决策判定算法，都必定对这类违规彻底失灵；唯有引入跨执行轨迹的比对监视，这类漏洞才可能被捕获——然而，在我们调研的现存六大主流安全护栏框架中，竟无一具备这种跨执行追踪能力。
-
-&gt; We characterize CAFs along two axes, expressiveness (single-trace safety versus relational k-safety) and observability (a ladder of monitor profiles). Our central result is an impossibility: relational purpose violations form a 2-safety hyperproperty with no per-trace locus of blame, so a per-action monitor that never raises a false alarm detects none of them, independent of the underlying model or decision procedure; they become visible only under cross-execution monitoring, which none of the six guardrails we survey implements.
-
-为了将这一理论缺陷具象化，我们构建了 **AL-SYNTH**——一款完全不依赖语言模型、基于可满足性求解 (SAT/SMT) 的形式化综合器，它能够精准自动化生成触发 CAF 的最小反例见证 (Witness)，并通过穷举基准预言机完成严格校验。实验暴露出的表征极具讽刺意味：在 9 种主流大语言模型担任安全评判者的测试中，只要采用单动作视角，这些模型几乎无一例外地批准了被合成的反例动作，其拦截率低得与完全无害的良性对照组毫无二致；然而，一旦把两段执行轨迹合并展示给同一个模型时，它却能立刻准确识别并发出警报。由此可见，对于无法降维规约为单轨迹安全性的关系型安全策略而言，单动作授权在架构上存在不可弥补的先天的结构性缺陷：若要防范此类威胁，监视系统要么必须具备跨执行轨迹的比对分析能力，要么就只能全盘忍受误杀良性操作的高误报率。
-
-&gt; We make this constructive with **AL-SYNTH**, a SAT/SMT synthesizer (using no language model) that emits minimal CAF witnesses, each checked against an exhaustive oracle. The empirical signature is sharp: across nine LLM judges the per-action view approves the synthesized witness almost without exception, blocking it at a rate comparable to a benign control, yet the same models flag it when shown the two executions together. Per-action authorization is therefore structurally insufficient for relational policy conjuncts not reducible to single-trace safety: to bound them, a monitor must compare executions or accept false alarms.</description>
-    </item>
-    <item>
-      <title>专精化小语言模型词表：实际应用中如何削减 77% 推理成本</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/专精化小语言模型词表-实际应用中如何削减-77-推理成本/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/专精化小语言模型词表-实际应用中如何削减-77-推理成本/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>通用开源大模型通常配备覆盖全领域与多语言的庞大分词器 (Tokenizer)，但在具体的垂直业务落地中，这种“大而全”的通用词表不仅会导致领域高频短语被切碎成过多微小 Token，更会在解码阶段浪费宝贵的显存带宽去为数十万个毫不相干的词条计算概率。来自 Dharma-AI 的团队推出了创新的小语言模型 (Small Language Model, SLM) 词表定制技术 VocabX，打破了以往单纯依据词频统计的传统思路，首次以底层硬件的“实际 Token 生成成本”为导向重构与裁剪词表。在完全不改动基础模型权重与训练配方的前提下，VocabX 不仅使葡萄牙语作文批改模型的输出 Token 数量压缩超 70%，更将端到端实测推理成本骤降 77%，同时基准测试准确率逆势提升了 15%。这项技术突破向业界证明：领域专精化不必拘泥于模型参数与微调数据，在分词器阶段对词表进行精准“量体裁衣”，同样能以极低代价释放惊人的能效红利。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-通用开源模型（如 Qwen 和 Gemma）通常依赖面向全领域和跨语言文本构建的分词器。但当它们被微调用于单一垂直任务（例如自动化作文阅卷）时，这种通用词表就会暴露出巨大的能效短板：特定领域的常用词组被生硬地切碎为过多微小的 Token，模型更被迫浪费宝贵的显存带宽，在每一次生成时为数十万个毫不相干的无效 Token 计算概率分布。
-
-&gt; General open-source models (such as Qwen and Gemma) rely on tokenizers built for universal domains and cross-lingual text. When fine-tuned for a single task—such as an automated essay grader—this general vocabulary leads to massive inefficiencies: domain-specific phrases are fragmented into excessive tokens, and the model wastes memory calculating probabilities for hundreds of thousands of irrelevant tokens.
-
-本文介绍了 **VocabX**，这是一种用于专精化小语言模型词表的新方法。与以往单纯依据原始词频统计的做法不同，它开创性地以**实际 Token 生成成本**作为核心优化指标。在完全不改动基础模型权重的前提下，VocabX 围绕子词 (Sub-word) 合并与宏 Token (Macro Token) 重新重塑了词表结构，在实际测试中**成功将实测推理成本降低高达 77%**，同时在基准测试 (Benchmark) 中的综合表现反而实现了提升。
-
-&gt; This article previews **VocabX**, a novel method for specializing a Small Language Model's (SLM) vocabulary based on *token generation cost* rather than mere raw frequency. By reshaping the vocabulary around sub-word merging and macro tokens without modifying the base model's weights, VocabX **cuts measured inference costs by up to 77%** while simultaneously *increasing* benchmark performance.
-
----
-
-## 引言
-
-&gt; ## Introduction
-
-```
-[Base Tokenizer]  -&gt; 14 tokens for a standard phrase
-[VocabX Tokenizer]-&gt;  4 tokens for the same phrase
-```
-
-[![Same sentence, fewer tokens: 14 tokens with the base tokenizer, 4 with VocabX](./images/09e935c19314.png)](./images/09e935c19314.png)
-
-通常情况下，人们普遍将分词器视为预训练基础模型不可分割的固有属性。然而在面向特定领域的专用模型中，分词器却是一个至关重要的成本杠杆——而且这个杠杆在模型正式开始训练之前就已经完全定型了。
-
-&gt; Typically, tokenizers are viewed as fixed properties of a pre-trained base model. However, for a domain-specific model, the tokenizer is one of the largest cost levers, set entirely before training begins.
-
-以基于 Qwen3-4B 构建的葡萄牙语自动化作文批改系统为例。尽管该模型体积小巧且经过了针对性微调，但它依然沿用了原生包含 151,669 个词条的分词器——而这个庞大的词表最初是为通用的多语言应用场景设计的。这种“水土不服”带来了两大结构性瓶颈：
-
-&gt; Consider an automated Portuguese essay grader built on Qwen3-4B. While the model is compact and fine-tuned, it retained its original 151,669-entry tokenizer meant for general multi-lingual applications. This introduced two structural bottlenecks:
-
-1. **领域常用文本消耗了过多的 Token**；
-2. **每次生成一个 Token 时，模型都必须在庞大的词表中进行概率计算**，即便其中绝大部分词条在阅卷任务中永远不会被用到。
-
-&gt; 1. Frequent domain text required excessive tokens.
-&gt; 2. The model evaluated a massive vocabulary for every single generated token, even though many entries were never used.
-
-在保持训练数据、基础模型和微调策略完全一致的前提下，我们仅仅通过 VocabX 重建了词表，就让整个模型架构获得了立竿见影的能效飞跃。
-
-&gt; By rebuilding the vocabulary using VocabX while keeping the data, base model, and training recipe identical, we achieved dramatic architectural efficiencies.
-
----
-
-## 为通用大众设计的词表：专精领域的隐形负担
-
-&gt; ## A Vocabulary Built for Everyone
-
-通用基础模型的分词器通常是在覆盖代码、法律合同以及数十种语言的海量互联网文本上训练而成的。对于无所不包的通用聊天机器人而言，这种设计自然无可挑剔；但当模型被落地部署在特定垂直领域时，这种“面面俱到”的做法就会引发两类严重的算力浪费：
-
-&gt; General-purpose model tokenizers are trained on massive, broad web text collections spanning code, contracts, and multiple languages. While ideal for universal chatbots, this approach causes two major types of waste when deployed in specialized domains:
-
-* **碎片化 (Fragmentation)**：分词器会将领域内高频重复的固定句式生硬地拆解成大量微小的子词。例如在我们批改作文的场景中，固定的 JSON 包装外壳、能力维度名称以及评价术语，都被无端切碎成了若干个零散的 Token。
-* **冗余冗繁 (Excess)**：词表中保留了成千万个永远用不到的多余条目。例如一个批改生物考试的模型，在每生成一步时居然都要为生僻的汉字计算一次概率分布，白白耗费了巨大的显存带宽。
-
-&gt; * **Fragmentation:** The tokenizer breaks down repetitive domain phrasing into tiny sub-words. In our essay grader, boilerplate JSON envelopes, competency names, and evaluation phrases were shattered into multiple tokens. 
-&gt; * **Excess:** The vocabulary retains tens of thousands of unused entries. A biology exam grader computes probabilities for Chinese characters at every step, wasting memory bandwidth.
-
-[![The span the grader writes in every response takes 12 tokens with the base tokenizer and 1 with VocabX](./images/bf09d7c55b11.png)](./images/bf09d7c55b11.png)
-
-*左图：基础分词器需要占用 12 个 Token。右图：VocabX 仅需 1 个 Token。*
-
-&gt; *Left: 12 tokens with base tokenizer. Right: 1 token with VocabX.*
-
-[![151,669 vocabulary entries in the base tokenizer, 64,767 with VocabX](./images/4e119eca29d9.png)](./images/4e119eca29d9.png)
-
-*大幅缩减词表体积，可显著降低模型在解码过程中的显存开销。*
-
-&gt; *Reducing vocabulary size lowers memory overhead during decoding.*
-
----
-
-## 读便宜，写昂贵：拆解大模型的生成成本
-
-&gt; ## Reading Is Cheap, Writing Is Expensive
-
-想要理解为什么生成不同 Token 的成本会有天壤之别，我们必须深入剖析大语言模型推理 (Inference) 的两个阶段：
-
-&gt; To understand why token generation costs scale disproportionately, examine inference phases:
-
-* **预填充阶段 (Prefill)**：一次性并行处理所有输入的 Prompt Token，属于典型的算力受限 (Compute-bound) 阶段。
-* **解码阶段 (Decode)**：逐字串行生成回复，属于典型的显存带宽受限 (Memory-bandwidth bound) 阶段。
-
-&gt; * **Prefill:** Processes input tokens in a single pass; compute-bound.
-&gt; * **Decode:** Generates responses sequentially; memory-bandwidth bound. 
-
-[![In the case we measured, writing a token cost 7.4 times reading one](./images/66c0eef7445b.png)](./images/66c0eef7445b.png)
-
-在我们的作文批改模型实测中，**“写”一个 Token（解码输出）的硬件开销，竟是“读”一个 Token（预填充输入）的 7.4 倍之多**！此外，负责将隐藏状态映射到词表概率得分的语言模型头 (Language Modeling Head, LM Head) 层，占据了一个 4B 模型约 10% 的总参数量。词表矩阵中每多出一行，都会在解码的每一步带来额外的显存数据搬运开销。而 VocabX 将该批改模型的输出层从约 152,000 行大刀阔斧地精简到了约 65,000 行。
-
-&gt; In our essay grader configuration, **writing a single token cost 7.4 times more than reading one**. Furthermore, the Language Modeling (LM) head layer (which maps hidden states to vocabulary scores) accounts for roughly 10% of a 4B model's parameters. Every extra row in the vocabulary matrix adds memory movement overhead at every decode step. VocabX shrinks the grader's output layer from ~152,000 rows to ~65,000 rows.
-
----
-
-## 为何现有解决方案功亏一篑
-
-&gt; ## Why Existing Solutions Fell Short
-
-此前业界探索的基准方法——如快速词表迁移 (Fast Vocabulary Transfer, FVT)、多词分词 (Multi-Word Tokenization, MWT) 以及 Liquid AI 提出的就地分词器扩展方案，主要存在两大硬伤：
-
-&gt; Prior reference methods like Fast Vocabulary Transfer (FVT), Multi-Word Tokenization (MWT), and Liquid AI's in-place tokenizer expansion exhibit two main weaknesses:
-
-1. **基于词频而非成本进行筛选 (Frequency-based rather than cost-based selection)**：这些方法仅仅根据 Token 出现的绝对频率进行优化，却完全忽视了该 Token 究竟是处于低成本的“输入阶段”，还是高成本的“生成阶段”。
-2. **单层优化的局限性 (Single-layer limitation)**：它们要么仅专注于子词的切分调整，要么仅针对短语层面的合并，极少能在统一的优化框架下兼顾两者。
-
-&gt; 1. **Frequency-based rather than cost-based selection:** They optimize for how often a token appears, ignoring whether it is part of a high-cost generation phase.
-&gt; 2. **Single-layer limitation:** They handle either sub-word segmentation or phrase merging, but rarely both under a unified optimization scheme.
-
----
-
-## 破局之道：VocabX 的技术实现
-
-&gt; ## How We Solved It: VocabX
-
-VocabX 通过三大核心机制精准化解了上述难题：
-
-&gt; VocabX resolves these issues through three core mechanisms:</description>
-    </item>
-    <item>
-      <title>TorchNeuron 性能分析 (一)：AWS Trainium 系统级性能剖析</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/TorchNeuron-性能分析-一-AWS-Trainium-系统级性能剖析/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在机器学习与大模型工业化落地的过程中，仅仅让模型成功跑通代码只是打下了地基，要想真正压榨硬件算力、降低推理与训练成本，就必须建立系统化的性能分析 (Profiling) 能力以探查瓶颈根因。本文作为系列实战教程的第一篇，深入讲解了如何在 AWS 自研 AI 加速芯片 Trainium 上，借助其开源原生 PyTorch 后端 TorchNeuron 开展系统级性能剖析。文章完整演示了如何通过标准 `torch.profiler` 捕获设备级耗时、利用 `key_averages()` 表格定位热点算子，并在可视化分析套件 Neuron Explorer 中层层穿透从上层框架调度、运行时管理到物理硬件执行的完整流转轨迹。最后，文章以 RMSNorm 算子为例进行基准测试，揭示了从普通即时执行到内置融合算子与 `torch.compile` 图优化带来的约 6 倍性能飞跃，为云端定制芯片上的深度性能调优提供了坚实可依的实践指南。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-想方设法让机器学习模型跑得飞快往往只是优化工作的一半；更关键的是在模型变慢时，能够清晰洞察其背后的根因，而这离不开系统化的性能剖析。在本文作为该系列的第一部分中，我们将探索如何借助 **TorchNeuron**（**AWS Trainium** 芯片的原生开源 PyTorch 后端）来深入分析模型推理性能。本指南将带你完整实践：如何正确配置 `torch.profiler`、如何通过 `key_averages()` 表格快速揪出执行瓶颈、如何在 **Neuron Explorer** 中直观审查执行轨迹 (Traces)，并横向对比未经优化的朴素即时模式 (Eager) 算子、原生内置融合算子 (`torch.rms_norm`) 与基于计算图编译 (`torch.compile`) 三者之间的显著性能差异。
-
-&gt; Understanding how to make machine learning models run fast is only half the battle; knowing *why* a model is slow requires systematic profiling. In Part 1 of this series, we explore how to analyze inference performance on **AWS Trainium** using **TorchNeuron** (its native open-source PyTorch backend). This guide walks you through configuring `torch.profiler`, analyzing execution bottlenecks via `key_averages()`, visualizing traces in **Neuron Explorer**, and comparing the performance differences between naive eager operations, built-in fused operators (`torch.rms_norm`), and compiled graphs (`torch.compile`).
-
----
-
-## Neuron 作为 PyTorch 后端
-
-&gt; ## Neuron as a PyTorch Backend
-
-在正式开始对工作负载进行性能分析之前，先理清 [Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html) 与 PyTorch 之间的整合机制大有裨益。
-
-&gt; Before profiling workloads, it helps to understand how [Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html) integrates with PyTorch. 
-
-Neuron 后端充分借助了 PyTorch 官方提供的 `PrivateUse1` 扩展机制。该机制允许第三方硬件加速芯片原生无缝地融入 PyTorch 生态，而无需在上游框架内核中硬编码专有的分发调度键 (Dispatch Key，如传统针对 GPU 的 `cuda`)。`torch_neuronx` 扩展包与上游 PyTorch 紧密配合，将 Neuron 正式注册为一个原生的执行目标设备。欲深入了解这一扩展机制的实现细节，可参阅 PyTorch 官方教程：[借助 PrivateUse1 简化新后端集成 (Facilitating New Backend Integration by PrivateUse1)](https://docs.pytorch.org/tutorials/advanced/privateuseone.html)。
-
-&gt; The Neuron backend leverages PyTorch's `PrivateUse1` extension point. This mechanism allows accelerators to integrate natively into the framework without requiring a dedicated dispatch key (such as `cuda`). The `torch_neuronx` package works alongside upstream PyTorch to register Neuron as a native execution target. For more information on this extension mechanism, refer to the official PyTorch guide on [Facilitating New Backend Integration by PrivateUse1](https://docs.pytorch.org/tutorials/advanced/privateuseone.html).
-
----
-
-## 配置性能分析器
-
-&gt; ## Set Up the Profiler
-
-对 Neuron 计算任务进行性能采样与分析主要依赖两个核心模块：
-
-&gt; Profiling a Neuron workload relies on two primary components:
-
-1. **`NeuronConfig`**：负责精细控制所需采集的数据流与具体的 NeuronCore 核心，并指定分析结果的输出存储路径。该配置对象通过 `experimental_config` 参数传递给 `torch.profiler.profile`。
-2. **`NeuronProfiler`**：接收并解析 `NeuronConfig` 配置，对外暴露 `export_trace` 回调函数，以便在导出上层深度学习框架跟踪数据 (`trace.json`) 的同时，同步写出底层的系统硬件级跟踪轨迹。
-
-&gt; 1. **`NeuronConfig`**: Controls which data streams and NeuronCores to capture, specifying the output destination. Passed to `torch.profiler.profile` via `experimental_config`.
-&gt; 2. **`NeuronProfiler`**: Consumes the `NeuronConfig` and exposes an `export_trace` callback to write out the framework trace (`trace.json`) alongside low-level system traces.
-
-```python
-nc = NeuronConfig(
-    modes=[ProfileMode.DEVICE, ProfileMode.RUNTIME],
-    profile_output_dir=OUTPUT_DIR,
-    capture_enabled_for_nc='0',
-    correlate_device_time=True,
-)
-exporter = NeuronProfiler(nc)
-```
-
-将 `correlate_device_time=True` 启用后，分析器会自动把设备端的实际底层执行耗时直接关联映射到 `key_averages()` 统计表中，从而让开发者能够一目了然地横向对比 CPU 端调度与 Neuron 硬件设备端计算的各自开销。关于所有可配置参数的详细说明，可查阅 [NeuronConfig 分析模式文档 (NeuronConfig Profile Modes documentation)](http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes)。
-
-&gt; Setting `correlate_device_time=True` correlates the device-level time directly into the `key_averages()` table, enabling side-by-side comparison of CPU and Neuron device execution costs. For comprehensive parameter details, consult the [NeuronConfig Profile Modes documentation](http://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/how-to-profile-workload.html#neuronconfig-profile-modes).
-
----
-
-## 可视化分析利器：Neuron Explorer
-
-&gt; ## Tooling: Neuron Explorer
-
-**Neuron Explorer** 是一款可通过浏览器进行交互的可视化效能诊断工具，专为审查系统级执行轨迹、硬件设备时间线以及底层执行引擎瓶颈而设计。开发者不仅可以通过 SSH 端口转发直接在本地浏览器中打开它，也可以通过专属的 VS Code 扩展进行集成查看。
-
-&gt; **Neuron Explorer** is a browser-accessible utility designed to inspect system traces, device timelines, and engine-level bottlenecks. It can be accessed via an SSH tunnel or a VS Code extension.
-
-在完成性能分析之后，输出目录中会生成系统级跟踪数据，以及通过统一哈希特征关联配对的 `.neff` (Neuron 可执行文件格式，Neuron Executable File Format) 和 `.ntff` (硬件底层指令跟踪文件，Hardware Instruction Trace) 文件。有关如何在 Web 界面中启动工具及上传分析文件的图文步骤，请参阅 [步骤 5：在 Neuron Explorer 中上传您的分析文件 (Step 5: Upload your profile in Neuron Explorer)](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile)。
-
-&gt; After profiling, the output directory includes system traces and matching `.neff` (Neuron Executable File Format) and `.ntff` (hardware instruction trace) files linked by a shared hash. For detailed instructions on launching and uploading files to the UI, see [Step 5: Upload your profile in Neuron Explorer](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/get-started.html#step-5-upload-your-profile).
-
----
-
-## 实战分析案例：RMSNorm 算子
-
-&gt; ## Profile RMSNorm
-
-为了生动形象地演示系统级性能分析流程，我们选取了 **RMSNorm** 作为切入点——这是一个计算结构极为轻量且规整的算子，包含了一段规律非常明确的规约计算与逐元素 (Element-wise) 算术运算。我们在基准测试中对比了三种截然不同的实现方式：
-
-&gt; To demonstrate system-level profiling, we examine **RMSNorm**—a lightweight operation containing a predictable sequence of reductions and element-wise arithmetic. We test three distinct implementations:
-
-1. **朴素 RMSNorm 实现 (Naive RMSNorm)**：完全由离散的 PyTorch 基础算子手动拼装实现 (包括乘法、求均值、加法和平方根倒数)。
-2. **`torch.rms_norm()`**：PyTorch 原生提供的内置标准函数，在 Neuron 硬件平台下会自动下沉为单个高度融合、高度优化的设备端内核 (Kernel)。
-3. **结合 `torch.compile` 的朴素 RMSNorm**：依然采用由离散算子拼装的代码逻辑，但通过声明 `@torch.compile(backend="neuron")` 由编译器自动进行计算图追踪与内核融合优化。
-
-&gt; 1. **Naive RMSNorm**: Written with discrete PyTorch operations (multiplication, mean, addition, reciprocal square root).
-&gt; 2. **`torch.rms_norm()`**: PyTorch’s built-in function lowered to a single optimized, fused kernel on Neuron.
-&gt; 3. **Naive RMSNorm with `torch.compile`**: The discrete sequence compiled automatically using `@torch.compile(backend="neuron")`.
-
-所有评测脚本均使用完全一致的输入张量维度形状与分析器配置。可供复现的完整代码均已归档于 [torch-neuronx 官方示例仓库 (torch-neuronx examples directory)](https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1)。
-
-&gt; All scripts use identical shapes and profiler configurations. Reproducible code can be found in the [torch-neuronx examples directory](https://github.com/aws-neuron/torch-neuronx/tree/main/examples/hf_profiling_blog_pt1).
-
----
-
-## 分析场景 1：朴素 PyTorch 基础算子拼装
-
-&gt; ## Profile 1: Naive PyTorch Operations
-
-使用基础的 PyTorch 离散算子拼装 RMSNorm 计算逻辑，会在运行时产生大量不必要的中间张量，并反复触发昂贵的框架级调度与分发事件：
-
-&gt; Writing RMSNorm out using primitive PyTorch operations creates intermediate tensors and multiple dispatch events:
-
-```python
-device = torch.device('neuron')
-
-x = torch.randn(4, 512, dtype=torch.bfloat16, device=device)
-weight = torch.ones(512, dtype=torch.bfloat16, device=device)
-
-def rms_norm_fn(t):
-    x_sq = t * t                                    # square
-    mean_sq = x_sq.mean(dim=-1, keepdim=True)       # mean of squares
-    rms = torch.rsqrt(mean_sq + 1e-6)               # 1 / sqrt(mean_sq + eps)
-    return t * rms * weight                         # normalize + scale
-```
-
-我们通过配置 `ProfilerActivity.PrivateUse1` 这一活动类型，并将预先初始化的 `NeuronConfig` 实例传入分析器：
-
-&gt; We configure the profiler using `ProfilerActivity.PrivateUse1` and pass `NeuronConfig`:
-
-```python
-with torch.profiler.profile(
-    activities=[ProfilerActivity.CPU, ProfilerActivity.PrivateUse1],
-    experimental_config=nc,
-    record_shapes=False,
-    on_trace_ready=exporter.export_trace,
-    schedule=torch.profiler.schedule(wait=2, warmup=1, active=1),
-) as prof:
-    for step in range(4):
-        with torch.no_grad():
-            _ = rms_norm_fn(x)
-        torch.neuron.synchronize()
-        prof.step()
-```
-
-*(注：在循环中显式加入 `torch.neuron.synchronize()` 能够确保硬件设备在导出轨迹数据之前彻底完成所有运算排队，从而避免分析报表中出现设备耗时列全为空白的情况。)*
-
-&gt; *(Note: Including `torch.neuron.synchronize()` ensures the device completes operations before trace export, avoiding empty device time columns.)*
-
-将分析生成的汇总表按照设备端执行总耗时进行降序排序，主要的性能瓶颈便立刻浮出水面：
-
-&gt; Sorting the summary table by device time highlights the performance bottlenecks:
-
-```python
-print(prof.key_averages().table(sort_by="self_privateuse1_time_total", row_limit=4))
-```
-
-[![核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。](./images/af39c8c42d9a.png)](./images/af39c8c42d9a.png)
-
-*核心平均值汇总表显示，三次 aten::mul 调用占据了 Neuron 设备端耗时的最大份额。*
-
-&gt; *The key averages table shows that three aten::mul calls account for the largest share of Neuron device time.*
-
-| 算子名称 (Name) | 调用次数 (# Calls) | 自身 CPU 耗时 (Self CPU) | 自身 NEURON 耗时 (Self NEURON) | NEURON 耗时占比 (% NEURON) |
-| :--- | :--- | :--- | :--- | :--- |
-| `aten::mul` | 3 | 60.9 μs | 1,164.5 μs | 49.5% |
-| `aten::add` | 1 | 26.6 μs | 434.6 μs | 18.5% |
-| `aten::rsqrt` | 1 | 15.6 μs | 415.0 μs | 17.6% |
-| `aten::mean` | 1 | 21.1 μs | 340.8 μs | 14.5% |
-
-&gt; | Name | # Calls | Self CPU | Self NEURON | % NEURON |
-&gt; | :--- | :--- | :--- | :--- | :--- |
-&gt; | `aten::mul` | 3 | 60.9 μs | 1,164.5 μs | 49.5% |
-&gt; | `aten::add` | 1 | 26.6 μs | 434.6 μs | 18.5% |
-&gt; | `aten::rsqrt` | 1 | 15.6 μs | 415.0 μs | 17.6% |
-&gt; | `aten::mean` | 1 | 21.1 μs | 340.8 μs | 14.5% |
-
-*自身 NEURON 设备端总执行耗时：2.355 ms*
-
-&gt; *Self NEURON total: 2.355 ms*
-
-[![Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。](./images/09da1436bc0c.png)](./images/09da1436bc0c.png)
-
-*Neuron Explorer 完整追踪了 aten::mul 操作从框架分发、运行时调度到在 Neuron 物理硬件泳道上执行的全链路流程。*
-
-&gt; *Neuron Explorer follows an aten::mul operation from framework dispatch through runtime scheduling to execution on the Neuron hardware lanes.*</description>
-    </item>
-    <item>
-      <title>Racer：利用符号等价性检查捕获 GPU 算子内核漏洞</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/Racer-利用符号等价性检查捕获-GPU-算子内核漏洞/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/Racer-利用符号等价性检查捕获-GPU-算子内核漏洞/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代人工智能计算体系中，GPU 算子内核 (GPU Kernel) 是支撑深度学习超高算力的基石，然而面对硬件架构演进、新型低精度数据格式普及与多种编程语言重写，确保算子功能的绝对正确性极为艰难。传统上工业界主要依赖随机张量的差分测试，但这往往存在严重的致命盲区——那些引发微小数值偏差的代码逻辑漏洞很容易被误当成正常的浮点舍入误差而漏检。为攻克这一行业顽疾，研究团队推出了名为 **Racer** 的创新验证引擎，开创性地在 PTX (Parallel Thread Execution) 指令级引入**符号等价性检查 (Symbolic Equivalence Checking)**，通过符号推演将输出转化为精确代数表达式，并借助形状缩减、锁步 CTA 调度与惯用模版反驳三大技术攻克状态爆炸难题。在对 41 个生产级算子集合中 2,408 个内核的全面排查中，Racer 成功揪出了 23 个知名开源库中的 **82 个真实漏洞**（含 76 个此前未知的隐蔽缺陷），为大模型时代高可靠底层算子的开发构筑了坚实的形式化护城河。
-
----
-
-## 📋 内容概要
-
-&gt; ## Summary
-
-GPU 算子内核是现代人工智能实现极致计算性能的心脏。然而，随着底层硬件架构快速迭代、新型数值格式（如 FP8、INT4）层出不穷以及新兴编程语言（如 Triton、CUDA）的演进，开发者需要频繁重写这些底层算子。长期以来，工业界为了确保新重写的算子在功能上与原版完全一致，主要依赖**差分测试 (Differential Testing)**——即生成一批随机张量，让新算子和经过验证的基准参考算子同时运行，并在允许的数值误差容限 (Tolerance) 内比对两者的输出结果。然而，这种测试方法存在致命的盲区：由于浮点运算天然存在舍入误差，差分测试不得不放宽比对阈值；一旦内核中潜藏的代码逻辑漏洞所引发的输出偏差恰好落在这个容限范围内，就会悄无声息地逃过检测，给后续的大模型训练和推理埋下难以排查的“暗雷”。
-
-&gt; GPU kernels are fundamental to modern AI performance, but operators are constantly rewritten across hardware generations, numeric formats, and languages. Traditionally, ensuring these rewrites preserve functional correctness relies on *differential testing*—running a new kernel against a trusted reference on random tensors and comparing outputs within a tolerance. However, differential testing has severe blind spots, such as logical bugs that produce errors smaller than the required tolerance. 
-
-为了从根源上化解这一难题，研究团队提出了**符号等价性检查**的新范式。该方法不再喂入具体的随机数值，而是将张量作为抽象的代数符号输入并执行内核，最终将算子的输出转化为覆盖整个输入空间的精确代数表达式。这样一来，系统便能在数学层面上彻底隔绝并清晰区分浮点舍入误差与真正的代码逻辑缺陷。基于这一思路，本研究推出了名为 **Racer** 的验证引擎，它直接工作在 NVIDIA GPU 的 PTX 汇编中间指令级别，并由以下三项核心技术创新驱动：
-
-&gt; To solve this, the authors propose **symbolic equivalence checking**. By executing kernels on symbolic inputs, outputs are turned into exact algebraic expressions that cover the entire input space and cleanly distinguish floating-point errors from logical bugs. The paper introduces **Racer**, a PTX-level symbolic equivalence checking engine powered by three key innovations:
-
-1. **形状缩减 (Shape Reduction)**：大幅压缩张量维度与执行规模，从而精准控制符号推演的计算复杂度；
-2. **锁步 CTA 调度器 (Lockstep CTA Scheduler)**：高效模拟和管控 GPU 协同线程阵列 (Cooperative Thread Array, CTA) 的硬件级并发行为；
-3. **惯用模版反驳机制 (Idiom Templates with Exact Numeric Refutation)**：针对符号推演难以直接给出定论的边界情况，结合精确数值反例进行强力反驳与判定。
-
-&gt; 1. **Shape Reduction** to control computational cost.
-&gt; 2. **Lockstep CTA Scheduler** to manage hardware concurrency.
-&gt; 3. **Idiom Templates** with exact numeric refutation for handling otherwise inconclusive results.
-
-在涵盖 41 个常用代码集合、共计 2,408 个生产级 GPU 内核的严苛实测中，Racer 成功在 23 个知名开源算子库中挖掘出 **82 个真实存在的代码漏洞**（其中包括 76 个此前从未被发现的未知 Bug，且已有 41 个获得了库维护者的官方确认）。
-
-&gt; Tested across 2,408 production kernels from 41 collections, Racer uncovered **82 real bugs** across 23 libraries (including 76 previously unknown bugs and 41 confirmed).
-
----
-
-## 📌 论文元数据
-
-&gt; ## Metadata
-
-* **arXiv 编号 (arXiv ID)：** [`arXiv:2610.28429`](https://arxiv.org/abs/2610.28429) [cs.SC]
-* **研究领域 (Subjects)：** 符号计算 (`cs.SC`)；人工智能 (`cs.AI`)
-* **论文作者 (Authors)：** Tuan Truong Vu, Cheng Tan
-* **提交时间 (Submitted)：** 2026 年 10 月 20 日
-* **数字对象唯一标识 (DOI)：** [10.48550/arXiv.2610.28429](https://doi.org/10.48550/arXiv.2610.28429)
-
-&gt; * **arXiv ID:** [arXiv:2610.28429](https://arxiv.org/abs/2610.28429) [cs.SC]
-&gt; * **Subjects:** Symbolic Computation (`cs.SC`); Artificial Intelligence (`cs.AI`)
-&gt; * **Authors:** Tuan Truong Vu, Cheng Tan
-&gt; * **Submitted:** October 20, 2026
-&gt; * **DOI:** [10.48550/arXiv.2610.28429](https://doi.org/10.48550/arXiv.2610.28429)
-
----
-
-## 🔗 相关链接与资源
-
-&gt; ## Links &amp; Resources
-
-* **全文阅读与下载 (Full-Text Access)：** 
-  * [阅读 PDF 论文 (View PDF)](https://arxiv.org/pdf/2610.28429)
-  * [HTML 网页预览版本 (实验性) (HTML Version - Experimental)](https://arxiv.org/html/2610.28429v1)
-  * [下载 TeX 论文排版源码 (TeX Source)](https://arxiv.org/src/2610.28429)
-* **版权许可 (License)：** [知识共享署名 4.0 国际许可协议 (Creative Commons Attribution 4.0 International)](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-* **学术引用与文献检索 (Citations &amp; References)：** 
-  * [Google 学术检索 (Google Scholar)](https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429)
-  * [Semantic Scholar 词条 (Semantic Scholar)](https://api.semanticscholar.org/arXiv:2610.28429)
-  * [SciX 词条 (SciX)](https://scixplorer.org/abs/arXiv:2610.28429)
-
-&gt; * **Full-Text Access:** 
-&gt;   * [View PDF](https://arxiv.org/pdf/2610.28429)
-&gt;   * [HTML Version (Experimental)](https://arxiv.org/html/2610.28429v1)
-&gt;   * [TeX Source](https://arxiv.org/src/2610.28429)
-&gt; * **License:** [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/) ![license icon](./images/345c7ad61f1b.png)
-&gt; * **Citations &amp; References:** 
-&gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.28429)
-&gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.28429)
-&gt;   * [SciX](https://scixplorer.org/abs/arXiv:2610.28429)</description>
     </item>
   </channel>
 </rss>

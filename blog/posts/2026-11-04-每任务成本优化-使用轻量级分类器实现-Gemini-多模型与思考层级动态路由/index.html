@@ -1,0 +1,699 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-04-%E6%AF%8F%E4%BB%BB%E5%8A%A1%E6%88%90%E6%9C%AC%E4%BC%98%E5%8C%96-%E4%BD%BF%E7%94%A8%E8%BD%BB%E9%87%8F%E7%BA%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%AE%9E%E7%8E%B0-Gemini-%E5%A4%9A%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%80%9D%E8%80%83%E5%B1%82%E7%BA%A7%E5%8A%A8%E6%80%81%E8%B7%AF%E7%94%B1/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gemini" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="gemini">每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由</h1>
+<blockquote>
+<h1 id="cost-per-task-using-cheap-classifiers-to-route-across-gemini-models-and-thinking-levels">Cost per task: Using cheap classifiers to route across Gemini models and thinking levels</h1>
+</blockquote>
+<p><strong>Published:</strong> Nov. 3, 2026<br />
+<strong>Author:</strong> Sergio Villani (Technical Solutions, Google Cloud AI)</p>
+<hr />
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在自主编程智能体 (AI Agent) 快速普及的当下，每次微小决策都直接调用昂贵的高思考深度推理模型，导致企业账单急剧攀升。本文由 Google Cloud AI 的技术专家 Sergio Villani 撰写，针对大模型落地的真实痛点，提出了从“单 Token 成本”转向以“任务成功成本 (Cost Per Task)”为核心的衡量体系。文章深入剖析了基于正则或 Token 长度等初级路由策略的失效机理，并开创性地引入 TypeSafe Jev 等极低成本分类器，通过极速判断任务复杂度，将常规任务分流至轻量模型或浅层思考模式，仅在必要时才升级调用深度推理。这一动态分流架构在维持顶尖基准测试 (Benchmark) 准确率的同时，大幅降低了计算开销与响应延迟，为企业构建高性价比、高可用的智能体系统提供了极具指导意义的工程实践方案。</p>
+<hr />
+<h2 id="_2">核心摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>尽管各大模型的每 Token 调用单价持续走低，但在实际部署中，自主编程智能体消耗的工程账单却不降反升。在真实的生产实践中，真正决定经济效益的黄金指标早已不是“每百万 Token 多少钱”，而是<strong>任务成功成本 (Cost Per Task)</strong> ——即智能体在所有循环轮次、工具调用、错误重试以及内部思维链推理中所产生的总支出，除以最终顺利通过验证的任务总数。</p>
+<blockquote>
+<p>As per-token API prices continue to fall, engineering bills for autonomous coding agents are climbing. The metric that truly governs production economics is no longer price per million tokens, but <strong>cost per successful task</strong>: the total spend across every loop iteration, tool call, retry, and internal thinking pass divided by the number of tasks that pass verification. </p>
+</blockquote>
+<p>为了避免在每一个微小的决策节点上都大动干戈地调用高思考深度的推理配置，工程团队可以引入一层轻量级路由层——例如使用 TypeSafe 开发的极低成本分类器 Jev，或是 Google 原生判别模型——在日常平淡无奇的常规决策流向昂贵的推理模型之前将其精准拦截。</p>
+<blockquote>
+<p>To prevent the unnecessary overhead of calling high-thinking reasoning configurations for every micro-decision, teams can use a lightweight routing layer—such as a cheap classifier like TypeSafe’s Jev or Google-native discriminative models—to intercept routine decisions before they reach an expensive reasoning model.</p>
+</blockquote>
+<hr />
+<h2 id="1-token">1. 基于正则与 Token 长度的简易路由在未知智能体任务上全面溃败</h2>
+<blockquote>
+<h2 id="1-regex-and-token-length-harness-routers-collapse-on-unseen-agent-tasks">1. Regex and token-length harness routers collapse on unseen agent tasks</h2>
+</blockquote>
+<p>单纯依赖简单的提示词 (Prompt) 长度启发式规则，或者靠关键词硬匹配 (例如检查是否包含 <code>sequence</code> 或 <code>modulo</code> 等特定词汇) ，在面对现实世界真实的智能体流量时往往不堪一击。在从未见过的留出测试集上，这类简陋的关键词启发式规则准确率会出现灾难性下滑：许多看似繁琐却毫无难度的常规任务往往篇幅较长、词数极多；而一些结构精炼但逻辑极为复杂的紧凑型多步骤代码追踪任务，却压根不会出现人工预设的那些“解谜”标志词。</p>
+<blockquote>
+<p>Relying on naive prompt-length heuristics or simple keyword-matching (e.g., checking for words like <code>sequence</code> or <code>modulo</code>) quickly degrades when exposed to real-world agent traffic. On unseen held-out tasks, simple keyword heuristics drop significantly in accuracy because normal, straightforward tasks often exceed word counts, while concise multi-step code traces lack hardcoded puzzle words.</p>
+</blockquote>
+<p>相反，将复杂的任务判断拆解为“原子级”的微观判定——例如通过评估一个二元概率指标 (在 Jev 分类器中称为 <code>noul</code>) 来判断当前任务是否需要多步连续计算、模拟或逻辑推演——能够取得令人惊艳的高精度分类表现。</p>
+<blockquote>
+<p>Decomposing broad questions into atomic checks—such as evaluating a binary probability statement (<code>noul</code>) regarding whether a task requires multiple sequential calculations—yields vastly superior classification results.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">call_jev</span><span class="p">(</span><span class="n">question_text</span><span class="p">):</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="n">question_text</span><span class="p">,</span>
+        <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;jev-latest&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;questions&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;multi_step&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;noul&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;instructions&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;Answering this requires performing more than one &quot;</span>
+                    <span class="s2">&quot;sequential calculation, simulation step, or logical &quot;</span>
+                    <span class="s2">&quot;deduction, rather than a single direct lookup, format &quot;</span>
+                    <span class="s2">&quot;check, or one-step classification.&quot;</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+    <span class="c1"># Send the request above to the classifier&#39;s API.</span>
+    <span class="c1"># response.answers[&quot;multi_step&quot;].noul is the probability used to route.</span>
+</code></pre></div>
+<p><img alt="table_1_task_routing_sample" src=".././images/62e28af3cba1.jpg" /></p>
+<p><img alt="table_2_benchmark_split_agreement" src=".././images/b9defa5a041c.jpg" /></p>
+<hr />
+<h2 id="2-maxoutputtokens">2. MaxOutputTokens 是硬性输出上限，绝非控制思考预算的调节旋钮</h2>
+<blockquote>
+<h2 id="2-maxoutputtokens-is-a-ceiling-not-a-thinking-budget-dial">2. MaxOutputTokens is a ceiling, not a thinking-budget dial</h2>
+</blockquote>
+<p>许多开发者容易陷入一个误区，以为在推理模型上将 <code>maxOutputTokens</code> 调小，就能“强迫”模型在简单任务上节省算力与思考预算。然而事实恰恰相反，输出上限仅仅是一道刚性的“天花板”：简单任务原本生成的回复就极为简短，根本触碰不到设定的上限阀值，因此模型消耗的思考 Token 与输出开销完全没有减少；反而是当遇到真正复杂的困难任务时，被人为压低的上限会导致输出在推演半途被生硬截断，直接引发任务崩溃。</p>
+<blockquote>
+<p>A common misconception is that setting a low <code>maxOutputTokens</code> cap on a reasoning model will force it to spend fewer resources on easy tasks. However, output caps act strictly as ceilings; easy answers never approach the limit, meaning token and thinking spend remain virtually identical while artificially restricted caps risk truncating or breaking hard tasks.</p>
+</blockquote>
+<p><img alt="table_3_easy_task_configuration" src=".././images/f3c63b5a2852.jpg" /></p>
+<blockquote>
+<p>💬 [原文说明 / Note]:
+<em>注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。</em></p>
+<p><em>Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.</em></p>
+</blockquote>
+<hr />
+<h2 id="3-jev">3. 性能基准实测：Jev 分流方案对决最强无路由配置</h2>
+<blockquote>
+<h2 id="3-benchmark-jev-against-the-strongest-setup-without-a-router">3. Benchmark Jev against the strongest setup without a router</h2>
+</blockquote>
+<p>将轻量化模型策略 (例如直接使用 Flash-Lite，或是将 Gemini Flash 设置为较低的思考深度) 与引入智能路由的配置方案进行基准测试对比，可以清晰揭示：在核心大模型处理前加入极低成本的智能预处理分流，是如何在大幅压低延迟的同时实现惊人的成本优化的。</p>
+<blockquote>
+<p>Benchmarking lightweight options (such as Flash-Lite or Gemini Flash set to low thinking levels) against routing configurations reveals how intelligent preprocessing can optimize both latency and cost.</p>
+</blockquote>
+<p><img alt="table_4_strategy_performance_comparison" src=".././images/f4b22d599756.jpg" /></p>
+<blockquote>
+<p>💬 [原文说明 / Note]:
+<em>注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。</em></p>
+<p><em>Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.</em></p>
+</blockquote>
+<p><img alt="table_5_task_bucket_breakdown (1)" src=".././images/d36ffbe95b2e.jpg" /></p>
+<ul>
+<li><strong>Jev 路由表现优异</strong>：默认将所有日常任务首先分配给 Flash-Lite 处理，仅对被 Jev 标记为高复杂度的任务进行动态升级；这种策略在完美达到顶级基准准确率的同时，彻底免去了简单任务上毫无必要的深度思考等待时间。</li>
+<li><strong>智慧升级原则</strong>：只有当低梯度的模型或配置确实无力解决任务时，调用计算开销更大的重量级升级模型才具有切实的经济与效果价值。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>The Jev router succeeded:</strong> By sending every task to Flash-Lite first and escalating complex items flagged by Jev, it matched top-tier baseline accuracy while reducing unnecessary deep-reasoning wait times.</li>
+<li><strong>Escalating smartly:</strong> A heavier escalation target is only beneficial when lower-tier settings begin to fail.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="4-token">4. 单 Token 标价掩盖的工程真相：缓存与模型特性的深层博弈</h2>
+<blockquote>
+<h2 id="4-price-per-token-doesnt-tell-the-whole-story">4. Price per token doesn't tell the whole story</h2>
+</blockquote>
+<ul>
+<li><strong>动态路由与上下文缓存互有权衡</strong>：在处理大型代码仓库目录映射或繁杂的工具定义时，上下文缓存 (Context Caching) 能呈数量级削减 Token 支出，但缓存必须绑定特定的具体模型。如果在 Flash-Lite 与 Flash 之间进行高频来回切换，反而会击穿并破坏缓存复用效率。因此，动态路由器最适合应用于那些简短、自包含且上下文独立的离散子任务中。</li>
+<li><strong>模型选型严格匹配业务负载特性</strong>：像 Gemini Pro 这样的深度推理模型，应当被专门保留给那些需要多步推演、复杂归纳的高难度攻坚场景；而针对绝大多数常规检索、快速查询与信息抽取操作，直接交给轻快的 Flash 基础配置即可游刃有余。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Routing and caching pull in opposite directions:</strong> Context caching dramatically reduces token costs for large repository maps or tool definitions, but caches are bound to specific models. Frequent switching between Flash-Lite and Flash can break caching efficiency. Reserve routers for short, self-contained tasks.</li>
+<li><strong>Match the model to the workload:</strong> Deep reasoning models like Gemini Pro are best reserved for complex multi-step reasoning, whereas quick lookups and extractions belong on Flash configurations.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">总结与落地工程建议</h2>
+<blockquote>
+<h2 id="summary-recommendations">Summary Recommendations</h2>
+</blockquote>
+<ol>
+<li><strong>优先尝试 Flash 的 <code>low</code> 低思考配置</strong>：在急于搭建复杂的自定义路由组件之前，不妨先直接测试较低的思考深度档位 (例如设置 <code>thinkingLevel: "LOW"</code>) ，因为在很多工程场景下，它仅需默认配置极小一部分的成本，就能以极高成功率攻克绝大部分任务。</li>
+<li><strong>在简短独立任务中引入 Jev 分类器</strong>：利用细粒度原子化“是/否”判定问题，将简单任务精准分流至 Flash-Lite，遇到复杂难题再动态转交至开启浅思考的 Flash 方案。</li>
+<li><strong>建立全局端到端智能体成本监控体系</strong>：借助 Google Cloud 的 Cloud Logging 与 BigQuery 全程追踪调用追踪链 (Trace) 与思考 Token 真实开销，始终紧扣“单次成功任务成本”这一关键商业指标来评估系统综合表现。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Start with Flash on <code>low</code> thinking:</strong> Before building a custom router, test lower thinking levels directly (<code>thinkingLevel: "LOW"</code>), as they frequently solve tasks successfully at a fraction of default costs.</li>
+<li><strong>Use Jev for short, standalone tasks:</strong> Direct simple tasks to Flash-Lite and hard tasks to Flash (low thinking), leveraging atomic yes-or-no classification questions.</li>
+<li><strong>Measure true agent expenditures:</strong> Track traces and thinking tokens via Cloud Logging and BigQuery to monitor performance against actual costs per successful task.</li>
+</ol>
+</blockquote>
+<hr />
+<p><img alt="image3 (1)" src=".././images/85cf26014b0f.jpg" /></p>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Gemini</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Google Cloud</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">成本优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">模型路由</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">智能体架构</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">推理思考</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
