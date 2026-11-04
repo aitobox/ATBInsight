@@ -471,6 +471,11 @@ title: 标签浏览
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 - [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
+- [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
+
+## AI智能体评测
+
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
 
 ## AI检测
 
@@ -1746,6 +1751,7 @@ title: 标签浏览
 ## FP8
 
 - [Golden Ruler：包含FP8、BF16、MXFP4及微标度格式位精确一致性向量的数字格式目录](blog/posts/2026-09-08-Golden Ruler：包含FP8、BF16、MXFP4及微标度格式位精确一致性向量的数字格式目录.md)
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
 
 ## Failure Attribution
 
@@ -1954,6 +1960,10 @@ title: 标签浏览
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 - [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
 
+## GPU算子
+
+- [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
+
 ## GPU算子优化
 
 - [自我进化的算法设计智能体：基于种群筛选策略优化打破上下文进化停滞](blog/posts/2026-10-02-自我进化的算法设计智能体-基于种群筛选策略优化打破上下文进化停滞.md)
@@ -1962,6 +1972,10 @@ title: 标签浏览
 
 - [一种用于大模型教师蒸馏标注的可扩展流水线：工作窃取任务调度与内存感知 GPU 并发](blog/posts/2026-08-19-一种用于大模型教师蒸馏标注的可扩展流水线：工作窃取任务调度与内存感知 GPU 并发.md)
 - [基于平均场代理模型的共享GPU上并发异构AI推理可扩展运行时调度](blog/posts/2026-09-04-基于平均场代理模型的共享GPU上并发异构AI推理可扩展运行时调度.md)
+
+## GPU采样
+
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## GQA
 
@@ -2858,6 +2872,7 @@ title: 标签浏览
 - [OEIS Open：语言模型能将多少猜想转化为定理？](blog/posts/2026-08-15-OEIS Open：语言模型能将多少猜想转化为定理？.md)
 - [FLARE：利用基于大语言模型的定理证明验证 MILP 重构](blog/posts/2026-08-29-FLARE：利用基于大语言模型的定理证明验证 MILP 重构.md)
 - [形式化验证费马大定理：Claude历时11天实现数学史里程碑](blog/posts/2026-09-06-形式化验证费马大定理：Claude历时11天实现数学史里程碑.md)
+- [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 
 ## Lean 4
 
@@ -3434,6 +3449,10 @@ title: 标签浏览
 
 - [用强化学习削减AI数据中心能耗：从单GPU到整个集群的LLM训练实测功耗控制](blog/posts/2026-08-14-用强化学习削减AI数据中心能耗：从单GPU到整个集群的LLM训练实测功耗控制.md)
 
+## NVIDIA B200
+
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
+
 ## NVIDIA Blackwell
 
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
@@ -3782,6 +3801,7 @@ title: 标签浏览
 - [手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究](blog/posts/2026-08-14-手写 PTX Tensor-Core GEMM 内核：NVIDIA L4 上的多精度研究.md)
 - [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 - [Racer：利用符号等价性检查捕获 GPU 算子内核漏洞](blog/posts/2026-10-22-Racer-利用符号等价性检查捕获-GPU-算子内核漏洞.md)
+- [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 
 ## PTXBench
 
@@ -3910,6 +3930,10 @@ title: 标签浏览
 - [Prime Intellect 正式推出 Prime Inference：面向前沿开源模型的无服务器与专属算力推理平台](blog/posts/2026-10-04-Prime-Intellect-正式推出-Prime-Inference-面向前沿开源模型的无服务器与专属算力推理平台.md)
 - [Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍](blog/posts/2026-10-30-Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子.md)
 
+## Prism
+
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
+
 ## PrismML
 
 - [PrismML 发布三值大模型 Ternary Bonsai 2 27B：仅 5.9GB 体积保留 98.2% 顶尖性能](blog/posts/2026-09-20-PrismML-发布三值大模型-Ternary-Bonsai-2-27B-仅-5.9GB-保留-98.2-性能.md)
@@ -4030,6 +4054,10 @@ title: 标签浏览
 ## Qiskit
 
 - [Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手](blog/posts/2026-09-08-Qlippy：一个用于可复现量子工作流与实验追踪的检索增强型生成式AI助手.md)
+
+## Qrita
+
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## QuantWM
 
@@ -4655,6 +4683,10 @@ title: 标签浏览
 
 - [SafeDivertor：通过利用时频先验从宏观等离子体状态信号中高保真重建偏滤器热通量](blog/posts/2026-08-07-SafeDivertor：通过利用时频先验从宏观等离子体状态信号中高保真重建偏滤器热通量.md)
 
+## Sarvam AI
+
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
+
 ## Scaling Laws
 
 - [推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失](blog/posts/2026-09-01-推导 OpenEuroLLM 模型的缩放定律：学习率、批大小与损失.md)
@@ -5073,10 +5105,15 @@ title: 标签浏览
 ## Top-k
 
 - [Fast LapSum：百万级规模下的精确可微 Top-k 算子](blog/posts/2026-08-11-Fast LapSum：百万级规模下的精确可微 Top-k 算子.md)
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## Top-k 选择
 
 - [Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-$k$ 选择方法](blog/posts/2026-09-04-Shiva-DiT：用于高效扩散 Transformer 的基于残差的可微分 Top-k- 选择方法.md)
+
+## Top-p
+
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## TorchNeuron
 
@@ -5199,6 +5236,7 @@ title: 标签浏览
 - [RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准](blog/posts/2026-08-14-RealisticTritonBench：真实世界 AI 框架中 Triton 内核生成的评测基准.md)
 - [AI 充当编译器：无需 Triton 编译器即可将 Triton 算子直译为 PTX 代码](blog/posts/2026-10-01-AI-充当编译器-无需-Triton-编译器即可将-Triton-算子直译为-PTX-代码.md)
 - [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## Triton 算子
 
@@ -5736,6 +5774,7 @@ title: 标签浏览
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## visitation measure
 
@@ -8089,6 +8128,7 @@ title: 标签浏览
 - [Nace AI 开源 Drex 1.5：无需生成文本、专注于为选项直接打分的 9B 决策模型](blog/posts/2026-10-11-Nace-AI-开源-Drex-1.5-专注于选项打分的-9B-决策模型.md)
 - [Cloudflare 正式发布 Clef-omni：支持音视频与图文的全模态 30B 决策大模型](blog/posts/2026-10-13-Cloudflare-正式发布-Clef-omni-全模态-30B-决策大模型.md)
 - [如何使用决策模型进行自动化评估：平衡成本、性能与置信度](blog/posts/2026-10-21-如何使用决策模型进行自动化评估.md)
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
 
 ## 决策泄漏
 
@@ -8817,6 +8857,10 @@ title: 标签浏览
 ## 单智能体循环
 
 - [构建智能体：何时应当将子智能体合并回主智能体循环](blog/posts/2026-10-23-构建智能体-何时应当将子智能体合并回主智能体循环.md)
+
+## 单次前向推理
+
+- [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
 
 ## 单次推理
 
@@ -10138,6 +10182,7 @@ title: 标签浏览
 - [PETSc 中 AI 生成科学计算代码的智能体评估框架](blog/posts/2026-09-13-PETSc-中-AI-生成科学计算代码的智能体评估框架.md)
 - [从 MCP 注册表中随机抽取究竟能抽到什么？工具调用基准测试真相剖析](blog/posts/2026-09-13-从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析.md)
 - [VQ-bench：可组合式矢量量化框架与评测基准](blog/posts/2026-09-18-VQ-bench-可组合式矢量量化框架与评测基准.md)
+- [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
 
 ## 基准测试合成
 
@@ -11802,6 +11847,7 @@ title: 标签浏览
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 - [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
+- [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 
 ## 大语言模型代理
 
@@ -13832,6 +13878,7 @@ title: 标签浏览
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 - [count-catcher：从模型计数证书生成 Lean 形式化定理](blog/posts/2026-10-29-count-catcher-从模型计数证书生成-Lean-形式化定理.md)
 - [代数世界模型：从环境探索到形式化数学证明](blog/posts/2026-10-31-代数世界模型-从环境探索到形式化数学证明.md)
+- [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 
 ## 形式语言学
 
@@ -14694,6 +14741,10 @@ title: 标签浏览
 ## 排序
 
 - [UMER：通过面向对感知的判别推理统一通用多模态检索的嵌入与排序](blog/posts/2026-08-21-UMER：通过面向对感知的判别推理统一通用多模态检索的嵌入与排序.md)
+
+## 排行榜评测
+
+- [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
 
 ## 排队论
 
@@ -19153,6 +19204,7 @@ title: 标签浏览
 - [基于循环流的思考：通过动态计算分配提升深度推理能力](blog/posts/2026-09-13-基于循环流的思考-通过动态计算分配提升深度推理能力.md)
 - [连续扩散语言模型在规模化扩展上可媲美离散扩散](blog/posts/2026-09-13-连续扩散语言模型在规模化扩展上可媲美离散扩散.md)
 - [重思推理模型的置信度：CALIBER 让 AI 学会准确评估自身不确定性](blog/posts/2026-10-21-重思推理模型的置信度-CALIBER-让-AI-学会准确评估自身不确定性.md)
+- [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 
 ## 深度学习优化
 
@@ -25092,6 +25144,10 @@ title: 标签浏览
 - [多模态GUI智能体是否知道何时停止操作？实现具备冲突意识的终止机制](blog/posts/2026-09-05-多模态GUI智能体是否知道何时停止操作？实现具备冲突意识的终止机制.md)
 - [关系线性度是大模型幻觉的预测指标](blog/posts/2026-09-05-关系线性度是大模型幻觉的预测指标.md)
 
+## 评测基建
+
+- [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
+
 ## 评测框架
 
 - [ARAC：端到端科研中自动化研究对齐与完整性的基准测试](blog/posts/2026-08-16-ARAC：端到端科研中自动化研究对齐与完整性的基准测试.md)
@@ -27399,6 +27455,10 @@ title: 标签浏览
 ## 隐式需求估计器
 
 - [调用还是不调用：评估与优化大语言模型工具调用的框架](blog/posts/2026-08-07-调用还是不调用：评估与优化大语言模型工具调用的框架.md)
+
+## 隐形错误
+
+- [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
 
 ## 隐状态
 
