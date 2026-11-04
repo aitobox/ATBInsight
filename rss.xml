@@ -5,6 +5,275 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>评测工具隐形错误如何颠覆智能体排行榜排名</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-05/评测工具隐形错误如何颠覆智能体排行榜排名/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/评测工具隐形错误如何颠覆智能体排行榜排名/</guid>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在当前的 AI 研究与工程实践中，各大公开排行榜 (Leaderboard) 被广泛视作衡量大语言模型 (Large Language Model, LLM) 与 AI 智能体 (AI Agent) 能力高下的终极试金石。然而，极少有人怀疑“裁判”本身是否准确无误。山东大学研究人员 Yangze Liu 在这项研究中揭露了一个普遍却被忽视的行业现象：评测基建本身存在的代码漏洞、打分脚本缺陷和版本漂移，正在悄无声息地扭曲基准测试 (Benchmark) 的客观性。许多在榜单上排名垫底的智能体，并非推理能力不行，而是因为评测脚本根本没对它们的对话轮次打分并直接判负。本文通过对 HAL 和 `tau2-bench` 等主流榜单的深度审查，详尽阐述了这些“隐形工具错误”带来的严重偏差，并提出了四项极简却高鲁棒的校验准则。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+在论文《评测工具隐形错误如何颠覆智能体排行榜排名》中，来自山东大学的作者 Yangze Liu 深入调研了评测基础设施（如打分脚本、日志记录缺陷与评估器版本迭代）中的缺陷如何在完全不报错的情况下悄然扭曲 AI 智能体的性能指标。通过对 HAL 和 `tau2-bench` 等知名公开排行榜的严密审查，研究表明：未评分的对话轮次、重复计算的模型调用成本以及评估器内部逻辑漏洞，都会在没有触发任何报错警告的前提下，彻底颠覆智能体的排名位次。作者据此提出了一套轻量级的完整性校验机制，旨在保障智能体评测的真实可靠。
+
+&gt; In the paper *"Silent Instrument Errors Reorder Agent Leaderboards"*, author Yangze Liu (Shandong University) investigates how flaws in evaluation infrastructure—such as grading scripts, logging errors, and evaluator versioning—silently distort AI agent performance metrics. By auditing prominent leaderboards like HAL and `tau2-bench`, the study reveals that unscored episodes, miscounted model costs, and evaluator bugs can drastically alter agent rankings without any visible errors. The author proposes lightweight integrity checks to ensure more reliable agent evaluations.
+
+---
+
+## 论文元数据
+
+&gt; ## Metadata
+
+* **arXiv 编号：** [arXiv:2611.04399](https://arxiv.org/abs/2611.04399) [cs.AI]
+* **DOI 链接：** [10.48550/arXiv.2611.04399](https://doi.org/10.48550/arXiv.2611.04399)
+* **作者：** Yangze Liu (Shandong University)
+* **提交日期：** 2026 年 11 月 3 日
+* **研究方向：** 人工智能 (`cs.AI`)、软件工程 (`cs.SE`)
+* **代码与复现脚本：** [GitHub 仓库](https://github.com/YangzeLiu/eval-instrument-disclosure)
+
+&gt; * **arXiv ID:** [arXiv:2611.04399](https://arxiv.org/abs/2611.04399) [cs.AI]
+&gt; * **DOI:** [10.48550/arXiv.2611.04399](https://doi.org/10.48550/arXiv.2611.04399)
+&gt; * **Author:** Yangze Liu (Shandong University)
+&gt; * **Submitted:** 3 November 2026
+&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Software Engineering (`cs.SE`)
+&gt; * **Code &amp; Reproduction Scripts:** [GitHub Repository](https://github.com/YangzeLiu/eval-instrument-disclosure)
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+在某公开智能体排行榜上，一个通用型智能体在涉及数据库操作的航空客服基准测试任务中，落后于专门针对该场景打造的专用脚手架整整 13 分。读者很可能会据此得出结论：“通用性牺牲了准确率”。然而，这一鸿沟的真正根源其实出自打分脚本 (Grader)。
+
+&gt; On a public agent leaderboard, a general-purpose agent trails a scaffold built for an airline customer-service benchmark by 13 points on the tasks that touch its database, and a reader could conclude that generality costs accuracy. The gap comes from the grader.
+
+通用智能体在结束对话时的交互模式，常常无法触发该基准测试预设的自动打分逻辑。结果导致它只有大约一半的会话轮次被真正评分，其余轮次全都被粗暴地标记为失败并静默归档。在无需重新运行任何智能体的情况下，仅根据基准测试自身的既定规则对未打分的后半部分轨迹补评分，二者之间的综合分差便彻底消除。
+
+&gt; The general agent often ends its conversations in a way that never triggers grading, so only about half of its episodes were scored and the rest were stored as failures. Grading the ungraded half under the benchmark's own rule closes the pooled gap, without rerunning any agent.
+
+我们仅依据公开发布的评测制品，对维护极为严谨的两个知名公开榜单——HAL 和 `tau2-bench` 进行了独立审计，又发现了另外三种典型的测量工具错误：
+* **成本统计失真**：调用成本统计列中将嵌套的模型调用重复计算了两次，且在不同行之间分布不均；
+* **动作来源混淆**：归档的执行轨迹中，将打分脚本自身注入的操作错误记录为智能体的自主动作；
+* **版本迁移颠覆指标**：在更新后的评测器下重新为保存的轨迹打分，其本质已构成一次全新的物理测量——一次官方公告的合理修复导致整个榜单排名颠覆；而一处在读取四个文件时发生模式误判的漏洞，在没有打印任何报错的情况下，直接让对应模型的分数断崖式跌落了 59 到 82 分。
+
+&gt; We audit two carefully maintained public leaderboards, HAL and `tau2-bench`, from their published artifacts alone and find three more instrument errors:
+&gt; * A cost column counts nested model calls twice, unevenly across rows.
+&gt; * Archived trajectories record grader-written actions as agent actions.
+&gt; * Re-grading saved trajectories under a newer evaluator is itself a new measurement: a correct and announced fix reorders a leaderboard, and a mode check that misreads four files collapses their scores by 59 to 82 points while printing no error.
+
+以上每一种错误在最终输出时都呈现为一个看似完全合理的数字。HAL 的维护团队在五周内全数确认了我们指出的三项缺陷。这些案例共同表明：智能体评测的基础设施——即负责打分、记录日志、回放轨迹和管理评估器版本的底层代码——本身就是测量系统不可分割的一部分，且极易发生静默失效；因此，基准测试的得分和榜单排名可能在毫无警示的情况下发生剧烈位移。此类故障模式源于当前智能体评测流水线的构建方式，随着被测智能体的演进，这些评测流水线也在高速迭代，因此我们预计同类问题在整个行业广泛存在。
+
+&gt; Each produced a plausible number, and the HAL maintainers confirmed their three within five weeks. Together the cases show that the infrastructure of agent evaluation, meaning the code that grades, logs, replays, and versions an evaluation, is part of the measurement and fails silently, so scores and orderings can move with no visible sign. These failure modes follow from how agent evaluation pipelines are built, and those pipelines change as fast as the agents they measure, so we expect more of them elsewhere.
+
+---</description>
+    </item>
+    <item>
+      <title>在 Lean 中形式化 PTX 以证明 GPU 算子正确性</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-05/在-Lean-中形式化-PTX-以证明-GPU-算子正确性/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/在-Lean-中形式化-PTX-以证明-GPU-算子正确性/</guid>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着现代深度学习模型规模的爆发式增长，底层 GPU 算子的极致性能优化往往伴随着极高的实现复杂度与难以察觉的并发逻辑缺陷。传统的单元测试和模糊测试难以穷尽所有非确定性执行路径，而形式化验证则是终结算子隐性漏洞的终极防线。本文提出了一套在 Lean 定理证明器中形式化建模 NVIDIA PTX (Parallel Thread Execution) 指令集的数学框架，开创性地支持对现代深度学习复杂 GPU 算子模式进行严密的逻辑建模与推理。研究团队成功利用该框架，针对 WGMMA GEMM 矩阵乘算子、FlashAttention 注意力机制以及三阶段混合专家 (Mixture-of-Experts, MoE) 流水线算子给出了完全的形式化功能正确性证明，为构建可信、高可靠的 AI 底层计算系统奠定了数学基石。
+
+---
+
+## 概述与核心成果
+
+&gt; ## Overview &amp; Summary
+
+本文由 Luk Koska、Tom Koska 和 Ben Koska 撰写（于 2026 年 11 月 3 日提交），创新性地提出了一种在 **Lean** 定理证明器中对 PTX (Parallel Thread Execution) 虚拟汇编指令进行数学形式化建模的全新框架。该方法首次实现了对现代深度学习 GPU 核心算子中常见复杂执行模式的严格建模与数学形式化推理。
+
+&gt; This paper, authored by Luk Koska, Tom Koska, and Ben Koska (submitted on November 3, 2026), introduces a novel framework for mathematically formalizing PTX (Parallel Thread Execution) in the **Lean** theorem prover. The approach enables rigorous modeling and reasoning about complex patterns frequently found in modern Deep Learning GPU kernels.
+
+借助这一形式化系统，作者成功证明了以下三种关键深度学习算子实现的功能正确性：
+* **WGMMA GEMM 算子** (Warp 组矩阵乘累加通用矩阵乘法)
+* **FlashAttention**
+* **三算子混合专家 (MoE) 流水线**
+
+&gt; Using this formalization, the authors successfully prove the functional correctness of implementations for:
+&gt; * **WGMMA GEMM kernels** (Warp Group Matrix Multiply-Accumulate General Matrix Multiply)
+&gt; * **FlashAttention**
+&gt; * **A 3-kernel Mixture-of-Experts (MoE) pipeline**
+
+---
+
+## 框架支持建模的核心硬件与编程特性
+
+&gt; ## Key Features Modeled in the Framework
+
+该形式化 PTX 框架精准刻画了现代 GPU 高级编程抽象与底层硬件运行特征，涵盖：
+* 获取-释放内存语义 (Acquire-release memory semantics)
+* 张量核心 (Tensor cores)
+* 内存代理机制 (Memory proxies)
+* 异步并发操作 (Asynchronous operations)
+* 多算子协同流水线 (Multi-kernel pipelines)
+* 数据依赖型控制流 (Data-dependent control flow)
+
+&gt; The formalized PTX framework captures advanced GPU programming abstractions and hardware behaviors, including:
+&gt; * Acquire-release memory semantics
+&gt; * Tensor cores
+&gt; * Memory proxies
+&gt; * Asynchronous operations
+&gt; * Multi-kernel pipelines
+&gt; * Data-dependent control flow
+
+---
+
+## 论文元数据
+
+&gt; ## Article Metadata
+
+* **arXiv 编号：** [arXiv:2611.04447](https://arxiv.org/abs/2611.04447) [cs.AI]
+* **DOI 链接：** [10.48550/arXiv.2611.04447](https://doi.org/10.48550/arXiv.2611.04447)
+* **主要学科领域：** 人工智能 (`cs.AI`)
+* **提交日期：** 2026 年 11 月 3 日
+
+&gt; * **arXiv Identifier:** [arXiv:2611.04447](https://arxiv.org/abs/2611.04447) [cs.AI]
+&gt; * **DOI:** [10.48550/arXiv.2611.04447](https://doi.org/10.48550/arXiv.2611.04447)
+&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
+&gt; * **Submission Date:** November 3, 2026
+
+---
+
+## 全文获取链接
+
+&gt; ## Full-Text &amp; Access Links
+
+* [阅读 PDF 原文](https://arxiv.org/pdf/2611.04447)
+* [实验性 HTML 在线阅读](https://arxiv.org/html/2611.04447v1)
+* [TeX 源码包](https://arxiv.org/src/2611.04447)
+
+&gt; * [View PDF](https://arxiv.org/pdf/2611.04447)
+&gt; * [Experimental HTML Version](https://arxiv.org/html/2611.04447v1)
+&gt; * [TeX Source](https://arxiv.org/src/2611.04447)</description>
+    </item>
+    <item>
+      <title>Sarvam AI 开源 Prism 单次前向决策大模型</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-05/Sarvam-AI-开源-Prism-单次前向决策大模型/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/Sarvam-AI-开源-Prism-单次前向决策大模型/</guid>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在企业级 AI 系统与 AI 智能体 (AI Agent) 工作流中，诸如意图路由、模型分发、合规审查与质量判别等决策场景，往往并不需要大模型逐字生成长篇文本，而是对推理延迟、置信度准确度与显存成本有着近乎苛刻的要求。Sarvam AI 正式开源的 Sarvam Prism 决策模型另辟蹊径，舍弃了传统自回归式的逐 Token 生成方式，创新采用“单次前向传递 (Single Forward Pass)”机制，直接对预定义候选项进行并行评分。在单块 NVIDIA B200 GPU (FP8) 上，Prism 实现了中位数仅 44 毫秒的超低响应延迟，且支持高达 131,072 Token 的超长上下文。该模型基于 Apache 2.0 协议开源，为高并发企业级决策与智能体自动化监管树立了新的性能标杆。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+Sarvam AI 正式发布了 **Sarvam Prism**，这是一款基于 Sarvam 105B 基座构建的开源权重企业级决策大模型。不同于传统的逐 Token (Token-by-Token) 文本生成模式，Prism 仅通过单次前向传递即可完成对所有预设候选选项的并行评估与打分。在单张运行 FP8 精度的 NVIDIA B200 GPU 上，该模型实现了令人惊叹的 **44 毫秒**中位数响应时间，并在 Hugging Face 上以 Apache 2.0 协议向全球开发者开放。专为意图路由、文档智能与智能体评估等企业级工作流量身打造的 Prism，完美兼具了极高推理速度、精准置信度校准以及高达 131,072 Token 的超长上下文支持。
+
+&gt; Sarvam AI has released **Sarvam Prism**, an open-weight enterprise decision model built on the Sarvam 105B base. Instead of traditional token-by-token text generation, Prism processes requests in a single forward pass to evaluate and score predefined options. It achieves an impressive 44-millisecond median response time on a single NVIDIA B200 GPU (running in FP8) and is available under an Apache 2.0 license on Hugging Face. Designed for enterprise workflows—such as intent routing, document intelligence, and agent evaluation—Prism combines high inference speed, precise confidence calibration, and support for massive context windows up to 131,072 tokens.
+
+---
+
+## 单次前向决策模型架构
+
+&gt; ## A Single-Pass Decision Model
+
+Sarvam AI 于 2026 年 11 月 3 日发布了 **Sarvam Prism**，推出了一款专门针对企业决策场景而非自由文本生成定制的开源权重模型。
+
+&gt; Sarvam released **Sarvam Prism** on November 3, 2026, offering an open-weight model tailored specifically for enterprise decision-making rather than free-form text generation.
+
+提交给 Prism 的每个推理请求由以下三部分组成：
+* 当前系统状态 (Current state)
+* 待决问题 (Question)
+* 任意数量的候选选项（容纳在上下文窗口限制内）
+
+&gt; Each request submitted to Prism consists of:
+&gt; * A current state
+&gt; * A question
+&gt; * Any number of candidate options (fitting within the context window)
+
+模型通过单次前向传递同时处理整组输入。随后，一个轻量级评分头 (Scoring head) 会为每一个候选项分配精准的置信概率。Prism 基于对 Sarvam 105B 系统进行 LoRA 微调打造，针对以下场景进行了深度优化：
+* 客服意图分类路由
+* 跨模型调用动态分发
+* 文档智能分析
+* AI 智能体运行轨迹的自动化评估与监督
+
+&gt; The model processes this input in a single forward pass. A small scoring head then assigns a probability to every option. Built using LoRA fine-tuning applied to the Sarvam 105B system, Prism is optimized for tasks such as:
+&gt; * Customer-support intent routing
+&gt; * Model routing
+&gt; * Document intelligence
+&gt; * Automated evaluation and oversight of AI agent runs
+
+---</description>
+    </item>
+    <item>
+      <title>Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-05/Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法/</guid>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (Large Language Model, LLM) 的推理部署流水线中，生成每一个新 Token 的最后关键一步，就是对词表概率分布进行 Top-k 与 Top-p (核采样 / Nucleus Sampling)。随着现代开源大模型词表规模从传统的 3.2 万暴增至 12.8 万甚至更多，传统的全排序算法在 GPU 上带来了沉重的计算开销与显存带宽瓶颈。由加州大学伯克利分校等知名机构学者联合推出的 Qrita 算法，独辟蹊径地采用了基于主元截断与快速选择的创新机制：通过高斯 $\sigma$ 动态截断大幅裁减搜索空间，并利用支持重复值判别的四元主元搜索将迭代次数减半。相较于 SGLang 与 FlashInfer 等顶尖推理引擎，Qrita 实现了高达 1.4 倍的端到端吞吐量提升，显存占用降低 50%，且输出与严格排序完全一致。目前该算法已作为默认算子正式合入 vLLM。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+随着现代语言模型规模的持续膨胀，其词表体积急剧扩张，使得在 GPU 上高效实现 **Top-k** 与 **Top-p** 采样算法成为推理系统面临的一大关键挑战。传统的基于排序的方案在 GPU 上会引入高昂的计算负担与显存开销，而随机近似算法又往往以牺牲输出准确率与稳定性为代价。
+
+&gt; As modern language models scale, their vocabulary sizes grow significantly, making efficient implementation of **Top-k** and **Top-p** sampling algorithms a major challenge on GPUs. Traditional sorting-based approaches introduce heavy computation and memory overhead, while stochastic alternatives compromise output accuracy.
+
+本文提出了 **Qrita**，一种基于主元截断与选择的高性能 GPU Top-k 和 Top-p 采样算法。通过融合**基于高斯分布的 $\sigma$ 截断**（极大压缩了词表的候选搜索空间）与**带重复值处理的四元主元搜索**（将主元迭代次数减半并确保确定性输出），Qrita 相比于 SGLang 和 FlashInfer 等业界领先的大语言模型推理引擎，实现了高达 **1.4 倍的端到端推理服务吞吐量提升**，同时**显存占用直接减半**。Qrita 完全使用 Triton 语言编写，目前已作为 vLLM 官方默认的 Top-k 和 Top-p 采样算子投入生产使用。
+
+&gt; This paper introduces **Qrita**, a high-performance GPU algorithm for Top-k and Top-p sampling utilizing pivot-based truncation and selection. By integrating **Gaussian-based $\sigma$-truncation** (which drastically reduces the vocabulary search space) and **quaternary pivot search with duplication handling** (which halves iterations and ensures deterministic outputs), Qrita achieves up to **1.4$\times$ higher end-to-end serving throughput** with **half the memory usage** compared to leading LLM engines like SGLang and FlashInfer. Qrita is implemented using Triton and serves as the default Top-k and Top-p sampler in vLLM.
+
+---
+
+## 论文元数据
+
+&gt; ## Paper Metadata
+
+* **arXiv 编号：** [arXiv:2602.01518](https://arxiv.org/abs/2602.01518) [cs.AI]
+* **作者团队：** Jongseok Park, Sunga Kim, Alvin Cheung, Ion Stoica
+* **提交日期：** 2026 年 2 月 2 日（最新修订：2026 年 11 月 2 日）
+* **开源协议：** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
+
+&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
+
+&gt; * **arXiv ID:** [arXiv:2602.01518](https://arxiv.org/abs/2602.01518) [cs.AI]
+&gt; * **Authors:** Jongseok Park, Sunga Kim, Alvin Cheung, Ion Stoica
+&gt; * **Submitted:** February 2, 2026 (Last revised: November 2, 2026)
+&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
+&gt; &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
+
+---
+
+## 论文摘要
+
+&gt; ## Abstract
+
+尽管 Top-k 和 Top-p 算法在模型采样中扮演着至关重要的角色，但随着每次新模型发布时词表规模的不断攀升，高效实现这两种采样算法在 GPU 上构成了巨大的工程挑战。现有的方案要么依赖于全局排序，从而在 GPU 上造成极其严重的计算与显存带宽开销；要么依赖于随机近似方法，导致算法输出发生改变。在本项工作中，我们提出了 Qrita——一种基于主元截断与选择的高效 Top-k 和 Top-p 采样算法。Qrita 在 Top-k 与 Top-p 两个任务中均深度利用主元搜索，并引入了两大关键技术：
+1. **基于高斯的 $\sigma$ 截断**：大幅削减词表的搜索空间；
+2. **带重复值处理的四元主元搜索**：将主元搜索迭代次数减半，并保证完全确定性的输出结果。
+
+&gt; Despite their importance in model sampling, efficient implementation of Top-k and Top-p algorithms poses a significant challenge as model vocabularies grow with every new model release. Existing approaches often rely on sorting, which incurs significant computation and memory overhead on GPUs, or on stochastic approaches that alter the algorithm's output. In this work, we propose Qrita, an efficient Top-k and Top-p algorithm based on a pivot-based truncation and selection. Qrita leverages pivot-based search for both Top-k and Top-p with two key techniques: 
+&gt; 1. Gaussian-based $\sigma$-truncation, which greatly reduces the search space of the vocabulary, and 
+&gt; 2. Quaternary pivot search with duplication handling, which halves the number of pivot search iterations and guarantees deterministic output.
+
+我们使用 Triton 语言实现了 Qrita，并在与 SGLang、FlashInfer 等高性能大语言模型执行引擎的 Top-k 和 Top-p 算子对比中评估了其性能。结果表明，Qrita 在端到端推理服务吞吐量上提升高达 1.4 倍，显存占用降低一半，同时能提供与基于稳定排序的 Top-k 和 Top-p 算法完全相同的输出结果。Qrita 目前已成为 vLLM 默认采用的 Triton 版 Top-k 和 Top-p 采样算子，其开源实现可在[官方仓库链接](https://github.com/vllm-project/vllm/blob/main/vllm/v1/sample/ops/topk_topp_triton.py)直接获取。
+
+&gt; We implement Qrita using Triton and evaluate its performance against the Top-k and Top-p kernels of high-performance LLM execution engines such as SGLang and FlashInfer, improving end-to-end serving throughput up to 1.4$\times$ with half the memory usage, while providing the same output of stable sort-based Top-k and Top-p algorithms. Qrita is now the default Triton Top-k and Top-p sampler of vLLM, and its implementation is available at [this link](https://github.com/vllm-project/vllm/blob/main/vllm/v1/sample/ops/topk_topp_triton.py).
+
+---
+
+## 核心特性与技术要点
+
+&gt; ## Key Features &amp; Techniques
+
+* **基于高斯的 $\sigma$ 截断 (Gaussian-based $\sigma$-Truncation)**：通过自适应缩小候选搜索空间，最大程度消除不必要的词表遍历开销。
+* **带重复值处理的四元主元搜索 (Quaternary Pivot Search with Duplication Handling)**：将所需的主元搜索迭代次数直接减半，同时确保输出与标准基线排序完全一致且确定。
+* **原生 Triton 实现 (Triton Implementation)**：具备高度优化的原生 GPU 执行效率，并已无缝集成至 vLLM 等工业级主流大模型推理引擎中。
+
+&gt; * **Gaussian-based $\sigma$-Truncation:** Minimizes unnecessary vocabulary exploration by dynamically narrowing down the candidate search space.
+&gt; * **Quaternary Pivot Search with Duplication Handling:** Cuts the required pivot search iterations in half while ensuring fully deterministic, stable outputs matching sort-based baselines.
+&gt; * **Triton Implementation:** Native high-performance GPU execution integrated directly into production engines like vLLM.</description>
+    </item>
+    <item>
       <title>每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</guid>
@@ -3672,1516 +3941,6 @@ Model Vault 围绕专属的模型部署实例，构建了多重纵深防御控�
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2601.18702)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2601.18702)
 &gt;   * [SciX](https://scixplorer.org/abs/arXiv:2601.18702)</description>
-    </item>
-    <item>
-      <title>NVIDIA Nsight Python 实战教程：如何系统剖析 GPU 算子内核性能</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-23/NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能/</guid>
-      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着深度学习与大模型向万亿参数规模演进，GPU 算子内核的微观性能调优成为突破计算瓶颈的关键。然而，传统的 NVIDIA Nsight Compute 工具往往依赖繁琐的命令行或独立的图形界面，严重割裂了算法开发者的交互式研发体验。NVIDIA 推出的开源 Nsight Python 接口，通过装饰器与上下文管理器将复杂的底层硬件指标直接捕获进 Pandas 数据帧，彻底打通了从算子编写到微架构性能剖析的高速闭环。本文将带领读者在 Google Colab 环境中，系统掌握算子耗时测量、缓存与时钟控制、瓶颈诊断及算子融合量化等全套实战调优技能。
-
----
-
-## 核心概述
-
-&gt; ## Summary
-
-本教程将深入探讨 **Nsight Python**——这是 NVIDIA 为底层内核性能剖析器打造的开源 Python 接口。通过装饰器 ( `nsight.analyze.kernel` ) 与上下文管理器 ( `nsight.annotate` )，Nsight Python 能直接无缝嵌入到 Python 脚本中，绕过 Nsight Compute 烦琐的命令行交互流程，并将各项底层硬件指标直接输出为 Pandas 的 `DataFrame`。从最基础的矩阵乘法，到高级的缓存与时钟频率控制、算子融合 (Kernel Fusion)、自定义信息收集器，再到实验性的 CUPTI 后端，本指南将在免费的 Google Colab T4 实例上完整演示如何高效剖析 GPU 工作负载。
-
-&gt; This tutorial explores **Nsight Python**—NVIDIA's open-source Python interface for kernel profilers. By integrating directly into your Python scripts via decorators (`nsight.analyze.kernel`) and context managers (`nsight.annotate`), Nsight Python bypasses the tedious command-line workflows of Nsight Compute, returning hardware metrics straight into a Pandas `DataFrame`. Covering everything from basic matrix multiplications to advanced cache/clock control, kernel fusion, custom information collectors, and the experimental CUPTI backend, this guide demonstrates how to profile GPU workloads efficiently on a free Google Colab T4 instance.
-
----
-
-## 1. 安装与环境配置
-
-&gt; ## 1. Installation and Environment Setup
-
-在执行任何 CUDA 操作之前，务必优先导入 `nsight`，这样 Nsight Compute 的注入库才能顺利挂钩 (Hook) 到 Python 进程中。由于 Colab 默认预装的 Nsight Compute ( `ncu` ) 版本较旧，我们需要通过 NVIDIA 官方的 CUDA APT 软件源对其进行升级，并安装指定版本的 Nsight Python 预览版。
-
-&gt; Before running any CUDA operations, it is critical to import `nsight` so that Nsight Compute’s injection library can hook into the Python process. Since Colab ships with an older version of Nsight Compute (`ncu`), we update it via NVIDIA's CUDA APT repository and install the pinned Nsight Python pre-release.
-
-```python
-import os
-import sys
-import glob
-import json
-import time
-import shutil
-import textwrap
-import traceback
-import subprocess
- 
-RESULTS = {}
- 
-def banner(title):
-    print("\n" + "=" * 78)
-    print(title)
-    print("=" * 78)
- 
-def section(name):
-    def wrap(fn):
-        def run(*a, **kw):
-            banner(name)
-            try:
-                out = fn(*a, **kw)
-                RESULTS[name] = out if isinstance(out, str) else "ok"
-                return out
-            except Exception as e:
-                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {str(e).splitlines()[0][:160]}"
-                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
-                traceback.print_exc(limit=3)
-                return None
-        return run
-    return wrap
- 
-def sh(cmd):
-    """Run a shell command and return its stdout, stripped."""
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout.strip()
- 
-banner("1. Install a current Nsight Compute next to Colab's, then import nsight before CUDA")
-print(f"  GPU: {sh('nvidia-smi --query-gpu=name,driver_version,memory.total,compute_cap --format=csv,noheader')}")
-preinstalled = shutil.which("ncu")
-print(f"  ncu already on PATH: {preinstalled} -&gt; {sh('ncu --version | tail -1') if preinstalled else 'none'}")
- 
-# Install Nsight Compute from NVIDIA's apt repository
-subprocess.run("apt-get update -qq &gt; /tmp/ncu_install.log 2&gt;&amp;1", shell=True)
-for NCU_VERSION in ("2026.3.1", "2026.2.1"):
-    if subprocess.run(f"apt-get install -y -qq nsight-compute-{NCU_VERSION} &gt;&gt; /tmp/ncu_install.log 2&gt;&amp;1",
-                      shell=True).returncode == 0:
-        break
-else:
-    print(sh("tail -5 /tmp/ncu_install.log"))
-    raise RuntimeError("could not install Nsight Compute 2026.2.1+ from NVIDIA's apt repository")
-
-ncu_paths = sh(f"dpkg -L nsight-compute-{NCU_VERSION} | grep -E '/ncu$'").split()
-if not ncu_paths:
-    raise RuntimeError(f"dpkg lists no ncu executable in nsight-compute-{NCU_VERSION}")
-NCU_DIR = os.path.dirname(min(ncu_paths, key=len))
-os.environ["PATH"] = NCU_DIR + os.pathsep + os.environ["PATH"]
-print(f"  installed: {shutil.which('ncu')} -&gt; {sh('ncu --version | tail -1')}")
- 
-# Install Nsight Python
-NSIGHT_COMMIT = "bb96db4260b1823d86ecab9acfed0646d7af79ad"
-subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                f"nsight-python @ git+https://github.com/NVIDIA/nsight-python@{NSIGHT_COMMIT}"], check=True)
-
-CUPTI_DIR = "/content/cupti_env"
-CUPTI_EXTRA = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--target", CUPTI_DIR, "--no-deps",
-                              "cupti-python&gt;=13.4.0", "nvidia-cuda-cupti~=13.4", "pyelftools"]).returncode == 0
- 
-import nsight  # MUST come before anything initializes CUDA
-from nsight.collection import ncu as ncu_backend
- 
-import numpy as np
-import pandas as pd
-import torch
- 
-SILENT = nsight.VerbosityLevel.SILENT
-pd.set_option("display.width", 200)
-pd.set_option("display.max_columns", 30)
-print(f"  nsight-python {nsight.__version__} | active tool: {nsight.get_active_tool()}"
-      f" | injection error at import: {ncu_backend.injection_load_error}")
-print(f"  torch {torch.__version__} (CUDA {torch.version.cuda}) | {torch.cuda.get_device_name(0)}"
-      f" | cupti-python installed: {CUPTI_EXTRA}")
-```
-
----
-
-## 2. 单个算子内核性能剖析
-
-&gt; ## 2. Profiling a Single Kernel
-
-借助 `nsight.annotate`，我们可以精准隔离出需要进行性能剖析的目标代码块，同时剔除周围繁杂的准备工作 (例如随机张量的初始化生成) 对测试结果的干扰。
-
-&gt; Using `nsight.annotate`, we can isolate specific code blocks for profiling while omitting surrounding setup operations (like random tensor generation).
-
-```python
-ADD = lambda x, y: x + y   # sums metrics if cuBLAS splits a matmul into multiple kernels
- 
-@nsight.analyze.kernel(thermal_mode="off", combine_kernel_metrics=ADD)
-def first_matmul(n: int) -&gt; None:
-    a = torch.randn(n, n, device="cuda")
-    b = torch.randn(n, n, device="cuda")
-    with nsight.annotate("matmul"):
-        _ = a @ b
- 
-@section("2. Profile one kernel: what a ProfileResults row contains")
-def first_profile():
-    df = first_matmul(2048).to_dataframe()
-    print(f"\n  to_dataframe() columns: {list(df.columns)}\n")
-    r = df.iloc[0]
-    t = float(r["AvgValue"])
-    print(f"  annotation {r['Annotation']!r}, n = {r['n']}, kernel {r['Kernel']}")
-    print(f"  {r['Metric']} = {t:,.0f} {r['Unit']}  (runs {r['NumRuns']}, stable: {r['StableMeasurement']})")
-    print(f"  GPU {r['GPU']}, ComputeClock {r['ComputeClock']}, MemoryClock {r['MemoryClock']}")
-    print(f"  -&gt; {2 * 2048 ** 3 / (t * 1e-9) / 1e12:.2f} TFLOP/s for a 2048 x 2048 fp32 matmul")
-    return f"fp32 2048 matmul {t / 1e6:.3f} ms ({2 * 2048 ** 3 / (t * 1e-9) / 1e12:.2f} TFLOP/s)"
- 
-first_profile()
-```
-
----
-
-## 3. 评估测量稳定性与数据离散度
-
-&gt; ## 3. Evaluating Stability and Spread
-
-单次性能测量往往极易受到系统偶发噪声的干扰而产生偏差。通过执行多次迭代测试 (例如设置 `runs=20` )，我们能够自动生成置信区间与标准差，从而系统评估算子内核执行耗时的稳定性。
-
-&gt; A single measurement can be heavily skewed by noise. By running multiple iterations (e.g., `runs=20`), we generate confidence intervals and standard deviations to assess kernel timing stability.
-
-```python
-def show(df, cols, scale=None, fmt="{:,.2f}"):
-    out = df[cols].copy()
-    for c, f in (scale or {}).items():
-        out[c] = out[c] * f
-    print(textwrap.indent(out.to_string(index=False, float_format=lambda v: fmt.format(v)), "  "))
- 
-@nsight.analyze.kernel(configs=[1 &lt;&lt; 14, 1 &lt;&lt; 24], runs=20, thermal_mode="off", verbosity=SILENT,
-                       combine_kernel_metrics=ADD)
-def noisy_or_not(n: int) -&gt; None:
-    x = torch.randn(n, device="cuda")
-    y = torch.randn(n, device="cuda")
-    a = torch.randn(2048, 2048, device="cuda")
-    with nsight.annotate("vector add"):
-        _ = x + y
-    with nsight.annotate("matmul 2048"):
-        _ = a @ a
- 
-@section("3. How many runs? Spread, confidence intervals and the stability flag")
-def stability():
-    df = noisy_or_not().to_dataframe()
-    print("  20 runs per configuration; times in microseconds:\n")
-    show(df, ["Annotation", "n", "AvgValue", "StdDev", "CI95_Lower", "CI95_Upper", "RelativeStdDevPct",
-              "StableMeasurement"], scale={"AvgValue": 1e-3, "StdDev": 1e-3, "CI95_Lower": 1e-3, "CI95_Upper": 1e-3})
-    tiny = df[(df.Annotation == "vector add") &amp; (df.n == 1 &lt;&lt; 14)].iloc[0]
-    print(f"\n  StableMeasurement is simply RelativeStdDevPct &lt; 2. The smallest kernel ({tiny['AvgValue'] / 1e3:.1f} us)")
-    print(f"  varies by {tiny['RelativeStdDevPct']:.1f}% due to launch and clock jitter.")
-    return f"16K-element add RSD {tiny['RelativeStdDevPct']:.1f}%"
- 
-stability()
-```
-
----
-
-## 4. 缓存与时钟频率控制
-
-&gt; ## 4. Cache and Clock Control
-
-剖析器的参数配置对最终的性能读数有着决定性的影响。其中，`cache_control` 参数控制每次运行之间是否清空 L2 缓存，而 `clock_control` 则决定 GPU 流式多处理器 (Streaming Multiprocessor, SM) 的时钟频率是被锁定在基准频率，还是允许根据负载动态睿频加速。
-
-&gt; Profiler configurations significantly alter performance readings. `cache_control` dictates whether L2 caches are flushed between runs, while `clock_control` determines if GPU SM clocks are locked or allowed to boost dynamically.
-
-```python
-def make_scale_bench(cache_control, clock_control):
-    @nsight.analyze.kernel(configs=[1 &lt;&lt; 18, 1 &lt;&lt; 24], runs=10, cache_control=cache_control,
-                           clock_control=clock_control, thermal_mode="off", verbosity=SILENT,
-                           metrics=["gpu__time_duration.sum", "gpc__cycles_elapsed.avg.per_second"])
-    def scale(n: int) -&gt; None:
-        x = torch.randn(n, device="cuda")
-        with nsight.annotate("x * 2"):
-            _ = x * 2.0
-    return scale
- 
-@section("4. Cache and clock control: two defaults that change the answer")
-def cache_and_clocks():
-    rows = []
-    for cache in ("all", "none"):
-        for clock in ("none", "base"):
-            try:
-                df = make_scale_bench(cache, clock)().to_dataframe()
-            except Exception as e:
-                print(f"  cache_control={cache!r}, clock_control={clock!r}: failed -&gt; {type(e).__name__}")
-                continue
-            t = df[df.Metric == "gpu__time_duration.sum"].set_index("n").AvgValue
-            hz = df[df.Metric == "gpc__cycles_elapsed.avg.per_second"].set_index("n").AvgValue
-            for n in t.index:
-                rows.append({"cache_control": cache, "clock_control": clock, "MB": 4 * n / 2 ** 20,
-                             "time_us": t[n] / 1e3, "GB/s": 2 * 4 * n / t[n], "SM_MHz": hz[n] / 1e6})
-    tab = pd.DataFrame(rows)
-    print(textwrap.indent(tab.to_string(index=False, float_format=lambda v: f"{v:,.1f}"), "  "))
-    globals()["CLOCK_TABLE"] = tab
-    return f"Completed cache/clock sweep across {len(tab)} configurations."
- 
-cache_and_clocks()
-```
-
----
-
-## 5. 尺寸扫描、派生指标与基准归一化
-
-&gt; ## 5. Size Sweeps, Derived Metrics, and Normalization
-
-Nsight Python 支持灵活自定义派生指标 (例如在测试过程中即时换算 TFLOP/s 算力利用率)，并能参照特定的基线对结果进行归一化对比 (例如直接将 `fp16` 精度下的性能表现与 `fp32` 进行相对比对)。
-
-&gt; Nsight Python allows customized derived metrics (such as calculating TFLOP/s on the fly) and normalizing results against specific baselines (e.g., comparing `fp16` performance directly against `fp32`).
-
-```python
-SIZES = [(512,), (1024,), (2048,), (4096,)]
- 
-def tflops(time_ns: float, n: int) -&gt; tuple[float, str]:
-    return 2 * n ** 3 / (time_ns * 1e-9) / 1e12, "TFLOP/s"
- 
-def make_precision_body():
-    def precision(n: int) -&gt; None:
-        a = torch.randn(n, n, device="cuda")
-        b = torch.randn(n, n, device="cuda")
-        a16, b16 = a.half(), b.half()
-        with nsight.annotate("fp32"):
-            _ = a @ b
-        with nsight.annotate("fp16"):
-            _ = a16 @ b16
-    return precision
- 
-precision_tflops = nsight.analyze.kernel(configs=SIZES, runs=5, derive_metric=tflops, thermal_mode="off",
-                                         verbosity=SILENT, combine_kernel_metrics=ADD)(make_precision_body())
-precision_ratio = nsight.analyze.kernel(configs=SIZES, runs=5, normalize_against="fp32", thermal_mode="off",
-                                        verbosity=SILENT, combine_kernel_metrics=ADD)(make_precision_body())
- 
-@section("5. A size sweep, a derived TFLOP/s metric, and normalisation")
-def precision_sweep():
-    df = precision_tflops().to_dataframe()
-    tf = df[df.Metric == "tflops"].pivot(index="n", columns="Annotation", values="AvgValue")
-    print("  derive_metric=tflops results:\n")
-    print(textwrap.indent(tf[["fp32", "fp16"]].to_string(float_format=lambda v: f"{v:,.2f}"), "  "))
-    return f"n=4096: fp32 {tf.loc[4096, 'fp32']:.2f}, fp16 {tf.loc[4096, 'fp16']:.2f} TFLOP/s"
- 
-precision_sweep()
-```
-
----
-
-## 6. 识别性能瓶颈：算力受限还是显存受限
-
-&gt; ## 6. Identifying Performance Bottlenecks: Compute-Bound vs. Memory-Bound
-
-通过在单次重放中同时查询多项底层硬件吞吐指标 (包括 `sm__throughput` 与 `dram__throughput` )，我们能够明确判断算子内核究竟是受限于 GPU 的计算能力，还是受限于显存的带宽吞吐瓶颈。
-
-&gt; By querying multiple hardware metrics simultaneously (`sm__throughput` and `dram__throughput`), we can determine whether a kernel is bound by compute capability or memory bandwidth.
-
-```python
-BOUND_METRICS = ["gpu__time_duration.sum",
-                 "sm__throughput.avg.pct_of_peak_sustained_elapsed",
-                 "dram__throughput.avg.pct_of_peak_sustained_elapsed"]
- 
-@nsight.analyze.kernel(metrics=BOUND_METRICS, runs=3, thermal_mode="off", verbosity=SILENT)
-def what_limits(n: int) -&gt; None:
-    a = torch.randn(n, n, device="cuda").half()
-    x = torch.randn(64 * 2 ** 20, device="cuda")
-    s = torch.randn(8192, 1024, device="cuda")
-    with nsight.annotate("fp16 matmul 4096"):
-        _ = a @ a
-    with nsight.annotate("x * 2 (256 MB)"):
-        _ = x * 2.0
-    with nsight.annotate("softmax 8192x1024"):
-        _ = torch.softmax(s, dim=-1)
- 
-@section("6. Compute-bound or memory-bound? Three metrics from one replayed kernel")
-def bound():
-    df = what_limits(4096).to_dataframe()
-    tab = df.pivot(index="Annotation", columns="Metric", values="AvgValue")
-    tab = tab.rename(columns={"gpu__time_duration.sum": "ms",
-                              "sm__throughput.avg.pct_of_peak_sustained_elapsed": "SM % of peak",
-                              "dram__throughput.avg.pct_of_peak_sustained_elapsed": "DRAM % of peak"})
-    tab["ms"] = tab["ms"] / 1e6
-    tab["limited by"] = np.where(tab["SM % of peak"] &gt; tab["DRAM % of peak"], "compute", "memory")
-    print(textwrap.indent(tab.to_string(float_format=lambda v: f"{v:,.2f}"), "  "))
-    return "Analyzed compute vs memory bottlenecks successfully."
- 
-bound()
-```
-
----
-
-## 7. 通过显存访问量量化算子融合效果
-
-&gt; ## 7. Measuring Kernel Fusion via Memory Traffic
-
-算子融合的核心优势在于消除了中间临时数据在全局显存中的往返读写开销。借助 `dram__bytes_read.sum` 和 `dram__bytes_write.sum` 这两项指标，我们可以精确量化如 `torch.addcmul` 等融合算子相较于未融合表达式所带来的显存访问效率提升。
-
-&gt; Kernel fusion eliminates intermediate global memory roundtrips. Using `dram__bytes_read.sum` and `dram__bytes_write.sum`, we can quantify the memory efficiency gains of operations like `torch.addcmul` compared to unfused expressions.
-
-```python
-BYTES = ["gpu__time_duration.sum", "dram__bytes_read.sum", "dram__bytes_write.sum"]
- 
-@nsight.analyze.kernel(metrics=BYTES, runs=5, thermal_mode="off", verbosity=SILENT,
-                       combine_kernel_metrics=lambda x, y: x + y)
-def fusion(n: int) -&gt; None:
-    a, b, c = (torch.randn(n, device="cuda") for _ in range(3))
-    with nsight.annotate("a + b * c (unfused)"):
-        _ = a + b * c
-    with nsight.annotate("torch.addcmul (fused)"):
-        _ = torch.addcmul(a, b, c)
- 
-@section("7. Kernel fusion, measured in bytes: combine_kernel_metrics")
-def fused():
-    n = 32 * 2 ** 20
-    df = fusion(n).to_dataframe()
-    tab = df.pivot(index="Annotation", columns="Metric", values="AvgValue")
-    tab = pd.DataFrame({"ms": tab["gpu__time_duration.sum"] / 1e6,
-                        "MB read": tab["dram__bytes_read.sum"] / 2 ** 20,
-                        "MB written": tab["dram__bytes_write.sum"] / 2 ** 20})
-    print(textwrap.indent(tab.to_string(float_format=lambda v: f"{v:,.1f}"), "  "))
-    u, f = tab.loc["a + b * c (unfused)"], tab.loc["torch.addcmul (fused)"]
-    return f"fusion: {u['ms'] / f['ms']:.2f}x faster"
- 
-fused()
-```
-
----
-
-## 8. 自定义信息收集器与温度控制
-
-&gt; ## 8. Custom Information Collectors &amp; Thermal Control
-
-在 1.1 版本中，Nsight Python 引入了实验性的元数据收集器机制，允许用户在每次性能运行期间按需轮询自定义硬件指标 (例如通过 NVML 获取实时的 SM 时钟频率或 GPU 核心温度)。
-
-&gt; Version 1.1 introduces experimental metadata collectors to poll custom hardware parameters (such as SM clock frequencies or temperatures via NVML) per run.
-
-```python
-import pynvml
- 
-pynvml.nvmlInit()
-NVML = pynvml.nvmlDeviceGetHandleByIndex(0)
- 
-@nsight.experimental.collect(scope=nsight.CollectionScope.ONCE)
-def driver_version(*args):
-    return pynvml.nvmlSystemGetDriverVersion()
- 
-@nsight.experimental.collect(scope=nsight.CollectionScope.RUN)
-def sm_clock_mhz(*args):
-    return pynvml.nvmlDeviceGetClockInfo(NVML, pynvml.NVML_CLOCK_SM)
- 
-@nsight.experimental.collect(scope=nsight.CollectionScope.RUN)
-def gpu_temp_c(*args):
-    return pynvml.nvmlDeviceGetTemperature(NVML, pynvml.NVML_TEMPERATURE_GPU)
- 
-def make_heat_body():
-    def heat(n: int) -&gt; None:
-        a = torch.randn(n, n, device="cuda").half()
-        with nsight.annotate("fp16 matmul"):
-            _ = a @ a
-    return heat
- 
-@section("8. Custom info collectors and thermal control (experimental API)")
-def collectors():
-    out = {}
-    for mode in ("off", "auto"):
-        bench = nsight.analyze.kernel(configs=[4096], runs=10, thermal_mode=mode, thermal_timeout=60,
-                                      info_collectors=[driver_version, sm_clock_mhz, gpu_temp_c],
-                                      verbosity=SILENT, output_prefix=f"/content/nspy_thermal_{mode}/",
-                                      output_csv=True)(make_heat_body())
-        try:
-            df = bench().to_dataframe()
-            out[mode] = df.iloc[0]
-            print(f"  thermal_mode={mode!r}: {out[mode]['AvgValue'] / 1e6:.3f} ms")
-        except Exception as e:
-            print(f"  thermal_mode={mode!r}: failed -&gt; {e}")
-    return "Collectors executed successfully."
- 
-collectors()
-```
-
----
-
-## 9. 实验性 CUPTI 后端对比 Nsight Compute
-
-&gt; ## 9. The Experimental CUPTI Backend vs. Nsight Compute
-
-全新的 CUPTI 后端基于底层 CUPTI 活动接口 (Activity API) 实现，能够在不需要 Nsight Compute 繁重内核重放周期的前提下，以极低的额外开销直接剖析算子内核的执行耗时。
-
-&gt; The new CUPTI backend provides lower-overhead kernel duration profiling via the CUPTI activity API without requiring heavy Nsight Compute kernel replay cycles.
-
-```python
-CUPTI_SCRIPT = r'''
-import os, json, time
-os.environ["NSPY_NCU_INIT_AT_IMPORT"] = "0"
-import nsight
-nsight.activate(nsight.Tool.CUPTI)
-import torch
-@nsight.analyze.kernel(configs=[512, 1024, 2048, 4096], runs=10, thermal_mode="off",
-                       verbosity=nsight.VerbosityLevel.SILENT, combine_kernel_metrics=lambda x, y: x + y)
-def matmul(n):
-    a = torch.randn(n, n, device="cuda")
-    b = torch.randn(n, n, device="cuda")
-    with nsight.annotate("matmul"):
-        _ = a @ b
-t0 = time.time()
-df = matmul().to_dataframe()
-wall = time.time() - t0
-nsight.deactivate()
-print(json.dumps({"wall": wall, "rows": df[["n", "AvgValue", "RelativeStdDevPct"]].to_dict("records")}))
-'''
- 
-@section("9. The experimental CUPTI backend, in its own process, against Nsight Compute")
-def cupti_vs_ncu():
-    if not CUPTI_EXTRA:
-        return "cupti-python could not be installed."
-    with open("/content/cupti_matmul.py", "w") as f:
-        f.write(CUPTI_SCRIPT)
-    env = {k: v for k, v in os.environ.items() if k not in ("NVTX_INJECTION64_PATH", "NV_COMPUTE_PROFILER_PERFWORKS_DIR", "NV_COMPUTE_PROFILER_IN_PROCESS")}
-    env["PYTHONPATH"] = CUPTI_DIR + os.pathsep + env.get("PYTHONPATH", "")
-    p = subprocess.run([sys.executable, "/content/cupti_matmul.py"], capture_output=True, text=True, env=env, timeout=900)
-    print(f"  CUPTI execution return code: {p.returncode}")
-    return f"CUPTI subprocess completed with exit code {p.returncode}"
- 
-cupti_vs_ncu()
-```
-
----
-
-## 10. 保存性能分析证据：报告与原始 CSV 日志
-
-&gt; ## 10. Archiving Evidence: Reports and Raw CSV Logs
-
-性能剖析会话会生成非常全面的输出结果，包括汇总整理后的 CSV 表格、每次运行的原始细节日志，以及完全兼容 Nsight Compute 桌面图形界面 (GUI) 的 `.ncu-rep` 报告文件。
-
-&gt; Profiling sessions produce comprehensive outputs, including aggregated processed CSVs, raw per-run logs, and `.ncu-rep` files compatible with the full Nsight Compute desktop GUI.
-
-```python
-@section("10. Keep the evidence: CSVs and the full Nsight Compute report")
-def evidence():
-    files = sorted(glob.glob("/content/nspy_thermal_off/*"))
-    for f in files:
-        print(f"  {os.path.basename(f):60s} {os.path.getsize(f) / 1024:9.1f} KB")
-    import ncu_report
-    rep_path = next((f for f in files if f.endswith(".ncu-rep")), None)
-    if rep_path is None:
-        return "No .ncu-rep report file found."
-    rep = ncu_report.load_report(rep_path)
-    print(f"\n  Successfully loaded .ncu-rep report containing {rep.num_ranges()} range(s).")
-    return f"Report loaded successfully with {rep.num_ranges()} ranges."
- 
-evidence()
-```
-
----
-
-## 总结
-
-&gt; ## Conclusion
-
-Nsight Python 将底层性能剖析结果直接封装为直观的 Python 原生数据结构，大幅降低了 GPU 算子内核优化的门槛。只要遵循最佳工程实践——例如在初始化 CUDA 之前优先导入 `nsight` 模块、根据评测目标合理配置缓存与时钟策略、利用置信区间过滤测试波动——开发者便无需离开熟悉的 Python 研发环境，即可快速诊断显存带宽瓶颈、量化评估算子融合增益，并精准采集各项微架构硬件指标。
-
-&gt; Nsight Python simplifies GPU kernel optimization by moving profiling insights directly into Python data structures. By following best practices—such as importing `nsight` prior to initializing CUDA, configuring cache/clock policies intentionally, and leveraging confidence intervals—developers can rapidly diagnose memory bottlenecks, evaluate kernel fusion, and collect precise hardware metrics without stepping outside their Python workflows.
-
-欢迎点击 **[完整代码链接](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%2&gt;)** 查阅实战脚本。本项目的所有技术荣誉均归属于该项目的研发团队。欢迎关注我们的 **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** 并加入拥有 15 万+开发者的 **[机器学习 Reddit 社区](https://www.reddit.com/r/machinelearningnews/)**。
-
-&gt; Check out the **[FULL CODES here](https://github.com/MARKTECHPOST-AI-MEDIA-INC/AI-Agents-Projects-Tutorials/blob/main/Deep%2&gt;)**. All credit goes to the researchers of this project. Feel free to follow us on **[Twitter](https://x.com/intent/follow?screen_name=marktechpost)** and join our **[150k+ ML SubReddit](https://www.reddit.com/r/machinelearningnews/)**.</description>
-    </item>
-    <item>
-      <title>Gradium 开源 Phonon：仅 31M 参数的高性能端侧语音合成模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-23/Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/Gradium-开源-Phonon-仅-31M-参数的高性能端侧语音合成模型/</guid>
-      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
-      <description>从云端大模型向终端边缘设备的下沉，是生成式 AI (Generative AI) 迈向普及的关键战役。长期以来，高品质的文本转语音 (Text-to-Speech, TTS) 技术往往严重依赖庞大的云端算力与持续的 API 计费，而在边缘计算与移动端设备上运行的轻量级模型，则常面临发音机械、错误率高和首包延迟过长的困境。由前 Kyutai 团队成员创立的法国语音 AI 初创公司 Gradium，正式开源了革命性的端侧语音合成模型家族 Phonon。其中专攻英语的 Phonon 31m 核心参数量仅有 31M (量化后仅占 64.5 MB 存储)，采用商业友好的 Apache 2.0 宽松协议开源，不仅在常规消费级 CPU 上实现了低至 7 毫秒的超低首音频延迟，更在涵盖复杂边缘用例的严苛文本基准测试中大幅超越了同类主流模型，为离线设备、具身机器人、智能穿戴及各类本地 AI 智能体 (AI Agent) 带来了真正轻量且开箱即用的高保真实时语音能力。
-
----
-
-## 内容摘要
-
-&gt; ## Summary
-
-Gradium 正式开源了轻量级语音合成模型家族 **Phonon**，专门针对本地端侧与边缘设备的高效运行而设计。该模型家族提供了 31M 与 40M 两种参数规格；其中专攻英语的 **Phonon 31m** 采用宽松的 Apache 2.0 协议开源，其 q8 量化权重体积仅为精巧的 64.5 MB。无论是常规 CPU、智能手机、以树莓派 5 (Raspberry Pi 5) 为代表的单板计算机，还是网页浏览器，Phonon 都能在脱离云端 API、无需独立 GPU 加速以及零字符计费成本的前提下，实现自然流畅的端侧实时语音生成。
-
-&gt; Gradium has open-sourced **Phonon**, a family of lightweight text-to-speech (TTS) models designed for local, on-device execution. Available in 31M and 40M parameter sizes, the English **Phonon 31m** model is licensed under Apache 2.0 and packs into a compact 64.5 MB file. It enables natural, real-time speech generation on CPUs, phones, single-board computers like the Raspberry Pi 5, and browsers without requiring cloud APIs, GPUs, or per-character billing.
-
----
-
-## 核心速览
-
-&gt; ## TL;DR
-
-* **模型体量**：核心模型参数量仅 31M (不含音频分词器)，q8 GGUF 格式下仅占 64.5 MB 存储，支持 24 kHz 单声道高品质输出；而多语种版本 Phonon 40m 拥有 40M 参数，权重文件仅 74.6 MB。
-* **硬件支持**：通用于标准 CPU、智能手机、树莓派 5 (Raspberry Pi 5)、网页浏览器 (通过 WASM 与 WebGPU) 以及 NVIDIA GPU，完全不强求独立显卡。
-* **推理性能**：在 Gradium 测试的所有开源模型中斩获最高的英语 Elo 评分；在标准消费级 CPU 上实现仅约 7 毫秒的首音频响应延迟。
-* **核心优势**：在包含 500 个复杂边缘句式的严苛基准评测集中，单词错误率 (Word Error Rate, WER) 低至 1.70% (大幅超越了 Kokoro 的 3.50%)。
-* **潜在短板**：在 Seed-TTS 大语言模型 WER 基准评测中，得分略逊于 Kokoro 与 Magpie 等竞品 (0.51% 对比 0.45%)。
-
-&gt; * **Size:** 31M parameters (excluding audio tokenizer), 64.5 MB q8 GGUF, 24 kHz mono output. Phonon 40m features 40M parameters in a 74.6 MB file.
-&gt; * **Hardware Support:** Runs on CPUs, smartphones, Raspberry Pi 5, browsers (WASM, WebGPU), and NVIDIA GPUs. No dedicated GPU required.
-&gt; * **Performance:** Top English Elo among open models tested by Gradium; achieves ~7 ms to first audio on standard CPUs.
-&gt; * **Pros:** Low Word Error Rate (WER) of 1.70% on a 500-sentence hard benchmark set (outperforming Kokoro's 3.50%).
-&gt; * **Cons:** Scores slightly behind models like Kokoro and Magpie on the Seed-TTS LLM WER benchmark (0.51% vs. 0.45%).
-
----
-
-## 什么是 Gradium Phonon？
-
-&gt; ## What is Gradium Phonon?
-
-Phonon 是由位于巴黎的语音 AI 初创团队 **Gradium** 开发的开源权重文本转语音模型家族。Gradium 脱胎于知名开源实验室 Kyutai，致力于将高保真、低延迟的语音合成能力无缝带入边缘计算设备、个人笔记本、智能手机以及网页浏览器端。
-
-&gt; Phonon is an open-weight TTS model family developed by **Gradium**, a Paris-based voice AI company spun out of Kyutai. It brings high-performance speech synthesis directly to edge devices, laptops, mobile phones, and web browsers.
-
-该模型家族目前涵盖三大核心版本分支：
-
-&gt; The model family consists of three main variants:
-
-* **Phonon 31m**：纯英文模型，内置 37 款丰富音色，采用最利于商业化落地的 Apache 2.0 协议开源。
-* **Phonon 40m**：单语种独立模型，支持英语、法语、德语、西班牙语以及葡萄牙语 (遵循 CC BY-NC 4.0 非商业化许可)。
-* **Phonon 40m Multilingual (多语种版)**：将上述 5 种语言融汇于单一模型之中，囊括多达 102 款预置音色 (遵循 CC BY-NC 4.0 非商业化许可)。
-
-&gt; * **Phonon 31m:** English-only, features 37 built-in voices, and is licensed under Apache 2.0.
-&gt; * **Phonon 40m:** Single-language models available for English, French, German, Spanish, and Portuguese (CC BY-NC 4.0).
-&gt; * **Phonon 40m Multilingual:** Combines all 5 languages into a single model with 102 voices (CC BY-NC 4.0).
-
----
-
-## Phonon 的技术架构与工作原理
-
-&gt; ## How Does Phonon Work?
-
-在底层原理上，Phonon 采用了因果 Transformer (Causal Transformer) 作为核心骨干网络，其前缀输入由待合成文本与发音人嵌入向量 (Speaker Embedding) 共同拼接而成。模型借助词表规模为 4,000 个 Token 的 SentencePiece 分词器直接解析原始文本字符，彻底摒弃了传统语音合成中繁琐且易出错的音素 (Phoneme) 转换管线。
-
-&gt; Phonon utilizes a causal transformer backbone that takes a prefix combining text and speaker embeddings. A SentencePiece tokenizer with a 4,000-token vocabulary parses raw text directly, bypassing traditional phoneme conversion steps.
-
-Phonon 的端到端推理架构流水线设计极为紧凑高效：
-
-&gt; The architecture pipeline functions as follows:
-
-1. **输入文本与发音人嵌入 (Input Text &amp; Speaker Embedding)**：接收原始纯文本输入，并挂载内置预置音色、克隆音色或自定义发音人特征向量；
-2. **SentencePiece 分词处理 (SentencePiece Tokenization)**：直接对文本完成 Token 切分，无须任何中介音素字典或注音前置步骤；
-3. **因果 Transformer 骨干网络 (Causal Transformer)**：自回归 (Autoregressive) 地为每 80 毫秒的音频帧生成一个潜在向量 (在 31m 版本中包含 6 层结构、隐藏层维度 512，以及 8 个注意力头)；
-4. **流匹配预测头 (Flow-Matching Head)**：通过单步流匹配 (Flow-Matching) 机制，一步到位将潜在向量与环境噪声解算为连续音频嵌入，并辅以语音终止检测头 (End-of-Speech Detection Head) 实时把控句尾断句；
-5. **Mimi 音频解码器 (Mimi Decoder)**：采用源自 Kyutai 的 Mimi 神经音频解码器的轻量化精简变体，将连续嵌入快速解码还原为 24 kHz 高保真 PCM 音频流。
-
-&gt; 1. **Input Text &amp; Speaker Embedding:** Accepts raw text alongside built-in, cloned, or custom speaker embeddings.
-&gt; 2. **SentencePiece Tokenization:** Direct text processing without phoneme intermediaries.
-&gt; 3. **Causal Transformer:** Generates one latent vector per 80 ms frame autoregressively (6 layers, width 512, and 8 attention heads in the 31m version).
-&gt; 4. **Flow-Matching Head:** Converts latents and noise into continuous audio embeddings in a single step, paired with an end-of-speech detection head.
-&gt; 5. **Mimi Decoder:** A streamlined variant of Kyutai’s Mimi decoder translates embeddings into 24 kHz PCM audio streams.
-
-值得强调的是，Phonon 31m 与 40m 模型均是通过大规模教师模型进行知识蒸馏 (Knowledge Distillation) 提炼而成，整个训练过程在基于 NCCL 通信与 CUDA Graphs 深度优化的 NVIDIA H100 GPU 集群上高效完成。
-
-&gt; Both the 31m and 40m models are distilled from a larger teacher model, trained on an NVIDIA H100 cluster utilizing NCCL and CUDA Graphs.
-
----
-
-## 基准测试与性能表现
-
-&gt; ## Benchmark Performance
-
-在 Gradium 组织的双盲成对听觉评估测试中 (共计 1,189 位评审员参与，累计产生 17,270 次有效盲测投票)，美式英语系列模型展现出了卓越的主观听感表现：
-
-&gt; In blind pairwise listening tests conducted by Gradium across 1,189 raters and 17,270 votes, US English variants performed strongly:
-
-* **Phonon 40m**：2117 Elo
-* **Phonon 31m**：2098 Elo
-* **Kokoro**：2043 Elo
-* **NeuTTS**：2034 Elo
-* **Magpie**：1939 Elo
-
-&gt; * **Phonon 40m:** 2117 Elo
-&gt; * **Phonon 31m:** 2098 Elo
-&gt; * **Kokoro:** 2043 Elo
-&gt; * **NeuTTS:** 2034 Elo
-&gt; * **Magpie:** 1939 Elo
-
-在涵盖电话号码、电子邮箱地址以及邮政编码等大量棘手边缘用例的公开**高难度句式基准数据集 (Hard-sentence Dataset, 共 500 句)** 上，Phonon 31m 斩获了惊艳的 **1.70% WER**，显著优于主流轻量模型 Kokoro (3.50%) 与 NeuTTS Nano (8.71%)。不过，在相对基础平顺的 Seed-TTS 基准测试集上，差距有所收窄：Phonon 31m 录得了 0.51% 的大语言模型辅助 WER，略微落后于 Kokoro 的 0.45%。
-
-&gt; On a rigorous public **hard-sentence dataset** (comprising 500 sentences filled with edge cases like phone numbers, emails, and postal codes), Phonon 31m achieved a **1.70% WER**, significantly outperforming Kokoro (3.50%) and NeuTTS Nano (8.71%). However, on the simpler Seed-TTS benchmark set, performance normalizes slightly, with Phonon 31m recording a 0.51% LLM WER compared to Kokoro's 0.45%.
-
----
-
-## CPU 性能与延迟表现
-
-&gt; ## CPU Performance &amp; Latency
-
-Phonon 针对超低延迟边缘侧部署进行了全方位的底层计算优化：
-
-&gt; Phonon is heavily optimized for low-latency edge deployment:
-
-* **MacBook Air M5 (CPU 4 线程)**：首音频生成时间仅需 **6.9 毫秒**，推理吞吐达 **29.9 倍实时速率** (而在启用 KleidiAI 与 Apple Accelerate 加速库后，更进一步缩短至 5.4 毫秒，吞吐高达 46.7 倍实时速率)；
-* **树莓派 5 (Raspberry Pi 5)**：仅需 **38 毫秒** 即可吐出首段音频，整体生成维持在 **3.7 倍实时速率**；
-* **高通骁龙 8 至尊版 Gen 5 (Snapdragon 8 Elite Gen 5)**：首音频延迟仅 **7.5 毫秒**，达到 **24 倍实时速率**；
-* **NVIDIA L40S (CUDA 加速)**：首段语音延迟更是压低至极速的 **5 毫秒**。
-
-&gt; * **MacBook Air M5 (CPU, 4 threads):** Reaches first audio in **6.9 ms** at **29.9x real-time speed** (improving to 5.4 ms and 46.7x with KleidiAI and Apple Accelerate).
-&gt; * **Raspberry Pi 5:** Starts in **38 ms** and runs at **3.7x real-time speed**.
-&gt; * **Snapdragon 8 Elite Gen 5:** First audio in **7.5 ms** at **24x real-time**.
-&gt; * **NVIDIA L40S (CUDA):** First speech achieved in **5 ms**.
-
----
-
-## 主流端侧语音模型横向对比
-
-&gt; ## Model Comparison
-
-| 评估特性 | Phonon 31m | Phonon 40m Multilingual | Kokoro-82M | NeuTTS Nano | Kitten TTS v0.8 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **开发者** | Gradium | Gradium | hexgrad | Neuphonic | KittenML |
-| **参数量** | 31M (不含分词器) | 40M | 82M | 总计约 228.7M，激活约 116.8M | 15M / 40M / 80M |
-| **权重体积** | 64.5 MB (q8) | 74.6 MB (q8) | 未披露 | 未披露 | 25 至 80 MB |
-| **支持语种** | 英语 | 英语、法语、德语、西语、葡语 | 8 种语言 (v1.0) | 英语 (套件扩展西、法、德语) | 英语 |
-| **开源协议** | Apache 2.0 | CC BY-NC 4.0 | Apache 2.0 | NeuTTS Open License 1.0 | Apache 2.0 |
-| **高难度句式 WER (英语)** | 1.70% | 2.11% | 3.50% | 8.71% | 7.40% |
-| **英语 Elo 评分** | 2098 | 2097 | 2043 | 2034 | 未测试 |
-| **Seed-TTS LLM WER (英语)** | 0.51% | 0.48% | 0.45% | 0.62% | 未测试 |
-| **首音频延迟 (M5 CPU)** | 6.9 ms | 8.8 ms | 517 ms | 未披露 | 未披露 |
-
-&gt; | Feature | Phonon 31m | Phonon 40m Multilingual | Kokoro-82M | NeuTTS Nano | Kitten TTS v0.8 |
-&gt; | :--- | :--- | :--- | :--- | :--- | :--- |
-&gt; | **Developer** | Gradium | Gradium | hexgrad | Neuphonic | KittenML |
-&gt; | **Parameters** | 31M (excl. tokenizer) | 40M | 82M | ~228.7M total, ~116.8M active | 15M / 40M / 80M |
-&gt; | **Weights** | 64.5 MB (q8) | 74.6 MB (q8) | Not disclosed | Not disclosed | 25 to 80 MB |
-&gt; | **Languages** | English | EN, FR, DE, ES, PT | 8 (v1.0) | English (collection adds ES, FR, DE) | English |
-&gt; | **License** | Apache 2.0 | CC BY-NC 4.0 | Apache 2.0 | NeuTTS Open License 1.0 | Apache 2.0 |
-&gt; | **Hard-set WER (EN)** | 1.70% | 2.11% | 3.50% | 8.71% | 7.40% |
-&gt; | **English Elo** | 2098 | 2097 | 2043 | 2034 | Not tested |
-&gt; | **Seed-TTS LLM WER (EN)** | 0.51% | 0.48% | 0.45% | 0.62% | Not tested |
-&gt; | **First Audio (M5 CPU)** | 6.9 ms | 8.8 ms | 517 ms | Not disclosed | Not disclosed |
-
----
-
-## 开发者部署与生态集成
-
-&gt; ## Developer Deployment
-
-官方推理运行时 (`xn-ptts`) 采用双重宽松开源协议 (MIT 或 Apache 2.0)，提供了极为宽广的多语言生态绑定，原生支持 Rust、Python (`pip install ptts`)、Swift、C、C++，并支持在浏览器端通过 `phonon-tts` 直接驱动。此外，运行时还开箱即用地内置了兼容 OpenAI 接口规范的服务端以及轻量级 WebSocket 服务端。生态整合方面，Phonon 能与 Hugging Face Transformers、MLX-Audio、Ollama 以及 LM Studio 等主流框架无缝协同。
-
-&gt; The official runtime (`xn-ptts`) is available under an MIT or Apache-2.0 license, supporting Rust, Python (`pip install ptts`), Swift, C, C++, and web browsers via `phonon-tts`. It also includes out-of-the-box support for an OpenAI-compatible server and a WebSocket server. Phonon integrates smoothly with Transformers, MLX-Audio, Ollama, and LM Studio.
-
----
-
-## 总结与核心看点
-
-&gt; ## Key Takeaways
-
-* **轻巧高效的开源利器**：**Phonon 31m** 提供了一个仅 31M 参数量的超轻量纯英语文本转语音模型，权重仅 64.5 MB，采用商业友好的 Apache 2.0 协议开源；
-* **复杂长尾文本精准无误**：在包含缩写、数字及邮箱等复杂现实场景文本中表现极其稳健，单词错误率 (WER) 仅为 1.70%；
-* **突破性的端侧超低延迟**：在现代消费级标准 CPU 上能够达成 7 毫秒以内的极速首包音频输出，并可在树莓派 5 等算力受限设备上流畅稳定运行；
-* **多语种能力延展**：同步推出了覆盖 5 种欧洲语言的 40M 多语种版本，供学术研究与非商业应用探索。
-
-&gt; * **Phonon 31m** offers an efficient, Apache 2.0-licensed 31M parameter English TTS model weighing just 64.5 MB.
-&gt; * Delivers robust accuracy with a 1.70% WER on difficult text inputs.
-&gt; * Unlocks ultra-low latency processing, achieving first audio in under 7 ms on modern consumer CPUs and running seamlessly on resource-constrained hardware like the Raspberry Pi 5.
-&gt; * Multilingual 40m counterparts are available under non-commercial licensing terms.
-
----
-
-欢迎查阅官方资源了解更多详情：[技术博客 (Technical Blog)](https://gradium.ai/blog/release-phonon-open-weight) | [模型主页 (Model Card)](https://huggingface.co/gradium/phonon-31m-en) | [GitHub 运行时代码库 (GitHub Runtime)](https://github.com/gradium-ai/xn-ptts) | [高难度基准数据集 (Hard-Sentence Dataset)](https://huggingface.co/datasets/gradium/tts-hard-sentences-202610)。
-
-&gt; *Check out the [Technical Blog](https://gradium.ai/blog/release-phonon-open-weight), [Model Card](https://huggingface.co/gradium/phonon-31m-en), [GitHub Runtime](https://github.com/gradium-ai/xn-ptts), and [Hard-Sentence Dataset](https://huggingface.co/datasets/gradium/tts-hard-sentences-202610).*</description>
-    </item>
-    <item>
-      <title>Cactus Whistle 实战指南：16.9MB 轻量语音模型如何在 CPU 上硬刚 Whisper Base</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-23/Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-23/Cactus-Whistle-实战指南-16.9MB-轻量语音模型如何在-CPU-上硬刚-Whisper-Base/</guid>
-      <pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在边缘计算设备与端侧 AI 场景中，语音识别模型长期面临模型体积庞大与推理资源消耗高的双重瓶颈。Cactus Compute 推出的超轻量语音转文字模型 Cactus Whistle 体积仅为 16.9MB ，专为在 CPU 环境下高效运行而打造。它不仅支持 7 种语言的高精度转录，还能同步输出精确到词级别的时间戳与置信度概率指标。本文在 Apple M4 芯片上采用标准 LibriSpeech 基准数据集，将 Cactus Whistle 与 OpenAI 经典开源模型 Whisper (Tiny 与 Base 模型) 展开了端到端严谨的对照实验，全方位评测了其在词错误率 (WER) 、推理延迟、流式传输、噪声鲁棒性以及语音转工具调用等场景中的性能表现，为开发者在边缘计算与端侧 AI 智能体开发中提供了极具实用价值的轻量级语音落地指南。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-在本技术实战教程与评测中，我们将深入探索由 Cactus Compute 推出的超轻量语音转文字 (Speech-to-Text) 模型 **Whistle** 。该模型体积仅为惊人的 16.9MB ，专为在 CPU 环境下高效运行而设计。虽然体积极其小巧，但 Whistle 却具备跨 7 种语言的多语种转录能力，同时还能提供极其精确的词级别时间戳和置信度概率指标。
-
-&gt; In this technical tutorial and evaluation, we explore **Whistle**—Cactus Compute’s ultra-compact, 16.9 MB speech-to-text model designed to run efficiently on CPUs. Whistle supports multi-language transcription across seven languages while returning precise word timestamps and probability metrics.
-
-我们基于固定的随机种子，从 LibriSpeech 基准测试数据集 (包含 `test-clean` 和 `test-other` 测试集) 中抽样构建评测音频，并在完全相同的音频片段上将其与 OpenAI 的开源标杆模型 **Whisper (Tiny 与 Base 模型) ** 展开全方位的严格对比分析。评测运行在 Apple M4 CPU 上，通过结合 Holm 校正 (Holm correction) 的配对发音人聚类置信区间进行严密的统计推断，我们的核心研究发现如下：
-
-&gt; Using seeded samples from LibriSpeech (`test-clean` and `test-other`), we conduct a rigorous comparative analysis against OpenAI's **Whisper (Tiny and Base models)** across identical audio clips. Evaluated through paired speaker-cluster intervals with Holm correction on an Apple M4 CPU, our findings highlight:
-
-* **词错误率 (Word Error Rate, WER) **：在背景噪声更复杂的 `test-other` 数据集上，Whistle 的转录精度甚至超越了采用贪婪搜索 (Greedy Search) 策略的 Whisper Base ；不过在 Whisper 开启束搜索 (Beam Search) 策略后，两者之间的差距有所收窄。
-* **速度与能效 (Speed &amp; Efficiency) **：在短音频场景下，Whistle 相较于 Whisper 展现出了显著的速度优势，不过随着音频片段长度的增加，两者之间的速度差距会逐渐缩小。
-* **运行边界限制 (Operational Limits) **：我们深入挖掘出了一些关键的边缘限制条件，例如当音频超过 30 秒窗口约束时，当前锁定的推理引擎可能会在静默状态下直接丢弃超长部分的音频片段。
-* **高级拓展能力 (Advanced Capabilities) **：我们还全面基准测试了流式传输延迟、时间戳精确度、关键词偏置增强 (Keyword Biasing)、多语种识别、抗噪鲁棒性、声学特征嵌入 (Embedding) 生成，以及将语音直接路由至工具调用 (Tool Call) 的端到端流程。
-
-&gt; * **Word Error Rate (WER):** Whistle outperforms greedy Whisper Base on `test-other`, though the performance gap narrows against beam search strategies.
-&gt; * **Speed &amp; Efficiency:** Whistle delivers significant speed advantages over Whisper, though the efficiency delta narrows as audio clip lengths increase.
-&gt; * **Operational Limits:** We uncover critical edge cases, such as a 30-second window constraint where the pinned engine can silently drop audio segments.
-&gt; * **Advanced Capabilities:** We benchmark streaming latency, timestamp accuracy, keyword biasing, multilingual processing, noise robustness, embedding generation, and speech-to-tool routing.
-
----
-
-## 1. 环境搭建与模型初始化
-
-&gt; ## 1. Environment Setup &amp; Model Initialization
-
-在准备实验环境时，我们需要安装 `cactus-needle` 库以及必需的语音转录与音频处理工具，同时显式禁用相关的遥测数据收集功能。为了确保实验结果具备百分之百的可复现性，我们通过锁定 Hugging Face 仓库的具体版本提交哈希 (Revision) 并校验 SHA-256 哈希值，对模型权重及底层推理引擎进行严格固定。
-
-&gt; We install `cactus-needle` along with necessary transcription and audio processing utilities while disabling telemetry. By pinning specific Hugging Face repository revisions and recording SHA-256 hashes, we ensure complete reproducibility.
-
-```python
-import os
-import io
-import re
-import sys
-import json
-import math
-import time
-import random
-import hashlib
-import shutil
-import zipfile
-import platform
-import traceback
-import subprocess
-import collections
-import urllib.error
-import urllib.request
- 
-RESULTS = {}
-VERDICTS = []
- 
-def banner(title):
-    print("\n" + "=" * 78)
-    print(title)
-    print("=" * 78)
- 
-def section(name):
-    def wrap(fn):
-        def run(*a, **kw):
-            banner(name)
-            t0 = time.time()
-            try:
-                out = fn(*a, **kw)
-                RESULTS[name] = out if isinstance(out, str) else "ok"
-                return out
-            except Exception as e:
-                RESULTS[name] = f"SKIPPED / FAILED -&gt; {type(e).__name__}: {e}"
-                print(f"\n[!] {name} did not complete: {type(e).__name__}: {e}")
-                traceback.print_exc(limit=3)
-                return None
-            finally:
-                print(f"\n[{time.time() - t0:.0f} s]")
-                json.dump({"results": RESULTS, "verdicts": VERDICTS}, open("results.json", "w"), indent=1)
-        return run
-    return wrap
- 
-banner("1. Install Whistle, pin its weights and engine by Hub revision, transcribe one clip")
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "cactus-needle==3.2.0", "openai-whisper==20250625",
-                "jiwer==4.0.0", "soundfile==0.14.0", "soxr==1.1.0"], check=True)
-os.environ["NEEDLE_TELEMETRY"] = "0"
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
- 
-import numpy as np
-import soundfile as sf
-import soxr
-from huggingface_hub import hf_hub_download
- 
-WHISTLE_REV = "ca5287601bef25af26dcf2e1b2bdc0843a7c19e5"
-NEEDLE3_REV = "93e88ede867e4311c39151285e74df513e4b835b"
-from needle.agent import fetch as needle_fetch
-TAG = needle_fetch._platform_tag()
-ENGINE_VERSION = needle_fetch.engine_version(3)
-weights = hf_hub_download("Cactus-Compute/whistle", "whistle.cact", revision=WHISTLE_REV)
-wheel = hf_hub_download("Cactus-Compute/needle3", needle_fetch.engine_wheel(ENGINE_VERSION, TAG, 3), revision=NEEDLE3_REV)
-with zipfile.ZipFile(wheel) as z:
-    member = next(n for n in z.namelist() if n.startswith("needle/libneedle"))
-    os.makedirs("engine", exist_ok=True)
-    engine = os.path.abspath(os.path.join("engine", os.path.basename(member)))
-    open(engine, "wb").write(z.read(member))
-needle3_weights = hf_hub_download("Cactus-Compute/needle3", "needle3.cact", revision=NEEDLE3_REV)
-os.makedirs(needle_fetch.cache_dir(3), exist_ok=True)
-shutil.copyfile(needle3_weights, os.path.join(needle_fetch.cache_dir(3), needle_fetch.base_weights(3)))
-os.environ["NEEDLE_WHISTLE_WEIGHTS"] = weights
-os.environ["NEEDLE3_LIB_PATH"] = engine
- 
-import needle
-import importlib.metadata as md
-sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()[:12]
-CPU = platform.processor() or platform.machine()
-if sys.platform == "linux" and os.path.exists("/proc/cpuinfo"):
-    CPU = next((l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")), CPU)
-elif sys.platform == "darwin":
-    CPU = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip() or CPU
-
-print(f"cactus-needle {needle.__version__} (engine {ENGINE_VERSION}, wheel tag {TAG})   python {platform.python_version()}   "
-      f"soundfile {md.version('soundfile')}  soxr {md.version('soxr')}  numpy {np.__version__}")
-print(f"hardware: {CPU}, {os.cpu_count()} cpus visible")
-print(f"whistle.cact  {os.path.getsize(weights)/1e6:.1f} MB  sha256 {sha(weights)}   @ {WHISTLE_REV[:12]}")
-print(f"engine        {os.path.getsize(engine)/1e6:.1f} MB  sha256 {sha(engine)}   @ {NEEDLE3_REV[:12]}")
-print(f"needle3.cact  {os.path.getsize(needle3_weights)/1e6:.1f} MB  sha256 {sha(needle3_weights)}   @ {NEEDLE3_REV[:12]}")
- 
-SR = 16000
-W = needle.Whistle()
- 
-def fetch(url, tries=7):
-    for k in range(tries):
-        try:
-            with urllib.request.urlopen(url, timeout=60) as r:
-                return r.read()
-        except urllib.error.HTTPError as e:
-            if k == tries - 1:
-                raise
-            wait = int(e.headers.get("Retry-After", 0) or 0) if e.code == 429 else 0
-            time.sleep(max(wait, 5 * 2 ** k) if e.code in (429, 500, 502, 503, 504) else 2)
-        except Exception:
-            if k == tries - 1:
-                raise
-            time.sleep(3 * (k + 1))
- 
-def page(dataset, config, split, offset, length=100):
-    url = (f"https://datasets-server.huggingface.co/rows?dataset={dataset}&amp;config={config}"
-           f"&amp;split={split}&amp;offset={offset}&amp;length={length}")
-    time.sleep(0.25)
-    return json.loads(fetch(url))
- 
-def load_audio(row):
-    data = fetch(row["audio"][0]["src"])
-    audio, sr = sf.read(io.BytesIO(data), dtype="float32")
-    if audio.ndim &gt; 1:
-        audio = audio.mean(axis=1)
-    if sr != SR:
-        audio = soxr.resample(audio, sr, SR, quality="HQ")
-    return audio, hashlib.sha256(data).hexdigest()[:12]
- 
-first = page("openslr/librispeech_asr", "clean", "test", 0, 1)["rows"][0]["row"]
-clip, _ = load_audio(first)
-t0 = time.perf_counter()
-out = W.transcribe(clip, word_timestamps=True)
-wall = (time.perf_counter() - t0) * 1000
-print(f"\nclip {first['id']}  {len(clip)/SR:.1f} s   reference: {first['text']}")
-print(f"-&gt; {out['text']!r}")
-print(f"   language {out['language']}   engine time to first token {out['ttft_ms']:.1f} ms   decode {out['decode_tps']:.0f} tok/s"
-      f"   wall {wall:.0f} ms")
-print("   first words:", [(w["word"], w["start"], w["end"], w["probability"]) for w in out["words"][:3]])
-RESULTS["1. Install Whistle, pin its weights and engine by Hub revision, transcribe one clip"] = \
-    f"{os.path.getsize(weights)/1e6:.1f} MB weights, {len(clip)/SR:.1f} s clip in {wall:.0f} ms"
-```
-
----
-
-## 2. 实验设计与随机种子采样
-
-&gt; ## 2. Experimental Design &amp; Seeded Sampling
-
-为了恪守学术研究与评测的严谨性，在正式启动评估流程之前，我们需要先在代码层面固化所有校验参数、统计指标与评估准则。
-
-&gt; To maintain academic rigor, validation parameters and evaluation metrics are codified prior to final evaluation runs.
-
-```python
-import jiwer
-import whisper
-import torch
-from whisper.normalizers import EnglishTextNormalizer, BasicTextNormalizer
- 
-NORM_EN = EnglishTextNormalizer()
-NORM_BASIC = BasicTextNormalizer()
-SEED = 2026
-N_WHISTLE = 300
-N_PAIRED = {"other": 100, "clean": 60}
-MAX_CLIP_S = 30.0
-WHISPER_SECONDS = collections.Counter()
- 
-def all_rows(dataset, config, split):
-    out, offset = [], 0
-    while True:
-        rows = page(dataset, config, split, offset)["rows"]
-        out += [r["row"] for r in rows]
-        offset += 100
-        if len(rows) &lt; 100:
-            return out
- 
-def dataset_sha(dataset):
-    return json.loads(fetch(f"https://huggingface.co/api/datasets/{dataset}"))["sha"][:12]
- 
-def wer_counts(ref, hyp):
-    n = len(ref.split())
-    if not hyp.strip():
-        return n, n
-    o = jiwer.process_words(ref, hyp)
-    return o.substitutions + o.deletions + o.insertions, n
- 
-def sdi(ref, hyp):
-    if not hyp.strip():
-        return 0, len(ref.split()), 0
-    o = jiwer.process_words(ref, hyp)
-    return o.substitutions, o.deletions, o.insertions
- 
-def corpus_wer(errs, words):
-    return 100.0 * sum(errs) / max(sum(words), 1)
- 
-def _by_cluster(clusters, *arrays):
-    tot = collections.defaultdict(lambda: [0.0] * len(arrays))
-    for i, c in enumerate(clusters):
-        for j, a in enumerate(arrays):
-            tot[c][j] += a[i]
-    return tot
- 
-def wer_ci(clusters, errs, words, B=2000, seed=0):
-    tot = _by_cluster(clusters, errs, words)
-    keys, rng = sorted(tot), random.Random(seed)
-    boots = []
-    for _ in range(B):
-        d = rng.choices(keys, k=len(keys))
-        boots.append(100 * sum(tot[c][0] for c in d) / max(sum(tot[c][1] for c in d), 1))
-    return np.percentile(boots, [2.5, 97.5])
- 
-def paired_contrast(clusters, errs_a, words, errs_b, label_a, label_b, B=2000, seed=0):
-    tot = _by_cluster(clusters, errs_a, errs_b, words)
-    keys, rng = sorted(tot), random.Random(seed)
-    boots = []
-    for _ in range(B):
-        d = rng.choices(keys, k=len(keys))
-        w = max(sum(tot[c][2] for c in d), 1)
-        boots.append(100 * (sum(tot[c][0] for c in d) - sum(tot[c][1] for c in d)) / w)
-    boots = np.array(boots)
-    lo, hi = np.percentile(boots, [2.5, 97.5])
-    p = 2 * min((boots &lt;= 0).mean(), (boots &gt;= 0).mean())
-    return {"a": label_a, "b": label_b, "diff": corpus_wer(errs_a, words) - corpus_wer(errs_b, words),
-            "lo": lo, "hi": hi, "p": max(p, 1 / B), "clusters": len(keys)}
- 
-def holm(ps, alpha=0.05):
-    order, keep = np.argsort(ps), [False] * len(ps)
-    for rank, i in enumerate(order):
-        if ps[i] &lt;= alpha / (len(ps) - rank):
-            keep[i] = True
-        else:
-            break
-    return keep
- 
-def verdict(c, significant):
-    if c["lo"] &gt; 0 and significant:
-        return "Whistle ahead"
-    if c["hi"] &lt; 0 and significant:
-        return "Whistle behind"
-    return "no significant difference at this n"
- 
-def fmt_contrast(c):
-    return f"{c['diff']:+.2f} pts (95% CI {c['lo']:+.2f}..{c['hi']:+.2f}, {c['clusters']} speakers)"
- 
-@section("2. Fixed, seeded samples of LibriSpeech test-clean and test-other, and the rules for the verdicts")
-def sample_english():
-    global EN
-    global MANIFEST
-    EN, manifest = {}, {"dataset_sha": dataset_sha("openslr/librispeech_asr"), "seed": SEED, "splits": {}}
-    MANIFEST = manifest
-    for split in ("other", "clean"):
-        t0 = time.time()
-        rows = all_rows("openslr/librispeech_asr", split, "test")
-        idx = random.Random(SEED).sample(range(len(rows)), N_WHISTLE)
-        kept, too_long, empty = [], 0, 0
-        for i in idx:
-            r = rows[i]
-            audio, h = load_audio(r)
-            ref = NORM_EN(r["text"])
-            if len(audio) / SR &gt; MAX_CLIP_S:
-                too_long += 1
-                continue
-            if not ref:
-                empty += 1
-                continue
-            kept.append({"id": r["id"], "spk": str(r["speaker_id"]), "text": r["text"], "ref": ref,
-                         "audio": audio, "dur": len(audio) / SR, "sha": h})
-        EN[split] = kept
-        manifest["splits"][split] = {"rows": len(rows), "sampled": N_WHISTLE, "too_long": too_long, "empty_ref": empty,
-                                     "ids": [c["id"] for c in kept], "sha": [c["sha"] for c in kept]}
-        durs = [c["dur"] for c in kept]
-        pk = kept[:N_PAIRED[split]]
-        print(f"test-{split}: {len(rows)} rows -&gt; {len(kept)} clips kept ({too_long} over {MAX_CLIP_S:.0f} s, {empty} empty), "
-              f"{len(set(c['spk'] for c in kept))} speakers, {sum(durs)/60:.1f} min, clip {np.mean(durs):.1f} s mean / {max(durs):.1f} s max"
-              f"   [{time.time()-t0:.0f} s]")
-    json.dump(manifest, open("manifest.json", "w"))
-    return f"{len(EN['other'])} + {len(EN['clean'])} clips, manifest written"
- 
-sample_english()
-```
-
----
-
-## 3. 词错误率 (WER) 基准评测
-
-&gt; ## 3. Word Error Rate (WER) Benchmarking
-
-我们利用基于配对发音人聚类自举法 (Speaker-Cluster Bootstrapping) 计算出的置信区间，将 Whistle 与 Whisper Tiny 以及 Whisper Base 模型在词错误率指标上展开细致的比对。
-
-&gt; We evaluate word error rates against Whisper Tiny and Whisper Base models, utilizing paired speaker-cluster bootstrapped confidence intervals.
-
-```python
-WHISPER = {}
- 
-def whisper_model(size):
-    if size not in WHISPER:
-        WHISPER[size] = whisper.load_model(size, device="cpu")
-    return WHISPER[size]
- 
-def run_whisper(size, audio, language="en", **kw):
-    torch.manual_seed(0)
-    WHISPER_SECONDS[size] += len(audio) / SR
-    t0 = time.perf_counter()
-    r = whisper_model(size).transcribe(audio, language=language, fp16=False, **kw)
-    fell_back = any(s.get("temperature", 0) &gt; 0 for s in r["segments"])
-    return r["text"], fell_back, time.perf_counter() - t0
- 
-SYSTEMS = {"other": [("whisper tiny, greedy", "tiny", {}), ("whisper base, greedy", "base", {}), ("whisper base, beam 5", "base", {"beam_size": 5})],
-           "clean": [("whisper tiny, greedy", "tiny", {}), ("whisper base, greedy", "base", {}), ("whisper base, beam 5", "base", {"beam_size": 5})]}
-FAMILY_A = {"test-clean: Whistle vs whisper base, greedy", "test-clean: Whistle vs whisper base, beam 5",
-            "test-other: Whistle vs whisper base, greedy", "test-other: Whistle vs whisper base, beam 5",
-            "MLS pooled: Whistle vs whisper base, greedy"}
-PUBLISHED = {"other": "Whistle 10.49 / Whisper base 11.0 (paper table 9, beam) / 12.4 (table 8, greedy)",
-             "clean": "Whistle 4.31 / Whisper base 4.9 (paper table 9, beam) / 5.0 (table 8, greedy)"}
-CONTRASTS = []
- 
-@section("3. Word error rate against Whisper tiny and base, paired by clip, with a verdict per contrast")
-def english_wer():
-    global HYP
-    HYP = {}
-    for split in ("other", "clean"):
-        clips = EN[split]
-        t0 = time.perf_counter()
-        hw = [W.transcribe(c["audio"], language="en")["text"] for c in clips]
-        tw = time.perf_counter() - t0
-        HYP[(split, "Whistle")] = hw
-        e_w, n_w = zip(*[wer_counts(c["ref"], NORM_EN(h)) for c, h in zip(clips, hw)])
-        lo, hi = wer_ci([c["spk"] for c in clips], e_w, n_w)
-        print(f"test-{split}: Whistle on all {len(clips)} clips: WER {corpus_wer(e_w, n_w):.2f}% (95% speaker-cluster CI {lo:.2f}..{hi:.2f}) "
-              f"in {tw:.1f} s ({1000*tw/len(clips):.0f} ms per clip)")
-        pk = clips[:N_PAIRED[split]]
-        spk = [c["spk"] for c in pk]
-        e_wp, n_p = list(e_w[:len(pk)]), list(n_w[:len(pk)])
-        for label, size, kw in SYSTEMS[split]:
-            res = [run_whisper(size, c["audio"], **kw) for c in pk]
-            hyps = [r[0] for r in res]
-            HYP[(split, label)] = hyps
-            e_o = [wer_counts(c["ref"], NORM_EN(h))[0] for c, h in zip(pk, hyps)]
-            con = paired_contrast(spk, e_o, n_p, e_wp, label, "Whistle")
-            con["name"] = f"test-{split}: Whistle vs {label}"
-            CONTRASTS.append(con)
-            print(f"   {label:22s} {corpus_wer(e_o, n_p):6.2f}% | {fmt_contrast(con)}")
-    return "completed"
- 
-english_wer()
-```
-
----
-
-## 4. 推理速度与内存占用评估
-
-&gt; ## 4. Speed &amp; Footprint Evaluation
-
-为了确保性能基准测试的绝对客观与精准，避免多线程调度带来的资源争抢，我们让每个推理引擎均在独立的系统隔离子进程中运行。
-
-&gt; To ensure accurate performance profiling without thread contention, each inference engine operates inside an isolated system process.
-
-```python
-def audio_seconds(clips, seconds):
-    out, total = [], 0
-    for c in clips:
-        out.append(c["audio"])
-        total += c["dur"]
-        if total &gt;= seconds:
-            break
-    return np.concatenate(out)[:int(seconds * SR)]
- 
-PROBE_SCRIPT = r"""
-import sys, json, time, resource, numpy as np
-kind, paths = sys.argv[1], sys.argv[2:]
-scale = 1 &lt;&lt; 20 if sys.platform == "darwin" else 1 &lt;&lt; 10
-rss = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / scale
-out = {"kind": kind}
-if kind.startswith("whistle"):
-    import needle
-    out["after_import"] = rss()
-    W = needle.Whistle()
-    run = lambda a: W.transcribe(a, language="en")
-else:
-    import whisper, torch
-    out["after_import"] = rss()
-    size, kw = kind.split("-")[1], ({"beam_size": 5} if kind.endswith("beam5") else {})
-    m = whisper.load_model(size, device="cpu")
-    def run(a):
-        torch.manual_seed(0)
-        return m.transcribe(a, language="en", fp16=False, **kw)
-clips = {p: np.load(p) for p in paths}
-run(clips[paths[0]])
-reps = 5 if kind.startswith("whistle") else 3
-for p, a in clips.items():
-    ts = []
-    for _ in range(reps):
-        t0 = time.perf_counter(); r = run(a); ts.append(time.perf_counter() - t0)
-    out[p] = {"wall_ms": 1000 * float(np.median(ts)), "spread_ms": 1000 * float(np.ptp(ts))}
-    if kind.startswith("whistle"):
-        out[p].update(ttft_ms=r["ttft_ms"], tps=r["decode_tps"])
-out["peak"] = rss()
-print(json.dumps(out))
-"""
- 
-@section("4. Speed and footprint: identical arrays, one fresh process per engine, total wall time and peak memory")
-def speed():
-    pool = EN["other"]
-    for secs in (5, 10, 30):
-        np.save(f"clip{secs}.npy", audio_seconds(pool, secs))
-    open("probe.py", "w").write(PROBE_SCRIPT)
-    res = {}
-    for kind in ("whistle", "whisper-tiny", "whisper-base", "whisper-base-beam5"):
-        out = subprocess.run([sys.executable, "probe.py", kind, "clip5.npy", "clip10.npy", "clip30.npy"], capture_output=True, text=True, env=os.environ)
-        if out.returncode != 0:
-            raise RuntimeError(f"{kind} probe failed: {out.stderr[-300:]}")
-        res[kind] = json.loads(out.stdout.strip().splitlines()[-1])
-    for secs in (5, 10, 30):
-        p = f"clip{secs}.npy"
-        w = res["whistle"][p]
-        print(f"{secs:5d} s | Whistle: {w['wall_ms']:9.0f} ms | Base Greedy: {res['whisper-base'][p]['wall_ms']:8.0f} ms")
-    return "speed benchmark completed"
- 
-speed()
-```
-
----
-
-## 5. 音频长度管理与 30 秒窗口限制
-
-&gt; ## 5. Managing Audio Length &amp; The 30-Second Window
-
-Whistle 在单次处理不超过 30 秒的音频窗口时表现最为理想。一旦输入的音频时长超出了这一约束，就需要配合音频分块 (Chunking) 切片策略或流式处理实现。
-
-&gt; Whistle operates optimally on single-pass windows up to 30 seconds. Audio inputs extending beyond this constraint require chunking strategies or streaming implementations.
-
-```python
-def quiet_windows(a, limit=30.0, search=5.0, hop=0.2):
-    out, i, n, s, h = [], 0, int(limit * SR), int(search * SR), int(hop * SR)
-    while len(a) - i &gt; n:
-        seg = a[i + n - s:i + n]
-        energy = [np.mean(seg[j:j + h] ** 2) for j in range(0, len(seg) - h, h // 4)]
-        cut = i + n - s + int(np.argmin(energy)) * (h // 4) + h // 2
-        out.append(a[i:cut])
-        i = cut
-    out.append(a[i:])
-    return out
- 
-def speaker_sessions(min_s=40, max_s=100, k=8):
-    by = collections.defaultdict(list)
-    for split in ("other", "clean"):
-        for c in EN[split]:
-            by[c["spk"]].append(c)
-    out, gap = [], np.zeros(int(0.4 * SR), np.float32)
-    for spk, cs in sorted(by.items(), key=lambda kv: -sum(c["dur"] for c in kv[1])):
-        parts, used, total = [], [], 0
-        for c in cs:
-            if total + c["dur"] + 0.4 &gt; max_s:
-                break
-            parts += [c["audio"], gap]
-            used.append(c)
-            total += c["dur"] + 0.4
-        if total &gt;= min_s:
-            out.append({"spk": spk, "clips": used, "audio": np.concatenate(parts), "ref": " ".join(c["ref"] for c in used), "dur": total})
-        if len(out) == k:
-            break
-    return out
- 
-@section("5. The 30-second window: what transcribe() does with longer audio, and two ways around it")
-def long_audio():
-    global SESSIONS
-    SESSIONS = speaker_sessions()
-    s = SESSIONS[0]
-    print(f"speaker {s['spk']}: {len(s['clips'])} utterances joined, {s['dur']:.0f} s total duration.")
-    results = {}
-    for name, wins in (("fixed 30 s windows", [s["audio"][i:i + 30 * SR] for i in range(0, len(s["audio"]), 30 * SR)]),
-                       ("quiet-point cuts &lt;= 30 s", quiet_windows(s["audio"], 30))):
-        t0 = time.perf_counter()
-        hyp = NORM_EN(" ".join(W.transcribe(w, language="en")["text"] for w in wins))
-        results[name] = 100 * jiwer.wer(s["ref"], hyp or "&lt;empty&gt;")
-        print(f"   {name:26s} {len(wins):2d} calls   WER {results[name]:5.2f}%")
-    return "long audio analysis completed"
- 
-long_audio()
-```
-
----
-
-## 6. 流式传输延迟与吞吐性能
-
-&gt; ## 6. Streaming Latency &amp; Performance
-
-通过调用 Whistle 提供的 `stream()` 接口，我们可以系统评估基于音频切片的流式转录推理延迟以及文字确权 (Commitment) 的时间间隔。
-
-&gt; Using Whistle's `stream()` method, we evaluate chunk-based transcription latency and commitment intervals.
-
-```python
-@section("6. Streaming: cost per pass, how long a word waits to be committed, and what chunk size changes")
-def streaming():
-    print(f"{len(SESSIONS)} same-speaker sessions evaluated.")
-    summary = {}
-    for chunk_s, sessions in ((1.0, SESSIONS), (0.5, SESSIONS[:2]), (2.0, SESSIONS[:2])):
-        n = int(chunk_s * SR)
-        errs, pass_ms, lat = [], [], []
-        for s in sessions:
-            steps = list(W.stream(iter([s["audio"][i:i + n] for i in range(0, len(s["audio"]), n)]), language="en"))
-            errs.append(wer_counts(s["ref"], NORM_EN(" ".join(x["text"] for x in steps if x["text"])))[0])
-            body = steps[:-1]
-            pass_ms += [x["pass_ms"] for x in body]
-            lat += [x["received"] - wd["end"] for x in steps for wd in x["words"]]
-        summary[(chunk_s, len(sessions))] = (np.median(lat), np.mean(pass_ms))
-        print(f"Chunk size {chunk_s}s | Mean Pass Time: {np.mean(pass_ms):.1f} ms | Median Latency: {np.median(lat):.2f} s")
-    return "streaming evaluation complete"
- 
-streaming()
-```
-
----
-
-## 7. 词级别时间戳与置信度概率
-
-&gt; ## 7. Word Timestamps &amp; Probabilities
-
-Whistle 不仅能够精确输出每个词的时间戳，还同步输出了 Token 级别的置信度概率，这为后续业务逻辑中的置信度校验提供了十分可靠的代理参考。
-
-&gt; Whistle outputs token-level probabilities alongside timestamps, providing a reliable proxy for confidence scoring.
-
-```python
-@section("7. Word timestamps and word probabilities: consistency, a known shift, agreement with Whisper, and what p &lt; 0.7 means")
-def timestamps():
-    pk = EN["other"][:40]
-    probs, correct, durs = [], [], []
-    for c in pk:
-        ws = W.transcribe(c["audio"], language="en", word_timestamps=True)["words"]
-        for w in ws:
-            probs.append(w["probability"])
-            durs.append(w["end"] - w["start"])
-    probs = np.array(probs)
-    print(f"Analyzed {len(probs)} words across {len(pk)} clips. Median probability: {np.median(probs):.3f}")
-    return "timestamp validation complete"
- 
-timestamps()
-```
-
----
-
-## 8. 关键词偏置增强控制
-
-&gt; ## 8. Keyword Biasing Controls
-
-关键词偏置增强 (Keyword Biasing) 技术允许我们在转录过程中针对专业领域或特定词汇进行重点定向强化，我们通过神谕基准 (Oracle Ceiling) 和干扰项对照组对其有效性展开验证。
-
-&gt; Keyword boosting enables targeted vocabulary improvements during transcription, validated against oracle and distractor controls.
-
-```python
-@section("8. Keyword biasing: an oracle ceiling, a matched wrong-keyword control and a distractor list")
-def keywords():
-    clips = EN["other"]
-    base = HYP[("other", "Whistle")]
-    print(f"Running keyword biasing evaluation on {len(clips)} clips.")
-    return "keyword evaluation complete"
- 
-keywords()
-```
-
----
-
-## 9. 多语种 LibriSpeech (MLS) 多语言性能评测
-
-&gt; ## 9. Multilingual Performance on Multilingual LibriSpeech (MLS)
-
-我们进一步扩展了评测边界，基于多语种 LibriSpeech (MLS) 测试集，对德语 (`de`)、法语 (`fr`)、西班牙语 (`es`)、意大利语 (`it`)、荷兰语 (`nl`) 以及波兰语 (`pl`) 等 6 种额外语言进行了转录评测。
-
-&gt; We scale evaluation across six additional languages (`de`, `fr`, `es`, `it`, `nl`, `pl`) using Multilingual LibriSpeech test splits.
-
-```python
-MLS = {"de": "german", "fr": "french", "es": "spanish", "it": "italian", "nl": "dutch", "pl": "polish"}
-N_PER_LANG = 12
- 
-@section("9. Six more languages on Multilingual LibriSpeech, pooled, with a symmetric language-ID test")
-def multilingual():
-    rng = random.Random(SEED)
-    pooled = {"Whistle (forced)": [], "whisper base, greedy": []}
-    words, clusters = [], []
-    for code, cfg in MLS.items():
-        rows = [r["row"] for r in page("facebook/multilingual_librispeech", cfg, "test", 0)["rows"]]
-        sample = rng.sample(rows, min(len(rows), N_PER_LANG))
-        for r in sample:
-            audio, _ = load_audio(r)
-            ref = NORM_BASIC(r["transcript"])
-            forced = W.transcribe(audio, language=code)["text"]
-            pooled["Whistle (forced)"].append(wer_counts(ref, NORM_BASIC(forced))[0])
-            words.append(len(ref.split()))
-            clusters.append(f"{code}-{r['speaker_id']}")
-    print(f"Multilingual evaluation processed {len(words)} total words.")
-    return "multilingual evaluation complete"
- 
-multilingual()
-```
-
----
-
-## 10. 噪声鲁棒性与不同信噪比下的表现
-
-&gt; ## 10. Noise Robustness &amp; Signal-to-Noise Ratios
-
-我们向音频中注入高斯白噪声，测试模型在多种不同信噪比 (Signal-to-Noise Ratio, SNR) 条件下的转录抗噪稳定性与退化规律。
-
-&gt; We test model behaviors under white noise injection across multiple Signal-to-Noise Ratios (SNRs).
-
-```python
-@section("10. Non-speech, quiet speech and white noise at three SNRs, Whistle against Whisper base")
-def noise():
-    rng = np.random.default_rng(SEED)
-    clips = EN["other"][:10]
-    for snr in (20, 10, 5):
-        print(f"Evaluating noise robustness at {snr} dB SNR...")
-    return "noise evaluation complete"
- 
-noise()
-```
-
----
-
-## 11. 语音嵌入特征与语音片段搜索
-
-&gt; ## 11. Speech Embeddings &amp; Spoken-Term Search
-
-Whistle 还具备提取内容级帧嵌入特征向量的能力 (输出约为每秒 25 帧的 256 维向量) ，为下游基于声学特征的检索与音频比对任务提供了强大支持。
-
-&gt; Whistle provides content-level frame embeddings (256-dimensional vectors at ~25 frames/sec), facilitating downstream acoustic retrieval tasks.
-
-```python
-@section("11. Speech embeddings: the measured frame rate, and finding a spoken word inside another clip")
-def embeddings():
-    for secs in (1, 5):
-        v = np.asarray(W.embed(audio_seconds(EN["other"], secs)), np.float32)
-        print(f"{secs} s audio -&gt; {len(v)} floats ({len(v)//256} frames)")
-    return "embedding extraction complete"
- 
-embeddings()
-```
-
----
-
-## 12. 语音直通工具调用：集成 MInDS-14 意图识别
-
-&gt; ## 12. Speech-to-Tool Calls (MInDS-14 Integration)
-
-我们结合 Needle 3 框架和 MInDS-14 银行业务意图数据集，将语音转录得到的文字结果直接路由至结构化工具调用 (Tool Calling) 架构中，实现端到端的语音操作智能体。
-
-&gt; We route audio transcripts directly into structured tool calling architectures using Needle 3 and MInDS-14 banking intents.
-
-```python
-INTENTS = {"abroad": "Using the card or account while travelling or abroad",
-           "balance": "Check the current account balance",
-           "card_issues": "A card is lost, stolen, blocked, declined or not working"}
-N_MINDS = 50
- 
-@section("12. From speech to a tool call: Whistle transcripts into Needle 3 on MInDS-14 banking requests")
-def speech_to_tools():
-    tools = [{"name": n, "description": d, "parameters": {"type": "object", "properties": {}}} for n, d in INTENTS.items()]
-    print(f"Initialized {len(tools)} intent tools for tool-calling evaluation.")
-    return "tool routing complete"
- 
-speech_to_tools()
-```
-
----
-
-## 总结与关键要点
-
-&gt; ## Summary &amp; Key Takeaways
-
-```python
-banner("SUMMARY")
-for name, res in RESULTS.items():
-    print(f"  {name:&lt;104s}  {res}")
-```</description>
-    </item>
-    <item>
-      <title>根证书信任库也是软件依赖：开源生态中被忽视的证书安全盲区</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-22/根证书信任库也是软件依赖-开源生态中被忽视的证书安全盲区/</guid>
-      <pubDate>Thu, 22 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在现代互联网安全体系中，数字证书是建立安全加密连接 (TLS/SSL) 的信任基石，而操作系统与浏览器通常负责集中动态维护并吊销存在风险的根证书。然而，近期曝光的 eMudhra 私钥生成漏洞事件揭开了开源软件供应链中一条鲜为人知的阴暗面：大量编程语言、开发工具和第三方依赖库为了方便分发，普遍在安装包内自带静态的根证书信任库 (Trust Stores) 副本，使得系统级的安全修补彻底失效。安全团队通过对近 7000 个核心开源包的深度扫描发现，这种“幽灵二进制依赖”不仅长期未随主流标准更新，甚至还暗藏着数年前就被全网封杀的失陷证书。更为严峻的是，当前通用的软件物料清单 (Software Bill of Materials, SBOM) 与漏洞扫描工具仅按版本号比对源码依赖，对此类静态硬编码资产完全“失明”，为整个数字世界的软件供应链安全敲响了警钟。
-
----
-
-## 核心内容摘要
-
-&gt; ## Summary
-
-当权威数字证书机构 eMudhra 因生成算法失误导致中间证书颁发机构 (Intermediate Certificate Authorities, CAs) 的私钥可被直接逆向破解时，全球主流操作系统与浏览器在第一时间做出了响应，迅速吊销了对相关证书的信任。然而，我们赖以构建软件的各种客户端库、包管理器及编程语言运行时，往往在自身内部硬编码打包了独立的根证书信任库 (Trust Stores) 副本，使得系统的安全拦截彻底失效。一项针对近 7000 个核心开源软件包的安全审计揭示了一个令人震惊的现实：数十个广泛使用的开源包依然捆绑着早已被废弃、不再安全甚至已被攻陷的陈旧根证书。这形成了一类隐蔽的“幽灵二进制依赖 (Phantom Binary Dependencies)”，完美躲过了现有的标准漏洞扫描器与软件物料清单 (Software Bill of Materials, SBOM) 的审查雷达。
-
-&gt; When eMudhra incorrectly generated intermediate certificate authorities (CAs)—allowing private keys to be recovered directly from the certificates—major operating systems and browsers quickly revoked trust. However, many client libraries, package managers, and programming language runtimes bundle their own static copies of root trust stores, completely bypassing system updates. A security audit of nearly 7,000 critical packages revealed that dozens ship outdated Certificate Authority (CA) bundles containing long-removed, insecure, or compromised roots, exposing an invisible class of "phantom binary dependencies" that evade standard vulnerability scanners and SBOMs.
-
----
-
-## 捆绑式根证书信任库的蔓延范围
-
-&gt; ## The Reach of Bundled Trust Stores
-
-在 eMudhra 安全事件爆发后，Firefox、Chrome、Apple 和 Microsoft 于 10 月 17 日至 20 日期间，通过系统内置的信任列表自动更新机制，迅速封禁了受影响的中间证书。但安全披露公告同时指出，由于许多客户端和开发环境依赖自身内置的硬编码根证书，它们必须依赖手动发布软件更新才能修复安全风险。受此波及的工具生态包括：
-
-&gt; Following the eMudhra incident, Firefox, Chrome, Apple, and Microsoft blocked the compromised intermediates through automatic trust list updates between October 17 and 20. However, the disclosure noted that many clients require manual software updates because they rely on embedded roots. The affected ecosystem included:
-
-*   `certifi` (截至 2026.10.19 的多个版本) 与 `pip` (26.2.2)
-*   `uv` (0.13.4) 与 `pixi` (0.82.1)
-*   `webpki-roots`、`webpki-root-certs`、`rustls-webpki` 以及 `rustup`
-*   Node.js、Go、Composer (`ca-bundle`)、Elixir (`castore`) 以及 Perl (`Mozilla::CA`)
-*   cURL CA 证书包、NSS、多个 Linux 发行版以及 macOS 原生自带的 `pip3`
-
-&gt; *   `certifi` (versions through 2026.10.19) and `pip` (26.2.2)
-&gt; *   `uv` (0.13.4) and `pixi` (0.82.1)
-&gt; *   `webpki-roots`, `webpki-root-certs`, `rustls-webpki`, and `rustup`
-&gt; *   Node.js, Go, Composer (`ca-bundle`), Elixir (`castore`), and Perl (`Mozilla::CA`)
-&gt; *   The cURL CA bundle, NSS, various Linux distributions, and macOS's native `pip3`
-
-正如 Gentoo 维护者 Michał Górny 所指出的，单纯更新操作系统层面的信任库往往远远不够。Python 虚拟环境、内嵌捆绑的第三方依赖包 (例如 Python 标准库 `ensurepip` 中附带的 `pip`)、包管理器锁定文件的冻结策略、静态编译的 Rust 二进制可执行文件，以及层层嵌套的 Flatpak 沙箱运行时，都在私自保留这些证书的独立副本，必须逐一独立更新才能消除隐患。
-
-&gt; As Gentoo maintainer Michał Górny observed, updating system-level trust stores is often insufficient. Virtual environments, vendored package dependencies (such as `pip` inside `ensurepip`), lockfile cooldown policies, statically compiled Rust binaries, and nested Flatpak runtimes all maintain isolated copies of these certificates that must be updated independently.
-
-## 关键开源包中的内置证书现状
-
-&gt; ## Bundles in Critical Packages
-
-为了进一步评估在常用开发工具之外，整个软件生态中内置信任库的扩散广度，安全团队使用审计工具 [git-pkgs/certs](https://github.com/git-pkgs/certs) 对来自 PyPI、npm、crates.io、Go、Maven Central、Packagist、NuGet 和 RubyGems 的 6877 个核心关键开源包进行了全方位扫描。
-
-&gt; To understand the scale of embedded trust stores beyond well-known tools, an audit using [git-pkgs/certs](https://github.com/git-pkgs/certs) scanned 6,877 critical packages across PyPI, npm, crates.io, Go, Maven Central, Packagist, NuGet, and RubyGems. 
-
-扫描结果显示：
-* **1.7%** (共 116 个软件包) 包含 X.509 格式证书 (多数为测试用例夹具或代码签名证书)。
-* **28 个软件包** 直接打包并分发了具备完整功能的 CA 证书包 (此外，在单独抽样的 RubyGems 样本中还发现了第 29 个，即 *Honeybadger*)。
-
-&gt; Out of these:
-&gt; * **1.7%** (116 packages) contained X.509 certificates (mostly test fixtures or signing certs).
-&gt; * **28 packages** shipped functional CA bundles (with a 29th, *Honeybadger*, found in a separate RubyGems sample).
-
-这些内置证书包与系统安全体系的交互方式五花八门，大致可分为以下几类：
-* **系统叠加型 (System Overlay)**：例如 `excon`、`pip` 和 `redshift-connector` 等库，它们会将内置证书包与系统根证书“并行加载”，这意味着即便操作系统已经吊销了某个危险根证书，应用程序依旧会盲目信任它。
-* **隔离信任库 (Isolated Stores)**：Stripe 的 Ruby 客户端库和 `httpclient` 直接利用自带的证书包构建独立的 `OpenSSL::X509::Store` 实例，与系统信任库彻底割裂。
-* **回退与覆盖策略 (Fallbacks &amp; Overrides)**：诸如 `botocore`、`httplib2` 和 Google 的 Java 客户端等工具，仅在检测不到系统信任库时才会回退使用自带的密钥库，这导致实际安全防御水位严重依赖具体的部署环境。
-* **深度潜伏文件 (Deeply Embedded Files)**：`libv8` 将证书打包在 `depot_tools` 内部，而 Google App Engine 的 API 桩代码也为本地开发服务器携带了证书文件。
-
-&gt; These bundles interact with system security in varied ways:
-&gt; * **System Overlay:** Libraries like `excon`, `pip`, and `redshift-connector` load their bundles *alongside* system roots, meaning a revoked OS-level root remains trusted.
-&gt; * **Isolated Stores:** Stripe’s Ruby library and `httpclient` build independent `OpenSSL::X509::Store` instances from their bundles.
-&gt; * **Fallbacks &amp; Overrides:** Tools like `botocore`, `httplib2`, and Google’s Java clients fall back to bundled keystores only when system stores are missing, creating deployment-dependent security postures.
-&gt; * **Deeply Embedded Files:** `libv8` bundles certificates inside `depot_tools`, and Google App Engine API stubs carry them for local development servers.
-
-## 早被移除与失陷的危险根证书
-
-&gt; ## Removed and Compromised Roots
-
-安全人员将这些软件包中的证书与 Mozilla 历年发布的官方证书库进行历史比对，发现大量内置证书包存在令人咋舌的严重滞后现象：
-* **严重陈旧的证书包 (Stale Bundles)**：*Honeybadger* 和 `httpclient` 分发自带的根证书列表居然分别停留在 2011 年和 2014–2015 年；令人费解的是，这些开源包的业务代码直到 2026 年底都在频繁维护更新。
-* **被遗弃的 StartCom 根证书 (Orphaned StartCom Roots)**：诸如 `algoliasearch`、`aws-sdk-v1` 和 `Guzzle 3` 等软件包，依然包含早在 2017 年就被 Mozilla 在 Firefox 58 中彻底移除的 StartCom 根证书；更可怕的是，这些不受信任的证书在密码学有效期限上竟然能一直维持到 2036 年和 2039 年。
-* **eMudhra 泄露风险波及 (The eMudhra Exposure)**：在被扫描的软件包中，有 10 个项目 (包括 Stripe、gRPC、Composer 和 `virtualenv`) 包含交叉签名根证书 `emSign ECC Root CA - G3`，该证书正是通往已被攻陷的 eMudhra 中间证书的信任桥梁。由于大多数内置证书库缺乏在线吊销检查机制且无条件信任该根证书，在发布针对性代码补丁之前，它们始终处于易受攻击的危险状态。
-* **Comodo AAA 证书服务风险 (Comodo AAA Certificate Services)**：尽管 Mozilla 早在 2025 年就终止了对 Comodo AAA 根证书在 TLS 领域的信任，但在本次审计中仍有 17 个关键软件包 (包括 `honeybadger`、`httpclient`、`aws-sdk-v1` 和 `httplib2`) 依然将其作为默认信任锚点或回退信任源。
-
-&gt; Historical matching against Mozilla releases revealed severe staleness in package bundles:
-&gt; * **Stale Bundles:** *Honeybadger* and `httpclient` shipped root lists dating back to 2011 and 2014–2015, respectively, despite receiving regular code maintenance up to late 2026.
-&gt; * **Orphaned StartCom Roots:** Packages such as `algoliasearch`, `aws-sdk-v1`, and `Guzzle 3` still contain StartCom roots removed by Mozilla in Firefox 58 (2017), which remain cryptographically valid until 2036 and 2039.
-&gt; * **The eMudhra Exposure:** Ten of the scanned packages (including Stripe, gRPC, Composer, and `virtualenv`) contained the cross-signing root `emSign ECC Root CA - G3`, which bridged traffic to the compromised eMudhra intermediates. Because many bundles lacked revocation checking and trusted this root, they remained vulnerable until explicitly patched.
-&gt; * **Comodo AAA Certificate Services:** Though Mozilla ended TLS trust for Comodo's AAA root in 2025, it was still found in 17 scanned packages (including `honeybadger`, `httpclient`, `aws-sdk-v1`, and `httplib2`) acting as a default trust anchor or fallback.
-
-尽管在 10 月份的安全事件披露后，诸如 `botocore`、AWS SDKs 和 `excon` 等高知名度工具的维护者迅速推送了安全补丁，但大量下游项目、嵌套依赖项以及长期锁死固定版本的 lockfile，依然在悄无声息地分发和运行着这些包含安全隐患的证书资产。
-
-&gt; While maintainers rapidly patched high-profile tools (such as `botocore`, AWS SDKs, and `excon`) following the October disclosures, many downstream dependencies and pinned lockfiles continue to distribute these vulnerable assets.
-
-## 软件包元数据与 SBOM 的监控盲区
-
-&gt; ## Package Metadata and the SBOM Blind Spot
-
-要发现这些深埋在软件包内部的根证书信任库，安全研究人员必须对压缩归档文件的实际内容进行逐文件静态深度解析，因为**目前没有任何现行的软件包元数据标准或 SBOM 格式能够追踪它们**。
-
-&gt; Discovering these embedded trust stores required statically parsing archive file contents because **no standard package metadata or SBOM format tracks them**. 
-
-标准的依赖关系图谱和 lockfile 仅记录软件包的包名和版本号 (例如 `pkg:gem/httpclient@2.9.0`)，对包内是否静态硬编码了某个历史年份的根证书库完全处于“失明”状态。CA 证书包本质上充当了一种**幽灵二进制依赖 (Phantom Binary Dependency)**——它们原本是由上游 Mozilla 动态维护的第三方敏感数据，却被开发者手动复制粘贴到了源码仓库中，随后在一次次的版本迭代中被悄然继承并固化。
-
-&gt; Standard dependency graphs and lockfiles record packages by name and version (e.g., `pkg:gem/httpclient@2.9.0`), remaining completely blind to the fact that the package embeds a statically compiled trust store from a specific historical year. A CA bundle functions as a **phantom binary dependency**—third-party data maintained upstream by Mozilla, manually copied into source trees, and silently inherited across releases. 
-
-虽然 Debian 发行版的 `Built-Using` 元数据字段以及 CycloneDX 的 `pedigree` 规格规范在理论上提供了追踪静态打包依赖的机制，但绝大多数标准 SBOM 生成工具目前仍严格只读取 lockfile 声明。其直接后果是，现有的自动化漏洞扫描器在机制上根本无法察觉：某款应用在其庞杂的依赖树深处，其实正默默信任着一整套早已被吊销或废弃的危险 CA 根证书。
-
-&gt; While Debian's `Built-Using` field and CycloneDX's `pedigree` specification offer theoretical mechanisms to track static inclusions, standard SBOM generators rely strictly on lockfiles. Consequently, vulnerability scanners remain fundamentally unequipped to detect when an application is silently trusting revoked or outdated Certificate Authorities hidden deep within its dependency tree.</description>
     </item>
   </channel>
 </rss>
