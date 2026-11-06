@@ -7,6 +7,8 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-11-07**: [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
+- **2026-11-06**: [极小布尔表达式求解记：如何用对称性与定向搜索征服组合爆炸](blog/posts/2026-11-06-极小布尔表达式求解记-如何用对称性与定向搜索征服组合爆炸.md)
 - **2026-11-05**: [Sarvam AI 开源 Prism 单次前向决策大模型](blog/posts/2026-11-05-Sarvam-AI-开源-Prism-单次前向决策大模型.md)
 - **2026-11-04**: [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
 - **2026-11-02**: [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
