@@ -130,6 +130,10 @@ title: 标签浏览
 
 - [LLM智能体能进行理性谈判吗？基于A2A/MCP协议的可验证多智能体交互机制设计框架](blog/posts/2026-08-19-LLM智能体能进行理性谈判吗？基于A2A-MCP协议的可验证多智能体交互机制设计框架.md)
 
+## ABI稳定性
+
+- [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
+
 ## ACM MM
 
 - [PD-GS：基于音素驱动3DGS的音频驱动说话人脸生成](blog/posts/2026-08-07-PD-GS：基于音素驱动3DGS的音频驱动说话人脸生成.md)
@@ -417,6 +421,7 @@ title: 标签浏览
 
 - [连续交互扩散：面向异步工具增强推理的扩散原生运行时](blog/posts/2026-08-14-连续交互扩散：面向异步工具增强推理的扩散原生运行时.md)
 - [什么是推理？](blog/posts/2026-08-21-什么是推理？.md)
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 
 ## AI文本检测
 
@@ -1015,6 +1020,10 @@ title: 标签浏览
 
 - [使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用](blog/posts/2026-08-13-使用 Supabase、Flutter 和 Brick 构建离线优先的移动端应用.md)
 
+## Buoyant
+
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
+
 ## C++
 
 - [构建仅在宿主套间内起效的伪敏捷包装器（第三部分）](blog/posts/2026-08-06-构建仅在宿主套间内起效的伪敏捷包装器（第三部分）.md)
@@ -1406,6 +1415,7 @@ title: 标签浏览
 - [玩转 C 语言：从 &((int*)-8)[3] 开始](blog/posts/2026-08-21-玩转 C 语言：从 &-int-8-[3] 开始.md)
 - [周末趣谈：你的进程内存其实就是一个文件](blog/posts/2026-08-21-周末趣谈：你的进程内存其实就是一个文件.md)
 - [C 与 C++ 的抉择：为何编译器优先选择极致性能而非程序正确性](blog/posts/2026-11-06-C-与-Cpp-的抉择-为何编译器优先选择极致性能而非程序正确性.md)
+- [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
 
 ## D3-Omni
 
@@ -2132,6 +2142,7 @@ title: 标签浏览
 ## Ghostty
 
 - [终端程序状态协议 OSC 7501：为后台任务与 AI 智能体打造原生终端状态通信标准](blog/posts/2026-10-08-终端程序状态协议-OSC-7501-为后台任务与-AI-智能体打造原生终端状态通信标准.md)
+- [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
 
 ## Git
 
@@ -2583,6 +2594,7 @@ title: 标签浏览
 - [KVDiagnosis：长文本大语言模型中 KV-Cache 压缩的诊断基准](blog/posts/2026-08-12-KVDiagnosis：长文本大语言模型中 KV-Cache 压缩的诊断基准.md)
 - [Nexus：面向统一内存中智能体大语言模型的深度自适应 KV 缓存拼接与检索解耦工具路由](blog/posts/2026-08-25-Nexus：面向统一内存中智能体大语言模型的深度自适应 KV 缓存拼接与检索解耦工具路由.md)
 - [DropKV：解耦残差输出扰动的近最优 KV-Cache 驱逐策略](blog/posts/2026-10-17-DropKV-解耦残差输出扰动的近最优-KV-Cache-驱逐策略.md)
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 
 ## KV-cache
 
@@ -2660,6 +2672,10 @@ title: 标签浏览
 - [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 
+## Kinference
+
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
+
 ## Kolmogorov-Arnold Networks
 
 - [RecKAN：具有可学习递归多项式基的柯尔莫哥洛夫-阿诺德网络](blog/posts/2026-09-04-RecKAN：具有可学习递归多项式基的柯尔莫哥洛夫-阿诺德网络.md)
@@ -2679,6 +2695,7 @@ title: 标签浏览
 ## Kubernetes
 
 - [不要让模型直接写 YAML：基于大模型字段变更的确定性、最小差异 GitOps 修复方案](blog/posts/2026-09-03-不要让模型直接写 YAML：基于大模型字段变更的确定性、最小差异 GitOps 修复方案.md)
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 
 ## Kyutai
 
@@ -2965,6 +2982,10 @@ title: 标签浏览
 ## Lenia
 
 - [人工实验者：利用自主目标强化学习发现与控制自组织现象](blog/posts/2026-09-03-人工实验者：利用自主目标强化学习发现与控制自组织现象.md)
+
+## Libghostty
+
+- [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
 
 ## Linux
 
@@ -5824,6 +5845,7 @@ title: 标签浏览
 - [让门控做决定：面向大模型量化条件记忆的按需查表精度优化](blog/posts/2026-10-29-Let-the-Gate-Decide-基于门控精度的量化条件记忆优化.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 - [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
+- [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 
 ## visitation measure
 
@@ -22537,6 +22559,10 @@ title: 标签浏览
 ## 终端模拟
 
 - [重现 2010 年的极客实验：在 BBC Micro 电脑上访问互联网](blog/posts/2026-09-01-重现 2010 年的极客实验：在 BBC Micro 电脑上访问互联网.md)
+
+## 终端模拟器
+
+- [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
 
 ## 终端编码代理
 

@@ -4,6 +4,8 @@
 
 ## 2026-11
 
+- **2026-11-08**: [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
+- **2026-11-08**: [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 - **2026-11-07**: [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
 - **2026-11-07**: [伯尼的周末 2：AI 编码智能体如何复活开源死库](blog/posts/2026-11-07-伯尼的周末-2-AI-编码智能体如何复活开源死库.md)
 - **2026-11-07**: [Zyphra ZYFA：针对 AMD MI355X 的 FP8 闪存注意力算子，加速高达 1.76 倍](blog/posts/2026-11-07-Zyphra-ZYFA-针对-AMD-MI355X-的-FP8-闪存注意力算子加速高达-1.76-倍.md)
