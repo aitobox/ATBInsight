@@ -255,6 +255,7 @@ title: 标签浏览
 - [伯尼的周末 2：AI 编码智能体如何复活开源死库](blog/posts/2026-11-07-伯尼的周末-2-AI-编码智能体如何复活开源死库.md)
 - [智能体记忆架构的组成要素：Anthropic 探索 AI 的睡梦与离线整合](blog/posts/2026-11-07-智能体记忆架构的组成要素-Anthropic-探索-AI-的睡梦与离线整合.md)
 - [智能体分心：如何解决编码 AI 的上下文偏离难题](blog/posts/2026-11-07-智能体分心-如何解决编码-AI-的上下文偏离难题.md)
+- [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 
 ## AI 智能体安全
 
@@ -2182,6 +2183,7 @@ title: 标签浏览
 - [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 - [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 
 ## Google AI Edge
 
@@ -6985,6 +6987,7 @@ title: 标签浏览
 - [差异补丁 vs. 整体文件：Flutter/Dart 代码模型迭代编辑式与直接生成式的实证比较](blog/posts/2026-09-10-差异补丁 vs. 整体文件：Flutter-Dart 代码模型迭代编辑式与直接生成式的实证比较.md)
 - [PETSc 中 AI 生成科学计算代码的智能体评估框架](blog/posts/2026-09-13-PETSc-中-AI-生成科学计算代码的智能体评估框架.md)
 - [扩展代码智能体团队的经验教训：仅用 30% 成本触达前沿能力](blog/posts/2026-10-15-扩展代码智能体团队的经验教训-仅用-30-成本触达前沿能力.md)
+- [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 
 ## 代码统计
 
@@ -26348,6 +26351,7 @@ title: 标签浏览
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
+- [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 
 ## 软件工程智能体
 

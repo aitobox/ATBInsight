@@ -4,6 +4,7 @@
 
 ## 2026-11
 
+- **2026-11-09**: [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 - **2026-11-08**: [Libghostty 1.0 正式发布：面向终端仿真的高性能可移植 C 语言核心库](blog/posts/2026-11-08-Libghostty-1.0-正式发布-面向终端仿真的高性能可移植-C-语言核心库.md)
 - **2026-11-08**: [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 - **2026-11-07**: [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
