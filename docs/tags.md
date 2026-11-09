@@ -482,6 +482,9 @@ title: 标签浏览
 - [DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型](blog/posts/2026-11-02-DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体.md)
 - [Exo：面向系统运行时持续自我进化的智能体架构](blog/posts/2026-11-04-Exo-运行时自进化智能体架构设计.md)
 - [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
+- [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
+- [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
+- [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
 
 ## AI智能体评测
 
@@ -797,6 +800,7 @@ title: 标签浏览
 - [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 - [构建智能体：何时应当将子智能体合并回主智能体循环](blog/posts/2026-10-23-构建智能体-何时应当将子智能体合并回主智能体循环.md)
 - [智能体记忆架构的组成要素：Anthropic 探索 AI 的睡梦与离线整合](blog/posts/2026-11-07-智能体记忆架构的组成要素-Anthropic-探索-AI-的睡梦与离线整合.md)
+- [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 
 ## Anthropic Labs
 
@@ -1275,6 +1279,7 @@ title: 标签浏览
 - [Anthropic 重构版本控制系统：从 Git 迁移至自研 Scion](blog/posts/2026-10-20-Anthropic-重构版本控制系统-从-Git-迁移至自研-Scion.md)
 - [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
+- [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 
 ## Claude 5
 
@@ -2152,6 +2157,7 @@ title: 标签浏览
 - [Git 子模块作为包管理器](blog/posts/2026-09-02-Git 子模块作为包管理器.md)
 - [重构 Packfile：在对象存储上直接运行 Git 的架构实践](blog/posts/2026-09-18-重构-Packfile-在对象存储上直接运行-Git-的架构实践.md)
 - [软件遗产标识符 SWHID：构建通用开源代码档案的内在指纹与持久化生态](blog/posts/2026-10-02-软件遗产标识符-SWHID-构建通用开源代码档案的内在指纹与持久化生态.md)
+- [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
 
 ## GitHub
 
@@ -2177,6 +2183,7 @@ title: 标签浏览
 ## Go
 
 - [并发服务器：第 8 部分 - Go 语言](blog/posts/2026-08-23-并发服务器：第 8 部分 - Go 语言.md)
+- [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
 
 ## Google
 
@@ -2184,6 +2191,7 @@ title: 标签浏览
 - [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
 - [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 
 ## Google AI Edge
 
@@ -2634,6 +2642,7 @@ title: 标签浏览
 - [面向长上下文大模型解码中密集片上NVM的接口感知KV缓存量化](blog/posts/2026-09-10-面向长上下文大模型解码中密集片上NVM的接口感知KV缓存量化.md)
 - [多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究](blog/posts/2026-09-10-多租户大模型服务中KV缓存定时侧信道竞争诱发的可靠性崩溃特征研究.md)
 - [DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用](blog/posts/2026-09-11-DeepSeek AI 发布 DeepSeek-V4.1-Flash：支持 1M 上下文、FP4 KV 缓存与跨层注意力复用.md)
+- [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
 
 ## KV缓存优化
 
@@ -3900,6 +3909,10 @@ title: 标签浏览
 
 - [Hugging Face Inference Endpoints、Jobs 和 Buckets 如何驱动 Papers with Code 的搜索功能](blog/posts/2026-08-26-Hugging Face Inference Endpoints、Jobs 和 Buckets 如何驱动 Papers with Code 的搜索功能.md)
 
+## Pathways
+
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+
 ## Perplexity
 
 - [Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎](blog/posts/2026-09-04-Perplexity开源Lily：专为Apple Silicon上Qwen3.6-35B-A3B打造的Rust + Metal推理引擎.md)
@@ -4491,6 +4504,7 @@ title: 标签浏览
 - [Hugging Face 发布 Tokenizers v1 重构：SIMD 位运算与零内存分配带来 3~30 倍加速](blog/posts/2026-09-22-Hugging-Face-发布-Tokenizers-v1-重构-SIMD-位运算与零内存分配带来3-30倍加速.md)
 - [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 - [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
+- [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
 
 ## R语言
 
@@ -5018,6 +5032,7 @@ title: 标签浏览
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 - [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 - [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 
 ## TRL
 
@@ -7840,6 +7855,10 @@ title: 标签浏览
 
 - [从多模态伪标签中学习：实现鲁棒的开放词汇实例与全景分割](blog/posts/2026-08-14-从多模态伪标签中学习：实现鲁棒的开放词汇实例与全景分割.md)
 
+## 全栈开发
+
+- [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
+
 ## 全模态
 
 - [听觉、视觉与追踪：全模态语言模型的时空视听声学事件推理](blog/posts/2026-08-12-听觉、视觉与追踪：全模态语言模型的时空视听声学事件推理.md)
@@ -8403,6 +8422,7 @@ title: 标签浏览
 - [基于 LoRA 与 HF Jobs 的异步 GRPO 训练：对象存储、代理与零 NCCL 实践](blog/posts/2026-09-15-基于-LoRA-与-HF-Jobs-的异步-GRPO-训练-对象存储-代理与零-NCCL-实践.md)
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 
 ## 分布式验证
 
@@ -10322,6 +10342,8 @@ title: 标签浏览
 - [OlmoEarth 平台：行星级地理空间推理](blog/posts/2026-08-07-OlmoEarth 平台：行星级地理空间推理.md)
 - [解码 AI：智能体循环架构与供应商经济学](blog/posts/2026-08-23-解码 AI：智能体循环架构与供应商经济学.md)
 - [Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集](blog/posts/2026-09-11-Harbor Adapters与Harbor-Index：大规模智能体评估的基础设施与精选元数据集.md)
+- [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
+- [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
 
 ## 基础设施即代码
 
@@ -11929,6 +11951,7 @@ title: 标签浏览
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
 - [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 - [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 
 ## 大语言模型代理
 
@@ -14777,6 +14800,7 @@ title: 标签浏览
 - [面向持续知识图谱嵌入中候选集干扰的匹配超额超越者正则化](blog/posts/2026-08-28-面向持续知识图谱嵌入中候选集干扰的匹配超额超越者正则化.md)
 - [为什么微调会加剧幻觉以及如何解决](blog/posts/2026-09-03-为什么微调会加剧幻觉以及如何解决.md)
 - [当合成数据带来负面效应：大模型智能体技能检索中的灾难性遗忘研究](blog/posts/2026-09-13-当合成数据带来负面效应-大模型智能体技能检索中的灾难性遗忘研究.md)
+- [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 
 ## 持续改进
 
@@ -14952,6 +14976,10 @@ title: 标签浏览
 ## 推理思考
 
 - [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
+
+## 推理成本
+
+- [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
 
 ## 推理扩展
 
@@ -16625,6 +16653,7 @@ title: 标签浏览
 - [已被撤销却依然具备权威性：对智能体记忆系统中撤销执行情况的实证研究](blog/posts/2026-09-10-已被撤销却依然具备权威性：对智能体记忆系统中撤销执行情况的实证研究.md)
 - [扎根智能体记忆：面向企业级智能体的环境探测式记忆管理](blog/posts/2026-09-13-扎根智能体记忆-面向企业级智能体的环境探测式记忆管理.md)
 - [智能体记忆架构的组成要素：Anthropic 探索 AI 的睡梦与离线整合](blog/posts/2026-11-07-智能体记忆架构的组成要素-Anthropic-探索-AI-的睡梦与离线整合.md)
+- [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 
 ## 智能体设计
 
@@ -17338,6 +17367,10 @@ title: 标签浏览
 - [Postgres 角色与权限管理指南](blog/posts/2026-08-13-Postgres 角色与权限管理指南.md)
 - [自动策略，而非自动技能：物理世界的编译型智能体技能](blog/posts/2026-08-29-自动策略，而非自动技能：物理世界的编译型智能体技能.md)
 
+## 权限系统
+
+- [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
+
 ## 材料合成
 
 - [RecipeNet：面向配方数据的分层 Transformer 架构](blog/posts/2026-08-18-RecipeNet：面向配方数据的分层 Transformer 架构.md)
@@ -17492,6 +17525,7 @@ title: 标签浏览
 - [面向目标导向对话编排的可审计符号-RAG-生成式AI架构](blog/posts/2026-09-10-面向目标导向对话编排的可审计符号-RAG-生成式AI架构.md)
 - [当智能转化为能动性：共生式AI系统的受控主动能动性理论](blog/posts/2026-09-10-当智能转化为能动性：共生式AI系统的受控主动能动性理论.md)
 - [构建智能体：何时应当将子智能体合并回主智能体循环](blog/posts/2026-10-23-构建智能体-何时应当将子智能体合并回主智能体循环.md)
+- [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
 
 ## 架构趋同
 

@@ -2085,3 +2085,5 @@ title: arXiv论文
 - [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](../posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 - [Zyphra ZYFA：针对 AMD MI355X 的 FP8 闪存注意力算子，加速高达 1.76 倍](../posts/2026-11-07-Zyphra-ZYFA-针对-AMD-MI355X-的-FP8-闪存注意力算子加速高达-1.76-倍.md)
 - [百度发布 ERNIE 5.5 Flash Base：拥有 2800 亿参数与 140 亿激活参数的 MoE 基座模型](../posts/2026-11-07-百度发布-ERNIE-5.5-Flash-Base-拥有-2800亿参数的-MoE-基座模型.md)
+- [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](../posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+- [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](../posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)

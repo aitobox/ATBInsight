@@ -7,6 +7,7 @@ ATBInsight 是一个自动化的 AI 科技资讯与技术研报平台。
 
 ## 每日头条
 
+- **2026-11-10**: [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
 - **2026-11-09**: [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 - **2026-11-08**: [Buoyant 发布 Kinference：面向 Kubernetes 与 vLLM 的开源推理控制平面](blog/posts/2026-11-08-Buoyant-发布-Kinference-面向-Kubernetes-与-vLLM-的开源推理控制平面.md)
 - **2026-11-07**: [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
