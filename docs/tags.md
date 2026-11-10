@@ -485,6 +485,12 @@ title: 标签浏览
 - [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
 - [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 - [Agentic AI 将在撞上智能之墙前先撞上基础设施之墙](blog/posts/2026-11-10-Agentic-AI-将在撞上智能之墙前先撞上基础设施之墙.md)
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
+- [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
+
+## AI智能体沙盒
+
+- [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
 
 ## AI智能体评测
 
@@ -757,6 +763,10 @@ title: 标签浏览
 ## AlphaFold
 
 - [蛋白质结构预测：从进化约束到生成式建模](blog/posts/2026-08-19-蛋白质结构预测：从进化约束到生成式建模.md)
+
+## AlphaProof Code
+
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 
 ## AlphaZero
 
@@ -1624,6 +1634,10 @@ title: 标签浏览
 
 - [以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法](blog/posts/2026-08-11-以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法.md)
 
+## E2B
+
+- [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
+
 ## ECCV 2026
 
 - [SegPAR：面向语义分割的以类别为中心的基于决策的稀疏攻击](blog/posts/2026-08-14-SegPAR：面向语义分割的以类别为中心的基于决策的稀疏攻击.md)
@@ -1824,6 +1838,7 @@ title: 标签浏览
 ## Firecracker
 
 - [Perplexity 开源 SPACE：基于 Firecracker MicroVM 的 AI 智能体安全沙盒](blog/posts/2026-10-18-Perplexity-开源-SPACE-基于-Firecracker-MicroVM-的-AI-智能体安全沙盒.md)
+- [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
 
 ## Fisher信息矩阵
 
@@ -1900,6 +1915,10 @@ title: 标签浏览
 ## GHarchive
 
 - [我们该多大程度上信任开源数据？](blog/posts/2026-09-05-我们该多大程度上信任开源数据？.md)
+
+## GKE
+
+- [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
 
 ## GLM-5.3-Flash
 
@@ -2201,6 +2220,11 @@ title: 标签浏览
 
 - [Google Cloud 携手巨头发布 llm-d 1.0：面向 TPU 与 GPU 集群的缓存感知分布式推理技术栈](blog/posts/2026-10-22-Google-Cloud-携手巨头发布-llm-d-1.0-面向-TPU-与-GPU-集群的缓存感知分布式推理技术栈.md)
 - [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
+- [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
+
+## Google DeepMind
+
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 
 ## Google Discover
 
@@ -2932,6 +2956,7 @@ title: 标签浏览
 - [FLARE：利用基于大语言模型的定理证明验证 MILP 重构](blog/posts/2026-08-29-FLARE：利用基于大语言模型的定理证明验证 MILP 重构.md)
 - [形式化验证费马大定理：Claude历时11天实现数学史里程碑](blog/posts/2026-09-06-形式化验证费马大定理：Claude历时11天实现数学史里程碑.md)
 - [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 
 ## Lean 4
 
@@ -3296,6 +3321,10 @@ title: 标签浏览
 
 - [Matryoshka 哈希表示：面向模型感知的紧凑语义检索](blog/posts/2026-09-10-Matryoshka 哈希表示：面向模型感知的紧凑语义检索.md)
 
+## MaxText
+
+- [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
+
 ## Maxis
 
 - [Maxis 的生平与时代，第三部分：《模拟人生》](blog/posts/2026-08-09-Maxis 的生平与时代，第三部分：《模拟人生》.md)
@@ -3537,6 +3566,10 @@ title: 标签浏览
 ## NVIDIA OSMO
 
 - [NVIDIA 开源 OSMO：一份 YAML 编排物理 AI 训练、仿真与真机测试](blog/posts/2026-09-15-NVIDIA-开源-OSMO-一份-YAML-编排物理-AI-训练-仿真与真机测试.md)
+
+## NVIDIA Vera
+
+- [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
 
 ## NV色心
 
@@ -3912,6 +3945,7 @@ title: 标签浏览
 ## Pathways
 
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+- [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
 
 ## Perplexity
 
@@ -4831,6 +4865,10 @@ title: 标签浏览
 
 - [SignLlama：通过优先处理视觉特征增强无词汇表手语翻译](blog/posts/2026-08-12-SignLlama：通过优先处理视觉特征增强无词汇表手语翻译.md)
 
+## Signal
+
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
+
 ## Sim2Real
 
 - [面向卫星视觉Sim2Real数据构建的组件感知保结构风格迁移](blog/posts/2026-08-25-面向卫星视觉Sim2Real数据构建的组件感知保结构风格迁移.md)
@@ -4898,6 +4936,10 @@ title: 标签浏览
 ## Spell语言
 
 - [Self-Programmed Execution：大模型智能体的自编程执行机制](blog/posts/2026-10-17-Self-Programmed-Execution-大模型智能体的自编程执行机制.md)
+
+## Splash Attention
+
+- [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
 
 ## Stable Audio Open
 
@@ -5033,6 +5075,8 @@ title: 标签浏览
 - [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 - [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+- [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
+- [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
 
 ## TRL
 
@@ -5059,6 +5103,10 @@ title: 标签浏览
 ## Taste-Bench
 
 - [有品味的智能体：长程任务中决策品味 Taste 的度量与提升](blog/posts/2026-09-25-有品味的智能体-长程任务中决策品味-Taste-的度量与提升.md)
+
+## Temporal
+
+- [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 
 ## Tensor API
 
@@ -5965,6 +6013,10 @@ title: 标签浏览
 - [Claude 5 时代上下文工程新法则：为新一代大模型解除束缚](blog/posts/2026-10-08-Claude-5-时代上下文工程新法则-为新一代大模型解除束缚.md)
 - [当智能体上下文过时失效：易变环境下的上下文不连贯性与 Concord 同步框架](blog/posts/2026-10-08-当智能体上下文过时失效-易变环境下的上下文不连贯性与-Concord-同步框架.md)
 - [智能体分心：如何解决编码 AI 的上下文偏离难题](blog/posts/2026-11-07-智能体分心-如何解决编码-AI-的上下文偏离难题.md)
+
+## 上下文并行
+
+- [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
 
 ## 上下文强化学习
 
@@ -8423,6 +8475,7 @@ title: 标签浏览
 - [将 TorchTPU 深度集成至 TorchTitan：TPU 上的大模型训练与全链路性能优化实战](blog/posts/2026-10-21-将-TorchTPU-深度集成至-TorchTitan-TPU-上的大模型训练与全链路性能优化实战.md)
 - [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+- [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
 
 ## 分布式验证
 
@@ -10284,6 +10337,7 @@ title: 标签浏览
 - [从 MCP 注册表中随机抽取究竟能抽到什么？工具调用基准测试真相剖析](blog/posts/2026-09-13-从MCP注册表中随机抽取究竟能抽到什么-工具调用基准测试真相剖析.md)
 - [VQ-bench：可组合式矢量量化框架与评测基准](blog/posts/2026-09-18-VQ-bench-可组合式矢量量化框架与评测基准.md)
 - [评测工具隐形错误如何颠覆智能体排行榜排名](blog/posts/2026-11-05-评测工具隐形错误如何颠覆智能体排行榜排名.md)
+- [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
 
 ## 基准测试合成
 
@@ -12548,6 +12602,7 @@ title: 标签浏览
 
 - [OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量](blog/posts/2026-08-07-OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量.md)
 - [Logos：基于跨进程总线的智能体运行框架](blog/posts/2026-09-02-Logos：基于跨进程总线的智能体运行框架.md)
+- [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 
 ## 容错架构
 
@@ -14002,6 +14057,7 @@ title: 标签浏览
 - [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 - [快速未舍入缩放算法：基于 Ivy 的形式化正确性证明](blog/posts/2026-11-06-快速未舍入缩放算法-基于-Ivy-的形式化正确性证明.md)
 - [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
+- [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 
 ## 形式语言学
 
@@ -14783,6 +14839,10 @@ title: 标签浏览
 ## 持久化威胁
 
 - [HarnessSafe：评估智能体外壳中持久化载体的安全性](blog/posts/2026-08-11-HarnessSafe：评估智能体外壳中持久化载体的安全性.md)
+
+## 持久化执行
+
+- [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 
 ## 持久化记忆
 
@@ -22338,6 +22398,7 @@ title: 标签浏览
 - [静态分配与恒定工作量：构建高可靠系统的架构模式](blog/posts/2026-09-04-静态分配与恒定工作量：构建高可靠系统的架构模式.md)
 - [Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed](blog/posts/2026-09-07-Perplexity 详解其 GPU 嵌入技术栈：Ivy、Tulip 和 ROSE 如何支撑 pplx-embed.md)
 - [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
+- [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 
 ## 系统演示
 
@@ -27291,6 +27352,7 @@ title: 标签浏览
 - [HISA：面向细粒度稀疏注意力的高效分层索引机制](blog/posts/2026-09-13-HISA-面向细粒度稀疏注意力的高效分层索引机制.md)
 - [历史在此重演：利用原生重放释放线性注意力的百万长上下文能力](blog/posts/2026-10-15-历史在此重演-利用原生重放释放线性注意力的百万长上下文能力.md)
 - [HyScale：突破百万级上下文可学习稀疏注意力的长文本训练系统](blog/posts/2026-10-27-HyScale-突破百万级上下文可学习稀疏注意力的长文本训练系统.md)
+- [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
 
 ## 长上下文推理
 

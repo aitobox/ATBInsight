@@ -4,6 +4,11 @@
 
 ## 2026-11
 
+- **2026-11-11**: [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
+- **2026-11-11**: [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
+- **2026-11-11**: [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
+- **2026-11-11**: [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
+- **2026-11-11**: [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 - **2026-11-10**: [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
 - **2026-11-10**: [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
 - **2026-11-10**: [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
