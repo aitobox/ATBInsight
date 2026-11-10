@@ -1,0 +1,1006 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-11-MaxText-%E6%8E%A8%E5%87%BA%E4%B8%8A%E4%B8%8B%E6%96%87%E5%B9%B6%E8%A1%8C%E6%8A%80%E6%9C%AF-%E5%9C%A8-TPU-%E4%B8%8A%E5%AE%9E%E7%8E%B0%E9%95%BF%E4%B8%8A%E4%B8%8B%E6%96%87%E8%AE%AD%E7%BB%83/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#maxtext-tpu-token" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 执行摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📌 Executive Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        引言：千万级 Token 时代的严峻挑战
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduction-the-multi-million-token-challenge" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Introduction: The Multi-Million-Token Challenge
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maxtext" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        MaxText 中的四种上下文并行策略
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-parallelism-strategies-in-maxtext" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Context Parallelism Strategies in MaxText
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context Parallelism Strategies in MaxText">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-all-gather" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 全收集策略 (All-gather)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1-all-gather_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. All-gather
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-all-to-all-ulysses" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 全对全通信策略 (All-to-All / Ulysses)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-all-to-all-ulysses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. All-to-All (Ulysses)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-p2p-ring-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 点对点环状注意力策略 (P2P / Ring Attention)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-p2p-ring-attention_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. P2P (Ring Attention)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-a2a-p2p-usp" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 混合模式：A2A + P2P 统一序列并行 (USP)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-a2a-p2p-unified-sequence-parallelism-usp" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. A2A + P2P (Unified Sequence Parallelism - USP)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splash-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        基石保障：基于超高速 Splash Attention 算子构建
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-on-a-fast-attention-kernel-splash-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Built on a Fast Attention Kernel: Splash Attention
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TPU 性能表现与基准测试
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tpu-performance-and-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        TPU Performance and Benchmarks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        如何挑选最契合的并行策略
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-the-right-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Choosing the Right Strategy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        即刻开启实战
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-started-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Get Started Today
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="maxtext-tpu-token">MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练</h1>
+<p><strong>Published:</strong> Nov. 9, 2026<br />
+<strong>Authors:</strong> Michael Tran (Software Engineering Intern, Google Cloud), Nuojin Cheng (Software Engineer, Google Cloud), Deepak Patil (Group Product Manager)<br />
+<strong>Categories:</strong> AI, Cloud, Announcements</p>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>随着人工智能应用向超长代码库分析、数小时超长视频理解以及复杂长链路 AI 智能体任务演进，大语言模型 (Large Language Model, LLM) 对上下文长度的需求正呈爆发式增长，迈向百万乃至千万级 Token 的时代。然而，序列长度的飙升带来了计算量平方级膨胀、高带宽内存 (High-Bandwidth Memory, HBM) 显存告急以及跨设备通信瓶颈等严峻挑战。Google Cloud 宣布在其开源训练框架 MaxText v0.2.4 中，正式引入基于 Cloud TPU 的原生上下文并行 (Context Parallelism, CP) 技术，并深度整合 OpenXLA Tokamax 的 Splash Attention 加速算子。通过 All-gather、All-to-All、Ring Attention 及混合 USP 四大多元并行策略，MaxText 在 TPU 5p 上实现了高达 400 万 Token 训练时保持 70% 的模型 FLOPs 利用率 (Model FLOPs Utilization, MFU) ，并在新一代 TPU 7 (Ironwood) 上无缝扩展至 1400 万 Token，为超长上下文大模型的高效规模化训练奠定了全新基石。</p>
+<hr />
+<p><img alt="long context banner" src=".././images/38915f79aa45.jpg" /></p>
+<h2 id="_2">📌 执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">📌 Executive Summary</h2>
+</blockquote>
+<p>长上下文训练已成为现代 AI 模型不可或缺的基石，它赋予了大语言模型 (Large Language Model, LLM) 吞吐海量代码仓库、解析数小时高清视频以及执行复杂长链路智能体任务的强大能力。然而，当序列长度扩展到数百万个 Token 时，注意力机制计算量、内存占用以及芯片间的通信开销都会遭遇极其严峻的系统瓶颈。</p>
+<blockquote>
+<p>Long-context training has become foundational for modern AI models, enabling large language models (LLMs) to ingest massive code repositories, hours of video, and execute complex agentic tasks. However, scaling sequence lengths to millions of tokens introduces significant bottlenecks in attention compute, memory, and communication. </p>
+</blockquote>
+<p>Google Cloud 宣布在 <strong>MaxText v0.2.4</strong> 中基于 Cloud TPU 基础设施原生支持长上下文训练。通过融合四种截然不同的上下文并行策略，并结合来自 OpenXLA 的 <strong>Tokamax Splash Attention 算子</strong>，MaxText 展现出了令人瞩目的硬件运行效率 —— 例如在 TPU 5p 上处理长达 400 万 Token 的序列时，依然能够维持 <strong>70% 的模型 FLOPs 利用率 (Model FLOPs Utilization, MFU)</strong> ，而在新一代 TPU 7 (Ironwood) 上更是能无缝扩展至 1400 万 Token 规模的训练。</p>
+<blockquote>
+<p>Google Cloud has announced native long-context training support in <strong>MaxText v0.2.4</strong> using Cloud TPU infrastructure. By leveraging four distinct context-parallel strategies combined with the <strong>Tokamax Splash Attention kernel</strong>, MaxText achieves exceptional efficiency—such as maintaining <strong>70% Model FLOPs Utilization (MFU)</strong> on TPU 5p for sequence lengths up to 4 million tokens, and scaling seamlessly up to 14 million tokens on TPU 7 (Ironwood).</p>
+</blockquote>
+<hr />
+<h2 id="token">引言：千万级 Token 时代的严峻挑战</h2>
+<blockquote>
+<h2 id="introduction-the-multi-million-token-challenge">Introduction: The Multi-Million-Token Challenge</h2>
+</blockquote>
+<p>随着上下文窗口从过去的 128K–200K Token 飞速跃升至 100 万到 200 万 Token，甚至千万级 Token 的模型也已呼之欲出，在如此超大规模下进行训练暴露出了底层的关键系统瓶颈：</p>
+<blockquote>
+<p>As context windows expand rapidly from 128K–200K tokens to 1M–2M—with 10M-token models on the horizon—training at these scales reveals critical system limitations:</p>
+</blockquote>
+<ol>
+<li><strong>注意力计算开销</strong>：自注意力计算的浮点运算次数 (FLOPs) 随序列长度呈二次方级增长，使得注意力机制逐渐主导了单步训练耗时。系统的整体吞吐量 (Throughput) 极大程度上依赖于高度优化的注意力算子。</li>
+<li><strong>内存与通信瓶颈</strong>：随着序列变长，中间激活值 (Activation) （包括每个 Token 的 Key 和 Value）呈线性急剧攀升。如果简单地采用单芯片完整复制等初级策略，将瞬间耗尽高带宽内存 (High-Bandwidth Memory, HBM) 并导致显存溢出 (Out-Of-Memory, OOM) 崩溃。而上下文并行 (Context Parallelism, CP) 技术通过流式传递 Key 和 Value、避免将其完整实例化，从而优雅地化解了这一危机。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Attention Compute:</strong> Attention FLOPs grow quadratically with sequence length, causing attention to dominate the training step. Throughput relies heavily on optimized attention kernels.</li>
+<li><strong>Memory and Communication:</strong> Activations (including keys and values for every token) scale with sequence length. Naive approaches like full chip replication exhaust High-Bandwidth Memory (HBM) and trigger Out-Of-Memory (OOM) errors. Context Parallelism (CP) solves this by streaming keys and values instead of materializing them fully.</li>
+</ol>
+</blockquote>
+<p>针对这些系统性难题，MaxText 提供了四种针对性的上下文并行策略：<strong>全收集 (All-gather)</strong> 、<strong>全对全通信 (All-to-All, DeepSpeed Ulysses)</strong> 、<strong>点对点环状注意力 (P2P, Ring Attention)</strong> ，以及融合二者的 <strong>A2A + P2P 混合模式 (统一序列并行，Unified Sequence Parallelism, 简称 USP)</strong> 。</p>
+<blockquote>
+<p>MaxText addresses these challenges through four context-parallel strategies: <strong>All-gather, A2A (DeepSpeed Ulysses), P2P (Ring Attention)</strong>, and the <strong>A2A + P2P hybrid (Unified Sequence Parallelism, or USP)</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="maxtext">MaxText 中的四种上下文并行策略</h2>
+<blockquote>
+<h2 id="context-parallelism-strategies-in-maxtext">Context Parallelism Strategies in MaxText</h2>
+</blockquote>
+<p>上下文并行 (Context Parallelism) 的核心思想是将超长序列切分打散到多个计算芯片上，使任何单个芯片都无需承载整条序列的完整激活值。MaxText 重点支持以下四种并行策略：</p>
+<blockquote>
+<p>Context parallelism splits long sequences across chips so no single chip holds the entire sequence's activations. MaxText supports four primary strategies:</p>
+</blockquote>
+<h3 id="1-all-gather">1. 全收集策略 (All-gather)</h3>
+<blockquote>
+<h3 id="1-all-gather_1">1. All-gather</h3>
+</blockquote>
+<p>每个芯片只保留分配给自己的序列切片，并在计算每个注意力层时，从集群中的所有其他芯片全量收集 (Gather) 完整的 Key 和 Value。
+* <em>优势</em>：实现逻辑清晰直接。
+* <em>劣势</em>：在自回归任务的因果掩码 (Causal Masking) 机制下，序列后部的 Token 需要关注前面更大的前缀上下文，从而导致不同芯片之间的计算量严重不均衡，必须配合精细的跨设备负载均衡机制。</p>
+<blockquote>
+<p>Each chip retains its sequence chunk and gathers keys and values from all other chips at every layer. 
+* <em>Pros:</em> Simple implementation.
+* <em>Cons:</em> Causal masking causes later tokens to attend to larger prefixes, requiring careful load balancing across devices.</p>
+</blockquote>
+<p><img alt="图 1: All-gather" src=".././images/image3_1.mp4" /><br />
+<em>图 1: 单条序列切分至四个设备 (TPU 芯片) 时的 All-gather 全收集过程。</em></p>
+<blockquote>
+<p><em>Figure 1. All-gather, for one sequence split across four devices (TPU chips).</em></p>
+</blockquote>
+<h3 id="2-all-to-all-ulysses">2. 全对全通信策略 (All-to-All / Ulysses)</h3>
+<blockquote>
+<h3 id="2-all-to-all-ulysses_1">2. All-to-All (Ulysses)</h3>
+</blockquote>
+<p>与单纯在 Token 维度切分显存不同，All-to-All 策略巧妙地将切分维度从 Token 轴旋转到了注意力头 (Attention Head) 轴。各芯片之间通过全局交换数据，使得每颗芯片都能针对分配给自己的那部分注意力头子集，处理完整的全量序列。
+* <em>优势</em>：可以直接调用单芯片标准注意力算子，完全省去了 Token 维度的负载均衡调度开销。
+* <em>劣势</em>：并行扩展上限直接受限于模型的注意力头数量（在分组查询注意力 Grouped-Query Attention, GQA 架构下则受限于 KV 头数）。此外，通信阶段与计算过程无法实现重叠掩盖。</p>
+<blockquote>
+<p>Instead of shrinking attention memory via token sharding, All-to-All rotates the sharding axis from tokens to attention heads. Chips exchange data so that each chip processes the full sequence for a subset of attention heads.
+* <em>Pros:</em> Standard single-chip attention kernels can be used without token load balancing.
+* <em>Cons:</em> Scalability is capped by the model's head count (or KV heads under Grouped-Query Attention). The communication step does not overlap with compute.</p>
+</blockquote>
+<p><img alt="图 2: All-to-All (Ulysses)" src=".././images/image4_wFzkYit.mp4" /><br />
+<em>图 2: All-to-All (Ulysses)：通过全对全通信将 Token 序列切片转换为注意力头切分。</em></p>
+<blockquote>
+<p><em>Figure 2. All-to-All (Ulysses). An all-to-all trades token chunks for attention heads.</em></p>
+</blockquote>
+<h3 id="3-p2p-ring-attention">3. 点对点环状注意力策略 (P2P / Ring Attention)</h3>
+<blockquote>
+<h3 id="3-p2p-ring-attention_1">3. P2P (Ring Attention)</h3>
+</blockquote>
+<p>Ring Attention 打破了注意力头数量对扩展性的枷锁，始终保持在 Token 维度上进行分布式切分与计算。在该模式下，全量的 Key 和 Value 永远不会在任何单张芯片上完整展开；相反，各个 KV 数据块会沿着由各个芯片组成的环形拓扑，在相邻设备之间依次流转传递。
+* <em>优势</em>：芯片间的数据通信可以与注意力计算无缝重叠 (Overlap) ，且每颗芯片的内存占用仅取决于本地切块大小，而不再随总序列长度爆炸增长。
+* <em>劣势</em>：需要专门的因果掩码负载均衡算法；将注意力切分为更小的数据块也可能会对单芯片算子的局部执行效率产生一定影响。</p>
+<blockquote>
+<p>Removes the head-count ceiling by keeping computations along the token axis. Keys and values never materialize in full; instead, KV chunks rotate around a ring of chips neighbor-to-neighbor.
+* <em>Pros:</em> Communication overlaps seamlessly with compute; memory scales with local chunk size rather than total sequence length.
+* <em>Cons:</em> Requires explicit load balancing; dividing attention into smaller chunks can impact local kernel efficiency.</p>
+</blockquote>
+<p><img alt="图 3: P2P (环状注意力)" src=".././images/image2_98w6cpJ.mp4" /><br />
+<em>图 3: P2P 环状注意力机制：KV 块每次在相邻节点间轮转一跳。</em></p>
+<blockquote>
+<p><em>Figure 3. P2P (ring attention). KV chunks rotate one hop at a time.</em></p>
+</blockquote>
+<h3 id="4-a2a-p2p-usp">4. 混合模式：A2A + P2P 统一序列并行 (USP)</h3>
+<blockquote>
+<h3 id="4-a2a-p2p-unified-sequence-parallelism-usp">4. A2A + P2P (Unified Sequence Parallelism - USP)</h3>
+</blockquote>
+<p>这是一种强强联合的混合并行架构：在一个维度上网格切分运行 All-to-All 通信（规模恰好适配 KV 头的数量），而在另一个维度上则构建 P2P 环形网络流转数据。
+* <em>优势</em>：每次通信轮转的数据块更大，大幅减少了总跳数 (Hops) ，从而在 Cloud TPU 的多维环形网格拓扑 (Mesh) 上释放出更出色的硬件计算与带宽利用率。</p>
+<blockquote>
+<p>A hybrid approach combining All-to-All along one axis (sized to fit the KV-head count) and a P2P ring along the other axis. 
+* <em>Pros:</em> Yields larger chunks per hop, fewer total hops, and better hardware utilization on Cloud TPU meshes.</p>
+</blockquote>
+<p><img alt="图 4: A2A + P2P (USP)" src=".././images/image5_1.mp4" /><br />
+<em>图 4: A2A + P2P (USP)：在成对设备组内执行 All-to-All，跨设备组运行 P2P 环状通信。</em></p>
+<blockquote>
+<p><em>Figure 4. A2A + P2P (USP). The all-to-all runs within pairs and the P2P ring across pairs.</em></p>
+</blockquote>
+<hr />
+<h2 id="splash-attention">基石保障：基于超高速 Splash Attention 算子构建</h2>
+<blockquote>
+<h2 id="built-on-a-fast-attention-kernel-splash-attention">Built on a Fast Attention Kernel: Splash Attention</h2>
+</blockquote>
+<p>上述所有并行策略的底层动力均由 <strong>Splash Attention</strong> 强力驱动 —— 这是来自 OpenXLA <strong>Tokamax</strong> 高性能算子库的分块稀疏闪存注意力 (Block-Sparse Flash Attention) 算子。它能够智能跳过被完全掩盖 (Fully Masked) 的空白计算块，并原生高效地处理无需填充 (Padding) 的紧凑打包序列 (Packed Sequences) ，巧妙地将集群跨节点通信延迟完整掩盖在前向与反向计算耗时之中。</p>
+<blockquote>
+<p>All strategies are powered by <strong>Splash Attention</strong>, the block-sparse flash attention kernel from the OpenXLA <strong>Tokamax</strong> library. It skips fully masked blocks and processes packed sequences natively without padding, hiding communication latency behind forward and backward passes.</p>
+</blockquote>
+<hr />
+<h2 id="tpu">TPU 性能表现与基准测试</h2>
+<blockquote>
+<h2 id="tpu-performance-and-benchmarks">TPU Performance and Benchmarks</h2>
+</blockquote>
+<ul>
+<li><strong>TPU 5p</strong>：在由 64 颗芯片组成的算力切片 (Slice) 上，针对 Llama 3.1 8B 模型 (注意力头维度 256，包含 16 个 Query 头) 进行基准测试 (Benchmark) 。测试表明，在绝大多数上下文长度 (64K 到 1400 万 Token) 下，P2P 环状注意力 (Ring Attention) 的性能均显著超越了全收集 (All-Gather) 模式，并在高达 400 万 Token 的长上下文下依旧斩获了 <strong>70% 的模型 FLOPs 利用率 (MFU)</strong> 。</li>
+<li><strong>TPU v7x (Ironwood)</strong>：得益于单芯片翻倍的高带宽内存 (HBM) 容量，新一代 TPU 7 在面对 1400 万 Token 的极端超长训练工作负载时，仍能维持高达 <strong>48.7% 的 MFU</strong> ，展现出坚如磐石的强劲性能输出。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>TPU 5p:</strong> Benchmarked on Llama 3.1 8B (256 head dim, 16 query heads) across a 64-chip slice, P2P (Ring Attention) successfully outpaced All-Gather across most context lengths (64K to 14M tokens), achieving <strong>70% MFU</strong> up to 4 million tokens.</li>
+<li><strong>TPU v7x (Ironwood):</strong> Benefiting from doubled HBM per chip, TPU 7 reached <strong>48.7% MFU</strong> for 14M token training workloads, consistently maintaining high performance.</li>
+</ul>
+</blockquote>
+<p><img alt="图 5: 性能基准测试曲线图" src=".././images/9c94db008b69.png" /></p>
+<hr />
+<h2 id="_3">如何挑选最契合的并行策略</h2>
+<blockquote>
+<h2 id="choosing-the-right-strategy">Choosing the Right Strategy</h2>
+</blockquote>
+<ul>
+<li><strong>当汇总后的 KV 激活值能容纳于 HBM 显存时</strong>：优先选用开启负载均衡的 <strong>全收集 (All-gather)</strong> 模式。该方案实现直观明了，对于分组查询注意力 (Grouped-Query Attention, GQA) 模型极为高效。</li>
+<li><strong>芯片数量不超过 KV 头数时</strong>：可直接采用 <strong>纯 A2A (All-to-All) 模式</strong> (注意：该模式不适用于仅含单个 KV 头的多查询注意力 Multi-Query Attention 架构) 。</li>
+<li><strong>当汇总后的 KV 激活值超出 HBM 显存容量时</strong>：应果断切换到 <strong>环状并行家族 (Ring Family)</strong> 。若模型 KV 头数支持 <span class="arithmatex">\(\ge 2\)</span> 的 A2A 分片因子，推荐使用 <strong>USP 混合模式</strong>；否则使用 <strong>纯 P2P 环状注意力</strong> (对于 DeepSeek 等多头潜在注意力 Multi-Head Latent Attention, MLA 架构尤为契合) 。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>When gathered KV fits in HBM:</strong> Use <strong>All-gather</strong> with load balancing enabled. It is straightforward and highly efficient for Grouped-Query Attention models.</li>
+<li><strong>Up to the number of KV heads:</strong> Use <strong>A2A alone</strong> (not suitable for Multi-Query Attention).</li>
+<li><strong>When gathered KV exceeds HBM:</strong> Use the <strong>Ring family</strong>. Use <strong>USP</strong> if KV heads allow an A2A factor of <span class="arithmatex">\(\ge 2\)</span>; otherwise, use <strong>P2P alone</strong> (ideal for MLA architectures like DeepSeek).</li>
+</ul>
+</blockquote>
+<p><em>实用建议 (Tip)</em> ：当显存吃紧时，在万不得已采用重计算 (Recomputation) 之前，建议优先利用 MaxText 提供的激活值、优化器状态以及模型参数卸载 (Offloading) 功能。</p>
+<blockquote>
+<p><em>Tip:</em> When running low on memory, utilize MaxText’s activation, optimizer state, and parameter offloading features before resorting to recomputation.</p>
+</blockquote>
+<hr />
+<h2 id="_4">即刻开启实战</h2>
+<blockquote>
+<h2 id="get-started-today">Get Started Today</h2>
+</blockquote>
+<p>长上下文训练功能现已在 <strong>MaxText v0.2.4</strong> 中全面上线，开发者可通过 PyPI、GitHub 以及官方预构建 Docker 镜像即刻获取。更多实操配置范例与保姆级教程，请参阅 <a href="https://github.com/AI-Hypercomputer/maxtext/blob/main/docs/guides/optimization/sharding.md">MaxText 切分指南 (MaxText Sharding Guide)</a> 以及针对 <a href="https://github.com/AI-Hypercomputer/tpu-recipes/tree/main/training/ironwood/Llama3.1-8B-LongContext-Maxtext">TPU 7</a> 和 <a href="https://github.com/AI-Hypercomputer/tpu-recipes/tree/main/training/v5p/Llama3.1-8B-LongContext-Maxtext">TPU 5p</a> 的特定硬件最佳实践仓库。</p>
+<blockquote>
+<p>Long-context training support is available now in <strong>MaxText v0.2.4</strong> on PyPI, GitHub, and pre-built Docker images. Sample recipes and tutorials can be found via the <a href="https://github.com/AI-Hypercomputer/maxtext/blob/main/docs/guides/optimization/sharding.md">MaxText Sharding Guide</a> and TPU-specific repository implementations for <a href="https://github.com/AI-Hypercomputer/tpu-recipes/tree/main/training/ironwood/Llama3.1-8B-LongContext-Maxtext">TPU 7</a> and <a href="https://github.com/AI-Hypercomputer/tpu-recipes/tree/main/training/v5p/Llama3.1-8B-LongContext-Maxtext">TPU 5p</a>.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">MaxText</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">TPU</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">长上下文</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">上下文并行</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Splash Attention</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

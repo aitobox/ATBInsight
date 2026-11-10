@@ -5,6 +5,359 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>长程 AI 智能体与持久化执行架构深度剖析</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-11/长程-AI-智能体与持久化执行架构深度剖析/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-11/长程-AI-智能体与持久化执行架构深度剖析/</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 能力的跃升，AI 智能体 (AI Agent) 正从单次问答迈向能够自主执行数天乃至数周复杂任务的“长程智能体”时代。然而，跨越漫长时间周期的自主任务面临进程崩溃、网络抖动、外部 API 超时以及现实世界状态突变等严峻的工程挑战。本文深入剖析了 Thoughtworks 提出的全新架构方案——持久化执行 (Durable Execution)，揭示其如何通过事件日志与状态重放技术，为长程 AI 智能体构筑坚不可摧的运行时底座。文章同时提醒开发者，“持久化”并不等同于“业务正确性”，必须在幂等性、过期数据重检、记忆分层和提示词 (Prompt) 注入防御等维度建立全面的韧性设计。
+
+---
+
+## 执行概要
+
+&gt; ## Executive Summary
+
+长程 AI 智能体致力于自动化处理跨越数天、数周甚至数月的复杂长链条任务，这期间需要与人类用户及各类外部系统进行频繁的多轮交互。然而，由于这些多步骤流程极其容易遭受进程崩溃、网络故障以及瞬息万变的现实环境干扰，传统的程序执行模型往往在此类场景下败下阵来。
+
+&gt; Long-horizon agents automate complex tasks spanning days, weeks, or even months, requiring multiple exchanges with humans and external systems. Because these multi-step processes are vulnerable to system crashes, network failures, and unpredictable real-world changes, traditional execution models often fail.
+
+**持久化执行 (Durable Execution)** 正是一种旨在彻底解决这一痛点的新兴编程范式。通过持久化记录每一次与外部世界交互的步骤日志，持久化运行时环境能够在程序发生故障后实现无缝恢复：已成功执行的步骤会被直接跳过，而程序的运行状态则完全通过回放执行日志动态重建。然而，仅仅拥有持久化特性并不能保证业务层面的绝对正确；开发者仍然必须制定严密的工程策略，以从容应对数据失效、业务规则变更、外部不可见结果以及运行底座框架升级等一系列现实挑战。
+
+&gt; **Durable execution** is an emerging programming pattern that solves this problem. By maintaining a persistent record (log) of every step that interacts with the outside world, a durable runtime allows programs to recover seamlessly from failures: completed steps are skipped, and the program's state is dynamically rebuilt from the execution log. However, durability alone does not guarantee business correctness; developers must still build strategies to handle stale data, shifting business rules, unseen external outcomes, and harness updates.
+
+---
+
+## 目录
+
+&gt; ## Contents
+
+- [跨越数周的长程工作](#跨越数周的长程工作)
+  - [贯穿全篇的实际案例](#贯穿全篇的实际案例)
+  - [智能体循环机制](#智能体循环机制)
+  - [可能出现哪些故障](#可能出现哪些故障)
+- [持久化执行](#持久化执行)
+  - [让智能体循环具备持久化能力](#让智能体循环具备持久化能力)
+  - [实体与工作流架构](#实体与工作流架构)
+  - [等待人类与外部系统响应](#等待人类与外部系统响应)
+  - [失败调用的重试机制：至少执行一次](#失败调用的重试机制至少执行一次)
+- [持久化并不等同于业务正确](#持久化并不等同于业务正确)
+  - [智能体无法直接感知的外部执行结果](#智能体无法直接感知的外部执行结果)
+  - [在你等待期间，现实世界已经发生改变](#在你等待期间现实世界已经发生改变)
+  - [运行中任务面临的代码与框架变更](#运行中任务面临的代码与框架变更)
+  - [记忆管理：智能体保留的内容与大模型看到的内容](#记忆管理智能体保留的内容与大模型看到的内容)
+  - [操控智能体意图的外部不可信文本](#操控智能体意图的外部不可信文本)
+- [总结与展望](#总结与展望)
+
+&gt; - [Work That Takes Weeks](#work-that-takes-weeks)
+&gt;   - [The Running Example](#the-running-example)
+&gt;   - [The Agentic Loop](#the-agentic-loop)
+&gt;   - [What Can Go Wrong](#what-can-go-wrong)
+&gt; - [Durable Execution](#durable-execution)
+&gt;   - [Making the Loop Durable](#making-the-loop-durable)
+&gt;   - [The Entity and the Workflow](#the-entity-and-the-workflow)
+&gt;   - [Waiting for People and Systems](#waiting-for-people-and-systems)
+&gt;   - [Retrying Failed Calls, At Least Once](#retrying-failed-calls-at-least-once)
+&gt; - [Durable Is Not the Same as Correct](#durable-is-not-the-same-as-correct)
+&gt;   - [Outcomes the Agent Doesn't See](#outcomes-the-agent-doesnt-see)
+&gt;   - [The World Moves On While You Wait](#the-world-moves-on-while-you-wait)
+&gt;   - [Code Change Under a Running Task](#code-change-under-a-running-task)
+&gt;   - [Memory: What the Agent Keeps, and What the Model Sees](#memory-what-the-agent-keeps-and-what-the-model-sees)
+&gt;   - [Text That Steers the Agent](#text-that-steers-the-agent)
+&gt; - [Conclusion](#conclusion)
+
+---
+
+## 跨越数周的长程工作
+
+&gt; ## Work That Takes Weeks
+
+数十年来，现代企业的商业运营架构始终受限于“人类注意力”的稀缺性。而长程 AI 智能体的出现，从根本上改变了这种经济学规律——它们能够让过去在经济上不划算或流程极为繁复的工作流变得可行且高效。例如：引导流失客户完成高度个性化的重新激活与入职流程、统筹协调跨越多个部门的销售与采购大单，或是穿梭于复杂医疗体系中协调多方转诊。
+
+&gt; For decades, business operations have been structured around the scarcity of human attention. Long-horizon agents fundamental alter this economics by making previously uneconomical or tedious workflows viable—such as guiding churned customers through personalized onboarding, shepherding multi-department sales and procurement deals, or coordinating complex healthcare referrals.
+
+传统软件擅长自动化处理确定性高、路径可预测的既定流程；而长程智能体则是在高度不可预测的动态路径中，持续探索并最终达成既定目标。
+
+&gt; While traditional software automates predictable processes, long-horizon agents pursue outcomes across highly unpredictable pathways.</description>
+    </item>
+    <item>
+      <title>MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-11/MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-11/MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练/</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着人工智能应用向超长代码库分析、数小时超长视频理解以及复杂长链路 AI 智能体任务演进，大语言模型 (Large Language Model, LLM) 对上下文长度的需求正呈爆发式增长，迈向百万乃至千万级 Token 的时代。然而，序列长度的飙升带来了计算量平方级膨胀、高带宽内存 (High-Bandwidth Memory, HBM) 显存告急以及跨设备通信瓶颈等严峻挑战。Google Cloud 宣布在其开源训练框架 MaxText v0.2.4 中，正式引入基于 Cloud TPU 的原生上下文并行 (Context Parallelism, CP) 技术，并深度整合 OpenXLA Tokamax 的 Splash Attention 加速算子。通过 All-gather、All-to-All、Ring Attention 及混合 USP 四大多元并行策略，MaxText 在 TPU 5p 上实现了高达 400 万 Token 训练时保持 70% 的模型 FLOPs 利用率 (Model FLOPs Utilization, MFU) ，并在新一代 TPU 7 (Ironwood) 上无缝扩展至 1400 万 Token，为超长上下文大模型的高效规模化训练奠定了全新基石。
+
+---
+
+![long context banner](./images/38915f79aa45.jpg)
+
+## 📌 执行摘要
+
+&gt; ## 📌 Executive Summary
+
+长上下文训练已成为现代 AI 模型不可或缺的基石，它赋予了大语言模型 (Large Language Model, LLM) 吞吐海量代码仓库、解析数小时高清视频以及执行复杂长链路智能体任务的强大能力。然而，当序列长度扩展到数百万个 Token 时，注意力机制计算量、内存占用以及芯片间的通信开销都会遭遇极其严峻的系统瓶颈。
+
+&gt; Long-context training has become foundational for modern AI models, enabling large language models (LLMs) to ingest massive code repositories, hours of video, and execute complex agentic tasks. However, scaling sequence lengths to millions of tokens introduces significant bottlenecks in attention compute, memory, and communication. 
+
+Google Cloud 宣布在 **MaxText v0.2.4** 中基于 Cloud TPU 基础设施原生支持长上下文训练。通过融合四种截然不同的上下文并行策略，并结合来自 OpenXLA 的 **Tokamax Splash Attention 算子**，MaxText 展现出了令人瞩目的硬件运行效率 —— 例如在 TPU 5p 上处理长达 400 万 Token 的序列时，依然能够维持 **70% 的模型 FLOPs 利用率 (Model FLOPs Utilization, MFU)** ，而在新一代 TPU 7 (Ironwood) 上更是能无缝扩展至 1400 万 Token 规模的训练。
+
+&gt; Google Cloud has announced native long-context training support in **MaxText v0.2.4** using Cloud TPU infrastructure. By leveraging four distinct context-parallel strategies combined with the **Tokamax Splash Attention kernel**, MaxText achieves exceptional efficiency—such as maintaining **70% Model FLOPs Utilization (MFU)** on TPU 5p for sequence lengths up to 4 million tokens, and scaling seamlessly up to 14 million tokens on TPU 7 (Ironwood).
+
+---
+
+## 引言：千万级 Token 时代的严峻挑战
+
+&gt; ## Introduction: The Multi-Million-Token Challenge
+
+随着上下文窗口从过去的 128K–200K Token 飞速跃升至 100 万到 200 万 Token，甚至千万级 Token 的模型也已呼之欲出，在如此超大规模下进行训练暴露出了底层的关键系统瓶颈：
+
+&gt; As context windows expand rapidly from 128K–200K tokens to 1M–2M—with 10M-token models on the horizon—training at these scales reveals critical system limitations:
+
+1. **注意力计算开销**：自注意力计算的浮点运算次数 (FLOPs) 随序列长度呈二次方级增长，使得注意力机制逐渐主导了单步训练耗时。系统的整体吞吐量 (Throughput) 极大程度上依赖于高度优化的注意力算子。
+2. **内存与通信瓶颈**：随着序列变长，中间激活值 (Activation) （包括每个 Token 的 Key 和 Value）呈线性急剧攀升。如果简单地采用单芯片完整复制等初级策略，将瞬间耗尽高带宽内存 (High-Bandwidth Memory, HBM) 并导致显存溢出 (Out-Of-Memory, OOM) 崩溃。而上下文并行 (Context Parallelism, CP) 技术通过流式传递 Key 和 Value、避免将其完整实例化，从而优雅地化解了这一危机。
+
+&gt; 1. **Attention Compute:** Attention FLOPs grow quadratically with sequence length, causing attention to dominate the training step. Throughput relies heavily on optimized attention kernels.
+&gt; 2. **Memory and Communication:** Activations (including keys and values for every token) scale with sequence length. Naive approaches like full chip replication exhaust High-Bandwidth Memory (HBM) and trigger Out-Of-Memory (OOM) errors. Context Parallelism (CP) solves this by streaming keys and values instead of materializing them fully.
+
+针对这些系统性难题，MaxText 提供了四种针对性的上下文并行策略：**全收集 (All-gather)** 、**全对全通信 (All-to-All, DeepSpeed Ulysses)** 、**点对点环状注意力 (P2P, Ring Attention)** ，以及融合二者的 **A2A + P2P 混合模式 (统一序列并行，Unified Sequence Parallelism, 简称 USP)** 。
+
+&gt; MaxText addresses these challenges through four context-parallel strategies: **All-gather, A2A (DeepSpeed Ulysses), P2P (Ring Attention)**, and the **A2A + P2P hybrid (Unified Sequence Parallelism, or USP)**.
+
+---
+
+## MaxText 中的四种上下文并行策略
+
+&gt; ## Context Parallelism Strategies in MaxText
+
+上下文并行 (Context Parallelism) 的核心思想是将超长序列切分打散到多个计算芯片上，使任何单个芯片都无需承载整条序列的完整激活值。MaxText 重点支持以下四种并行策略：
+
+&gt; Context parallelism splits long sequences across chips so no single chip holds the entire sequence's activations. MaxText supports four primary strategies:</description>
+    </item>
+    <item>
+      <title>Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-11/Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-11/Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码/</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>长久以来，形式化验证 (Formal Verification) 被誉为保障关键软件与加密通信绝对安全的“终极护城河”，但因其需要耗费人类专家海量心血手动编写数学证明代码，过去往往只能局限于高层理论或简化的抽象模型，难以直接验证真实部署的底层编译机器码。2026 年 11 月 10 日，Google DeepMind 团队正式推出了里程碑式的 AlphaProof Code 系统，利用由 Gemini 4 Carbon 与 Claude Opus 5.5 驱动的自主 AI 智能体 (AI Agent) 战队，在短短 4 周内自动生成了约 650 万行经计算机严格检验的 Lean 形式化证明代码。这项技术突破首次在未做任何修改的前提下，对全球广泛使用的 Signal 核心加密通信库编译后的 AArch64 原生机器码完成了协议级安全性证明，并成功验证了捕获历史安全缺陷的能力。该成果开创了“人类专家把关安全规范边界、AI 智能体军团自动化推演证明”的高效协作范式，标志着高可信软件工程与形式化安全验证正式跨入全自动智能体时代。
+
+---
+
+## 核心内容摘要
+
+&gt; ## Summary
+
+Google DeepMind 于 2026 年 11 月 10 日推出了 **AlphaProof Code**，通过调度多组自主 AI 智能体 (AI Agent) 团队，为著名加密通信软件 Signal 编译后的 `libsignal` 底层代码生成了经计算机严格检验的 Lean 形式化安全证明。在一个为期四周的项目周期内，一支仅有 5 人的研究团队与由 Gemini 4 Carbon 和 Claude Opus 5.5 驱动的自主 AI 智能体紧密协作，总共生成了约 650 万行经机器检验的形式化证明代码。这项成就树立了一座关键里程碑——这是人类历史上首次对大规模部署的主流加密通信协议在未做任何修改的原生二进制机器码层面上，完成了协议级形式化安全证明。
+
+&gt; Google DeepMind introduced **AlphaProof Code** on November 10, 2026, utilizing teams of AI agents to produce machine-checked Lean proofs for security properties in Signal’s compiled `libsignal` code. Over a four-week period, a five-person research team—collaborating with autonomous AI agents powered by Gemini 4 Carbon and Claude Opus 5.5—generated approximately 6.5 million lines of machine-checked proof code. This marks a significant milestone as the first protocol-level security proofs applied to the unmodified binary code of a widely deployed cryptographic messaging protocol.
+
+---
+
+## AlphaProof Code 简介
+
+&gt; ## Introduction to AlphaProof Code
+
+Google DeepMind 于 2026 年 11 月 10 日发布的 [AlphaProof Code](https://deepmind.google/blog/introducing-alphaproof-code/)，标志着自动化软件形式化验证领域迎来了重大飞跃。过去，安全研究人员往往只能依赖高度抽象的协议设计模型来进行验证；而这一次，研究团队直接对最终编译生成的真实软件实现本身进行了验证。
+
+&gt; Google DeepMind’s rollout of [AlphaProof Code](https://deepmind.google/blog/introducing-alphaproof-code/) on November 10, 2026, represents a major leap in automated software verification. Rather than relying solely on abstract models of protocol design, researchers verified the compiled implementation itself. 
+
+该团队将未做任何修改的 `libsignal v0.105.4` 与 `SPQR v1.6.0` 两个 Rust 代码包打包封装成一个小巧的命令行测试程序，并使用标准的 `rustc` 编译器构建出了一个静态链接的 AArch64 Linux 可执行二进制文件。根据其官方发布的[技术论文](https://google-deepmind.github.io/code-verification/)显示，这是人类首次在未对代码做任何简化或修改的前提下，对主流加密协议的真实实现完成了协议级形式化安全证明。
+
+&gt; The team wrapped unmodified versions of `libsignal v0.105.4` and `SPQR v1.6.0` crates into a small command-line harness, building a statically linked AArch64 Linux executable using standard `rustc`. According to the [technical paper](https://google-deepmind.github.io/code-verification/), this achievement yields the first protocol-level security proofs for unmodified code in a major cryptographic protocol implementation.
+
+## AlphaProof Code 的人机协同分工模式
+
+&gt; ## How AlphaProof Code Divided the Work
+
+在这项历时四周的研究项目中，人类研究员与 AI 智能体之间建立了一套高度专业化的分工与协作体系：
+
+&gt; The project relied on a specialized division of labor between human supervisors and AI agents over a four-week period:
+
+* **人类专家的职责：** 研究员主要负责选定目标安全属性、厘清规则歧义、权衡安全性取舍、审查形式化安全规范，并掌握所有决策的最终审核与批准权。
+* **AI 智能体的职责：** 在 [Gemini 4 Carbon](https://www.unite.ai/staged-rollout-sends-googles-gemini-4-carbon-to-cyber-defenders-first/) 和 Claude Opus 5.5 的强大算力与推理能力支持下，AI 智能体基于 2.6 万行受信任规范和 AArch64 指令集语义，起草、交叉审查并最终生成了大约 **650 万行经机器检验的 Lean 证明代码**。在此过程中，没有一位人类作者手动撰写过证明代码。
+* **工作流协同机制：** 在典型的工作周期中，通常有 40 到 80 个自主智能体在工作站上以集群形式连续运行 24 到 72 小时。调度协调员 (Orchestrator) 与团队主管智能体负责统筹管理底层的证明生成工作者，而架构师与集成者智能体则负责维护整个证明库的一致性与严密性。
+
+&gt; * **Human Role:** Researchers selected target properties, resolved ambiguities, managed security trade-offs, reviewed specifications, and maintained final approval authority.
+&gt; * **AI Agent Role:** Powered by [Gemini 4 Carbon](https://www.unite.ai/staged-rollout-sends-googles-gemini-4-carbon-to-cyber-defenders-first/) and Claude Opus 5.5, the agents drafted, cross-reviewed, and generated roughly **6.5 million lines of machine-checked Lean proof code** built upon 26,000 lines of trusted specifications and AArch64 semantics. None of the human authors wrote the proof code manually.
+&gt; * **Workflow Dynamics:** Typical campaigns engaged 40 to 80 autonomous agents running continuously on workstations for 24 to 72 hours. Orchestrators and team leads managed proof workers, while architect and integrator roles maintained a unified proof base.
+
+为了保证整个证明链条的绝对可靠，研究团队设计了一套严密的看门人机制 (Gatekeeping System)：只有当比较器确认生成的证明在每一个传递性定义上都与人类批准的规范丝毫不差时，Lean 证明器内核才会启动对证明的检验。任何对受信任假设的改动，都必须获得人类专家的显式签署批准，以彻底杜绝因安全规范被暗中放宽而导致的形式化证明失效风险。
+
+&gt; A strict gatekeeping system ensured safety: Lean’s kernel verified proofs only after a comparator confirmed they matched human-approved specifications down to every transitive definition. Any changes to trusted assumptions required explicit human sign-off to mitigate the risk of indirect specification weakening.
+
+## 安全覆盖范围与历史已知漏洞验证
+
+&gt; ## Security Coverage and Historical Bug Tests
+
+本次形式化验证的目标聚焦于一对一单聊会话的核心代码，覆盖了 **PQXDH 握手协议** 以及 **三重棘轮 (Triple Ratchet) 消息收发机制**。整套验证体系建立在两组相互独立的论证基础之上：
+
+&gt; The verification target focused on one-to-one session code encompassing the **PQXDH handshake** and **Triple Ratchet messaging**. The verification suite rests on two independent arguments:
+
+1. **十项符号定理 (Symbolic Theorems)：** 在理想化的密码学数学假设下进行严格推导与求证。
+2. **计算安全性证明 (Computational Proof)：** 借助统计学界限与密码学计算复杂度，定量限制攻击者所能获取的最大优势。
+
+&gt; 1. **Ten symbolic theorems** evaluated under idealized cryptographic assumptions.
+&gt; 2. **A computational proof** bounding an attacker’s advantage through statistical and cryptographic terms.
+
+本次项目形式化验证的核心安全属性包括：
+
+&gt; Core properties verified include:
+
+* **前向保密 (Forward Secrecy)：** 即便通信当事方当前会话的状态密钥遭到窃取，历史过往的所有消息依然能够得到严密保护。
+* **身份认证与握手保密性 (Authentication &amp; Handshake Secrecy)**
+* **后妥协安全性 (Post-Compromise Security)：** 确保在系统经历局部安全泄露后，能够迅速自我修复并恢复端到端保密通信。
+
+&gt; * **Forward Secrecy:** Protecting historical messages if current state keys are stolen.
+&gt; * **Authentication &amp; Handshake Secrecy**
+&gt; * **Post-Compromise Security:** Ensuring recovery following a security breach.</description>
+    </item>
+    <item>
+      <title>Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-11/Google-Cloud-Pathways-运行时在-GKE-上正式商用/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-11/Google-Cloud-Pathways-运行时在-GKE-上正式商用/</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在大模型与前沿多模态架构迈向万亿参数的时代，如何高效协同与调度成千上万颗 AI 芯片，是分布式机器学习领域面临的最核心瓶颈。Google Cloud 近日正式宣布，其划时代的分布式运行时 Cloud Pathways 在 Google Kubernetes Engine (GKE) 上进入正式商用 (General Availability, GA) 阶段。这项底层技术最初由 Google DeepMind 研发，曾作为孵化 Gemini 等旗舰前沿模型的核心算力中枢，通过颠覆性的单一控制器架构，彻底摆脱了传统多控制器 JAX 方案中局部视角受限与协调脆弱的困境。无论是面对硬件故障时的秒级透明重分片与弹性自愈，还是支撑数万颗 TPU 芯片的高吞吐训练与强化学习推理，Pathways 在 GKE 上的落地商用，都为超大规模 AI 算力集群的基础设施管理树立了全新标杆。
+
+---
+
+## 概述
+
+&gt; ## Summary
+
+Google Cloud 正式宣布 **Cloud Pathways** 在 Google Kubernetes Engine (GKE) 上进入全面商用 (General Availability, GA) 阶段。该分布式机器学习 (ML) 运行时最初由 Google DeepMind 研发，专用于训练 Gemini 等前沿基座大模型，能为超大规模、异构的 TPU 计算集群提供先进的单一控制器 (Single-Controller) 架构。在正式发布前的短短 90 天内，各类用户通过 GKE 上的 Pathways 已经处理了超过 1.3 亿个 Cloud TPU 芯片时 (chip-hours) 的计算负载。该运行时不仅大幅简化了节点间的协同开销，显著提升了遇到硬件故障时的弹性恢复能力，还能够轻松扩展至数千颗 TPU 芯片上高效运转。
+
+&gt; Google Cloud has announced the General Availability (GA) of **Cloud Pathways** on Google Kubernetes Engine (GKE). Originally designed by Google DeepMind to train frontier models like Gemini, the distributed ML runtime offers a single-controller architecture for massive, heterogeneous TPU fleets. Within the first 90 days leading up to the announcement, users processed over 130 million Cloud TPU chip-hours using Pathways on GKE. The runtime simplifies coordination overhead, enhances elastic recovery, and scales efficiently across thousands of TPU chips.
+
+---
+
+## 跨 TPU 切片的统一控制器
+
+&gt; ## One Controller Across TPU Slices
+
+在传统的默认多控制器 JAX 架构下，一旦计算规模扩大，系统就会变得异常复杂且脆弱，因为每一台 TPU 宿主机都必须运行独立的 Python 解释器，并且仅拥有自身所连设备的局部视角。
+
+&gt; Default multi-controller JAX setups can become complex and brittle at scale, requiring every TPU host to run a separate Python interpreter with only a local view of connected devices.
+
+Cloud Pathways 彻底重构了这种模式，它基于开源的临时框架运行时 (Interim Framework Runtime) 构建了统一控制器。只需配合 `pathwaysutils` 将环境变量设置为 `JAX_PLATFORMS=proxy`，单个 JAX 客户端就能以全局视角编排跨越数千颗芯片的多个大型 TPU 切片 (TPU Slices)，操作体验犹如直接连接在本地设备上一样流畅。
+
+&gt; Cloud Pathways solves this by replacing that arrangement with a unified controller built on the open-source Interim Framework Runtime. By setting `JAX_PLATFORMS=proxy` alongside `pathwaysutils`, a single JAX client can view and orchestrate multiple large TPU slices spanning thousands of chips as if they were connected locally.
+
+该统一控制器的核心能力包括：
+
+&gt; Key capabilities of the unified controller include:
+
+* **计算图求值与编译缓存 (Graph Evaluation &amp; Caching)**：统一管理计算图求值流程，并在 Cloud Storage 中实现持久化的编译缓存。
+* **异步调度分发 (Asynchronous Dispatch)**：负责在不同 TPU 切片之间高效处理 XLA 计算任务的异步分发。
+* **同机部署 Sidecar 容器 (Colocated Sidecars)**：支持共享内存的 Python Sidecar 容器可直接在 TPU 宿主机上运行分布式数据加载与模型检查点 (Checkpointing) 保存等高算力消耗任务。
+* **弹性自愈训练 (Elastic Training)**：借助宿主机内存快照技术，当发生硬件中断故障时，能够无缝地将训练作业动态重新分片 (Reshard) 到少一个切片的剩余硬件上继续运行，而不会导致主客户端崩溃中断。
+* **灵活的资源接入与共享 (Flexible Access)**：全面支持交互式 Notebook、终端命令行，以及 *共享 Pathways 服务 (Shared Pathways Service)*，允许多位用户按需共享同一个长期运行的 TPU 切片资源池。
+
+&gt; * **Graph Evaluation &amp; Caching:** Manages graph evaluation and persistent compilation caching in Cloud Storage.
+&gt; * **Asynchronous Dispatch:** Handles the asynchronous dispatch of XLA work across various slices.
+&gt; * **Colocated Sidecars:** Python sidecar containers with shared-memory support run compute-intensive tasks—such as distributed data loading and checkpointing—directly on TPU hosts.
+&gt; * **Elastic Training:** Uses host-memory snapshots to seamlessly reshard jobs onto one fewer slice after hardware interruptions without crashing the client.
+&gt; * **Flexible Access:** Supports interactive notebooks, terminals, and a *Shared Pathways Service* that lets multiple users draw from a long-running pool of TPU slices.
+
+---
+
+## 生产落地与弹性故障自愈
+
+&gt; ## Production Use and Elastic Recovery
+
+众多知名企业与前沿科研机构已经开始将 Cloud Pathways 应用于高强度的生产级工作负载中：
+
+&gt; Enterprise and research organizations are already leveraging Cloud Pathways for heavy workloads:
+
+* **消费级科技巨头 (Consumer Technology)**：某大型消费科技企业在由数万颗 TPU v5p、Trillium v6e 和 Ironwood TPU7x 芯片构成的集群上，运行生产级批处理与强化学习推理任务，每季度消耗的计算量超过 1 亿芯片时。
+* **ZenteiQ 机构**：在将该技术栈应用于科学基座模型的研发中，ZenteiQ 在 GKE 上结合 Cluster Toolkit 和宿主机快照技术，利用 Cloud Pathways 实现了基于 MaxText 的弹性预训练和强化学习。创始人 Sashikumaar Ganesan 指出，动态网格拓扑重映射 (Dynamic Re-meshing) 与秒级快速恢复能力大幅缩短了系统停机等待时间，使 TPU 算力能够始终保持满负荷运转。
+
+&gt; * **Consumer Technology:** A major consumer tech company runs production batch and reinforcement-learning inference on tens of thousands of TPU v5p, Trillium v6e, and Ironwood TPU7x chips, consuming over 100 million chip-hours per quarter.
+&gt; * **ZenteiQ:** Applying the stack to scientific foundation models, ZenteiQ utilizes Cloud Pathways on GKE with Cluster Toolkit and host snapshotting for elastic MaxText pre-training and reinforcement learning. Founder Sashikumaar Ganesan noted that the dynamic re-meshing and rapid recovery significantly minimize downtime and keep TPU capacity fully utilized.
+
+---
+
+## GKE 正式可用与 Slurm 预览支持
+
+&gt; ## GKE Availability and Slurm Preview
+
+* **GKE 正式商用 (GKE)**：Cloud Pathways 现已在所有支持 Cloud TPU v5e、TPU v5p、Trillium TPU v6e 及 Ironwood TPU 7x 的 Google Cloud 区域中正式面向 GKE 用户商用，并提供了适配 JAX 0.10.1 及更高版本的带版本容器镜像。
+* **Slurm 预览支持 (Slurm Preview)**：通过与 Cluster Director 的独立集成，Cloud Pathways 的能力进一步延伸至 Slurm TPU 集群——将统一的多切片 JAX 执行、弹性自愈训练以及交互式 Notebook 全面带入预览 (Preview) 阶段。
+
+&gt; * **GKE:** Cloud Pathways is now generally available on GKE in all Google Cloud regions supporting Cloud TPU v5e, TPU v5p, Trillium TPU v6e, and Ironwood TPU 7x, with versioned container images supporting JAX 0.10.1 and later.
+&gt; * **Slurm (Preview):** A separate integration with Cluster Director extends Cloud Pathways to Slurm TPU clusters—bringing unified multi-slice JAX execution, elastic training, and interactive notebooks into Preview status.</description>
+    </item>
+    <item>
+      <title>E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-11/E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-11/E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准/</guid>
+      <pubDate>Wed, 11 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型和 AI 智能体 (AI Agent) 快速走向自主代码执行与复杂任务协作，如何在单台物理服务器上安全、高效、高密度地运行成千上万个轻量化隔离沙盒，成为当下 AI 基础设施面临的核心工程瓶颈。知名沙盒运行时平台 E2B 率先对 NVIDIA 即将推出的新一代 Vera 服务器展开了预生产环境下的深度基准测试 (Benchmark)。实测表明，在基于 Firecracker 微虚拟机 (MicroVM) 的高密度隔离架构下，双路 Vera 服务器能够稳定支撑多达 1,400 至 1,550 个并发活跃沙盒，并在单线程算力与快照恢复至关重要的内存吞吐量上显著超越传统 x86 参考架构。尽管实现极限密度依赖深入的宿主机内核与网络微调，且能耗经济性尚待多节点测试检验，该评测依然为下一代超大规模智能体集群的算力架构演进提供了极具价值的实证参考。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+2026 年 11 月，E2B 公布了针对 [NVIDIA Vera 服务器](https://www.unite.ai/nvidia-pits-vera-cpu-against-x86-on-agent-speed-and-power-capacity/) 承载高密度 AI 智能体 (AI Agent) 沙盒集群能力的早期工程测试结果。借助一台双路 Vera 预生产服务器，测试团队成功维持了 1,400 至 1,550 个高负载沙盒的稳定运行；在特定的处理器单线程与内存微基准测试 (Microbenchmark) 中，其性能更是显著超越了作为参照的 AMD EPYC 处理器。尽管这批早期实测数据展现出了微虚拟机 (MicroVM) 隔离扩展的巨大潜力，但该评估仍属于工程样机阶段测试，不仅依赖特定的宿主机参数深度调优，且在综合运营成本、整机能耗以及多节点扩展方面仍有待进一步验证。
+
+&gt; In November 2026, E2B published pre-production test results evaluating the performance of the [NVIDIA Vera server](https://www.unite.ai/nvidia-pits-vera-cpu-against-x86-on-agent-speed-and-power-capacity/) for high-density agent sandbox fleets. Utilizing a pre-production dual-socket Vera server, tests demonstrated the ability to sustain between 1,400 and 1,550 loaded sandboxes while outperforming an AMD EPYC reference in specific processor and memory microbenchmarks. While these early findings highlight significant potential for isolated microVM scaling, the evaluation remains a pre-production test with specific host tuning requirements and unresolved cost, power, and multi-node considerations.
+
+---
+
+## 处理器与内存微基准测试
+
+&gt; ## Processor and Memory Microbenchmarks
+
+本次针对 Vera 的评测于 2026 年 10 月 9 日至 13 日展开，测试平台为一台配备 176 个物理核心和 1,479 GiB 内存的双路工程样机服务器，并将其性能与 2026 年 8 月测得的 AMD 平台基准数据进行了横向对比。
+
+&gt; The Vera tests were conducted between October 9 and 13, 2026, on a pre-production dual-socket server featuring 176 physical cores and 1,479 GiB of RAM, compared against AMD reference measurements taken in August 2026.
+
+* **计算性能**：在基于宿主机裸机、采用 Vera 专属 64K 内存页内核的单线程计算测试中，E2B 测得 Vera 的吞吐量达到 **每秒 7,759 次事件**，而作为对照的 AMD EPYC 9B45 则为 **每秒 5,131 次**（基于至少 3 次测试的中位数计算，Vera 达到了参照系统吞吐量的 1.51 倍）。
+* **内存吞吐量**：在针对 2 GiB 内存区域、采用 4K 内核并启用 2 MiB 大页内存 (Huge Pages) 的测试中（这也是 E2B 沙盒实际采用的大页内存支持机制），Vera 飙升至 **62.8 GB/s**，相比 AMD 的 **17.4 GB/s** 实现了高达 3.61 倍的吞吐量跃升。对于需要高频从快照恢复环境的沙盒运行时而言，这项指标至关重要。
+
+&gt; * **Compute Performance:** In a bare-host, single-thread compute test using Vera’s 64K-page kernel, E2B reported **7,759 events per second** for Vera compared to **5,131** for the AMD EPYC 9B45 (achieving 1.51 times the reference throughput based on the median of at least three runs).
+&gt; * **Memory Throughput:** Testing a 2 GiB memory region using 4K kernels and 2 MiB huge pages (the same huge-page backing used by E2B's sandboxes), Vera reached **62.8 GB/s** compared to AMD's **17.4 GB/s**, marking 3.61 times the throughput. This metric is vital for a runtime that repeatedly restores snapshot-backed environments.
+
+*注：上述对比严格受限于特定微基准测试下的指定硬件型号，并不代表端到端智能体执行速度获得了同等比例的提升，亦不构成相对于 AMD 的绝对集群容量优势。*
+
+&gt; *Note: These comparisons are limited to named systems in specific microbenchmarks and do not establish direct end-to-end agent speedups or absolute fleet-capacity advantages over AMD.*
+
+## 全栈容量评估与宿主机调优
+
+&gt; ## Full-Stack Capacity and Host Tuning
+
+在全栈容量评估中，E2B 采用了 **E2B Embed**——这是开源 E2B Runtime 及其监控面板的单机封装版本——直接运行在宿主机上，并通过 Firecracker 微虚拟机实现轻量化硬件级安全隔离。
+
+&gt; For full-stack evaluations, E2B utilized **E2B Embed**—its single-machine packaging of the open-source E2B Runtime and dashboard—running directly on the host with Firecracker microVM isolation.
+
+* **系统响应能力**：在低负载的独立裸机测试中，评估记录到了 **50 毫秒的热启动顺序沙盒启动耗时** 以及 **3.8 毫秒的命令往返延迟**。在极高换流 (Churn) 压力测试下，系统连续完成了 **22,145 次沙盒创建与销毁循环，且保持零错误**。
+* **混合负载表现**：在混合容量测试中，沙盒会交替执行 CPU 突发计算、10 MiB 磁盘写入与短暂休眠暂停（其中十分之一的沙盒保持持续运转），在此场景下第 95 百分位 (P95) 命令往返延迟最高仅为 **255 毫秒**。而当所有沙盒都处于持续不间断高压运行时，系统仍能稳定支撑 **550 个沙盒**。
+* **配置约束与调优**：默认的宿主机操作系统配置仅能支持 320 个沙盒；在针对网络邻居表 (Network-neighbor) 进行内核调优后，容量提升至 1,000 个；而只有在完成全系统的底层调优后，才最终释放出巅峰并发容量。E2B 特别强调，这体现的是系统底层配置的阶梯式优化成果，而非单纯由 Vera 硬件架构直接带来的通用性加速。
+
+&gt; * **Responsiveness:** Evaluations recorded **50 ms warm, sequential sandbox starts** and **3.8 ms command round trips** at low load during separate bare-metal tests. A churn test completed **22,145 create-and-destroy cycles with zero errors**.
+&gt; * **Mixed Workloads:** In mixed capacity tests where sandboxes continuously performed CPU bursts, 10 MiB disk writes, and pauses (with 1 in 10 running continuously), the 95th-percentile command round-trip latency peaked at **255 ms**. When all sandboxes ran continuously, the system sustained **550 sandboxes**.
+&gt; * **Configuration Constraints:** Default host settings only supported 320 sandboxes. Network-neighbor tuning elevated this to 1,000, while full system tuning was required to reach peak capacity. E2B emphasizes this represents a configuration progression rather than a blanket Vera-versus-x86 speedup.
+
+## 评估局限性与后续测试规划
+
+&gt; ## Evaluation Limits and Planned Tests
+
+由于本次评估完全基于工程样机硬件展开，目前仍有一些关键技术问题尚待明确：
+
+&gt; Because the evaluation was conducted on pre-production hardware, several questions remain open:
+
+* 作为对照的 x86 参考系统在某些特定的快照恢复操作上速度依然更快；
+* 嵌套虚拟化 (Nested Virtualization) 仍需要额外的底层工程开发与适配；
+* 本次测试未采集功耗与成本数据，因此尚未涵盖实际的单机运营经济效益评估。
+
+&gt; * x86 reference systems still completed certain restore operations faster.
+&gt; * Nested virtualization requires additional engineering work.
+&gt; * Operating economics were excluded, as no power or cost measurements were taken.
+
+**后续计划**：E2B 计划进一步扩大测试范围，包括搭建多节点 [Vera](https://www.unite.ai/modal-plans-nvidia-vera-rollout-for-sandboxes-in-first-arm-move/) 集群测试、评估基于对象存储的冷快照恢复性能，并采用完全一致的软件封装与宿主机调优配置与 x86 平台进行标准化横向评测。
+
+&gt; **Next Steps:** E2B plans to expand its testing to include multi-node [Vera](https://www.unite.ai/modal-plans-nvidia-vera-rollout-for-sandboxes-in-first-arm-move/) clusters, cold resumes backed by object storage, and standardized x86 comparisons using identical packaging and host tuning.</description>
+    </item>
+    <item>
       <title>智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-10/智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-10/智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化/</guid>
@@ -4206,335 +4559,6 @@ FlashMap 草稿模型采用了 6 层的扩散 Transformer (Diffusion Transformer
 &gt; * **NVIDIA B200:** 3.44× over FlashKDA
 &gt; * **MoE expert-offload serving on Apple silicon:** 30.3 tokens/s decode for `Qwen3.8-Flash-Next` in MLX 4-bit on a 48 GB M4 Pro
 &gt; * **RoboDojo robot manipulation:** 62.1 on held-out seeds vs. 55.3 for the best leaderboard entry.</description>
-    </item>
-    <item>
-      <title>百度开源 Unlimited OCR 2：支持百页超长文档端到端解析</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-28/百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/百度开源-Unlimited-OCR-2-支持百页超长文档端到端解析/</guid>
-      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在海量非结构化数据处理与智能文档分析领域，传统光学字符识别 (Optical Character Recognition, OCR) 模型受制于注意力计算复杂度的二次方爆炸与显存限制，往往难以单次吞吐数十乃至上百页的长篇文档，普遍需要依赖机械的单页切分与拼接，极易割裂跨页上下文并丢失全局排版信息。2026 年 10 月，Baidu 正式开源了参数量为 3.34B 的全新多模态端到端超长文档解析模型 Unlimited OCR 2。该模型创新性地引入了稀疏参考滑动窗口注意力机制 (Sparse Reference Sliding Window Attention, SR-SWA)，将每步解码的计算与显存开销压缩为近乎恒定的常数，真正实现了在单个推理请求中对书籍、财报等数百页文档的整体结构化解析。在多页文档基准测试 MarathonDocBench 上，Unlimited OCR 2 取得了 77.1 的顶尖成绩，大幅领先业界同类模型，且采用高度宽松的 MIT 开源协议，为长文本视觉多模态技术的工程落地树立了全新标杆。
-
----
-
-## 核心概述
-
-&gt; ## Summary
-
-Baidu 正式开源了 **Unlimited OCR 2**，这是一款参数规模为 3.34B 的视觉语言模型 (Vision-Language Model, VLM)，专为在单次请求中端到端解析超长文档（如长篇书籍、企业财务报告以及长达数百页的技术文档）而量身打造。该模型创新性地引入了名为 **SR-SWA (稀疏参考滑动窗口注意力机制，Sparse Reference Sliding Window Attention)** 的稀疏注意力算法，使得随着文档页数增加，模型单步自回归解码的显存与计算开销能够保持近乎平直的常数水平。Unlimited OCR 2 基于极具开放性的 MIT 商业友好协议发布，在 MPDocBench 和 MarathonDocBench 等主流多页文档权威评测基准上均刷新了最佳纪录 (SOTA)。
-
-&gt; Baidu has released **Unlimited OCR 2**, an open-source 3.34B vision-language model designed specifically to parse extremely long documents—such as books, financial filings, and multi-hundred-page reports—in a single request. Featuring a novel sparse attention mechanism known as **SR-SWA (Sparse Reference Sliding Window Attention)**, the model keeps per-step decoding costs nearly flat as document length scales. Available under the MIT license, Unlimited OCR 2 achieves state-of-the-art results on multi-page benchmarks like MPDocBench and MarathonDocBench.
-
----
-
-## 核心速览 (TL;DR)
-
-&gt; ## TL;DR
-
-* **模型规模**：总参数量为 3.34B（激活参数量未公开）。最大位置编码长度达到 131,072 Token。
-* **硬件要求**：支持单张 CUDA GPU 以 BF16 精度全量加载运行（Baidu 官方在单张 NVIDIA A800-80GB 上完成测试），BF16 权重文件总计约 6.7 GB。
-* **综合性能**：在与 9 款主流模型的横向对比中，在多页基准测试中拔得头筹（官方自测数据）。
-* **亮眼优势**：在包含数百页超长文档的基准测试 MarathonDocBench 上斩获 **77.1** 的综合高分，大幅超越位列第二的 Kimi-K3 (33.7 分)。
-* **尚存短板**：在 MarathonDocBench 的标题层级结构树状编辑距离 (TEDS) 评测中得分为 **48.2**，是其各项评测中的最低细项得分。
-
-&gt; * **Size:** 3.34B parameters (active parameters not disclosed). Maximum position length of 131,072 tokens.
-&gt; * **Hardware Requirements:** Runs on a single CUDA GPU in BF16 (tested by Baidu on an NVIDIA A800-80GB). BF16 weights total roughly 6.7 GB.
-&gt; * **Performance:** Claims first place on multi-page benchmarks tested against 9 other models (self-reported).
-&gt; * **Highs:** Scores **77.1** overall on MarathonDocBench (hundreds of pages), significantly outperforming the next best model, Kimi-K3 (33.7).
-&gt; * **Lows:** Scores **48.2** on heading hierarchy (TEDS) on MarathonDocBench, marking its lowest sub-score.
-
----
-
-## 什么是 Unlimited OCR 2？
-
-&gt; ## What is Unlimited OCR 2?
-
-Unlimited OCR 2 是一款多模态视觉语言模型，能够将按顺序排列的整篇文档页面图像直接转换为具备排版结构的纯文本，涵盖复杂表格、数学公式、图表注释、各级层级标题以及自然的阅读流顺序。它是 Baidu 于 2026 年 6 月开源的 [Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) 的全新升级迭代之作。
-
-&gt; Unlimited OCR 2 is a vision-language model that converts ordered page images into structured text, including tables, formulas, figures, headings, and reading order. It succeeds [Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR), which was released in June 2026.
-
-该模型的官方 [配置架构](https://huggingface.co/baidu/Unlimited-OCR-2/blob/main/config.json) 延续了类似 DeepSeek-OCR 的经典设计：前端由 SAM ViT-B 与 CLIP-L 双视觉编码器构成，负责抽取细粒度文字与高层语义特征，随后将视觉特征输入后端的 12 层混合专家模型 (Mixture of Experts, MoE) 解码器。在推理时，每个 Token 会动态路由至 64 个路由专家中的 6 个，并始终激活 2 个共享专家。在多页处理模式下，每张输入的文档图像会被极其紧凑地压缩为 273 个图像 Token。
-
-&gt; The model’s [configuration](https://huggingface.co/baidu/Unlimited-OCR-2/blob/main/config.json) maintains a DeepSeek-OCR style layout: a SAM ViT-B plus CLIP-L encoder feeding into a 12-layer mixture-of-experts (MoE) decoder. Each token routes to 6 of 64 experts, alongside 2 shared experts. In multi-page mode, each processed page consumes 273 image tokens.
-
----
-
-## SR-SWA 机制的工作原理
-
-&gt; ## How Does SR-SWA Work?
-
-在标准注意力机制中，全量注意力计算的开销与序列长度呈二次方级爆炸增长。在自回归解码阶段，每一个新生成的 Token 都必须重新扫描并计算不断膨胀的键值缓存 (Key-Value Cache, KV Cache)；以每页文档消耗 273 个图像 Token 计算，光是解析一份 100 页的长文档，在尚未生成哪怕一个输出字符之前，系统就已累积了高达 27,300 个输入 Token 的庞大显存负担。
-
-&gt; Full attention costs grow quadratically with sequence length. During decoding, every new token scans an increasingly large KV cache; at 273 image tokens per page, parsing a 100-page document introduces 27,300 input tokens before generating any output.
-
-**SR-SWA (稀疏参考滑动窗口注意力机制)** 正是为了攻破这一显存与算力瓶颈而生。它将庞大的图文交叉注意力范围深度压缩进一个固定尺寸的动态工作参考集 (Working References) 中。据官方 [Model Card](https://huggingface.co/baidu/Unlimited-OCR-2) 披露，标准的工作参考集大小仅设为 512 Token，其内部结合了覆盖临近区域的 128 Token 局部滑动窗口，以及对 32 Token 特征块执行 Top-16 稀疏检索的高效挑选机制。
-
-&gt; **SR-SWA (Sparse Reference Sliding Window Attention)** resolves this by compressing text-visual attention into a fixed set of working references. The [model card](https://huggingface.co/baidu/Unlimited-OCR-2) cites 512 tokens as a standard reference size, pairing a 128-token local window with top-16 selection over 32-token blocks. 
-
-得益于这一巧妙的稀疏设计，即使文档页数成倍激增，模型单步自回归解码的显存消耗与单步延迟都能保持近乎恒定的平稳状态，成功在有限的上下文窗口约束下解锁了“无限视界”的长文档解析能力（需要说明的是，前端图像编码耗时以及整体端到端推理总时间仍会随着实际页面数量线性增长）。
-
-&gt; This design keeps per-step latency and memory usage nearly constant as document size increases, delivering "unlimited-horizon" parsing within a finite context window (though image encoding time and total runtime still scale with page counts).
-
----
-
-## 在 MPDocBench 与 MarathonDocBench 基准评测上的表现
-
-&gt; ## Performance on MPDocBench and MarathonDocBench
-
-Baidu 官方在包含数十页的中等长度基准 **MPDocBench** 与涵盖数百页超长篇幅的挑战性基准 **MarathonDocBench** 上对模型展开了全方位评测。
-
-&gt; Baidu evaluated the model on **MPDocBench** (dozens of pages per document) and **MarathonDocBench** (hundreds of pages). 
-
-* **MPDocBench 综合得分**：Unlimited OCR 2 斩获 **84.6** 分高居榜首，紧随其后的是 Qwen3.8-Max (78.3 分) 与 Qwen-3.8-Flash-Next (77.4 分)。
-* **MarathonDocBench 综合得分**：Unlimited OCR 2 表现极为抢眼，拿下 **77.1** 的高分；相比之下，竞品模型在数百页的极端长度下均遭遇性能断崖式滑坡（如 Kimi-K3 跌至 33.7 分，Qwen3.8-Max 跌至 22.9 分）。值得一提的是，其前代模型 Unlimited-OCR 在该基准上得分为 0.0。
-
-&gt; * **MPDocBench Overall:** Unlimited OCR 2 scores **84.6**, followed by Qwen3.8-Max at 78.3 and Qwen-3.8-Flash-Next at 77.4.
-&gt; * **MarathonDocBench Overall:** Unlimited OCR 2 scores **77.1**, while competitors experience sharp performance drops (e.g., Kimi-K3 at 33.7 and Qwen3.8-Max falling to 22.9). Its predecessor, Unlimited-OCR, scored 0.0 on this benchmark.</description>
-    </item>
-    <item>
-      <title>基于分层误差模型搜索的 SVD 大语言模型压缩技术新突破</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-28/基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/基于分层误差模型搜索的-SVD-大语言模型压缩技术新突破/</guid>
-      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 参数规模迈向数百亿甚至上千亿，高昂的计算和显存开销已成为其在实际工业场景落地的最大阻碍之一。基于低秩奇异值分解 (Singular Value Decomposition, SVD) 的模型压缩技术被视为无损瘦身的有效途径，但传统方法长期受困于两大痛点：无法准确评估层间累积误差导致秩分配不合理，以及基于费舍尔信息矩阵的分解容易陷入严重的“秩坍缩”。针对这些技术掣肘，来自国际顶尖学术机构的研究团队提出了全新的 LEMS (分层误差建模搜索) 机制与 KFAC-SVD 分解方法，首次将局部/全局重要性与传播偏差融合构建代理误差函数，并通过整数线性规划 (Integer Linear Programming, ILP) 精准分配压缩预算。在 Mistral、Qwen3 和 Llama 3 等主流模型家族上的实测表明，新方案不仅成功扩展到了 70B 超大模型，还实现了零样本精度最高 4.7 个百分点的跃升与平均 19% 的困惑度改善，为大模型的高效落地提供了崭新的数学与工程范式。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-本论文提出了一系列前沿技术，旨在推进大语言模型 (Large Language Model, LLM) 基于低秩奇异值分解 (Singular Value Decomposition, SVD) 的压缩效果。研究团队精准定位了现有压缩范式中的两大核心缺陷：
-
-&gt; This paper presents novel techniques to advance low-rank Singular Value Decomposition (SVD)-based compression for Large Language Models (LLMs). The authors identify two primary limitations in existing compression methodologies:
-
-1. **全局秩分配瓶颈**：未校准的误差代理指标无法准确捕捉模型各层之间极其复杂的误差传递与累积效应；
-2. **分解质量缺陷**：基于费舍尔信息 (Fisher) 的估计方法容易遭遇严重的“秩坍缩 (Rank Collapse)”，破坏压缩后的表达能力。
-
-&gt; 1. **Global Rank Allocation:** Uncalibrated error proxies fail to capture complex error propagation across layers.
-&gt; 2. **Decomposition Quality:** Fisher-based estimators suffer from severe rank collapse.
-
-为了彻底破解这些难题，研究人员构建了两大关键创新框架：
-
-&gt; To resolve these issues, the researchers introduce two key frameworks:
-
-* **LEMS (分层误差建模搜索, Layer-wise Error Modeling Search)**：通过引入一套分层误差代理模型来优化全局秩分配，该模型有机结合了各层的局部与全局重要性以及误差传播偏差，并巧妙地转化为整数线性规划 (Integer Linear Programming, ILP) 问题进行精确高效求解；
-* **KFAC-SVD**：利用逐 Token (Token-wise) 的统计特征，显著改善分解质量，一举消除了以往基于 Fisher 的 SVD 算法所面临的有效秩缺失 (Rank Deficiency) 困境。
-
-&gt; * **LEMS (Layer-wise Error Modeling Search):** Improves global rank allocation by incorporating a layer-wise error surrogate that integrates local/global layer importance alongside a propagation bias, solved via an Integer Linear Programming (ILP) formulation.
-&gt; * **KFAC-SVD:** Enhances decomposition quality by using token-wise statistics to alleviate rank deficiency in prior Fisher-based SVD approaches.
-
-在 **Mistral**、**Qwen3** 和 **Llama 3** 等主流模型家族上的详尽基准测试表明，本方案实现了高达 **4.7 个百分点**的零样本 (Zero-shot) 准确率增益（这一优势能够无缝拓展至 70B 参数规模的模型），同时带来了平均 **19% 的困惑度 (Perplexity) 显著优化**。
-
-&gt; Extensive evaluations across the **Mistral**, **Qwen3**, and **Llama 3** model families demonstrate zero-shot accuracy gains of up to **4.7 percentage points** (generalizing effectively to 70B parameter models), alongside an average **19% perplexity improvement**.
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-基于低秩奇异值分解 (SVD) 的模型压缩技术，为大幅削减大语言模型 (LLM) 的计算与存储开销提供了一种强有力的途径。然而，现有主流方法普遍受制于两大关键瓶颈：其一是全局秩分配难题——未校准的误差代理函数无法精准刻画深层网络中复杂的跨层误差传递；其二是权重分解质量问题——基于费舍尔信息的估计器往往会出现严重的秩坍缩。在本项工作中，我们通过提出分层误差建模搜索 (LEMS) 与 KFAC-SVD 两大核心创新，有效化解了这些痛点。LEMS 创新性地引入了分层误差替代模型，在整合各层局部与全局重要性的同时兼顾误差传播偏差，并借助整数线性规划 (ILP) 建模实现了全局最优的秩自适应分配。与此同时，KFAC-SVD 充分利用逐 Token 的高阶统计信息，极大缓解了传统 Fisher-SVD 方法中的秩亏损缺陷。跨越 Mistral、Qwen3 和 Llama 3 系列模型的全面实验表明，LEMS 持续超越现有的各类搜索基线策略，在 70B 参数体量的大模型上亦能稳定泛化，带来高达 4.7 个百分点的零样本精度提升；而 KFAC-SVD 则实现了平均 19% 的困惑度大幅改善。
-
-&gt; &gt; Low-rank SVD-based compression offers a powerful strategy to reduce the computational costs of LLMs. However, existing methods face two key limitations: (i) global rank allocation, where uncalibrated error proxies fail to capture complex error propagation, and (ii) decomposition quality, where Fisher-based estimators suffer from severe rank collapse. In this work, we address these limitations by introducing Layer-wise Error Modeling Search (LEMS) and KFAC-SVD. LEMS advances rank allocation by introducing a layer-wise error surrogate that integrates local and global layer importance alongside a propagation bias, enabling effective global rank allocation via an ILP formulation. KFAC-SVD improves decomposition quality by utilizing token-wise statistics, mitigating the rank deficiency observed in prior Fisher-based SVD approaches. Across Mistral, Qwen3, and Llama 3 model families, we show that LEMS consistently outperforms existing search strategies, delivering significant zero-shot accuracy gains of up to 4.7 p.p. that generalize to model sizes of 70B parameters, while KFAC-SVD achieves an average perplexity improvement of 19%.
-
----
-
-## 资源与论文链接
-
-&gt; ## Resources &amp; Links
-
-* **项目主页与开源代码**：[lems-svd.github.io](https://lems-svd.github.io)
-* **论文全文获取**：[查看 PDF](https://arxiv.org/pdf/2610.32878) | [HTML 网页版](https://arxiv.org/html/2610.32878v2) | [TeX 源码](https://arxiv.org/src/2610.32878)
-* **数字对象唯一标识符 (DOI)**：[10.48550/arXiv.2610.32878](https://doi.org/10.48550/arXiv.2610.32878)
-
-&gt; * **Project Page &amp; Code:** [lems-svd.github.io](https://lems-svd.github.io)
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.32878) | [HTML Version](https://arxiv.org/html/2610.32878v2) | [TeX Source](https://arxiv.org/src/2610.32878)
-&gt; * **DOI:** [10.48550/arXiv.2610.32878](https://doi.org/10.48550/arXiv.2610.32878)</description>
-    </item>
-    <item>
-      <title>在 MXFP4 下训练 MoE 大语言模型：如何缩小与 BF16 的精度差距</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-28/在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/在-MXFP4-下训练-MoE-大语言模型-如何缩小与-BF16-的精度差距/</guid>
-      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大模型训练对显存带宽与算力吞吐的要求日益苛刻，将浮点精度压缩至 8 位以下的低精度格式（如 4 位浮点数 FP4）成为了学术界与工业界竞相探索的前沿方向。然而，极低的数值精度带来的剧烈量化误差极易引发训练不收敛与精度雪崩，如何在极度嘈杂的 FP4 环境中保持与标准 16 位浮点 (BF16) 相当的训练质量是当前的核心挑战。针对这一技术瓶颈，研究人员开源了专为混合专家模型 (Mixture-of-Experts, MoE) 打造的训练配方 ALTO，在拥有 200 亿参数的 GPT-OSS-20B 模型上成功落地了微缩放浮点格式 MXFP4。通过融合混合块量化、随机阿达马变换 (Randomized Hadamard Transforms, RHT)、随机舍入 (Stochastic Rounding, SR) 与创新的权重去震荡方案，该方法成功抹平了约 50% 与 BF16 的精度鸿沟，并将达到预定质量目标的收敛步数额外开销从 +20% 骤降至 +5%。这一突破性工作证实了超低精度 FP4 在超大规模稀疏架构模型训练中的巨大可行性，为下一代低成本绿色 AI 基础设施建设指明了方向。
-
----
-
-## 核心执行概要
-
-&gt; ## Executive Summary
-
-使用低于 8 位的超低精度算术体系训练大语言模型 (Large Language Model, LLM)，在大幅释放显存带宽潜力以及显著提升计算吞吐量方面展现出了巨大的吸引力。然而，4 位浮点数 (FP4) 格式所引入的极端量化误差，往往会导致优化过程严重失稳甚至发散。
-
-&gt; Training Large Language Models (LLMs) in sub-8-bit arithmetic presents significant potential for boosting memory bandwidth and compute throughput. However, the extreme quantization errors introduced by FP4 formats typically destabilize optimization. 
-
-针对这一技术瓶颈，本文隆重推出了 **ALTO**——一套开源训练技术方案，专为在 MLPerf Small MoE 训练基准评测中使用 **MXFP4 微缩放格式 (Microscaling Format)** 训练拥有 200 亿参数的混合专家模型 (Mixture-of-Experts, MoE) **GPT-OSS-20B** 而量身定制。通过巧妙结合混合块量化、随机阿达马变换 (Randomized Hadamard Transforms, RHT)、随机舍入 (Stochastic Rounding, SR) 以及简化的权重去震荡 (Weight De-oscillation) 机制，研究团队成功抹平了与标准 BF16 基准线之间约 **50% 的精度差距**。
-
-&gt; This paper introduces **ALTO**, an open-source training recipe designed to train **GPT-OSS-20B**—a 20-billion-parameter mixture-of-experts (MoE) model—using the **MXFP4 microscaling format** on the MLPerf Small MoE Training benchmark. By integrating hybrid block quantization, randomized Hadamard transforms, stochastic rounding, and a simplified weight de-oscillation scheme, the researchers successfully closed approximately **50% of the accuracy gap** to the BF16 baseline.
-
----
-
-## 方法论：ALTO 训练技术配方
-
-&gt; ## Methodology: The ALTO Recipe
-
-为了稳固 FP4 极低精度下的训练稳定性，并弥合与传统 16 位浮点精度之间的表现差距，ALTO 紧密结合了数项业界前沿的技术手段：
-
-&gt; To stabilize FP4 training and bridge the gap to traditional 16-bit precisions, ALTO combines several cutting-edge techniques:
-
-1. **量化基础构建**：采用混合 1D/2D 块量化策略（改良自 Abecassis 等人的方案）；
-2. **误差消除机制**：运用**随机阿达马变换 (Randomized Hadamard Transforms, RHT)** 与**随机舍入 (Stochastic Rounding, SR)** 来有效抵御低精度噪声带来的扰动；
-3. **权重稳定调控**：引入并简化了源自 *TetraJet-v2* (arXiv:2510.27527) 的**权重去震荡方案 (Weight De-oscillation Scheme)**。
-
-&gt; 1. **Quantization Foundations:** Employs hybrid 1D/2D block quantization (adapted from Abecassis et al.).
-&gt; 2. **Error Mitigation:** Utilizes **Randomized Hadamard Transforms (RHT)** and **Stochastic Rounding (SR)** to handle low-precision noise.
-&gt; 3. **Weight Stabilization:** Integrates a simplified **weight de-oscillation scheme** adapted from *TetraJet-v2* (arXiv:2510.27527).
-
----
-
-## 评测结果与模型性能表现
-
-&gt; ## Results &amp; Performance
-
-* **验证集损失 (C4 数据集)**：在全局批大小 (Global Batch Size) 为 16、训练步数为 16,128 步的设定下，集成了 `MXFP4 + RHT + SR + 权重去震荡` 的完整流程取得了 **3.3350** 的验证集损失 (Validation Loss)；
-* **极度逼近 Baseline**：该数值距离纯 16 位精度基线 (BF16 Baseline) 的 3.3283 仅有 **0.007 的极微弱差距**；
-* **去震荡机制的显著功效**：若未开启权重去震荡，MXFP4 训练的验证损失停留在 3.3418；去震荡方案成功挽回了近 **50% 的性能落差**；
-* **收敛额外开销大幅收窄**：以达到 MLPerf 质量目标（验证损失 3.34）所需的迭代步数计算，去震荡机制将 FP4 相对 BF16 的额外收敛步数开销**从 +20.0% 骤降至仅 +5.0%**。
-
-&gt; * **Validation Loss (C4 Dataset):** At a global batch size of 16 and 16,128 steps, the full `MXFP4 + RHT + SR + de-oscillation` pipeline achieved a validation loss of **3.3350**. 
-&gt; * **Proximity to Baseline:** This sits just **0.007 above the BF16 baseline** of 3.3283.
-&gt; * **Impact of De-Oscillation:** Without de-oscillation, MXFP4 hit a validation loss of 3.3418. The de-oscillation scheme successfully recovered roughly **50% of the performance gap**.
-&gt; * **Convergence Overhead:** Measured by the steps required to hit the MLPerf quality target (validation loss of 3.34), de-oscillation reduced the FP4 convergence overhead relative to BF16 **from +20.0% down to +5.0%**.
-
----
-
-## 负向探索结果（被证实无效的技术手段）
-
-&gt; ## Negative Results (What Didn't Work)
-
-尽管在算子级别的信噪比 (Signal-to-Noise Ratio, SNR) 测试中观察到了一定收益，但作者指出，以下技术在端到端 (End-to-End) 训练中均表现出负向效果：
-
-&gt; Despite observing operator-level Signal-to-Noise Ratio (SNR) gains, the authors reported negative end-to-end results for the following techniques:
-
-* 差分梯度估计 (Differential Gradient Estimation)
-* 离群值截断 (Outlier Clipping)
-* 宏块缩放 (Macro-block Scaling)
-
-&gt; * Differential gradient estimation
-&gt; * Outlier clipping
-&gt; * Macro-block scaling</description>
-    </item>
-    <item>
-      <title>Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索/</guid>
-      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着检索增强生成 (Retrieval-Augmented Generation, RAG) 与各类 AI 智能体应用的爆发，如何在传统关系型数据库中低成本、高效率地管理与检索海量高维向量数据，成为了现代数据架构领域的关键命题。尽管主流的 `pgvector` 扩展提供了基础的向量检索能力，但在面对海量数据集时，基于图拓扑的 HNSW 索引往往面临显存与磁盘占用过大、带条件过滤查询 (Filtered Search) 召回率和延迟急剧劣化的痛点。针对这一工程瓶颈，知名向量数据库厂商 Pinecone 正式开源了基于 Apache 2.0 协议的 Postgres 扩展插件 **`pg_pinecone`**。该插件创新性地在 Postgres 内部引入了基于 RaBitQ 量化算法的倒排文件索引架构，使得 100 万条 768 维向量的索引体积压缩至仅 136 MB，比传统 HNSW 缩减数十倍，并彻底解决了预过滤与后过滤的性能与准确率两难困境。此外，`pg_pinecone` 提供了原生引擎、Pgvector 引擎和托管远程引擎三种模式，帮助开发者无缝实现从单机本地轻量开发到云端无服务器海量扩展的平滑过渡。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-2026 年 10 月 27 日，Pinecone 正式开源了遵循 Apache 2.0 协议的 Postgres 搜索扩展插件 **`pg_pinecone`**。该扩展能够直接与现有的 `pgvector` 向量列深度集成，提供高效率的向量检索 (Vector Search) 能力。根据官方发布的基准测试，对于 100 万条 768 维度的向量，其原生索引所需的存储空间仅为 136 MB——其空间利用效率显著超越了以 HNSW 为代表的传统图基索引。`pg_pinecone` 旨在将数据完全保留在 Postgres 内部的同时，彻底解决带条件过滤检索常见的不准确问题；它提供了三种差异化的执行引擎（原生引擎、Pgvector 引擎以及远程引擎），支持应用从本地开发环境平滑过渡并扩展至云端托管的无服务器 (Serverless) 基础设施。
-
-&gt; On October 27, 2026, Pinecone released **`pg_pinecone`**, an open-source Postgres search extension licensed under Apache 2.0. The extension integrates high-efficiency vector search capabilities directly with existing `pgvector` columns. In company-reported benchmarks, its native index for 1 million 768-dimension vectors requires only 136 MB of storage—significantly outperforming traditional graph-based index sizes like HNSW. Designed to maintain data fully inside Postgres while resolving accuracy issues typical of filtered searches, `pg_pinecone` offers three distinct engines (Native, Pgvector, and Remote) to scale smoothly from local development to cloud-managed serverless infrastructure.
-
----
-
-## 单一索引背后的三套执行引擎
-
-&gt; ## Three Engines Behind One Index
-
-`pg_pinecone` 能够与现有的 `pgvector` 向量列无缝协作。应用程序可以完全按照常规方式连接到 Postgres，并执行标准 SQL 查询（例如 `ORDER BY embedding &lt;=&gt; $1 LIMIT 10`）。由于原始数据表和完整高维向量仍然保存在数据库内部，Postgres 继续充当最根本的权威数据源记录系统 (System of Record)。
-
-&gt; `pg_pinecone` works seamlessly with vector columns already held in `pgvector`. Applications connect to Postgres normally and issue standard SQL queries (such as `ORDER BY embedding &lt;=&gt; $1 LIMIT 10`), leaving tables and full vectors in place so that Postgres remains the system of record.
-
-每个数据库表都可以选择使用以下三种专用引擎之一：
-
-* **原生引擎 (Native Engine, 默认配置)**：完全在 Postgres 内部构建索引并执行搜索，不需要注册 Pinecone 账号、配置 API 密钥或发出任何外部网络请求。
-* **Pgvector 引擎 (Pgvector Engine)**：直接搜索既有的 `pgvector` 索引（如 HNSW 或 IVFFlat），非常适合那些已建好索引且无需复杂条件过滤的现有数据表。
-* **远程引擎 (Remote Engine)**：将检索操作卸载分流至 Pinecone 托管服务中的无服务器索引，专为单个 Postgres 数据库服务器无法承载的超大规模负载而量身定制。
-
-&gt; Each database table can utilize one of three specialized engines:
-&gt; *   **Native Engine (Default):** Builds and searches its index entirely inside Postgres without requiring a Pinecone account, API keys, or external network calls.
-&gt; *   **Pgvector Engine:** Searches an existing `pgvector` index (HNSW or IVFFlat), making it ideal for pre-indexed tables that do not require filtering.
-&gt; *   **Remote Engine:** Offloads search operations to a serverless index in Pinecone’s managed service, tailored for workloads that have outgrown a single Postgres server.
-
-只需调用一次 `pinecone.set_engine()`，即可在不同的引擎之间无缝切换数据表。这一过程完全不会改动上层的业务查询逻辑，并且整个操作是完全可逆的。
-
-&gt; Switching a table between engines requires a single call to `pinecone.set_engine()`, keeping queries unchanged and fully reversible.
-
----
-
-## 原生引擎的检索工作机制
-
-&gt; ## How the Native Engine Searches
-
-与 `pgvector` 的 HNSW 类似，原生引擎同样采用了近似最近邻 (Approximate Nearest Neighbor, ANN) 算法；不同之处在于，它抛弃了传统的图结构，转而采用一种对相似向量进行聚类分组的**倒排文件索引 (Inverted File Index)**。
-
-&gt; Like `pgvector`'s HNSW, the native engine employs an approximate nearest neighbor algorithm, but replaces traditional graphs with an **inverted file index** that clusters similar vectors.</description>
-    </item>
-    <item>
-      <title>Oracle Acceleron 新增前端 RDMA 与多平面容错架构加速 AI 网络</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-28/Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-28/Oracle-Acceleron-新增前端-RDMA-与多平面容错架构加速-AI-网络/</guid>
-      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在万卡级大模型分布式训练与超大规模 AI 推理集群中，底层的网络通信往往是最脆弱的木桶短板——任何一个节点微小的网络拥塞或单点光纤链路故障，都可能导致全局计算任务陷入长久等待甚至全面瘫痪。为此，Oracle 在拉斯维加斯举办的 Oracle AI World 大会上，对其专为 AI 算力设计的云原生网络架构套件 **Oracle Acceleron** 进行了重磅升级。本次更新首次将远程直接内存访问 (Remote Direct Memory Access, RDMA) 技术引入前端计算网络，使 NVMe 块存储性能狂飙高达 3 倍，并重磅推出了 Oracle 集合通信库 (Oracle Collective Communications Library, OCCL) 与透明前端多平面容错网络架构。这套新方案不仅彻底打破了传统网络中 CPU 参与数据搬运的性能瓶颈，更能在硬件链路发生抖动或中断时，以应用层无感知的亚毫秒级速度动态重路由流量，为大规模分布式 AI 基础设施构筑了坚如磐石的高速容错网络基石。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-在拉斯维加斯举办的 Oracle AI World 大会上，Oracle 正式发布了其专为严苛 AI 工作负载定制的 **Oracle Acceleron** 云网络套件的重大更新。本次升级引入了前端 RDMA 直连能力，通过扩展的 NVMe 块存储挂载选项实现了最高达 3 倍的性能飞跃，并同步推出了 Oracle 集合通信库 (Oracle Collective Communications Library, OCCL) 以及透明前端多平面网络架构 (Transparent Front-End Multiplanar Networking)。这些技术突破旨在消除分布式集群中的网络传输瓶颈，在硬件出现单点故障时动态将流量重定向绕行，从而安全地横向扩展超大规模 AI 算力基础设施。
-
-&gt; At Oracle AI World in Las Vegas, Oracle announced major updates to its **Oracle Acceleron** cloud networking suite designed for demanding AI workloads. The updates introduce front-end RDMA connectivity, up to 3x performance improvements via expanded NVMe block-storage options, the Oracle Collective Communications Library (OCCL), and Transparent Front-End Multiplanar Networking. These enhancements are built to prevent network bottlenecks, dynamically reroute traffic around failures, and securely scale large-scale AI infrastructure.
-
----
-
-## 方案介绍
-
-&gt; ## Introduction
-
-2026年10月27日，Oracle 在拉斯维加斯的 Oracle AI World 大会上揭晓了专为 AI 工作负载打造的全新 Oracle Acceleron 云网络功能。这套重磅更新引入了前端 RDMA 连接能力，推出了据 Oracle 称性能最高提升达 3 倍的扩展 NVMe 块存储挂载选项，并为其多平面网络 (Multiplanar Networks) 配备了全新的专属集合通信库。
-
-&gt; Oracle announced new Oracle Acceleron cloud networking capabilities for AI workloads at Oracle AI World in Las Vegas on October 27, 2026. The updates introduce front-end RDMA connectivity, expanded NVMe block-storage options that Oracle said improve performance up to 3x, and a collective communications library for its multi-planar networks.
-
-Oracle Acceleron 是 Oracle 云基础设施 (Oracle Cloud Infrastructure, OCI) 推出的一整套高性能网络与基础设施技术体系，专门保障严苛 AI 任务能够高可靠、高安全且大规模地顺畅运行。它将专用网络交换拓扑 (Fabric)、更直接的数据直通路径、融合网卡 (Converged NIC) 与主机级零信任路由及多平面容错设计深度整合，兼顾超高安全性与集群韧性。此次发布的全新能力主要涵盖三大核心维度：
-* AI 数据高速流转
-* 分布式 AI 通信协同
-* 安全多租户 AI 基础设施
-
-&gt; Oracle Acceleron is Oracle Cloud Infrastructure’s (OCI) suite of networking and infrastructure technologies for running demanding AI workloads reliably, securely, and at scale. It combines dedicated network fabrics, more direct data paths, and a converged NIC, with host-level zero-trust routing and multi-planar designs for security and resilience. The new capabilities span three areas: 
-&gt; * AI data movement
-&gt; * Distributed AI communication
-&gt; * Secure multi-tenant AI infrastructure
-
-“当成千上万张加速计算芯片协同作业时，任何一条路径的拥塞或故障，所造成的后果都会远远超出单一连接本身的范畴，” OCI 计算与 AI 基础设施执行副总裁 Pradeep Vincent 在 [Oracle 的官方公告](https://www.prnewswire.com/news-releases/oracle-unveils-new-cloud-networking-innovations-for-ai-302920240.html) 中指出。
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; *"When thousands of accelerators are working together, one congested or failed path can have consequences far beyond a single connection,"* said Pradeep Vincent, executive vice president of Compute and AI Infrastructure at OCI, in [Oracle’s announcement](https://www.prnewswire.com/news-releases/oracle-unveils-new-cloud-networking-innovations-for-ai-302920240.html). 
-
-Pradeep Vincent 特别强调，Acceleron 架构的原生设计正是为了实现动态实时响应：它能够在遇到链路故障时瞬时绕障重路由，快速自愈，从而帮助客户实现安全从容的集群算力扩容。
-
-&gt; Vincent noted that Acceleron is built to respond dynamically by rerouting traffic, recovering from failures, and helping customers scale securely.
-
----
-
-## 前端 RDMA 与 NVMe 存储加速
-
-&gt; ## Front-End RDMA and NVMe Storage
-
-首项新能力名为 **Oracle Acceleron 高性能网络交换拓扑 (Oracle Acceleron High-Performance Fabric)**，它首次将远程直接内存访问 (RDMA) 扩展到了 OCI 的前端计算节点，助力客户以更出色的性能部署大规模推理、分布式存储以及高性能计算 (High-Performance Computing, HPC) 任务。第二项突破则是大幅丰富了跨 Oracle Acceleron 裸金属服务器及虚拟机的 NVMe 块存储挂载形态，直接将面向 AI、现代数据库以及其他高密度数据吞吐型负载的综合性能提升了高达 **3 倍**。
-
-&gt; The first new capability, **Oracle Acceleron High-Performance Fabric**, brings RDMA connectivity to OCI front-end compute, helping customers deploy inference, storage, and HPC workloads with greater performance. The second enhancement—expanded NVMe block-storage attachment options across Oracle Acceleron bare metal and virtual machine shapes—improves performance up to **3x** for AI, database, and other data-intensive workloads.
-
-在 [Oracle 官方 OCI 技术博客的一篇长文](https://blogs.oracle.com/cloud-infrastructure/first-principles-networking-for-ai-scale) 中，技术作者将 RDMA 形象地描述为：允许数据在不同物理机之间的内存中极速直传，而几乎无需中央处理器 (CPU) 的深度介入。通过彻底绕过传统网络传输中繁重冗长的操作系统与内核协议栈软件开销，RDMA 不仅极大压缩了网络延迟、维系着顶格的高吞吐带宽，还能为关键应用程序释放出宝贵的 CPU 算力资源。
-
-&gt; In [a technical post on Oracle’s OCI blog](https://blogs.oracle.com/cloud-infrastructure/first-principles-networking-for-ai-scale), authors described RDMA as moving data directly between memory on different machines with minimal CPU involvement. By bypassing much of the operating-system and software processing standard in conventional transfers, RDMA reduces latency, sustains high throughput, and leaves more CPU capacity for applications.</description>
     </item>
   </channel>
 </rss>
