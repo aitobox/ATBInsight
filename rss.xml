@@ -5,6 +5,106 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-12/Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-12/Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速/</guid>
+      <pubDate>Thu, 12 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型与多模态 AI 时代，海量高维向量数据 (Embeddings) 的索引检索、量化压缩与清洗整理无处不在，而聚类算法是这一系列数据管线中最关键的基石。然而，沿用了数十年的经典 Lloyd k-means 算法在面对十亿乃至百亿规模的向量时，全量数据集迭代需要消耗巨大的显存与数以千计的 GPU 计算耗时。Meta 旗下 FAIR 团队联合巴黎高科路桥大学 (École Nationale des Ponts et Chaussées) 在全新发布的 Faiss 1.16.0 中正式推出了革命性的 e-means 算法。该算法通过小批次指数衰减更新机制与无需调参的自适应缩放法则，仅需 1.4 至 2.6 个轮次即可追平传统算法 25 轮的收敛精度，在 GPU 上带来高达 10 至 45 倍的端到端提速，更以极低成本完成了 100 亿级向量的超大规模聚类。
+
+---
+
+## 概述
+
+&gt; ## Summary
+
+Meta 正式发布了 **Faiss 1.16.0**，带来了由 Meta 旗下 FAIR 实验室与法国巴黎高科路桥大学 (École Nationale des Ponts et Chaussées) 联合打造的全新 **e-means** 聚类算法。为了突破海量高维向量量化与数据整理中的算力瓶颈，e-means 彻底摒弃了传统 Lloyd k-means 繁重的数据集全量遍历，转而采用小批次 (mini-batch) 配合指数衰减的累加和与计数更新机制。研究表明，这项新技术仅需极少数训练轮次便能达到更低的损失值——只需 1.4 至 2.6 轮就能匹敌传统 Lloyd 算法运行 25 轮的精度，同时带来 10 至 45 倍的 GPU 端到端实际用时加速。本次发布包含完整的 CPU、GPU 及分布式运行方案，集成了 Triton 和 CuTe 高性能计算内核，并全面支持规模高达 100 亿条向量级超大数据集的处理工具链。
+
+&gt; Meta has released **Faiss 1.16.0**, introducing the **e-means** clustering algorithm developed by FAIR at Meta and École Nationale des Ponts et Chaussées. Designed to accelerate large-scale vector quantization and data curation, e-means replaces traditional Lloyd k-means iterations with exponentially decayed sums and counts from mini-batches. According to researchers, the new method achieves lower loss in a fraction of the epochs (reaching 25-epoch Lloyd accuracy in just 1.4 to 2.6 epochs) while delivering 10–45× GPU wall-clock speedups. The release includes full CPU, GPU, and distributed implementations, Triton and CuTe assignment backends, and tooling for datasets scaling up to 10 billion vectors.
+
+---
+
+## E-Means 如何更新聚类中心
+
+&gt; ## How E-Means Updates Centroids
+
+K-means 聚类算法的核心目标是最小化各向量与其所属最近质心 (聚类中心) 之间的均方距离，这是信息检索、向量量化以及大规模数据整理中至关重要的底层操作。经典的 Lloyd 算法在每次迭代中必须将所有数据点分配给最近的质心，随后遍历完整数据集重新计算聚类统计量，计算代价极其昂贵；而 **e-means** 则采用了更巧妙高效的更新路径：
+
+&gt; K-means clustering minimizes the mean squared distance between vectors and their nearest centroid, a critical operation for retrieval, quantization, and data curation. While traditional Lloyd’s algorithm assigns every point to its nearest centroid and rebuilds cluster statistics from the full dataset, **e-means** takes a more efficient approach:
+
+* **指数衰减更新机制 (Exponentially Decayed Updates)**：算法仅基于小批次数据持续更新运行中的累加和与样本计数，使较早批次的分配结果权重随时间呈指数级衰减，平滑降低其对当前聚类中心的影响。
+* **自适应缩放法则 (Automatic Scaling Laws)**：内置两套拟合好的经验缩放法则，能够根据数据集规模、聚类簇数量以及预设的轮次预算，自动推导最佳批次大小与初始步长，免去了繁琐的手工超参数调优。同时结合余弦退火策略，随训练推进平滑递减步长。
+* **死簇复活策略 (Cluster Revival)**：算法通过分裂活跃的供体簇 (donor cluster) 来激活并重置失效或利用率极低的“死簇”；在最后一个训练轮次中，每个簇则会严格采用最终分配样本的真实均值进行精确收尾。
+
+&gt; * **Exponentially Decayed Updates:** It updates running sums and counts from mini-batches, allowing older assignments to gradually lose influence. 
+&gt; * **Automatic Scaling Laws:** Two fitted scaling laws derive batch sizes and initial step sizes automatically based on dataset size, cluster count, and epoch budgets, removing the need for separate hyperparameter tuning. A cosine schedule gradually reduces the step size over time.
+&gt; * **Cluster Revival:** The algorithm prevents dead or underused clusters by splitting a donor cluster, finalizing each cluster with its exact mean over the final epoch's assignments.
+
+研究团队通过多达 75,000 次优化运行拟合了这些缩放法则。在留出数据集 (held-out dataset) 测试中，步长缩放法则的中位数后悔值 (regret) 仅为 0.07%，而默认批次法则的后悔值也仅有 0.19%，展现出极高的一致性与泛化能力。
+
+&gt; Researchers fitted these scaling laws using 75,000 optimization runs, reporting a median held-out-dataset regret of just 0.07% for the step law and 0.19% for the default batch law.
+
+---
+
+## 基准测试：直面百亿级向量挑战
+
+&gt; ## Benchmarks Extend to Ten Billion Vectors
+
+在 NVIDIA H100 GPU 与多核 Intel Xeon CPU 上的多项验证基准测试充分展示了 e-means 的巨大性能跃升：
+
+&gt; Validation tests on H100 and multi-core Xeon CPUs demonstrated massive efficiency gains:
+
+* 在横跨 11 项 VIBE 向量嵌入基准测试中，e-means 仅耗费 **1.6 至 2.6 个轮次** 便达到了标准 Lloyd 算法运行 25 个轮次的同等误差水平。
+* 在单块 H100 GPU 上，相比 Flash-KMeans 实现了 **8.0 至 22.8 倍的加速**；在配备 64 核 CPU 的服务器上，相比标准 Faiss 实现了 **9.0 至 15.0 倍的加速**。
+
+&gt; * Across 11 VIBE embedding tests, e-means reached standard Lloyd 25-epoch error levels in just **1.6 to 2.6 epochs**.
+&gt; * It achieved **8.0× to 22.8× speedups** against Flash-KMeans on a single H100 GPU, and **9.0× to 15.0× speedups** against standard Faiss running on 64 CPU cores.</description>
+    </item>
+    <item>
+      <title>AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-12/AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-12/AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变/</guid>
+      <pubDate>Thu, 12 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在分布式系统工程中，如何以低成本、确定性的方式验证复杂并发一致性一直是系统工程的核心难题。Amazon 从早期基于 Paxos 一致性协议、运行在单进程 Java 虚拟机 (JVM) 中的“Alf”锁服务仿真器起步，逐步演化出如今支撑 S3、DynamoDB 等 200 多个云服务的庞大分布式架构。面对传统手动为每个服务构建测试桩耗时数年的瓶颈，AWS 让 AI 智能体 (AI Agent) 以公开的 Smithy 接口模型为蓝图，结合真实云端运行环境进行双向比对验证，全自主编写并推出了可本地免费离线运行的 AWS 仿真器 (AWS Emulator)。当编写与调试代码的工作逐步交由 AI 智能体接管，软件工程师的核心职责正迎来历史性蜕变——从底层的业务代码编写者，跃升为系统架构规范的制定者、高保真仿真环境的搭建者，以及严密代码准入门禁的守门人。
+
+---
+
+## 📌 执行概要
+
+&gt; ## 📌 Executive Summary
+
+本文深入探讨了 Amazon 分布式系统测试方法的演进历程——从早期类似“Alf”分布式锁服务的手工仿真环境，跨越到当下自主编码 AI 智能体 (AI Agent) 唱主角的新时代。这一演进的高潮，正是 **AWS 仿真器 (AWS Emulator)** 的正式发布。这是一款完全由 AI 智能体独立编写而成的开发利器，能为全球开发者在本地提供一套完全免费、支持离线运行且涵盖 200 多个 AWS 核心云服务的本地仿真镜像。
+
+&gt; This article explores the evolution of distributed systems testing at Amazon—from early hand-built simulations like the "Alf" lock service to the modern era of autonomous AI coding agents. It marks the launch of the **AWS Emulator**, a tool written entirely by AI agents that provides developers with a local, free, offline copy of over 200 AWS services.
+
+文章的核心观点与主要看点如下：
+
+&gt; Key takeaways include:
+
+* **测试范式的演进**：测试手段从成本高昂且难以横向扩展的物理混沌工程，逐步过渡到确定性的本地仿真模拟，最终步入今天由 AI 智能体驱动的自适应闭环验证。
+* **智能体自主开发突破**：AI 智能体直接利用 Smithy 公共 API 接口规范，并调用真实 AWS 线上端点反复对比校准，以传统软件工程无可比拟的速度自主构建出了完整的 AWS 仿真器。
+* **软件工程师角色的重塑**：当日常写代码的任务交由智能体接管后，现代软件工程师的核心职责转变为设计严苛的系统规范、仿真测试环境、安全护栏以及自动化的代码合并门禁 (Merge Gate)。
+
+&gt; * **The Testing Evolution:** Moving from expensive, hard-to-scale physical chaos testing to deterministic local simulations and now AI-driven agent verification.
+&gt; * **Autonomous Agent Development:** How AI agents utilized public API models (Smithy) and real AWS endpoints to autonomously build the AWS Emulator in a fraction of traditional timelines.
+&gt; * **The Changing Engineering Role:** When agents write the code, the modern software engineer’s primary responsibility shifts to designing rigorous guardrails, test environments, specifications, and automated merge gates.
+
+---
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *“2004年，我刚入职 Amazon 刚满一个月，就获得了一个为自己团队挑选一名实习生的机会……”* —— **Werner Vogels**  
+&gt; *In 2004, barely a month into my new job at Amazon, I got the opportunity to pick an intern to join my team...* — **Werner Vogels**
+
+---
+
+## AWS 分布式系统测试的起源
+
+&gt; ## The Origins of Distributed Systems Testing at AWS
+
+大约二十年前，Werner 安排 Swami 与 Amazon 早期工程师 Al Vermeulen 合作，共同研发一款名为 **“Alf”** 的分布式锁服务。Alf 基于经典的一致性算法 Paxos 构建，后来成为了支撑 S3 和 DynamoDB 等极其复杂的大规模分布式系统的核心底层“可信数据源 (Truth Store)”。
+
+&gt; About twenty years ago, Werner asked Swami to work with early Amazon engineer Al Vermeulen on a distributed lock service called **"Alf"**. Built on Paxos, Alf became the underlying truth store powering complex distributed systems like S3 and DynamoDB.</description>
+    </item>
+    <item>
       <title>长程 AI 智能体与持久化执行架构深度剖析</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-11/长程-AI-智能体与持久化执行架构深度剖析/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-11/长程-AI-智能体与持久化执行架构深度剖析/</guid>
@@ -4401,164 +4501,6 @@ Granary v2 是支撑该模型训练混合配方的庞大开源数据基础设施
 &gt;   * [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.35985)
 &gt;   * [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.35985)
 &gt;   * [SciX](https://scixplorer.org/abs/arXiv:2610.35985)</description>
-    </item>
-    <item>
-      <title>FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-29/FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-29/FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码/</guid>
-      <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (Large Language Model, LLM) 的推理生成中，传统的逐个 Token 串行自回归解码极易受限于 GPU 显存带宽瓶颈，而投机解码 (Speculative Decoding) 虽能通过小型草稿模型 (Drafter) 批量预估候选 Token，但此前基于离散扩散模型的草稿方案往往因对每个位置独立预测（因子化近似假设）而频频遭遇“语义模态崩溃”——例如在面对“New York”与“San Diego”两种高频合理搭配时，容易错误拼凑出“New Diego”从而被目标模型全盘推翻。为了彻底破除这一顽疾，来自 Polymathic AI、Princeton University、USC ISI、NYU 与 Flatiron Institute 的研究团队联合推出了全新草稿模型 **FlashMap**。FlashMap 突破性地摒弃了离散扩散机制，创新引入连续流映射 (Continuous Flow Map) 技术，仅需单次前向传播就能将高斯噪声整体映射为一个连贯的 16-Token 文本块，从底层数学上严密保留了词间语义关联。在 Qwen3-8B 等模型与 GSM8K 等数学基准上，仅凭一个 0.5B 的超轻量草稿头便实现了最高达 **6.14 倍的完全无损加速 (Lossless Speedup)**，并已原生适配 vLLM 与 SGLang 高性能推理引擎，为大模型实时高速推理开辟了全新可能。
-
----
-
-## 核心摘要
-
-&gt; ## Summary
-
-来自 Polymathic AI、Princeton University、USC ISI、NYU 以及 Flatiron Institute 的研究人员联合推出了 **FlashMap**——这是一种全新的投机解码草稿模型 (Speculative Decoding Drafter)，创新性地使用连续流映射 (Continuous Flow Map) 机制取代了传统的离散扩散模型。FlashMap 通过在单次前向传播中直接将高斯噪声映射为包含 16 个 Token 的文本块，完美保留了各 Token 之间的上下文语义一致性，并在 Qwen3-8B（GSM8K 基准）上取得了最高 **6.14 倍的无损加速 (Lossless Speedup)**。本次开源发布包含了基于 Apache-2.0 协议的 Qwen3-8B 与 Qwen3-4B 模型权重（托管于 Hugging Face），并同步提供了面向 vLLM 与 SGLang 推理引擎的开箱即用插件。
-
-&gt; Researchers from Polymathic AI, Princeton University, USC ISI, NYU, and the Flatiron Institute have introduced **FlashMap**, a novel speculative decoding drafter that replaces discrete diffusion with a continuous flow map. By mapping Gaussian noise to a 16-token block in a single forward pass, FlashMap preserves inter-token consistency and achieves up to a **6.14x lossless speedup** on Qwen3-8B (GSM8K). The release includes Apache-2.0 model weights for Qwen3-8B and Qwen3-4B on Hugging Face, alongside out-of-the-box plugins for vLLM and SGLang.
-
----
-
-## 核心要点速览
-
-&gt; ## TL;DR
-
-* **模型规模 (Model Size)**：采用 0.5B 参数量的轻量草稿模型（针对 Qwen3-8B 为 500M 参数，针对 Qwen3-4B 为 475M 参数）；单次草拟包含 $K = 16$ 个 Token 的文本块。
-* **硬件需求 (Hardware Requirements)**：草稿模型与目标模型共享部署在同一张 GPU 上。在基准评测中，使用单张 NVIDIA H200 NVL 显卡，在并发为 1、精度为 `bf16` 的环境下完成性能测试。
-* **综合性能 (Performance)**：在 Qwen3-8B 上测试的所有草稿模型中速度位列第一，接受率相比重新训练的基线 DFlash 平均高出约 7%。
-* **最佳表现 (Best Case)**：在温度为 0 的 GSM8K 数学基准评测中实现了 6.14 倍的加速比（平均单步接受长度达到 7.69 个 Token）。
-* **最低表现 (Worst Case)**：在温度为 1 的 Alpaca 任务中加速比为 2.28 倍。在 Qwen3-4B（温度为 0）的测试中，在 9 项评测任务中有 4 项略微落后于 DFlash。
-
-&gt; * **Model Size:** 0.5B-parameter drafter (500M for Qwen3-8B, 475M for Qwen3-4B); drafts blocks of $K = 16$ tokens.
-&gt; * **Hardware Requirements:** Runs on the same GPU as the target model. Benchmark speedups utilize 1 NVIDIA H200 NVL at concurrency 1 in `bf16`.
-&gt; * **Performance:** The fastest drafter tested on Qwen3-8B, averaging ~7% higher acceptance than a retrained DFlash.
-&gt; * **Best Case:** 6.14x speedup on GSM8K at temperature 0 (acceptance length of 7.69 tokens).
-&gt; * **Worst Case:** 2.28x speedup on Alpaca at temperature 1. On Qwen3-4B (temperature 0), it trails DFlash on 4 of 9 tasks.
-
----
-
-## 什么是 FlashMap？
-
-&gt; ## What is FlashMap?
-
-FlashMap 是一种用于投机解码 (Speculative Decoding) 的新型草稿模型，它能够在单步计算内直接将高斯噪声整体映射为包含多个 Token 的完整文本块。其工作流程为：先由轻量级的草稿模型先行“草拟”预估出 $K$ 个 Token，随后由主目标大模型在单次并行前向传播中对这 $K$ 个 Token 进行校验评估，并保留最长匹配的前缀序列。这一严格的验证机制确保了最终生成的输出内容与目标大模型原生逐字解码的数学分布完全一致，实现真正的完全无损输出。
-
-&gt; FlashMap is a speculative decoding drafter that maps Gaussian noise directly to an entire token block in a single step. A small drafter proposes $K$ tokens, after which the target model evaluates all $K$ tokens in one parallel pass and retains the longest matching prefix. This ensures the final output remains completely lossless compared to what the target model would produce natively.
-
-在投机解码框架下，端到端的整体加速性能主要取决于两大关键因素：
-1. **接受率 (Acceptance Rate)**：由草稿模型拟定的候选 Token 中，有多少能够被目标主模型成功采纳。
-2. **草拟开销 (Drafting Overhead)**：生成这些候选 Token 所消耗的额外计算资源与时间成本有多低。
-
-&gt; In speculative decoding, overall speed depends on two key factors:
-&gt; 1. **Acceptance Rate:** How many drafted tokens are accepted.
-&gt; 2. **Drafting Overhead:** How cheaply the tokens were generated.
-
-举例来说，[EAGLE-3](https://arxiv.org/abs/2503.01840) 采用自回归的方式逐步草拟 Token，导致其计算开销随着候选文本块的长度线性递增；而 [DFlash](https://arxiv.org/abs/2602.06036) 则通过块级扩散模型 (Block Diffusion) 一次性并行草拟出完整的文本块。
-
-&gt; For instance, [EAGLE-3](https://arxiv.org/abs/2503.01840) drafts autoregressively, causing computational cost to scale with block length, whereas [DFlash](https://arxiv.org/abs/2602.06036) drafts the full block simultaneously using block diffusion.
-
----
-
-## 为什么基于扩散的草稿模型会导致接受率下降？
-
-&gt; ## Why Do Diffusion Drafters Lose Acceptance?
-
-像 DFlash 这样的标准扩散草稿模型，其核心局限在于独立预测文本块中的每一个位置槽位 (Slot)——这种现象在理论上被称为“因子化近似 (Factorized Approximation)”。
-
-&gt; Standard diffusion drafters like DFlash predict each slot in a token block independently—a limitation known as the *factorized approximation*. 
-
-不妨设想这样一个场景：后续最合理的文本补全有可能是“New York”（纽约），也有可能是“San Diego”（圣地亚哥），两者的出现概率旗鼓相当。对于一个对各槽位进行独立预测的草稿模型而言，由于第一个词和第二个词完全解耦，它有一半的概率会错误拼凑出“New Diego”或“San York”。一旦发生这种情况，目标大模型在校验到第二个词时就会立刻拒绝整条候选序列，导致投机加速失败。
-
-&gt; Imagine a continuation that can be either “New York” or “San Diego” with equal probability. An independent slot drafter might incorrectly propose “New Diego” or “San York” half the time, leading the target model to immediately reject the sequence at the second slot.
-
-FlashMap 巧妙地借鉴了流映射语言模型 ([Flow Map Language Models](https://arxiv.org/abs/2602.16813)) 的设计思想，彻底化解了这一矛盾。它不再对每个槽位孤立预测，而是将每一个噪声样本直接映射到一整个完整的文本块。这意味着，输入的噪声向量能够统筹兼顾全局上下文，同时为所有 Token 槽位联合选定正确的语义模态，从机制上彻底杜绝了跨位置语义割裂的问题。
-
-&gt; FlashMap resolves this by building upon [Flow Map Language Models](https://arxiv.org/abs/2602.16813). Instead of independent slot prediction, each noise sample maps directly to one complete block, allowing the noise vector to jointly select the correct semantic mode for every token slot simultaneously.
-
----
-
-## FlashMap 的工作原理是什么？
-
-&gt; ## How Does FlashMap Work?
-
-FlashMap 草稿模型采用了 6 层的扩散 Transformer (Diffusion Transformer, DiT) 架构，嵌入维度为 2048，并包含 16 个注意力头。在推理过程中，它直接提取并复用目标大模型第 1、9、17、25 和 33 层的隐层状态 (Hidden States)，同时目标大模型的词嵌入矩阵与语言建模输出头 (LM Head) 保持完全冻结。
-
-&gt; The FlashMap drafter utilizes a 6-block diffusion transformer (DiT) architecture with an embedding dimension of 2048 and 16 attention heads. It consumes hidden states extracted from target model layers 1, 9, 17, 25, and 33, while the target's embedding matrix and language modeling head remain frozen.</description>
-    </item>
-    <item>
-      <title>Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-29/Evolving-Agent-Teams-进化式智能体团队突破代码局部最优/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-29/Evolving-Agent-Teams-进化式智能体团队突破代码局部最优/</guid>
-      <pubDate>Thu, 29 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型编程能力的飞速跃升，研究人员开始尝试将 AI 智能体 (AI Agent) 引入 GPU 底层算子优化 (Kernel Optimization) 等高难度工程任务。然而，现有的单智能体或固定协作模式极易在真实工业级复杂代码上陷入“局部最优”——不断在细枝末节打转却无法实现架构级突破。为此，来自 UC Berkeley 的 Shiyi Cao、Joseph E. Gonzalez 与 Ion Stoica 等学者提出了进化式智能体团队 (Evolving Agent Teams, EAT)，通过设置中央主管动态重构智能体分工，并结合持久化文件系统沉淀试错经验，成功攻克了代码优化的局部停滞难题。实验表明，该团队从零编写的 CUDA 算子性能超越了顶尖专家手写的 FlashInfer 与 vLLM 实现，横跨 NVIDIA、AMD 及 Apple 芯片均刷新了吞吐纪录，为复杂软件系统的自动化极限优化开辟了全新范式。
-
----
-
-## 总结与亮点概览
-
-&gt; ## Summary
-
-**Evolving Agent Teams** 是一套专为突破开放式软件工程任务 (例如 GPU 算子优化) 中局部最优 (Local Optima) 困境而设计的全新多智能体框架 (Multi-Agent Framework)。在面对复杂的真实工程挑战时，传统的代码编写 AI 智能体往往容易陷入瓶颈而停滞不前。该框架创新性地引入了中央主管角色，负责诊断当前陷入的局部最优并动态重组智能体团队；同时配合一套持久化文件系统 (Persistent File System) (持续追踪经验学习文档、团队进化历史以及各团队的专属产物)，使后续的探索迭代始终建立在累积经验的基础之上。在相同的 Token 预算下，该框架全面超越了各类强劲的代码智能体基准；而在放宽 Token 预算后，它更能从零自动生成顶级水准的 CUDA 算子，在多种异构硬件环境下均超越了 FlashInfer MLA、vLLM 和 FlashKDA 等工业级生产基线。
-
-&gt; **Evolving Agent Teams** is a novel multi-agent framework designed to overcome local optima in open-ended software engineering tasks (such as GPU kernel optimization). Traditional coding agents frequently get stuck when tackling complex, real-world problems. This framework introduces a central supervisor that diagnoses local optima and restructures agent teams accordingly, alongside a persistent file system (tracking a learning document, evolution history, and per-team artifacts) to ground future iterations in accumulated experience. Under matched token budgets, the framework consistently outperforms strong coding baselines, while extended token budgets allow it to generate state-of-the-art CUDA kernels, outperforming production baselines like FlashInfer MLA, vLLM, and FlashKDA across diverse hardware environments.
-
----
-
-## 论文元数据
-
-&gt; ## Metadata
-
-* **arXiv 编号**：[arXiv:2610.36848](https://arxiv.org/abs/2610.36848) [cs.AI]
-* **研究主题**：人工智能 (`cs.AI`)
-* **提交日期**：2026 年 10 月 27 日
-* **论文作者**：Shiyi Cao, Ziming Mao, Dacheng Li, Joseph E. Gonzalez, Ion Stoica
-* **代码仓库**：[GitHub - caoshiyi/EAT](https://github.com/caoshiyi/EAT)
-
-&gt; * **arXiv ID:** [arXiv:2610.36848](https://arxiv.org/abs/2610.36848) [cs.AI]
-&gt; * **Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Date:** 27 October 2026
-&gt; * **Authors:** Shiyi Cao, Ziming Mao, Dacheng Li, Joseph E. Gonzalez, Ion Stoica
-&gt; * **Code Repository:** [GitHub - caoshiyi/EAT](https://github.com/caoshiyi/EAT)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-软件工程智能体的迅猛发展，激发了人们将其应用于 GPU 算子优化等开放式复杂任务的浓厚兴趣。然而研究发现，现有的代码生成智能体在面对专家手写打造的生产级算子 (如 FlashInfer) 时，往往会迅速收敛并陷入局部最优。为此，我们提出了 **Evolving Agent Teams**，一个能够自主跳出此类局部最优陷阱的多智能体框架。
-
-&gt; The rapid progress of software engineering agents drives interest in applying them to open-ended problems such as GPU kernel optimization. However, we find that existing coding agents converge to local optima on real-world, expert-written kernels (e.g., FlashInfer). We introduce **Evolving Agent Teams**, a multi-agent framework that escapes such local optima.
-
-该框架的核心特性包括：
-
-&gt; It features:
-
-1. **中央主管 (Central Supervisor)**：深入诊断每一次出现的局部最优瓶颈，并相应地动态重构智能体团队结构；
-2. **持久化文件系统 (Persistent File System)**：包含经验学习文档、团队进化历史和各团队专属产物，为团队重组与后续探索提供坚实的经验沉淀。
-
-&gt; 1. A **central supervisor** that diagnoses each local optimum and restructures a team of agents.
-&gt; 2. A **persistent file system** that comprises a learning document, an evolution history, and per-team artifacts, grounding restructuring with accumulated experience.
-
-在消耗同等 Token 预算的前提下，Evolving Agent Teams 的表现持续显著优于各类强大的代码智能体基线。而在扩展 Token 预算后，Evolving Agent Teams 能够从零开始生成全新 CUDA 算子，相比工业级生产环境中的 FlashInfer MLA 分页解码 (Paged Decode) 算子实现了平均 **1.2 倍的速度提升**，并在 FlashInfer-Bench 的 47 个生产级负载测试中斩获了 36 项优胜 (在其余 11 项中亦达到 0.86–0.99 倍性能)。
-
-&gt; Under a matched token budget, Evolving Agent Teams consistently outperforms strong coding-agent baselines. With an extended token budget, Evolving Agent Teams generates a CUDA kernel that reaches a **1.2× mean speedup** over the production FlashInfer MLA paged decode kernel from scratch and wins on 36 of 47 production workloads from FlashInfer-Bench (0.86–0.99× on the remaining 11).
-
-此外，该框架还在多项极具挑战性的任务中展现出卓越的性能突破：
-
-&gt; It also demonstrates superior performance on tasks such as:
-
-* **AMD MI350X 平台上的 KDA Prefill**：达到 vLLM 的 3.01 倍加速；
-* **NVIDIA B200 平台**：达到 FlashKDA 的 3.44 倍加速；
-* **Apple Silicon 芯片上的 MoE 专家卸载 (Expert-Offload) 推理服务**：在搭载 48 GB 统一内存的 M4 Pro 芯片上，使用 MLX 4-bit 精度运行 `Qwen3.8-Flash-Next` 实现了 30.3 tokens/s 的解码吞吐；
-* **RoboDojo 机器人操作任务**：在测试随机种子上取得了 62.1 分，大幅超越此前榜单最高分 55.3 分。
-
-&gt; * **KDA prefill on AMD MI350X:** 3.01× over vLLM
-&gt; * **NVIDIA B200:** 3.44× over FlashKDA
-&gt; * **MoE expert-offload serving on Apple silicon:** 30.3 tokens/s decode for `Qwen3.8-Flash-Next` in MLX 4-bit on a 48 GB M4 Pro
-&gt; * **RoboDojo robot manipulation:** 62.1 on held-out seeds vs. 55.3 for the best leaderboard entry.</description>
     </item>
   </channel>
 </rss>
