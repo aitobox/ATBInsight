@@ -4,6 +4,8 @@
 
 ## 2026-11
 
+- **2026-11-12**: [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
+- **2026-11-12**: [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 - **2026-11-11**: [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
 - **2026-11-11**: [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
 - **2026-11-11**: [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)

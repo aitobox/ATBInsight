@@ -256,6 +256,7 @@ title: 标签浏览
 - [智能体记忆架构的组成要素：Anthropic 探索 AI 的睡梦与离线整合](blog/posts/2026-11-07-智能体记忆架构的组成要素-Anthropic-探索-AI-的睡梦与离线整合.md)
 - [智能体分心：如何解决编码 AI 的上下文偏离难题](blog/posts/2026-11-07-智能体分心-如何解决编码-AI-的上下文偏离难题.md)
 - [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## AI 智能体安全
 
@@ -681,6 +682,7 @@ title: 标签浏览
 - [SigV4 认证：意料之外的复杂性](blog/posts/2026-08-07-SigV4 认证：意料之外的复杂性.md)
 - [AWS 上的基础模型训练与推理构建模块](blog/posts/2026-08-07-AWS 上的基础模型训练与推理构建模块.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## AWS Trainium
 
@@ -1634,6 +1636,10 @@ title: 标签浏览
 
 - [以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法](blog/posts/2026-08-11-以少胜多：一种用于四足机器人运动的 Dyna 风格强化学习方法.md)
 
+## E-Means
+
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
+
 ## E2B
 
 - [E2B 评测 NVIDIA Vera：高密度 AI 智能体沙盒集群的性能基准](blog/posts/2026-11-11-E2B-评测-NVIDIA-Vera-高密度-AI-智能体沙盒集群的性能基准.md)
@@ -1806,6 +1812,10 @@ title: 标签浏览
 ## Failure Attribution
 
 - [LongRCA Bench：诊断长程智能体失败中的责任角色与根本原因](blog/posts/2026-08-25-LongRCA Bench：诊断长程智能体失败中的责任角色与根本原因.md)
+
+## Faiss
+
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
 
 ## FastAPI
 
@@ -2013,6 +2023,7 @@ title: 标签浏览
 - [Sionna RT：技术报告](blog/posts/2026-09-05-Sionna RT：技术报告.md)
 - [GPU-CFR：通过编译为静态数据流与 CUDA Graph 重放实现 80 倍逆事实遗憾最小化加速](blog/posts/2026-09-13-GPU-CFR-通过编译为静态数据流与-CUDA-Graph-重放实现-80-倍逆事实遗憾最小化加速.md)
 - [DeepSeek 开源 DeepInfer：揭秘支撑 DeepSeek-V4.1-Flash 的高性能推理框架](blog/posts/2026-10-21-DeepSeek-开源-DeepInfer-揭秘支撑-DeepSeek-V4.1-Flash-的高性能推理框架.md)
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
 
 ## GPU推理
 
@@ -3354,6 +3365,7 @@ title: 标签浏览
 - [Meta 披露 Prometheus 超级集群技术细节：迈向百万张 GPU 规模](blog/posts/2026-10-20-Meta-披露-Prometheus-超级集群技术细节-迈向百万张-GPU-规模.md)
 - [TorchTPU：Google 与 Meta 联手打造原生 PyTorch 的 TPU 混合即时与编译执行架构](blog/posts/2026-10-21-TorchTPU-Google-与-Meta-联手打造原生-PyTorch-的-TPU-混合即时与编译执行架构.md)
 - [Google 开源 TorchTPU：面向 Cloud TPU 的原生 PyTorch 后端正式亮相](blog/posts/2026-10-21-Google-开源-TorchTPU-面向-Cloud-TPU-的原生-PyTorch-后端正式亮相.md)
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
 
 ## Metal
 
@@ -6464,6 +6476,7 @@ title: 标签浏览
 
 - [Compiler Explorer 2026 年 AWS 架构与运行内幕](blog/posts/2026-08-06-Compiler Explorer 2026 年 AWS 架构与运行内幕.md)
 - [云模拟器的自动化综合](blog/posts/2026-08-27-云模拟器的自动化综合.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## 云边端计算
 
@@ -8451,6 +8464,7 @@ title: 标签浏览
 - [记忆常新，计划陈旧：分布式大模型智能体记忆的依赖域验证](blog/posts/2026-09-05-记忆常新，计划陈旧：分布式大模型智能体记忆的依赖域验证.md)
 - [FinalityBench：评估智能体在延迟与冲突金融终局性下决策的效果级基准](blog/posts/2026-09-08-FinalityBench：评估智能体在延迟与冲突金融终局性下决策的效果级基准.md)
 - [Meta 推出 ZGateway：统一 ZippyDB 流量、每秒处理超 10 亿次请求的无状态代理层](blog/posts/2026-09-16-Meta-推出-ZGateway-统一-ZippyDB-流量-每秒处理超-10-亿次请求的无状态代理层.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## 分布式计算
 
@@ -9705,6 +9719,7 @@ title: 标签浏览
 - [超级智能检索代理：Agentic 检索的下一个前沿](blog/posts/2026-08-27-超级智能检索代理：Agentic 检索的下一个前沿.md)
 - [Linkup 发布 SPARSEUP：仅 149M 参数的开源最强稀疏嵌入模型](blog/posts/2026-09-20-Linkup-发布-SPARSEUP-仅-149M-参数的开源最强稀疏嵌入模型.md)
 - [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
 
 ## 向量索引
 
@@ -23194,6 +23209,7 @@ title: 标签浏览
 ## 聚类算法
 
 - [停止全精度索引：重新审视向量嵌入的聚类方法](blog/posts/2026-08-19-停止全精度索引：重新审视向量嵌入的聚类方法.md)
+- [Meta Faiss 1.16.0 引入 E-Means 算法：实现大规模聚类数十倍提速](blog/posts/2026-11-12-Meta-Faiss-1-16-0-引入-E-Means-算法实现大规模聚类数十倍提速.md)
 
 ## 股票研究
 
@@ -23459,6 +23475,7 @@ title: 标签浏览
 
 - [TestifAI：基于层析成像的深度学习系统测试方法](blog/posts/2026-08-22-TestifAI：基于层析成像的深度学习系统测试方法.md)
 - [使用差异覆盖率精准定位代码缺陷：一种高效的软件调试技术](blog/posts/2026-11-06-使用差异覆盖率精准定位代码缺陷-一种高效的软件调试技术.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## 自动化演进
 
@@ -26447,6 +26464,7 @@ title: 标签浏览
 - [TLA+ 到底能验证什么，又无法验证什么？从并发系统设计到 AI 编码的形式化边界](blog/posts/2026-10-01-TLA+-到底能验证什么-又无法验证什么-从并发系统设计到-AI-编码的形式化边界.md)
 - [Evolving Agent Teams：进化式智能体团队突破复杂工程的局部最优](blog/posts/2026-10-29-Evolving-Agent-Teams-进化式智能体团队突破代码局部最优.md)
 - [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
+- [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 
 ## 软件工程智能体
 
