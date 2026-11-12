@@ -185,6 +185,7 @@ title: 标签浏览
 - [String：一个让每个应用皆为 Markdown 文件的智能体操作系统](blog/posts/2026-09-01-String：一个让每个应用皆为 Markdown 文件的智能体操作系统.md)
 - [智能体插件的维护与共演化：Claude Code 插件市场的实证研究](blog/posts/2026-09-01-智能体插件的维护与共演化：Claude Code 插件市场的实证研究.md)
 - [WHALE：联合优化框架与模型权重的简单方法](blog/posts/2026-09-03-WHALE：联合优化框架与模型权重的简单方法.md)
+- [AWS 发布本地模拟器 AWS Emulator：由 AI 智能体全自主编写的 200+ 服务本地运行时](blog/posts/2026-11-13-AWS-发布本地模拟器-AWS-Emulator-由-AI-智能体自主编写的-200-服务本地运行时.md)
 
 ## AI Agents
 
@@ -683,6 +684,7 @@ title: 标签浏览
 - [AWS 上的基础模型训练与推理构建模块](blog/posts/2026-08-07-AWS 上的基础模型训练与推理构建模块.md)
 - [AWS Strands Labs 开源 Strands Decider 2B：115毫秒极速响应的单次前向决策大模型](blog/posts/2026-10-03-AWS-Strands-Labs-开源-Strands-Decider-2B-115毫秒极速响应的单次前向决策大模型.md)
 - [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
+- [AWS 发布本地模拟器 AWS Emulator：由 AI 智能体全自主编写的 200+ 服务本地运行时](blog/posts/2026-11-13-AWS-发布本地模拟器-AWS-Emulator-由-AI-智能体自主编写的-200-服务本地运行时.md)
 
 ## AWS Trainium
 
@@ -1101,6 +1103,10 @@ title: 标签浏览
 - [Forgejo 技巧 #2：与 Read the Docs 集成](blog/posts/2026-09-01-Forgejo 技巧 #2：与 Read the Docs 集成.md)
 - [一个小 Bug 引发的连锁工程灾难与 AI 智能体供应链安全危机](blog/posts/2026-10-24-一个小-Bug-引发的连锁工程灾难与-AI-智能体供应链安全危机.md)
 - [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
+
+## CKKS
+
+- [CKKS 同态加密：重缩放技术与模数切换原理解析](blog/posts/2026-11-13-CKKS-同态加密-重缩放技术与模数切换原理解析.md)
 
 ## CLAUDE.md
 
@@ -2561,6 +2567,10 @@ title: 标签浏览
 - [迈向面向目标条件化机器人规划的物理基础 JEPA 世界模型](blog/posts/2026-09-05-迈向面向目标条件化机器人规划的物理基础 JEPA 世界模型.md)
 - [ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序](blog/posts/2026-09-10-ARC-Bench：闭环重规划掩盖了冻结 JEPA 世界模型中失效的动作排序.md)
 
+## JIT
+
+- [从字节码到静态单赋值：构建虚拟栈的抽象解释器实战](blog/posts/2026-11-13-从字节码到静态单赋值-构建虚拟栈的抽象解释器实战.md)
+
 ## JSON
 
 - [位置与内容：解构大模型结构化输出中的结构与内容错误](blog/posts/2026-08-29-位置与内容：解构大模型结构化输出中的结构与内容错误.md)
@@ -3049,6 +3059,7 @@ title: 标签浏览
 - [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
 - [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
+- [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
 
 ## Linux 系统安全
 
@@ -3780,6 +3791,10 @@ title: 标签浏览
 
 - [面向英特尔 AI PC 集群的分布式大模型推理预编译流水线分片技术](blog/posts/2026-08-21-面向英特尔 AI PC 集群的分布式大模型推理预编译流水线分片技术.md)
 
+## OpenZFS
+
+- [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
+
 ## OptiDSL
 
 - [并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架](blog/posts/2026-08-11-并非所有问题都适合建模为 MILP：一种面向 DSL 的灵活且精确的优化建模框架.md)
@@ -3877,6 +3892,7 @@ title: 标签浏览
 ## POSIX
 
 - [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
+- [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
 
 ## PPA优化
 
@@ -4126,6 +4142,7 @@ title: 标签浏览
 - [计算矩阵秩的下界](blog/posts/2026-09-05-计算矩阵秩的下界.md)
 - [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
 - [NVIDIA Nsight Python 实战教程：如何系统剖析 GPU 算子内核性能](blog/posts/2026-10-23-NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能.md)
+- [CKKS 同态加密：重缩放技术与模数切换原理解析](blog/posts/2026-11-13-CKKS-同态加密-重缩放技术与模数切换原理解析.md)
 
 ## Python 库
 
@@ -4526,6 +4543,7 @@ title: 标签浏览
 ## Ruby
 
 - [在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）](blog/posts/2026-08-15-在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）.md)
+- [从字节码到静态单赋值：构建虚拟栈的抽象解释器实战](blog/posts/2026-11-13-从字节码到静态单赋值-构建虚拟栈的抽象解释器实战.md)
 
 ## RuleShift-Bench
 
@@ -4551,6 +4569,7 @@ title: 标签浏览
 - [让 AI 智能体编写超越现有SOTA性能的 Rust 极限代码：迭代压测实战指南](blog/posts/2026-09-22-让-AI-智能体编写超越现有SOTA性能的-Rust-极限代码-迭代压测实战指南.md)
 - [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 - [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
+- [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
 
 ## R语言
 
@@ -4734,6 +4753,7 @@ title: 标签浏览
 ## SSA
 
 - [在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）](blog/posts/2026-08-15-在 Ruby ZJIT 中通过全局规范化实现部分静态单信息（SSI）.md)
+- [从字节码到静态单赋值：构建虚拟栈的抽象解释器实战](blog/posts/2026-11-13-从字节码到静态单赋值-构建虚拟栈的抽象解释器实战.md)
 
 ## SSH
 
@@ -9637,6 +9657,7 @@ title: 标签浏览
 
 - [ATLAS：在一小时内自动化近似 Transformer 以实现高效同态推理](blog/posts/2026-08-29-ATLAS：在一小时内自动化近似 Transformer 以实现高效同态推理.md)
 - [HEAT：通过近似与权重协同适配实现更快速的全同态推理](blog/posts/2026-09-04-HEAT：通过近似与权重协同适配实现更快速的全同态推理.md)
+- [CKKS 同态加密：重缩放技术与模数切换原理解析](blog/posts/2026-11-13-CKKS-同态加密-重缩放技术与模数切换原理解析.md)
 
 ## 同行评审
 
@@ -12223,6 +12244,10 @@ title: 标签浏览
 
 - [大规模有限集约束解码的字典树自动机](blog/posts/2026-08-16-大规模有限集约束解码的字典树自动机.md)
 
+## 字节码
+
+- [从字节码到静态单赋值：构建虚拟栈的抽象解释器实战](blog/posts/2026-11-13-从字节码到静态单赋值-构建虚拟栈的抽象解释器实战.md)
+
 ## 字节级模型
 
 - [基于分层语言模型的动态多字节预测](blog/posts/2026-08-26-基于分层语言模型的动态多字节预测.md)
@@ -12655,6 +12680,7 @@ title: 标签浏览
 - [针对大型语言模型的Unicode文本水印方法安全性与可检测性分析](blog/posts/2026-08-16-针对大型语言模型的Unicode文本水印方法安全性与可检测性分析.md)
 - [MOSAIC：安全 AI 计算的掩码外包方案](blog/posts/2026-08-27-MOSAIC：安全 AI 计算的掩码外包方案.md)
 - [Anthropic 称 Claude 破译 NIST ECDSA 椭圆曲线神秘种子来源：三十年密码学谜题告破](blog/posts/2026-10-17-Anthropic-称-Claude-破译-NIST-ECDSA-椭圆曲线神秘种子来源.md)
+- [CKKS 同态加密：重缩放技术与模数切换原理解析](blog/posts/2026-11-13-CKKS-同态加密-重缩放技术与模数切换原理解析.md)
 
 ## 密码学与安全
 
@@ -15404,6 +15430,7 @@ title: 标签浏览
 - [面向高扇出智能体沙箱的内存压缩技术](blog/posts/2026-09-13-面向高扇出智能体沙箱的内存压缩技术.md)
 - [2026 年各类 Unix 系统的平均负载机制深度剖析](blog/posts/2026-09-15-2026-年各类-Unix-系统的平均负载机制深度剖析.md)
 - [为什么现代系统逐渐摒弃对 /proc 文件系统的过度依赖](blog/posts/2026-10-20-为什么现代系统逐渐摒弃对-proc-的过度依赖.md)
+- [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
 
 ## 操作系统探索
 
@@ -16945,6 +16972,10 @@ title: 标签浏览
 ## 本地模型
 
 - [我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！](blog/posts/2026-08-07-我们是如何让本地开源模型免费为 OpenClaw 仓库进行 Issue 和 PR 分流的！.md)
+
+## 本地模拟器
+
+- [AWS 发布本地模拟器 AWS Emulator：由 AI 智能体全自主编写的 200+ 服务本地运行时](blog/posts/2026-11-13-AWS-发布本地模拟器-AWS-Emulator-由-AI-智能体自主编写的-200-服务本地运行时.md)
 
 ## 本地部署
 
@@ -23016,6 +23047,7 @@ title: 标签浏览
 - [标准库遮蔽：主流编程语言的模块加载陷阱与 AI 智能体安全危机](blog/posts/2026-09-16-标准库遮蔽-主流编程语言的模块加载陷阱与-AI-智能体安全危机.md)
 - [TorchTPU：融合动态与编译图的原生 PyTorch TPU 执行架构](blog/posts/2026-10-24-TorchTPU-融合动态与编译图的原生-PyTorch-TPU-执行架构.md)
 - [XLA 实战一线：超大规模 TPU 工作负载下的编译器正确性保障](blog/posts/2026-11-04-XLA实战经验-超大规模TPU工作负载下的编译器正确性保障.md)
+- [从字节码到静态单赋值：构建虚拟栈的抽象解释器实战](blog/posts/2026-11-13-从字节码到静态单赋值-构建虚拟栈的抽象解释器实战.md)
 
 ## 编译器优化
 
@@ -23550,6 +23582,10 @@ title: 标签浏览
 ## 自动化调试
 
 - [迈向无风险的AI智能体部署](blog/posts/2026-08-19-迈向无风险的AI智能体部署.md)
+
+## 自动化软件工程
+
+- [AWS 发布本地模拟器 AWS Emulator：由 AI 智能体全自主编写的 200+ 服务本地运行时](blog/posts/2026-11-13-AWS-发布本地模拟器-AWS-Emulator-由-AI-智能体自主编写的-200-服务本地运行时.md)
 
 ## 自动化运维
 
