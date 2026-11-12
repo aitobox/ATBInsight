@@ -1,0 +1,995 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-13-CKKS-%E5%90%8C%E6%80%81%E5%8A%A0%E5%AF%86-%E9%87%8D%E7%BC%A9%E6%94%BE%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%A8%A1%E6%95%B0%E5%88%87%E6%8D%A2%E5%8E%9F%E7%90%86%E8%A7%A3%E6%9E%90/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>CKKS 同态加密：重缩放技术与模数切换原理解析 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ckks" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CKKS 同态加密：重缩放技术与模数切换原理解析
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        执行摘要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Executive Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. 引言与研究动机
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-introduction-and-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Introduction and Motivation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. 重缩放的数学原理
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-rescaling-mathematically" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Rescaling Mathematically
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Rescaling Mathematically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        为什么简单的直接除法会失效
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-simple-division-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Why Simple Division Fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        正确的破局思路：实数除法与模数切换
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-correct-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Correct Approach
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. 代码实现：重缩放的工程落地
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rescaling-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Rescaling in Code
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-rns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. 模数预算与通往留数系统 (RNS) 之路
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-modulus-budget-and-the-road-to-rns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Modulus Budget and the Road to RNS
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        后续展望
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Next Steps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="ckks">CKKS 同态加密：重缩放技术与模数切换原理解析</h1>
+<p><strong>发布日期:</strong> 2026年11月11日<br />
+<strong>文章标签:</strong> <code>#cryptography</code> <code>#ckks</code> <code>#ckks tutorial</code> <code>#homomorphic encryption</code> <code>#programming</code> <code>#mathematics</code> <code>#python</code><br />
+<strong>教程目录:</strong> <a href="https://github.com/j2kun/ckks-tutorial#ckks-tutorial">CKKS Tutorial</a></p>
+<blockquote>
+<p><strong>Date:</strong> November 11, 2026<br />
+<strong>Tags:</strong> <code>#cryptography</code> <code>#ckks</code> <code>#ckks tutorial</code> <code>#homomorphic encryption</code> <code>#programming</code> <code>#mathematics</code> <code>#python</code><br />
+<strong>Table of Contents:</strong> <a href="https://github.com/j2kun/ckks-tutorial#ckks-tutorial">CKKS Tutorial</a></p>
+</blockquote>
+<hr />
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在隐私计算与安全外包计算领域，同态加密 (Homomorphic Encryption) 是一项允许在密文上直接进行数学计算而无需提前解密的前沿密码学技术，其中 CKKS 方案以对定点实数和复数近似计算的高效支持而备受瞩目。然而，密文之间的同态乘法会带来两大严峻挑战：定点缩放因子的平方级膨胀以及噪音误差项的急剧扩大，如果不加控制，仅需数次运算就会耗尽计算精度。为了解决这一问题，必须引入“重缩放” (Rescaling，在密码学中也称模数切换 Modulus Switching) 技术，在保证解密正确性的同时将密文缩放因子和噪音安全拉回正常区间。本文作为 CKKS 系列教程的核心篇章，不仅深入浅出地推导了重缩放的数学本质，给出了精简的 Python 实现，还为后续引入留数系统 (Residue Number System, RNS) 突破深层同态计算的模数预算限制打下了坚实基础。</p>
+<hr />
+<h2 id="_2">执行摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>本文继续探讨 <strong>CKKS 同态加密方案 (CKKS Homomorphic Encryption Scheme)</strong> 系列教程，重点聚焦于其核心算子——<strong>重缩放 (Rescaling，亦称为模数切换 Modulus Switching)</strong>。虽然在此前的章节中，我们已经实现了同态乘法与重线性化 (Relinearization)，但密文乘法天然会将定点缩放因子平方膨胀至 <span class="arithmatex">\(\Delta^2\)</span>，并引发噪音误差项的迅猛增长。而重缩放技术能够安全地对密文多项式和内部误差项进行同步等比缩减。此外，单模数预算的消耗瓶颈，也为我们在后续章节中全面转向<strong>留数系统 (Residue Number System, RNS)</strong> 以高效管理超大模数预算埋下了伏笔。</p>
+<blockquote>
+<p>This article continues the tutorial series on the <strong>CKKS homomorphic encryption scheme</strong>, focusing on the critical operation of <strong>rescaling</strong> (also known as modulus switching). While previous steps introduced homomorphic multiplication and relinearization, multiplication inherently scales up the fixed-point scaling factor to <span class="arithmatex">\(\Delta^2\)</span> and causes rapid error growth. Rescaling safely scales down both the ciphertext and the error term. Furthermore, this limitation motivates the upcoming transition to the <strong>Residue Number System (RNS)</strong> to efficiently manage large modulus budgets.</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 引言与研究动机</h2>
+<blockquote>
+<h2 id="1-introduction-and-motivation">1. Introduction and Motivation</h2>
+</blockquote>
+<p>在<a href="/2026/10/21/ckks-key-switching-and-relinearization/">上一篇关于密钥切换与重线性化的文章</a>中，我们成功在同态乘法之后将三元密文恢复为自然优雅的“二元组”结构。然而，密文乘法操作也同时引入了两个亟待解决的严重问题：</p>
+<blockquote>
+<p>In the <a href="/2026/10/21/ckks-key-switching-and-relinearization/">previous article on key switching and relinearization</a>, we restored the natural "two-tuple" ciphertext structure after homomorphic multiplication. However, multiplication introduces two major problems:</p>
+</blockquote>
+<ol>
+<li><strong>缩放因子平方级膨胀 (Squared Scaling Factor)</strong>：由于 CKKS 方案底层采用定点数算法 (Fixed-Point Arithmetic)，两个缩放尺度为 <span class="arithmatex">\(\Delta\)</span> 的明文相乘后，所得密文的编码缩放因子会剧增至平方项 <span class="arithmatex">\(\Delta^2\)</span>；</li>
+<li><strong>误差增长急剧加速 (Accelerated Error Growth)</strong>：在多项式展开时误差项会相互交叉相乘，其中一个误差分量会与 <span class="arithmatex">\(\Delta \cdot e\)</span> 成正比急剧膨胀。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Squared Scaling Factor:</strong> Because CKKS uses fixed-point arithmetic, multiplying two plaintexts of scale <span class="arithmatex">\(\Delta\)</span> results in a ciphertext encoded with a squared scaling factor of <span class="arithmatex">\(\Delta^2\)</span>.</li>
+<li><strong>Accelerated Error Growth:</strong> Error terms multiply out, with one component growing proportionally to <span class="arithmatex">\(\Delta \cdot e\)</span>.</li>
+</ol>
+</blockquote>
+<p>为了化解这两项挑战，我们引入了被称为<strong>重缩放 (Rescaling)</strong> (或称<em>模数切换</em>) 的关键技术。与此同时，本文也为下一期教程中实现 CKKS 的<strong>留数系统 (RNS)</strong> 架构奠定了坚实的基础。</p>
+<blockquote>
+<p>To solve these challenges, we use a technique called <strong>rescaling</strong> (or <em>modulus switching</em>). This article also sets the stage for implementing the <strong>Residue Number System (RNS)</strong> form of CKKS in the next installment.</p>
+</blockquote>
+<p>本文配套的完整实现代码可以在<a href="https://github.com/j2kun/ckks-tutorial/pull/7">该代码拉取请求 (Pull Request)</a> 中查看。</p>
+<blockquote>
+<p>The accompanying code for this article can be found in <a href="https://github.com/j2kun/ckks-tutorial/pull/7">this pull request</a>.</p>
+</blockquote>
+<hr />
+<h2 id="2">2. 重缩放的数学原理</h2>
+<blockquote>
+<h2 id="2-rescaling-mathematically">2. Rescaling Mathematically</h2>
+</blockquote>
+<p>我们首先来看一段密文 <span class="arithmatex">\(c = (c_0, c_1)\)</span>，它对缩放因子为 <span class="arithmatex">\(\Delta^2\)</span> 的明文多项式 <span class="arithmatex">\(m(x)\)</span> 进行了加密，并且在私钥多项式 <span class="arithmatex">\(s\)</span> 以及小范数误差多项式 <span class="arithmatex">\(e\)</span> 下满足如下同余解密等式：</p>
+<blockquote>
+<p>We begin with a ciphertext <span class="arithmatex">\(c = (c_0, c_1)\)</span> encrypting a plaintext polynomial <span class="arithmatex">\(m(x)\)</span> with scaling factor <span class="arithmatex">\(\Delta^2\)</span>, satisfying:</p>
+</blockquote>
+<div class="arithmatex">\[c_0 + c_1 \cdot s = \Delta^2 m + e\]</div>
+<p>其中 <span class="arithmatex">\(s\)</span> 为私钥多项式，<span class="arithmatex">\(e\)</span> 为具有极小范数的误差多项式。我们希望设计一套重缩放算法流程，生成一个全新的密文 <span class="arithmatex">\(c' = (c_0', c_1')\)</span>，使其满足：</p>
+<blockquote>
+<p>for a secret key polynomial <span class="arithmatex">\(s\)</span> and a small-norm error polynomial <span class="arithmatex">\(e\)</span>. We want a rescaling procedure producing a new ciphertext <span class="arithmatex">\(c' = (c_0', c_1')\)</span> such that:</p>
+</blockquote>
+<div class="arithmatex">\[c_0' + c_1' \cdot s = \Delta m + e'\]</div>
+<h3 id="_3">为什么简单的直接除法会失效</h3>
+<blockquote>
+<h3 id="why-simple-division-fails">Why Simple Division Fails</h3>
+</blockquote>
+<p>最直观朴素的想法，莫过于直接将密文中的各个多项式分量除以 <span class="arithmatex">\(\Delta\)</span>：</p>
+<blockquote>
+<p>The naive approach is to divide the ciphertext components directly by <span class="arithmatex">\(\Delta\)</span>:</p>
+</blockquote>
+<div class="arithmatex">\[(c_0, c_1) \mapsto \left(\frac{c_0}{\Delta}, \frac{c_1}{\Delta}\right)\]</div>
+<p>然而在模 <span class="arithmatex">\(Q\)</span> 的有限环运算中，<span class="arithmatex">\(\Delta\)</span> 可能根本不存在逆元（例如当模数 <span class="arithmatex">\(Q\)</span> 与 <span class="arithmatex">\(\Delta\)</span> 拥有共同的质因子时）。更为致命的是，即便 <span class="arithmatex">\(\Delta\)</span> 在模 <span class="arithmatex">\(Q\)</span> 意义下存在乘法逆元 <span class="arithmatex">\(\Delta^{-1}\)</span>，直接乘以 <span class="arithmatex">\(\Delta^{-1}\)</span> 也会让噪音发生灾难性爆炸，变得无法容忍，如下面的 Python 代码片段所演示：</p>
+<blockquote>
+<p>However, <span class="arithmatex">\(\Delta\)</span> may not be invertible modulo <span class="arithmatex">\(Q\)</span> (e.g., if <span class="arithmatex">\(Q\)</span> shares a prime factor with <span class="arithmatex">\(\Delta\)</span>). Even when invertible, multiplying by <span class="arithmatex">\(\Delta^{-1}\)</span> makes the noise unacceptably large, as demonstrated by this Python snippet:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">Q</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">60</span> <span class="o">-</span> <span class="mi">93</span>
+<span class="n">delta</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">40</span>
+<span class="n">delta_inv</span> <span class="o">=</span> <span class="nb">pow</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">Q</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">centered</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">%=</span> <span class="n">Q</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">Q</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">Q</span>
+    <span class="k">return</span> <span class="n">x</span>
+
+<span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">7</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;e = </span><span class="si">{</span><span class="n">e</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2">,  delta^-1 * e mod Q = </span><span class="si">{</span><span class="n">centered</span><span class="p">(</span><span class="n">delta_inv</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>控制台输出结果如下：</p>
+<blockquote>
+<p>Output:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>e =   1,  delta^-1 * e mod Q =   -12397005425868799
+e =  -2,  delta^-1 * e mod Q =    24794010851737598
+e =   3,  delta^-1 * e mod Q =   -37191016277606397
+e =   5,  delta^-1 * e mod Q =   -61985027129343995
+e =  -7,  delta^-1 * e mod Q =    86779037981081593
+</code></pre></div>
+<h3 id="_4">正确的破局思路：实数除法与模数切换</h3>
+<blockquote>
+<h3 id="the-correct-approach">The Correct Approach</h3>
+</blockquote>
+<p>既然模逆元行不通，我们不妨换个视角，直接在实数域上审视这个除法问题。首先将取模等式在整数域中展开（消除模运算）：</p>
+<blockquote>
+<p>Instead, we treat the division over real numbers. Lifting the modulo equation:</p>
+</blockquote>
+<div class="arithmatex">\[c_0 + c_1 s = \Delta^2 m + e + tQ\]</div>
+<p>此时两边同时除以 <span class="arithmatex">\(\Delta\)</span>，可以得到：</p>
+<blockquote>
+<p>Dividing by <span class="arithmatex">\(\Delta\)</span> gives:</p>
+</blockquote>
+<div class="arithmatex">\[\frac{c_0 + c_1 s}{\Delta} = \Delta m + \frac{e}{\Delta} + t\frac{Q}{\Delta}\]</div>
+<p>如果我们约束模数 <span class="arithmatex">\(Q\)</span> 能够被 <span class="arithmatex">\(\Delta\)</span> 整除，即存在某个整数 <span class="arithmatex">\(Q'\)</span> 满足 <span class="arithmatex">\(Q = \Delta \cdot Q'\)</span>，那么我们可以将重缩放操作的候选方案定义为对系数分别进行四舍五入舍入并切换到新模数 <span class="arithmatex">\(Q'\)</span>：</p>
+<blockquote>
+<p>By requiring <span class="arithmatex">\(Q = \Delta \cdot Q'\)</span> for some <span class="arithmatex">\(Q'\)</span>, we define our candidate rescaling procedure as:</p>
+</blockquote>
+<div class="arithmatex">\[\text{Rescale}(c_0, c_1) = \left(\text{round}\left(\frac{c_0}{\Delta}\right), \text{round}\left(\frac{c_1}{\Delta}\right)\right) \bmod Q'\]</div>
+<p>对舍入误差进行深入分析后可以发现，重缩放后的新误差项变为了 <span class="arithmatex">\(\frac{e}{\Delta} + z_0 + z_1 s\)</span>。其中原本庞大的误差 <span class="arithmatex">\(e\)</span> 被除以了 <span class="arithmatex">\(\Delta\)</span>，而舍入引入的新增噪音 (<span class="arithmatex">\(z_0, z_1\)</span>) 与私钥 <span class="arithmatex">\(s\)</span> 结合后，只带来完全处于可控、可接受范围内的微小误差增量。</p>
+<blockquote>
+<p>Analyzing the rounding error reveals that the new error term becomes <span class="arithmatex">\(\frac{e}{\Delta} + z_0 + z_1 s\)</span>, where rounding noise (<span class="arithmatex">\(z_0, z_1\)</span>) combined with the secret key <span class="arithmatex">\(s\)</span> introduces controlled, manageable error growth.</p>
+</blockquote>
+<hr />
+<h2 id="3">3. 代码实现：重缩放的工程落地</h2>
+<blockquote>
+<h2 id="3-rescaling-in-code">3. Rescaling in Code</h2>
+</blockquote>
+<p>为了在工程中实现重缩放，我们需要精心挑选能够整除 <span class="arithmatex">\(Q\)</span> 的缩放因子。我们首先从编写单元测试配置入手（对应代码详见<a href="https://github.com/j2kun/ckks-tutorial/pull/7/changes/eb42b73fc83bf1d8d3c6f6bcf9eb0e52e7b00716">该提交记录 (Commit)</a>）：</p>
+<blockquote>
+<p>To implement rescaling, we need a scaling factor that divides <span class="arithmatex">\(Q\)</span> exactly. The implementation starts with setting up our test configurations (found in <a href="https://github.com/j2kun/ckks-tutorial/pull/7/changes/eb42b73fc83bf1d8d3c6f6bcf9eb0e52e7b00716">this commit</a>):</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1"># rescaling_test.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_rescale</span><span class="p">():</span>
+    <span class="n">rescaled_encoding_params</span> <span class="o">=</span> <span class="n">EncodingParams</span><span class="p">(</span>
+        <span class="n">scale</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">poly_modulus_degree</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="c1"># This prime is close to NTT_64_BIT_PRIME / 2**20</span>
+        <span class="n">coefficient_modulus</span><span class="o">=</span><span class="mi">2199023255521</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">squared_encoding_params</span> <span class="o">=</span> <span class="n">EncodingParams</span><span class="p">(</span>
+        <span class="n">scale</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">40</span><span class="p">,</span>
+        <span class="n">poly_modulus_degree</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">coefficient_modulus</span><span class="o">=</span><span class="n">NTT_64_BIT_PRIME</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex64</span><span class="p">)</span>
+
+    <span class="n">context</span> <span class="o">=</span> <span class="n">CKKSContext</span><span class="p">(</span><span class="n">rescaled_encoding_params</span><span class="p">)</span>
+    <span class="n">sq_context</span> <span class="o">=</span> <span class="n">CKKSContext</span><span class="p">(</span><span class="n">squared_encoding_params</span><span class="p">)</span>
+    <span class="n">sk</span> <span class="o">=</span> <span class="n">sq_context</span><span class="o">.</span><span class="n">generate_symmetric_private_key</span><span class="p">()</span>
+    <span class="n">pt</span> <span class="o">=</span> <span class="n">encode</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">squared_encoding_params</span><span class="p">,</span> <span class="n">sq_context</span><span class="o">.</span><span class="n">ntt_params</span><span class="p">)</span>
+    <span class="n">ct</span> <span class="o">=</span> <span class="n">sq_context</span><span class="o">.</span><span class="n">encrypt_symmetric</span><span class="p">(</span><span class="n">pt</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+
+    <span class="n">ct_rescaled</span> <span class="o">=</span> <span class="n">rescale</span><span class="p">(</span>
+        <span class="n">ct</span><span class="p">,</span>
+        <span class="n">rescaled_encoding_params</span><span class="o">.</span><span class="n">coefficient_modulus</span><span class="p">,</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">ntt_params</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">decrypted_product</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">decrypt_symmetric</span><span class="p">(</span><span class="n">ct_rescaled</span><span class="p">,</span> <span class="n">sk</span><span class="p">)</span>
+    <span class="n">decoded_product</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">decrypted_product</span><span class="p">,</span> <span class="n">rescaled_encoding_params</span><span class="p">)</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_allclose</span><span class="p">(</span><span class="n">decoded_product</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</code></pre></div>
+<p>而核心的 <code>rescale</code> 重缩放函数则实现得非常干净利落，其本质就是对多项式系数执行等比缩放与四舍五入舍入：</p>
+<blockquote>
+<p>The core <code>rescale</code> function is implemented cleanly via polynomial coefficient rounding:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1"># rescaling.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ckks_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ciphertext</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">polynomial</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModQPolynomial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">params</span><span class="w"> </span><span class="kn">import</span> <span class="n">NTTParams</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">rescale_poly</span><span class="p">(</span>
+    <span class="n">poly</span><span class="p">:</span> <span class="n">ModQPolynomial</span><span class="p">,</span> <span class="n">new_modulus</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">new_ntt_params</span><span class="p">:</span> <span class="n">NTTParams</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ModQPolynomial</span><span class="p">:</span>
+    <span class="c1"># Note this only works because the NTT_PRIME fits comfortably in a 64-bit float.</span>
+    <span class="n">rescale_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">poly</span><span class="o">.</span><span class="n">coefficient_modulus</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">new_modulus</span><span class="p">)</span>
+    <span class="n">new_coeffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">poly</span><span class="o">.</span><span class="n">coefficients</span> <span class="o">/</span> <span class="n">rescale_factor</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ModQPolynomial</span><span class="p">(</span>
+        <span class="n">coefficients</span><span class="o">=</span><span class="n">new_coeffs</span><span class="p">,</span>
+        <span class="n">coefficient_modulus</span><span class="o">=</span><span class="n">new_modulus</span><span class="p">,</span>
+        <span class="n">modulus_degree</span><span class="o">=</span><span class="n">poly</span><span class="o">.</span><span class="n">modulus_degree</span><span class="p">,</span>
+        <span class="n">ntt_params</span><span class="o">=</span><span class="n">new_ntt_params</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">rescale</span><span class="p">(</span><span class="n">ct</span><span class="p">:</span> <span class="n">Ciphertext</span><span class="p">,</span> <span class="n">new_modulus</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">new_ntt_params</span><span class="p">:</span> <span class="n">NTTParams</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Ciphertext</span><span class="p">:</span>
+    <span class="n">d0</span> <span class="o">=</span> <span class="n">rescale_poly</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">new_modulus</span><span class="p">,</span> <span class="n">new_ntt_params</span><span class="p">)</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">rescale_poly</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">new_modulus</span><span class="p">,</span> <span class="n">new_ntt_params</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Ciphertext</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">(</span><span class="n">d0</span><span class="p">,</span> <span class="n">d1</span><span class="p">))</span>
+</code></pre></div>
+<hr />
+<h2 id="4-rns">4. 模数预算与通往留数系统 (RNS) 之路</h2>
+<blockquote>
+<h2 id="4-modulus-budget-and-the-road-to-rns">4. Modulus Budget and the Road to RNS</h2>
+</blockquote>
+<p>每一次执行乘法和重缩放步骤，系数模数 <span class="arithmatex">\(Q\)</span> 的位宽都会缩小一个因子 <span class="arithmatex">\(\Delta\)</span>。举个例子，假设 <span class="arithmatex">\(\Delta\)</span> 的精度为 10 位 (10 bits)，那么一个典型的 64 位模数 <span class="arithmatex">\(Q\)</span> 最多仅允许进行大约 6 次连续乘法。</p>
+<blockquote>
+<p>Each multiplication and rescaling step decreases our coefficient modulus <span class="arithmatex">\(Q\)</span> by a factor of <span class="arithmatex">\(\Delta\)</span>. If <span class="arithmatex">\(\Delta\)</span> is 10 bits, a 64-bit modulus only permits roughly 6 sequential multiplications.</p>
+</blockquote>
+<p>为了支持深度更大的复杂同态计算电路，我们需要成倍扩充系数模数 <span class="arithmatex">\(Q\)</span>（例如达到 800 位以上）。然而，直接采用任意精度大整数算法会带来严重的串行计算瓶颈，从而摧毁运算性能。为了完美解决这一矛盾，我们引入了<strong>留数系统 (Residue Number System, RNS)</strong>：</p>
+<blockquote>
+<p>To support deep circuits, we need a larger <span class="arithmatex">\(Q\)</span> (e.g., 800 bits). However, big integer arithmetic destroys performance due to serial bottlenecks. To fix this, we introduce the <strong>Residue Number System (RNS)</strong>:</p>
+</blockquote>
+<ul>
+<li><strong>模数质因数分解</strong>：将大模数 <span class="arithmatex">\(Q\)</span> 分解为若干互不相同的机器字长质数连乘积：<span class="arithmatex">\(Q = \prod_i q_i\)</span>；</li>
+<li><strong>基于 Sunzi 中国剩余定理的留数表示</strong>：根据 <strong>Sunzi 中国剩余定理 (Chinese Remainder Theorem, CRT)</strong>，模 <span class="arithmatex">\(Q\)</span> 下的任意大数都可以等价表示为一组模各个独立 <span class="arithmatex">\(q_i\)</span> 的余数数组（在密码学工程中称为“肢”或分量 Limb）；</li>
+<li><strong>多项式组织为二维张量</strong>：原本的多项式系数表示被转换为结构紧凑的二维数组（例如对应 13 个 Limb 肢分量时为 <code>13x1024</code>）；</li>
+<li><strong>重缩放极简化为张量切片</strong>：重缩放操作从复杂的算术计算蜕变为极其轻量级的“<strong>舍弃一个 Limb 肢分量</strong>”张量切片操作。</li>
+</ul>
+<blockquote>
+<ul>
+<li><span class="arithmatex">\(Q\)</span> is factored into distinct primes: <span class="arithmatex">\(Q = \prod_i q_i\)</span>.</li>
+<li>By <strong>Sunzi’s Chinese Remainder Theorem</strong>, numbers modulo <span class="arithmatex">\(Q\)</span> are represented by arrays of residues (limbs) modulo each <span class="arithmatex">\(q_i\)</span>.</li>
+<li>A polynomial becomes a 2D array (e.g., <code>13x1024</code> for 13 limbs).</li>
+<li>Rescaling simplifies to <strong>dropping a limb</strong> by slicing the tensor.</li>
+</ul>
+</blockquote>
+<p>如此一来，原本抽象而昂贵的模数预算消耗，就自然转变成了直观明了的<strong>层级预算 (Level Budget)</strong>——只需跟踪记录当前密文中还剩余多少个可用的 RNS 肢分量即可。</p>
+<blockquote>
+<p>Thus, our modulus budget transitions into a <strong>level budget</strong> tracking how many RNS limbs remain.</p>
+</blockquote>
+<hr />
+<h2 id="_5">后续展望</h2>
+<blockquote>
+<h2 id="next-steps">Next Steps</h2>
+</blockquote>
+<p>在下一篇文章中，我们将对 CKKS 的代码实现进行全面重构，正式接入留数系统 (RNS) 机制。这不仅将解锁规模庞大得多的模数支持能力，更能彻底攻克数论变换 (Number Theoretic Transform, NTT) 实现中的性能瓶颈。</p>
+<blockquote>
+<p>In the next article, we will refactor the CKKS implementation to incorporate RNS, enabling much larger moduli and addressing performance bottlenecks in our NTT implementation.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">同态加密</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">密码学</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">CKKS</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Python</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

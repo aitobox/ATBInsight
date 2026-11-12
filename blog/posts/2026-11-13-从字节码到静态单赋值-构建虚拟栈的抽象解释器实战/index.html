@@ -1,0 +1,887 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-13-%E4%BB%8E%E5%AD%97%E8%8A%82%E7%A0%81%E5%88%B0%E9%9D%99%E6%80%81%E5%8D%95%E8%B5%8B%E5%80%BC-%E6%9E%84%E5%BB%BA%E8%99%9A%E6%8B%9F%E6%A0%88%E7%9A%84%E6%8A%BD%E8%B1%A1%E8%A7%A3%E9%87%8A%E5%99%A8%E5%AE%9E%E6%88%98/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>从字节码到静态单赋值：构建虚拟栈的抽象解释器实战 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              从字节码到静态单赋值：构建虚拟栈的抽象解释器实战
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        概述
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        倘若栈是虚拟的会怎样？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-if-a-stack-but-virtual" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What If a Stack, But Virtual?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        代码实现
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Implementation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        总结与思考
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        参考文献
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        References
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="_1">从字节码到静态单赋值：构建虚拟栈的抽象解释器实战</h1>
+<h3 id="_2">文章背景与核心概要</h3>
+<p>将基于栈的字节码转换为现代编译器不可或缺的静态单赋值 (Static Single Assignment, SSA) 形式，常被视为即时编译器 (Just-In-Time, JIT) 底层极其复杂的黑魔法。然而在工程本质上，这一转换的核心原理出人意料地纯粹而优雅。本文以通俗易懂的视角与 Ruby 代码实战，深入浅出地讲解了如何利用“虚拟操作数栈”构建一个微型抽象解释器 (Abstract Interpreter)——它在编译期跟踪数据值的来源而非具体运行状态，从而举重若轻地把线性的字节码序列无缝升华为清晰的 SSA 中间表示 (IR)。这一经典技巧不仅驱动着 Java HotSpot 等工业级虚拟机的高效编译，更为理解现代编译器中间层架构提供了绝佳的认知切入点。</p>
+<hr />
+<h2 id="_3">概述</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>将基于栈的字节码转换为静态单赋值 (Static Single Assignment, SSA) 形式，是现代即时编译器 (Just-In-Time, JIT) 架构中的关键基石。在工业级编译器的真实实现中，为了应对各种复杂的操作码 (Opcode) 与边界极端情况，代码往往动辄多达数千行；然而，其底层的核心机制却出人意料地简单纯粹。只要借助一个跟踪“数据来源”而非“具体运行状态”的抽象解释器 (Abstract Interpreter)，开发者就能举重若轻地把线性的字节码序列优雅转换为直观的 SSA 中间表示。</p>
+<blockquote>
+<p>Converting stack-based bytecode into Static Single Assignment (SSA) form is a fundamental step for modern Just-In-Time (JIT) compilers. While real-world implementations can span thousands of lines to handle complex opcodes and edge cases, the core mechanism is surprisingly simple. By leveraging an abstract interpreter that tracks the origin of values rather than their concrete execution states, developers can gracefully transform sequential bytecode instructions into direct SSA representations.</p>
+</blockquote>
+<hr />
+<h2 id="_4">倘若栈是虚拟的会怎样？</h2>
+<blockquote>
+<h2 id="what-if-a-stack-but-virtual">What If a Stack, But Virtual?</h2>
+</blockquote>
+<p>基于栈的字节码在设计上都有一个基本假定：在运行时，所有操作都在一个操作数栈上进行。这也意味着，每一条操作码都会隐式地从栈中弹出输入数据，并隐式地将计算结果压入栈中作为输出。</p>
+<blockquote>
+<p>The bytecode assumes that when it is run, it will be operating on a stack. This means that every opcode has implicit stack inputs and implicit stack outputs.</p>
+</blockquote>
+<p>举例来说，指令 <code>push 3</code> 不需要从栈中获取任何输入（栈输入为空），但会产生一个栈输出（将数值 3 压栈）。相比之下，加法指令 <code>add</code> 则需要消耗两个栈输入，并生成一个栈输出。当然，也有一些像 <code>nop</code> (空操作) 这样的指令，既不需要输入也不产生任何输出。据我所知，在绝大多数规范中，所有字节码指令<strong>至多</strong>只产生一个栈输出。</p>
+<blockquote>
+<p><code>push 3</code>, for example, has empty stack inputs and one stack output. By contrast, <code>add</code> has two stack inputs and one stack output. Some instructions such as <code>nop</code> are empty on both counts. As far as I can tell, all instructions have <em>at most</em> one output.</p>
+</blockquote>
+<p>只要审视字节码本身，这些输入和输出的数量其实是一目了然的：我们完全可以在编译阶段对每个操作码所需的入栈和出栈数量进行静态推导。虽然也有少部分指令支持可变参数——比如方法调用指令 <code>send</code> (call)——但它们都会在相邻的操作数或指令字段中明确携带具体的参数个数。</p>
+<blockquote>
+<p>These counts are known when looking at the bytecode: we can reason statically about how many inputs and outputs each opcode has. Some are variadic, such as <code>send</code> (call), but they come bearing an argument count in a nearby field.</p>
+</blockquote>
+<p>现在，让我们通过直观展示每条指令执行后的栈状态，来模拟上述示例在虚拟机 (VM) 中的具体运行过程。为了便于观察，我们将操作数栈从左到右显示为一个列表，其中最左侧代表栈底，最右侧代表栈顶。</p>
+<blockquote>
+<p>Let’s model how the first example runs on the VM by adding a view of the stack after each instruction has run. The stack will be displayed as a list left-to-right, where the left is the bottom and the right is the top.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>       ; []
+push 3 ; [3]
+push 4 ; [3, 4]
+add    ; [7]
+</code></pre></div>
+<p>正因为每条指令的输入和输出数量在静态分析时是完全固定的，所以当即时编译器（如 Ruby 内部的 ZJIT）自上而下读取字节码时，我们根本不需要等到运行时，完全可以在编译期模拟执行所有的入栈与出栈操作。</p>
+<blockquote>
+<p>Because the input counts and output counts are static, when ZJIT reads through the bytecode, we can run the stack parts of it at compile-time.</p>
+</blockquote>
+<p>在编译期间，我们其实<strong>并不真正关心</strong>栈中具体的数值究竟是多少，唯一需要追踪的是这些数值“究竟来自哪里”。所谓“来自哪里”，意思就是我们为每一条生成结果的指令赋予一个唯一的名字，并直接用这个名字来代指该指令的输出结果。经典论文《<a href="https://bernsteinbear.com/assets/img/design-hotspot-client-compiler.pdf">Java 6 中 Java HotSpot™ 客户端编译器的设计</a>》 (PDF) 中的一段精辟总结对此做了极佳的诠释：</p>
+<blockquote>
+<p>We don’t <em>really</em> need to know what the values on the stack are; we only need to keep track of where they came from. And when I say “where they came from”, I mean that we name each instruction and refer to its output by the instruction’s name. I like how the paper <a href="https://bernsteinbear.com/assets/img/design-hotspot-client-compiler.pdf">Design of the Java HotSpot™ Client Compiler for Java 6</a> (PDF) puts it:</p>
+<p>💬 [原文引用 / Original Quote]:
+“一条用于加载或计算数值的指令，既代表该运算本身，也同时代表其计算结果；因此，所有操作数都可以直接表示为指向先前指令的指针。”<br />
+"An instruction that loads or computes a value represents both the operation and its result, so that operands can be represented as pointers to previous instructions."</p>
+</blockquote>
+<p>将这个思想套用到前面的例子中，其演进过程就会变成下面这样。除了虚拟的栈状态之外，我还额外列出了逐步生成的 SSA 指令，以直观展现我们正在构建的新代码：</p>
+<blockquote>
+<p>Here is what that looks like for the above example. In addition to the run-time stack, I will also write the SSA instruction to indicate that we are generating new code:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>       ; []
+push 3 ; v0 = const 3
+       ; [v0]
+push 4 ; v1 = const 4
+       ; [v0, v1]
+add    ; v2 = add v0, v1
+       ; [v2]
+</code></pre></div>
+<p>这个效果堪称精妙！我们不知不觉中已经把基于栈的隐式字节码，转换成了一种指令可以直接按名字引用其输入操作数的形式。不过细心的读者可能会发现，<code>v0</code> 和 <code>v2</code> 最终都停留在了同一个栈槽位中（即栈底的第一个元素）。这也就是为什么我之前会带着保留说，这只是“差不多给每个栈槽位赋予了一个 SSA 变量值”。</p>
+<blockquote>
+<p>This is neat! We have transformed stack based bytecode to a form where instructions can directly reference their inputs. You may notice, though, that <code>v0</code> and <code>v2</code> both end up in the same stack slot (the first element). This is why I said earlier “giving an SSA value to each stack slot, <em>ish</em>”.</p>
+</blockquote>
+<p>这两者之间的本质区别在于<strong>时间</strong>。<code>v0</code> 曾在某个时间点占据了操作数栈的位置，而此时此刻占据该位置的变成了 <code>v2</code>。这也是我常常把 SSA 形象地描述为“将时间维度推进穿透到中间表示 (IR) 之中”的原因。</p>
+<blockquote>
+<p>The difference between the two is <em>time</em>. <code>v0</code> was in the operand stack at one point but now <code>v2</code> is. This is kind of why I describe SSA as “pushing time through the IR”.</p>
+</blockquote>
+<p>理论梳理清晰了，接下来让我们动手写代码实现它！</p>
+<blockquote>
+<p>Alright, let’s implement it.</p>
+</blockquote>
+<hr />
+<h2 id="_5">代码实现</h2>
+<blockquote>
+<h2 id="implementation">Implementation</h2>
+</blockquote>
+<p>我们首先构建一个真正的 (具体) 字节码解释器，它在运行时直接操作一个存储具体数值的值栈 (Value Stack)。这段实现可以让你清晰窥见 Ruby 虚拟机底层的极简工作模型：</p>
+<blockquote>
+<p>We’ll start with the real (“concrete”) interpreter of the bytecode, which operates on a value stack. This gives you a simplified version of how Ruby internals work:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">interpret</span><span class="p">(</span><span class="n">bytecode</span><span class="p">)</span>
+<span class="w">  </span><span class="n">stack</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">  </span><span class="n">bytecode</span><span class="o">.</span><span class="n">each</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">op</span><span class="o">|</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">op</span>
+<span class="w">    </span><span class="k">in</span><span class="w"> </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="o">]</span>
+<span class="w">      </span><span class="n">stack</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">c</span>
+<span class="w">    </span><span class="k">in</span><span class="w"> </span><span class="o">[</span><span class="ss">:add</span><span class="o">]</span>
+<span class="w">      </span><span class="n">right</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span>
+<span class="w">      </span><span class="n">left</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span>
+<span class="w">      </span><span class="n">stack</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">left</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">right</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">      </span><span class="k">raise</span><span class="w"> </span><span class="s2">&quot;Unknown op </span><span class="si">#{</span><span class="n">op</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="w">  </span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span>
+<span class="k">end</span>
+
+<span class="n">bytecode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">]</span><span class="p">,</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="o">]</span><span class="p">,</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:add</span><span class="o">]</span><span class="p">,</span>
+<span class="o">]</span>
+
+<span class="nb">puts</span><span class="w"> </span><span class="n">interpret</span><span class="p">(</span><span class="n">bytecode</span><span class="p">)</span><span class="w">  </span><span class="c1"># 7</span>
+</code></pre></div>
+<p>现在，让我们来看看与之对应的抽象解释器。两者最大的不同在于，抽象解释器操作的是一个用于记录变量名的 SSA 栈。你会发现，两者的代码结构几乎如出一辙：</p>
+<blockquote>
+<p>Now let’s look at the abstract interpreter, which by contrast operates on an SSA stack. You can see that they are quite similar looking:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_ssa</span><span class="p">(</span><span class="n">bytecode</span><span class="p">)</span>
+<span class="w">  </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">  </span><span class="n">stack</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">  </span><span class="n">bytecode</span><span class="o">.</span><span class="n">each</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">op</span><span class="o">|</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">op</span>
+<span class="w">    </span><span class="k">in</span><span class="w"> </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="o">]</span>
+<span class="w">      </span><span class="nb">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ss">:&quot;v</span><span class="si">#{</span><span class="n">code</span><span class="o">.</span><span class="n">length</span><span class="si">}</span><span class="ss">&quot;</span>
+<span class="w">      </span><span class="n">code</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2"> = const </span><span class="si">#{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">      </span><span class="n">stack</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="nb">name</span>
+<span class="w">    </span><span class="k">in</span><span class="w"> </span><span class="o">[</span><span class="ss">:add</span><span class="o">]</span>
+<span class="w">      </span><span class="nb">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ss">:&quot;v</span><span class="si">#{</span><span class="n">code</span><span class="o">.</span><span class="n">length</span><span class="si">}</span><span class="ss">&quot;</span>
+<span class="w">      </span><span class="n">right</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span>
+<span class="w">      </span><span class="n">left</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span>
+<span class="w">      </span><span class="n">code</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2"> = add </span><span class="si">#{</span><span class="n">left</span><span class="si">}</span><span class="s2">, </span><span class="si">#{</span><span class="n">right</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">      </span><span class="n">stack</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="nb">name</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">      </span><span class="k">raise</span><span class="w"> </span><span class="s2">&quot;Unknown op </span><span class="si">#{</span><span class="n">op</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="w">  </span><span class="n">code</span>
+<span class="k">end</span>
+
+<span class="n">bytecode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">]</span><span class="p">,</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:push</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="o">]</span><span class="p">,</span>
+<span class="w">  </span><span class="o">[</span><span class="ss">:add</span><span class="o">]</span><span class="p">,</span>
+<span class="o">]</span>
+
+<span class="nb">puts</span><span class="w"> </span><span class="n">to_ssa</span><span class="p">(</span><span class="n">bytecode</span><span class="p">)</span>
+<span class="c1"># v0 = const 3</span>
+<span class="c1"># v1 = const 4</span>
+<span class="c1"># v2 = add v0, v1</span>
+</code></pre></div>
+<p>变量名 <code>name</code> 叫什么其实无所谓，只要全局唯一即可。为了简明易读，我直接选用了单调递增的 <code>code</code> 数组长度作为编号。这其实就是前面提到的 HotSpot 论文中“真实内存指针方案”在数组/向量数据结构中的优雅映射。</p>
+<blockquote>
+<p>The <code>name</code>s could be anything as long as they are unique. For simplicity and ease of reading, I picked the length of the <code>code</code> array, which grows monotonically. This is an array/vector-based analogue to the real-pointer approach in the HotSpot paper from above.</p>
+</blockquote>
+<p>大功告成！你看，你已经亲手打造出了一个精巧的抽象解释器。</p>
+<blockquote>
+<p>Ta da! You have built a small abstract interpreter.</p>
+</blockquote>
+<p>如果想要将这一机制推广到全局（即处理条件分支、循环等复杂控制流），你还需要引入某种跨基本块 (Basic Block) 的数据流传递机制，例如 Φ节点 (Phi Node) 或者是基本块参数 (Basic Block Parameters)。我可能会在未来的博文中更深入地探讨这个话题；不过眼下，你可以先阅读我整理的<a href="https://bernsteinbear.com/blog/ssa/">关于该主题的他山之石精选合集</a>。</p>
+<blockquote>
+<p>Now to make it global (to handle control flow) you need some kind of inter-basic-block data flow mechanism such as phi nodes or basic block parameters. Perhaps more on that in another post, but for now, you may enjoy <a href="https://bernsteinbear.com/blog/ssa/">my collection of other people’s writing</a> about that.</p>
+</blockquote>
+<hr />
+<h2 id="_6">总结与思考</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>我最初曾想把这篇博文命名为《其实你也能发明抽象解释》之类的调调，但我很快打消了这个念头——因为我总觉得这类标题带有某种傲慢，潜意识里假设读者不够聪明或者自认为不够聪明。也许更恰当的说法是：<strong>我们</strong>本就可以共同构想出它。</p>
+<blockquote>
+<p>I originally wanted to title this blog post “you could have invented abstract interpretation” or similar, but I decided that I find those titles obnoxious because they assume the reader is or thinks of themself as unintelligent. Perhaps <em>we</em> could have invented it.</p>
+</blockquote>
+<p>本文现在的标题（从字节码到 SSA：一颗指令式珍珠），带着一点幽默诙谐的味道，致敬了那些常被冠以“函数式珍珠 (Functional Pearl)”之名、本该简洁明快却往往让人云里雾里的学术论文；同时，它也是对 Andrew Appel 的经典名作《<a href="https://bernsteinbear.com/img/appel-basic-block-arguments.pdf">SSA 即函数式编程</a>》 (PDF) 的一份温和致意。</p>
+<blockquote>
+<p>The title is a bit of a tongue-in-cheek nod to the “functional pearl” papers that I always felt should be simpler than they are but leave me confused. And also kind of a nicer nod to <a href="https://bernsteinbear.com/img/appel-basic-block-arguments.pdf">SSA is Functional Programming</a> (PDF) by Andrew Appel.</p>
+</blockquote>
+<hr />
+<h2 id="_7">参考文献</h2>
+<blockquote>
+<h2 id="references">References</h2>
+</blockquote>
+<ul>
+<li><a href="https://bernsteinbear.com/assets/img/ertl92.pdf">一种全新的 Forth 本地代码生成方法</a> (PDF, 1992)</li>
+<li><a href="https://bernsteinbear.com/assets/img/caffeine.pdf">Java 字节码到本地代码翻译：Caffeine 原型与初步成果</a> (PDF, 1996) 第 3.2 节</li>
+<li><a href="https://bernsteinbear.com/assets/img/cacao.pdf">CACAO - 一款 64 位 JavaVM 即时编译器</a> (PDF, 1997) 第 3 节</li>
+<li><a href="https://dl.acm.org/doi/pdf/10.1145/277650.277740">即时 Java 编译器中快速高效的代码生成技术</a> (PDF, 1998) 第 2.2 节，模拟栈 (mimic stack)</li>
+<li><a href="https://dl.acm.org/doi/pdf/10.1145/304065.304113">面向 Java™ 的 Jalapeño 动态优化编译器</a> (PDF, 1999)</li>
+<li><a href="https://dspace.mit.edu/entities/publication/6896835b-c46b-4ebb-8ecc-1f5cbac364b5">利用自动化运行时特化进行动态优化</a> (1999) 第 3.4 节</li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://bernsteinbear.com/assets/img/ertl92.pdf">A New Approach to Forth Native Code Generation</a> (PDF, 1992)</li>
+<li><a href="https://bernsteinbear.com/assets/img/caffeine.pdf">Java Bytecode to Native Code Translation: The Caffeine Prototype and Preliminary Results</a> (PDF, 1996) section 3.2</li>
+<li><a href="https://bernsteinbear.com/assets/img/cacao.pdf">CACAO - A 64 bit JavaVM Just-in-Time Compiler</a> (PDF, 1997) section 3</li>
+<li><a href="https://dl.acm.org/doi/pdf/10.1145/277650.277740">Fast, Effective Code Generation in a Just-In-Time Java Compiler</a> (PDF, 1998) section 2.2, the mimic stack</li>
+<li><a href="https://dl.acm.org/doi/pdf/10.1145/304065.304113">The Jalapeño Dynamic Optimizing Compiler for Java™</a> (PDF, 1999)</li>
+<li><a href="https://dspace.mit.edu/entities/publication/6896835b-c46b-4ebb-8ecc-1f5cbac364b5">Dynamic optimization through the use of automatic runtime specialization</a> (1999) section 3.4</li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">编译器</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">SSA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">字节码</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Ruby</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">JIT</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

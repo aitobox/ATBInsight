@@ -1,0 +1,793 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-13-%E4%B8%80%E5%88%87%E7%9A%86%E6%98%AF%E6%8E%A5%E5%8F%A3-%E4%BB%8E-mkdir-%E7%9A%84%E7%BB%86%E5%BE%AE-Bug-%E7%9C%8B-POSIX-%E6%A0%87%E5%87%86%E4%B8%8E%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E8%BE%B9%E7%95%8C/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mkdir-bug-posix" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        文章背景与核心概要
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        概述
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openzfs-uutils" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        OpenZFS 与 uutils 的冲突碰撞
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-openzfs-and-uutils-conflict" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The OpenZFS and <code>uutils</code> Conflict
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        更深层的影响：Shell 脚本中的目录排他锁
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-broader-impact-shell-script-locking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The Broader Impact: Shell Script Locking
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#posix" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        这种行为是否符合 POSIX 规范？
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#is-this-behavior-posix-compliant" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Is This Behavior POSIX Compliant?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        瞬态错误与重试机制
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transient-errors-and-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Transient Errors and Retries
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="mkdir-bug-posix">一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界</h1>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在类 Unix 与 Linux 操作系统中，核心基础工具 (Coreutils) 看似微不足道的实现细节，往往会直接触及系统契约的最底层。近期，Rust 编写的 <code>uutils mkdir</code> 工具被曝出一个极其隐蔽的行为差异：当底层 <code>mkdir(2)</code> 系统调用返回错误但目标目录随后确实存在时，该命令竟然判定为成功并返回退出码 0，这直接导致了知名文件系统 OpenZFS 的自动化回归测试失败。更深层次的危机在于，Unix 生态数十年来长期依赖 <code>mkdir</code> 的原子性来实现 Shell 脚本互斥锁，这一异常行为足以破坏并发环境下的排他性保障。本文借由 OpenZFS 的真实排错案例，深入探讨系统调用返回值、退出状态码、临时瞬态错误重试以及 POSIX 标准的严苛边界，揭示了“接口不仅是代码签名，更是整套行为规范”的技术真谛。</p>
+<hr />
+<h2 id="_2">概述</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>在由 Rust 重写的核心基础工具集 <code>uutils</code> 中，<code>mkdir</code> 命令的一个隐蔽缺陷揭示了一个深刻的系统工程命题：核心基础工具中看似无伤大雅的内部实现细节，可能会彻底打破开发者固有的技术预期与长期沉淀的经典工程模式 (例如利用 Shell 脚本进行文件锁互斥操作)。本文以 OpenZFS 测试套件的一次偶发失败为切入点，深入剖析了内部系统调用、命令退出状态码以及 POSIX 严格合规标准之间微妙而敏感的边界。</p>
+<blockquote>
+<p>A subtle bug in <code>uutils mkdir</code> revealed how seemingly minor implementation details in core utilities can break expectations and established patterns, such as shell script locking. By exploring an OpenZFS test suite failure, this article examines the fine line between internal system calls, exit statuses, and strict POSIX compliance.</p>
+</blockquote>
+<hr />
+<h2 id="openzfs-uutils">OpenZFS 与 uutils 的冲突碰撞</h2>
+<blockquote>
+<h2 id="the-openzfs-and-uutils-conflict">The OpenZFS and <code>uutils</code> Conflict</h2>
+</blockquote>
+<p>最近，开源文件系统 OpenZFS 社区合并了一个非常引人注目的代码提交，用以修复其测试套件中的一处异常：<a href="https://github.com/openzfs/zfs/commit/323d497d324c3673a235003bca641bb83d32bb85">ZTS: failmode_create_continue: don't rely on mkdir(1)'s exit status</a>。</p>
+<blockquote>
+<p>Recently, an interesting commit landed in OpenZFS to fix an issue with the test suite: <a href="https://github.com/openzfs/zfs/commit/323d497d324c3673a235003bca641bb83d32bb85">ZTS: failmode_create_continue: don't rely on mkdir(1)'s exit status</a>. </p>
+</blockquote>
+<p>为了搞清楚问题的来龙去脉，我们不妨先读一读该提交日志中的核心描述摘录：</p>
+<blockquote>
+<p>To understand the problem, consider this excerpt from the commit description:</p>
+<p>💬 [原文引用 / Original Quote]:
+On Ubuntu 26.04, mkdir is uutils coreutils, and uutils mkdir 0.8.0 exits 0 when mkdir(2) fails but the directory exists afterwards, which is exactly the case this test creates: zfs_mkdir() creates the entry, then returns EIO from the failed zil_commit(). So the test fails on ubuntu26 with "mkdir: blocked=0 rc=0" although the kernel returned EIO. GNU mkdir exits 1, as does uutils ln for the symlink case.</p>
+</blockquote>
+<p><em>(如果你想了解 OpenZFS 底层具体发生了什么，可以在 <a href="https://github.com/openzfs/zfs/blob/master/tests/zfs-tests/tests/functional/failmode/failmode_create_continue.ksh">测试脚本源码注释</a> 中查阅更详尽的技术细节。)</em></p>
+<blockquote>
+<p><em>(You can read more details about what's going on in OpenZFS in <a href="https://github.com/openzfs/zfs/blob/master/tests/zfs-tests/tests/functional/failmode/failmode_create_continue.ksh">the test script's comments</a>.)</em></p>
+</blockquote>
+<hr />
+<h2 id="shell">更深层的影响：Shell 脚本中的目录排他锁</h2>
+<blockquote>
+<h2 id="the-broader-impact-shell-script-locking">The Broader Impact: Shell Script Locking</h2>
+</blockquote>
+<p>事实上，<code>uutils mkdir(1)</code> 暴露出的缺陷远不止影响 OpenZFS 这一极端用例。在普遍场景下，当你执行 <code>mkdir fred</code> 时，如果 <code>fred</code> 目录起初并不存在，底层的 <code>mkdir(2)</code> 系统调用在执行中报错，但随后检查发现该目录确实已经存在了，<code>uutils mkdir</code> 就会判定为创建成功并返回状态码 <code>0</code>。而在相同的场景下，GNU Coreutils 的 <code>mkdir</code> 则会果断报错，返回非零状态码 <code>1</code>。</p>
+<blockquote>
+<p>The issue with <code>uutils mkdir(1)</code> was more general than just the OpenZFS edge case. Whenever you invoked <code>mkdir fred</code>, if the <code>fred</code> directory didn't initially exist, the <code>mkdir(2)</code> call reported an error, but the directory existed afterward, <code>uutils mkdir</code> would succeed and exit with status <code>0</code>. Meanwhile, GNU Coreutils <code>mkdir</code> would fail, exiting with status <code>1</code>. </p>
+</blockquote>
+<p>这种行为偏差意味着，如果有两个并发的 <code>mkdir</code> 进程互相竞态竞争创建同一个目录，它们很可能会双双“宣告成功”。这在工程实践中会带来极大的安全隐患，因为 <a href="https://utcc.utoronto.ca/~cks/space/blog/unix/ShellScriptLocking">利用 mkdir 的原子创建特性历来是 Shell 脚本实现排他锁的经典手法</a>，尽管如今 <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/LockShellScriptsWithFlock">更佳的选择是 Linux 专用的 flock 命令</a>。</p>
+<blockquote>
+<p>This discrepancy meant that two concurrent <code>mkdir</code> invocations racing each other could both "succeed" in creating the same directory. This becomes problematic because <a href="https://utcc.utoronto.ca/~cks/space/blog/unix/ShellScriptLocking">mkdir has been a traditional method of doing locking in shell scripts</a>, even though <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/LockShellScriptsWithFlock">the better alternative is Linux-only <code>flock</code></a>.</p>
+</blockquote>
+<p><em>(注：据推测，该缺陷已在 uutils 0.11.0 版本中通过 <a href="https://github.com/uutils/coreutils/commit/bf423f388d543b9180db6b7283d82b301f138913">该 uutils 提交</a> 得到修复，关闭了 <a href="https://github.com/uutils/coreutils/issues/13970">Issue #13970</a>。不过，如果你无法确认当前运行环境是否已经应用了该修复，<a href="https://utcc.utoronto.ca/~cks/space/blog/linux/LockShellScriptsWithFlock">在编写 Shell 脚本排他锁时应优先采用 flock(1)</a>。)</em></p>
+<blockquote>
+<p><em>(Note: I believe this was fixed in uutils 0.11.0 via <a href="https://github.com/uutils/coreutils/commit/bf423f388d543b9180db6b7283d82b301f138913">this uutils commit</a>, resolving <a href="https://github.com/uutils/coreutils/issues/13970">bug #13970</a>. However, if you are unsure whether your environment has the fix, <a href="https://utcc.utoronto.ca/~cks/space/blog/linux/LockShellScriptsWithFlock">you should use flock(1) for shell script locking</a>.)</em></p>
+</blockquote>
+<hr />
+<h2 id="posix">这种行为是否符合 POSIX 规范？</h2>
+<blockquote>
+<h2 id="is-this-behavior-posix-compliant">Is This Behavior POSIX Compliant?</h2>
+</blockquote>
+<p><code>mkdir(1)</code> 的这处边缘行为很自然地引发了一个质问：<code>uutils</code> 最初的这种行为究竟算不算符合 POSIX 规范？</p>
+<blockquote>
+<p>This corner of <code>mkdir(1)</code> behavior raises an obvious question: is <code>uutils</code>'s original behavior POSIX compliant? </p>
+</blockquote>
+<p>从一种视角来看，对于简单的 <code>mkdir fred</code> 命令行调用，POSIX 规范允许在“所有指定的目录均已成功创建”时返回退出码 <code>0</code>。有人可能会辩称，即便底层的 <code>mkdir(2)</code> 系统调用返回了错误码，那也只是命令内部的实现细节；只要该目录最终由这个 <code>mkdir</code> 命令“成功创建”了，返回 0 就是合理的。这种论点在 OpenZFS 的故障场景下颇具说服力——因为在系统调用最终返回 <code>EIO</code> 错误之前，该目录在物理存储上确实已经被 <code>mkdir(2)</code> 创建出来了。</p>
+<blockquote>
+<p>On one hand, with a plain <code>mkdir fred</code>, exit status <code>0</code> is permitted if "all the specified directories were created successfully." One could argue that even though the <code>mkdir(2)</code> system call reported an error, that was merely an internal implementation detail, and the directory was ultimately "created successfully" by the <code>mkdir</code> command. This argument holds significant weight in the OpenZFS scenario, where the directory was literally created by the <code>mkdir(2)</code> call before it returned an <code>EIO</code>.</p>
+</blockquote>
+<p>但从另一种视角来看，POSIX <code>mkdir(1)</code> 工具规范明文规定其必须“执行与 <a href="https://pubs.opengroup.org/onlinepubs/9799919799/functions/mkdir.html"><code>mkdir()</code></a> 函数等价的操作……”；而 POSIX <code>mkdir()</code> C 库函数本身有一项硬性规定：如果目标目录已经存在，则必须报错失败。</p>
+<blockquote>
+<p>On the other hand, the POSIX <code>mkdir(1)</code> standard is obliged to "perform actions equivalent to the <a href="https://pubs.opengroup.org/onlinepubs/9799919799/functions/mkdir.html"><code>mkdir()</code></a> function [...]", and the POSIX <code>mkdir()</code> function is specifically required to fail if the target already exists. </p>
+</blockquote>
+<p>更广泛地讲，如果一个合规的 POSIX <code>mkdir</code> 程序是通过调用 POSIX 标准的 <code>mkdir()</code> 实现的，那么只要 <code>mkdir()</code> 返回了错误码，程序就必须将其认定为执行失败并退出返回非零状态码。退一步说，即便某个 <code>mkdir</code> 程序使用了其他底层替代机制，标准规范中“等价操作”的措辞也强烈暗示着：只要内核报告该目录已经存在，或者在创建目录过程中发生了任何错误，该命令都必须报告失败。</p>
+<blockquote>
+<p>More broadly, if a POSIX <code>mkdir</code> program operates by calling the POSIX <code>mkdir()</code>, it must consider an error return from <code>mkdir()</code> as an error and exit with a non-zero status. Even if a <code>mkdir</code> program uses an alternate mechanism, the equivalence wording strongly implies it should fail if the kernel reports that the directory already exists—or if any error occurs during directory creation.</p>
+</blockquote>
+<p><em>(考虑到行业历来将 <code>mkdir</code> 用作排他锁机制，POSIX 标准的原意毋庸置疑是：如果用户当前的这一次 <code>mkdir</code> 调用没能亲手成功创建出该目录，它就必须返回非零的错误状态码。)</em></p>
+<blockquote>
+<p><em>(Given the traditional use of <code>mkdir</code> as a locking mechanism, POSIX undoubtedly intends that if your invocation of <code>mkdir</code> did not successfully create the directory, it must exit with a non-zero status.)</em></p>
+</blockquote>
+<hr />
+<h2 id="_3">瞬态错误与重试机制</h2>
+<blockquote>
+<h2 id="transient-errors-and-retries">Transient Errors and Retries</h2>
+</blockquote>
+<p>这里还有一个耐人寻味的边缘场景：如果底层的非 POSIX <code>mkdir(2)</code> 系统调用返回了“系统调用被中断” (<code>EINTR</code>) 或类似的潜在瞬态错误 (类似于 OpenZFS 中遇到的 <code>EIO</code> 场景) ，一个合乎 POSIX 标准的 <code>mkdir</code> 程序究竟该如何应对？</p>
+<blockquote>
+<p>An interesting edge case involves what a POSIX <code>mkdir</code> program should do if a non-POSIX <code>mkdir(2)</code> call reports an "interrupted system call" (<code>EINTR</code>) or a similar potentially transient error (akin to the OpenZFS <code>EIO</code> case). </p>
+</blockquote>
+<ul>
+<li>如果你重试执行 <code>mkdir(2)</code> 并且重试成功，那么由你的 POSIX <code>mkdir</code> 程序对外返回成功是完全站得住脚的。</li>
+<li>如果你在重试时遇到了 <code>EEXIST</code> 或其他永久性错误，程序就必须报错失败。</li>
+<li>那么，程序能否在报错后直接检查目标目录当前是否存在，若存在就对外谎报成功呢？在实际工程中，这种做法在语义上非常站不住脚，因为你根本无法确认这个目录究竟是“你”刚刚创建的，还是被并发的其他进程创建的；尽管这在字面上是否严格违反 POSIX 标准仍存有争议。</li>
+</ul>
+<blockquote>
+<ul>
+<li>If you retry <code>mkdir(2)</code> and it succeeds, reporting success from your POSIX <code>mkdir</code> program seems defensible. </li>
+<li>If you retry and encounter <code>EEXIST</code> or another permanent error, you must fail. </li>
+<li>Can you simply check if the directory now exists and report success? Practically, that is legally murky because you cannot be certain <em>you</em> created the directory, though whether it strictly violates POSIX is debatable.</li>
+</ul>
+</blockquote>
+<p>你的 <code>mkdir</code> 工具可能会通过调用底层 <code>mkdir(2)</code> 系统调用的封装库，隐式且自动地对被中断的系统调用进行重试。虽然 <code>EINTR</code> 经常给开发者带来麻烦，但 <a href="https://utcc.utoronto.ca/~cks/space/blog/unix/WhyEINTR">它的存在有着不可替代的底层合理性</a>。由于 <code>uutils mkdir</code> 深度依赖 Rust 标准库 (<a href="https://github.com/uutils/coreutils/blob/main/src/uu/mkdir/src/mkdir.rs#L247">代码引用</a>、<a href="https://doc.rust-lang.org/std/fs/struct.DirBuilder.html#method.create">官方文档</a>)，任何上层工具的实现都必须对这些底层假设保持清醒与敬畏。</p>
+<blockquote>
+<p>Your <code>mkdir</code> program might handle this implicitly by calling a library wrapper around the underlying <code>mkdir(2)</code> system call that automatically handles retries for interrupted system calls. While <code>EINTR</code> can be annoying, <a href="https://utcc.utoronto.ca/~cks/space/blog/unix/WhyEINTR">it exists for valid reasons</a>. Since <code>uutils mkdir</code> relies on the Rust standard library (<a href="https://github.com/uutils/coreutils/blob/main/src/uu/mkdir/src/mkdir.rs#L247">reference</a>, <a href="https://doc.rust-lang.org/std/fs/struct.DirBuilder.html#method.create">documentation</a>), implementations must remain mindful of these underlying assumptions.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Linux</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">POSIX</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">OpenZFS</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">操作系统</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
