@@ -2148,6 +2148,7 @@ title: 标签浏览
 
 - [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
 - [每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由](blog/posts/2026-11-04-每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由.md)
+- [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
 
 ## Gemma 3
 
@@ -2220,6 +2221,7 @@ title: 标签浏览
 
 - [并发服务器：第 8 部分 - Go 语言](blog/posts/2026-08-23-并发服务器：第 8 部分 - Go 语言.md)
 - [Lovable 构建实时服务以集中化数据权限架构](blog/posts/2026-11-10-Lovable-构建实时服务以集中化数据权限架构.md)
+- [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
 
 ## Google
 
@@ -3060,6 +3062,7 @@ title: 标签浏览
 - [冷门但强大的 systemd 黑科技：专为自主 AI 智能体与脚本设计的进程管理指南](blog/posts/2026-10-25-冷门但强大的-systemd-黑科技-专为自主-AI-智能体与脚本设计的进程管理指南.md)
 - [Ubuntu 26.04 将 /tmp 默认挂载为 tmpfs 带来的困扰与解析](blog/posts/2026-10-31-Ubuntu-2604-将-tmp-默认挂载为-tmpfs-带来的困扰与解析.md)
 - [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
+- [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
 
 ## Linux 系统安全
 
@@ -3794,6 +3797,7 @@ title: 标签浏览
 ## OpenZFS
 
 - [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
+- [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
 
 ## OptiDSL
 
@@ -3893,6 +3897,7 @@ title: 标签浏览
 
 - [Syncthing 与 SQLite 的一个“大坑”](blog/posts/2026-08-24-Syncthing 与 SQLite 的一个“大坑”.md)
 - [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
+- [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
 
 ## PPA优化
 
@@ -5672,6 +5677,10 @@ title: 标签浏览
 
 - [Z.ai 详解基于 10 万张国产芯片的 GLM-5.3-Flash 推理系统架构构建](blog/posts/2026-09-18-Z-ai-详解基于-10-万张国产芯片的-GLM-5-3-Flash-推理系统架构构建.md)
 
+## Z3
+
+- [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
+
 ## ZFS
 
 - [Fedora 44 下 DKMS 与内核 Initramfs 镜像重建的性能陷阱与解决](blog/posts/2026-10-20-Fedora-44-下-DKMS-与内核-Initramfs-镜像重建的性能陷阱与解决.md)
@@ -5782,6 +5791,10 @@ title: 标签浏览
 
 - [为你的编码智能体赋予属于你自己的记忆](blog/posts/2026-09-04-为你的编码智能体赋予属于你自己的记忆.md)
 
+## ggml
+
+- [llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石](blog/posts/2026-11-14-llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石.md)
+
 ## golang
 
 - [Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor](blog/posts/2026-09-07-Debian 代码搜索：利用 Go SIMD 实现极速 TurboPFor.md)
@@ -5811,6 +5824,7 @@ title: 标签浏览
 - [使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速](blog/posts/2026-08-22-使用 LFM2.5-DSpark 实现高达 3.2 倍的推理加速.md)
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - [突破算力天花板：Galahad 字节级精准内存机制让大模型文档读取变成一次性开销](blog/posts/2026-10-02-突破算力天花板-Galahad-字节级精准内存机制让大模型文档读取变成一次性开销.md)
+- [llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石](blog/posts/2026-11-14-llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石.md)
 
 ## llm-d
 
@@ -12252,6 +12266,10 @@ title: 标签浏览
 
 - [基于分层语言模型的动态多字节预测](blog/posts/2026-08-26-基于分层语言模型的动态多字节预测.md)
 
+## 存储系统
+
+- [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
+
 ## 存算分离
 
 - [面向存算分离 GPU 推理的拓扑感知数据传输技术](blog/posts/2026-08-11-面向存算分离 GPU 推理的拓扑感知数据传输技术.md)
@@ -13544,6 +13562,7 @@ title: 标签浏览
 
 - [SkillSight：校准技能检索中的通用内容偏差](blog/posts/2026-08-18-SkillSight：校准技能检索中的通用内容偏差.md)
 - [mimeo：将公开专家文集编译为智能体技能并测试知识迁移](blog/posts/2026-09-03-mimeo：将公开专家文集编译为智能体技能并测试知识迁移.md)
+- [llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石](blog/posts/2026-11-14-llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石.md)
 
 ## 开源数据
 
@@ -14099,6 +14118,7 @@ title: 标签浏览
 - [快速未舍入缩放算法：基于 Ivy 的形式化正确性证明](blog/posts/2026-11-06-快速未舍入缩放算法-基于-Ivy-的形式化正确性证明.md)
 - [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
 - [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
+- [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
 
 ## 形式语言学
 
@@ -15976,6 +15996,7 @@ title: 标签浏览
 ## 文件系统
 
 - [当文件系统卸载时如何停止 Systemd 服务](blog/posts/2026-08-18-当文件系统卸载时如何停止 Systemd 服务.md)
+- [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
 
 ## 文化偏见
 
@@ -16964,6 +16985,7 @@ title: 标签浏览
 - [如何在 Chrome 扩展程序中使用 Transformers.js](blog/posts/2026-08-07-如何在 Chrome 扩展程序中使用 Transformers.js.md)
 - [增强本地大语言模型智能体的 Linux 提权攻击能力](blog/posts/2026-08-14-增强本地大语言模型智能体的 Linux 提权攻击能力.md)
 - [Distribird：基于文献信息的贝叶斯模型校准先验分布设计](blog/posts/2026-08-20-Distribird：基于文献信息的贝叶斯模型校准先验分布设计.md)
+- [llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石](blog/posts/2026-11-14-llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石.md)
 
 ## 本地推理
 
@@ -18813,6 +18835,7 @@ title: 标签浏览
 - [智能体自主研究即模糊测试 (arXiv:2608.09855 [cs.AI])](blog/posts/2026-08-12-智能体自主研究即模糊测试 -arXiv-2608.09855 [cs.AI].md)
 - [FuzzingBrain-Bench V1：评估大语言模型的开放式漏洞发现能力](blog/posts/2026-08-29-FuzzingBrain-Bench V1：评估大语言模型的开放式漏洞发现能力.md)
 - [如何精准捕获代码缺陷：基于 Rust 正则引擎的高效模糊测试实战](blog/posts/2026-09-21-如何精准捕获代码缺陷-基于-Rust-正则引擎的高效模糊测试实战.md)
+- [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
 
 ## 模糊逻辑
 
@@ -21978,6 +22001,7 @@ title: 标签浏览
 - [利用 LiteRT Tensor API 实现端侧原生模型构建](blog/posts/2026-10-20-利用-LiteRT-Tensor-API-实现端侧原生模型构建.md)
 - [统一端侧 AI：Coral NPU 开放标准如何打通从模型到底层芯片的高能效智能](blog/posts/2026-10-21-统一端侧-AI-Coral-NPU-开放标准如何打通从模型到底层芯片的高能效智能.md)
 - [Liquid AI 发布 LFM3 系列：六款 2B 级多模态全能开源权重基座模型](blog/posts/2026-10-28-Liquid-AI-发布-LFM3-系列-六款-2B-级多模态全能开源权重基座模型.md)
+- [llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石](blog/posts/2026-11-14-llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石.md)
 
 ## 端侧大模型
 
