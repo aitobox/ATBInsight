@@ -5,6 +5,503 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-14/结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-14/结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷/</guid>
+      <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在 Go 语言日常开发中，传统的单元测试和基于随机输入的模糊测试 (Fuzzing) 常常由于切片底层容量 (Capacity) 等隐蔽盲区，漏掉极其致命的越界切片与行号边界逻辑缺陷。为了根治这一痛点，Google 团队构想出了一种前沿的软件工程验证新范式：先将 Go 源码跨平台编译为 RISC-V 汇编指令，精确定位那些经编译器静态单赋值 (Static Single Assignment, SSA) 优化后依然残留的 `runtime.panicBounds` 潜在崩溃陷阱；随后利用 Gemini 4 Argon 大语言模型 (Large Language Model, LLM) 深度理解代码控制流并秒级生成 Z3 约束求解器 (Constraint Solver) 规则；最后由求解器在毫秒内反向合成精准的崩溃复现输入，并在真实代码中直接验证。这一“大语言模型 + 形式化约束求解”的轻量化协同方案，不仅以极低的时间成本捕获了实际项目中的隐蔽漏洞，也为现代软件工程中缺陷挖掘与代码验证提供了全新的落地标杆。
+
+---
+
+## 核心概述
+
+&gt; ## Summary
+
+在开发用于检查与编辑 Markdown 技能文件的 Go 命令行工具 `skill-lint` 时，传统的单元测试与模糊测试 (Fuzzing) 偶尔会遗漏微妙的切片边界与行号逻辑缺陷。为了彻底捕获这些隐藏的隐患，作者构建了一套创新的验证流水线：
+
+&gt; While developing `skill-lint`—a Go CLI used to check and edit Markdown skill files—traditional unit and fuzz testing occasionally missed subtle slice-bounds and line-number logic bugs. To catch these, the author built a novel verification pipeline: 
+
+1. **编译分析**：将目标 Go 函数编译为 RISC-V 汇编代码，以此找出经编译器静态单赋值 (Static Single Assignment, SSA) 优化器精简后仍然留存的 `runtime.panicBounds` 陷阱。
+2. **AI 代码转换**：借助 **Gemini 4 Argon** 研读 Go 源码与汇编指令，将控制流执行路径直接转译为 **Z3 约束求解器 (Constraint Solver)** 的判定规则。
+3. **自动化复现**：通过 Z3 自动求解并生成触发崩溃的具体字节输入，随后立即调用 `go test` 在真实代码中重放并验证缺陷。
+
+&gt; 1. **Compilation Analysis:** Compiling target Go functions to RISC-V assembly to locate surviving `runtime.panicBounds` traps left behind by the compiler's SSA optimizer.
+&gt; 2. **AI Translation:** Using **Gemini 4 Argon** to read the Go source code and assembly, translating control-flow paths directly into **Z3 constraint solver** rules.
+&gt; 3. **Automated Reproducers:** Using Z3 to generate concrete crashing byte inputs, which are immediately replayed and verified against the real code using `go test`.
+
+本文将深入剖析这种混合验证方案的工作机理，揭示为什么标准模糊测试工具会因为切片容量盲区而漏掉潜在缺陷，探讨该方案的独到优势，以及它如何优雅地融入 Go 开发者的日常工作流。
+
+&gt; This post explores how this hybrid approach successfully uncovered latent bugs that standard fuzzers missed (due to slice capacity blind spots), where it shines, and how it fits into a day-to-day Go development workflow.
+
+---
+
+![title-image](./images/0d629712e1bc.png)
+
+我参与领导 Google 的 [智能体技能项目 (Agent Skills Program)](https://github.com/google/skills)，该项目目前拥有 175 项智能体技能，对像 [go-skills](https://github.com/spf13/go-skills) 这样的社区资源形成了有力补充。为了保证这众多技能文件格式的高度统一，我编写了 `skill-lint`——一款独立的 [Go](https://go.dev/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) 命令行工具，专门用于在正式发布前检查 `SKILL.md` 文件并应用大语言模型 (Large Language Model, LLM) 生成的行级编辑。尽管 `skill-lint` 自身配备了完备的单元测试和模糊测试套件，但在其 Markdown 解析器或编辑应用器中，一处微小的切片截取或行号计算差错依然可能长期潜伏，直到遇到极其罕见的特殊文件或编辑区间时，才会在运行时触发 linter 崩溃 (Panic)。
+
+&gt; I help lead Google's [agent skills program](https://github.com/google/skills), currently with 175 agent skills that supplement community collections like [go-skills](https://github.com/spf13/go-skills). To keep that many skill files consistent, I wrote skill-lint, a standalone [Go](https://go.dev/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) CLI that checks SKILL.md files and applies LLM-generated line edits before they ship. Even with skill-lint's own unit and fuzz test suite, a small slice or line-number mistake inside its Markdown parsers or edit applier can sit dormant until an unusual file or edit range triggers a runtime panic in the linter.
+
+在 Go 语言中，当编译器的优化器剥离掉所有能预先排除的安全检查后，每一个可能在运行时引发 panic 的切片或索引访问操作，都会在底层机器码中编译为一段显式的边界检查陷阱 (Bounds-check Trap)。为了搜寻潜在崩溃，我将代码中的关键函数进行编译，观察优化后幸存下来的 panic 陷阱，并利用 [Gemini 4 Argon](https://ai.google.dev/gemini-api/docs/models/gemini-4-argon?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) 将通往每个陷阱的执行路径翻译为 [Z3 约束求解器](https://github.com/Z3Prover/z3) 的规则。虽然大模型编写的求解器模型并非严格完备的证明系统，但它为智能体提供了一种推导控制流并合成具体 Go 复现测试用例的独立能力；而且由于 `go test` 会直接执行这些触发异常的字节，因此它捕获的每一个崩溃都是 100% 真实存在的。该工作流不仅捕获了我在测试解析器中故意埋下的全部 3 个漏洞，还在 `skill-lint` 中挖掘出了 3 个此前未被察觉的隐蔽缺陷。
+
+&gt; In Go, every slice or index operation that can panic at runtime compiles down to an explicit bounds-check trap in machine code, after the compiler's optimizer strips out the checks it can already rule out. To hunt for crashes, I compiled key functions from my code to see which panic traps survived optimization, and [Gemini 4 Argon](https://ai.google.dev/gemini-api/docs/models/gemini-4-argon?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) translated the path to each trap into rules for the [Z3 constraint solver](https://github.com/Z3Prover/z3). An LLM-written solver model isn't a sound proof system, but it gives the agent an independent way to reason about control flow and synthesize concrete Go reproducers, and every crash it finds is real because go test runs the offending bytes directly. That workflow caught all three bugs I planted in test parsers and turned up three latent bugs in skill-lint.
+
+在本文中，我将逐步拆解 Gemini 与 Z3 验证流水线的实现原理，探讨为何 [`go test -fuzz`](https://go.dev/security/fuzz/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) 会漏掉其中的两个崩溃（以及只需一行改动就能修复该漏检的方法），并阐述这种方法在日常 Go 开发流程中的绝佳定位。
+
+&gt; In this post, I'll walk through how the Gemini and Z3 pipeline works, why [`go test -fuzz`](https://go.dev/security/fuzz/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) missed two of those crashes (and the one-line change that fixes it), and where this approach fits in a day-to-day Go workflow.
+
+---
+
+## 求解器流水线的工作原理
+
+&gt; ## How the solver pipeline works
+
+Anthropic [近期的一篇博文](https://www.anthropic.com/research/formal-verification) 展示了如何通过前沿 AI 模型在 [OSS-Fuzz](https://github.com/google/oss-fuzz) 代码库上编写经机器检验的 [Rocq](https://rocq-prover.org/) 形式化证明，来捕获 C 和 C++ 中的潜在缺陷。形式化工具与依靠随机采样输入的模糊测试器不同，它是从每一个错误故障条件出发进行反向推导，精准求解出能触发该故障的确切输入。然而，完备的定理证明对于绝大多数日常 Go 项目而言过于沉重且门槛极高，因此我想探索的是：在一个函数耗时仅需约 1 分钟的前提下，智能体结合大语言模型与约束求解器究竟能发挥出多大的缺陷搜寻威力。
+
+&gt; A [recent post from Anthropic](https://www.anthropic.com/research/formal-verification) showed how formal verification catches latent bugs in C and C++ by having frontier AI models write machine-checked [Rocq](https://rocq-prover.org/) proofs across [OSS-Fuzz](https://github.com/google/oss-fuzz) libraries. Instead of sampling random inputs like a fuzzer, a formal tool works backward from each failure condition to solve for the exact input that triggers it. Full theorem proving is still too heavy for most day-to-day Go projects, so I wanted to see how much of that bug-hunting power an agent can get from an LLM and a constraint solver in about a minute per function.
+
+在 C 和 C++ 语言中，读写超出缓冲区末尾会导致内存损坏。而 Go 语言则选择在运行时捕获越界访问：对于任何无法证明绝对安全的切片或索引访问操作，编译器都会将其编译为跳转至 [runtime.panicBounds](https://github.com/golang/go/blob/go1.27.3/src/runtime/panic.go#L208) 的显式条件分支。一旦执行到这里就会引发 panic，若未经 recover 捕获，整个进程便会直接崩溃退出。
+
+&gt; In C and C++, reading or writing past the end of a buffer corrupts memory. Go catches out-of-bounds access at runtime instead, compiling every slice or index operation it can't prove safe into an explicit branch to [runtime.panicBounds](https://github.com/golang/go/blob/go1.27.3/src/runtime/panic.go#L208) that panics, crashing the process unless recovered.
+
+在生成机器码之前，Go 的 [静态单赋值 (Static Single Assignment, SSA)](https://pkg.go.dev/cmd/compile/internal/ssa?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) [prove](https://github.com/golang/go/blob/go1.27.3/src/cmd/compile/internal/ssa/prove.go) 优化阶段已经通过追踪切片长度和循环变量，消除了其中的绝大多数边界检查。这道优化过滤工序最终仅留下了编译器自身无法彻底排除的 `runtime.panicBounds` 陷阱，正好为约束求解器提供了一份精炼的目标候选崩溃点清单。
+
+&gt; Before generating machine code, Go's [SSA](https://pkg.go.dev/cmd/compile/internal/ssa?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) [prove](https://github.com/golang/go/blob/go1.27.3/src/cmd/compile/internal/ssa/prove.go) pass already eliminates most of those checks by tracking slice lengths and loop variables. That optimization pass leaves behind only the `runtime.panicBounds` traps the compiler couldn't rule out on its own, giving the solver a short list of candidate crash sites to target.
+
+我使用 `GOOS=linux GOARCH=riscv64 go build -gcflags="-S -d=ssa/check_bce/debug=1"` 编译每个目标函数（其中 `-S` 用于打印汇编代码列表，`ssa/check_bce/debug=1` 则输出所有留存边界检查的详细日志），并将 Go 源代码与反汇编结果一同输入给模型。仅凭 Go 源码，你无法洞察编译器已经移除了哪些边界检查，也无法察觉寄存器是在哪一步被截断为 8 位的；但在反汇编代码中，这些底层细节一览无余。我之所以选择 [RISC-V](https://en.wikipedia.org/wiki/RISC-V) 架构，是因为它正是 Anthropic 文章在 Rocq 形式化证明中选定的指令集架构，且 Go 原生开箱即用支持其交叉编译。
+
+&gt; I compiled each target with `GOOS=linux GOARCH=riscv64 go build -gcflags="-S -d=ssa/check_bce/debug=1"` (`-S` prints the assembly listing and `ssa/check_bce/debug=1` logs every surviving bounds check) and passed both the Go source and the disassembly to the model. Looking at Go source alone, you can't see which bounds checks the compiler already removed or where a register gets truncated to 8 bits; in the disassembly, both show up. I targeted [RISC-V](https://en.wikipedia.org/wiki/RISC-V) because it's the instruction set Anthropic's post targets for its Rocq proofs, and Go cross-compiles to it out of the box.
+
+随后，Argon 研读 Go 源码和反汇编代码，并返回一段用于为每个幸存陷阱建模执行路径的 Z3 脚本；每当它标记出缺陷时，还会同步给出一个修复后的补丁函数。Z3 紧接着检验这些约束条件是否可以满足 (Satisfiable)；一旦求得触发崩溃的输入，`go test` 就会针对真实函数重放这组字节。利用大语言模型让我免去了人工将汇编指令逐一转译为求解器约束的繁重劳动。在整个运行时间中，Argon 的转译占据了主要耗时（每个函数约 1 分钟），而 Z3 求解器本身的计算则在短短几毫秒内即可迅速完成。
+
+&gt; From there, Argon read the Go source and disassembly and returned a Z3 script modeling the path to each surviving trap, along with a patched function whenever it flagged a bug. Z3 then checked whether those constraints could be satisfied, and whenever it found a crashing input, `go test` replayed those bytes against the real function. Using an LLM saved me from translating assembly into solver constraints by hand. Argon's translation dominated the runtime, at about a minute per function, while Z3 itself finished in milliseconds.
+
+![verification-harness](./images/4b4f069546ef.png)
+*图 1：Go 语言的 SSA 编译器会先剥离掉所有经证明安全的边界检查，随后由 Gemini 4 Argon 对留存的潜在陷阱进行建模，交由 Z3 完成求解检验。*
+
+&gt; *Go's SSA compiler strips out provably safe bounds checks first. Gemini 4 Argon then models the remaining traps for Z3 to check.*
+
+---
+
+## 何时应当信任约束求解器
+
+&gt; ## When to trust the solver
+
+Anthropic 的方案依赖于 [交互式定理证明 (Interactive Theorem Proving)](https://en.wikipedia.org/wiki/Proof_assistant)，通常需要人类专家对机器语义进行形式化建模，再由 Rocq 根据这些严格规则检验大语言模型生成的证明过程。与之相对，我的工作流采用了基于 [可满足性模理论 (Satisfiability Modulo Theories, SMT)](https://en.wikipedia.org/wiki/Satisfiability_modulo_theories) 的约束求解器，依托 Argon 将汇编逻辑直接翻译为 Z3 约束规则。虽然在缺乏严格语义模型的情况下，约束求解器无法给出百分之百完备的代码正确性证明，但它在挖掘缺陷方面却出奇地高效。Z3 的 [check-sat](https://microsoft.github.io/z3guide/docs/logic/basiccommands) 指令会在输入约束可满足时返回 `sat` (Satisfiable)，在不可满足时返回 `unsat` (Unsatisfiable)。
+
+&gt; Anthropic's approach relies on [interactive theorem proving](https://en.wikipedia.org/wiki/Proof_assistant), where experts model machine semantics and Rocq checks LLM-generated proofs against those rules. In contrast, my workflow uses a constraint solver based on [satisfiability modulo theories (SMT)](https://en.wikipedia.org/wiki/Satisfiability_modulo_theories), relying on Argon to translate assembly directly into Z3 constraints. While a constraint solver doesn't provide a complete correctness proof without a semantic model, it is highly effective for finding bugs. Z3's [check-sat](https://microsoft.github.io/z3guide/docs/logic/basiccommands) command returns sat when input constraints can be satisfied and `unsat` when they cannot.
+
+当求解器返回 `sat` 结果（即“明确存在缺陷”）时，它会附带一组直指崩溃陷阱的具体字节数据，而 `go test` 会直接在真实函数上执行它们。一旦真实代码抛出 panic，无论 Argon 的求解器建模是否在理论上严丝合缝，你都已经获得了一个确定无疑的代码缺陷复现用例！正如面向缺陷的布隆过滤器 (Bloom Filter) 一样，`unsat` 结果仅代表代码“大概率正确”。牺牲严苛的绝对正确性证明，正是让该方案具备极高工程实用性的关键所在：仅需付出极其微小的精力和时间成本，你就能收获形式化方法最核心的缺陷挖掘价值。
+
+&gt; A sat answer ("definitely buggy") comes with concrete bytes aimed at the trap, and `go test` runs them against the real function. Once go test panics, you have a concrete bug reproducer regardless of whether Argon's model was sound. Like a Bloom filter for bugs, an `unsat` answer only means "maybe correct." Trading away a correctness proof is what makes the approach so practical: you get most of the bug-finding value of formal methods for a tiny fraction of the effort.
+
+Anthropic 的方案在 64 MB 内存限制下证明了整个二进制程序的无崩溃特性；而我则针对单个函数，在全新的 64 字节切片且满足 [cap(buf) == len(buf)](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Length_and_capacity) 的条件下进行检验，因此任何超出 `len(buf)` 的切片操作都会立刻引发 panic。（如果你想在 Go 中尝试全二进制的 Rocq 验证方案，[theorem-labs/oss-verify](https://github.com/theorem-labs/oss-verify) 包含了一套针对 [Go 1.27](https://go.dev/doc/go1.27?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) 的运行时覆盖层，能使 Go 运行时变为单线程且完全确定性）。
+
+&gt; Anthropic's setup proved no-crash properties on whole binaries under a 64 MB budget; I checked individual functions on fresh 64-byte slices where [cap(buf) == len(buf)](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Length_and_capacity), so any slice past `len(buf)` panics. (If you want the full-binary Rocq setup for Go, [theorem-labs/oss-verify](https://github.com/theorem-labs/oss-verify) includes a [Go 1.27](https://go.dev/doc/go1.27?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) runtime overlay that makes the runtime single-threaded and deterministic.)
+
+作为模糊测试的对比基线，我在 Go 1.27.3 环境下针对每个植入的缺陷运行了无种子的 [`go test -fuzz`](https://go.dev/security/fuzz/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026)：包括一次 3 秒的快速运行以及三次 60 秒的运行；每次测试都清空缓存以避免测试时长过短成为漏检的借口。
+
+&gt; For the fuzzing baseline, I ran unseeded [`go test -fuzz`](https://go.dev/security/fuzz/?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) on Go 1.27.3 against each planted bug: one 3-second run and three 60-second runs, each with a fresh fuzz cache so a short time budget wouldn't explain a miss.
+
+---
+
+## 在汇编代码中捕获植入的人工缺陷
+
+&gt; ## Finding a planted bug in assembly
+
+在正式测试前，我首先选用了 3 个不存在越界漏洞的安全解析器，以确保流水线不会误报正常代码。编译器的 `prove` 优化阶段自主消除了 TOML 键名解析器中的所有边界检查；而对于 HTTP 报头扫描器和变长整数 (Varint) 解码器中残留的陷阱，Z3 均准确返回了 `unsat`（不可满足）。
+
+&gt; I started with three safe parsers to make sure the pipeline didn't flag clean code. The compiler's `prove` pass removed every bounds check in a TOML key parser on its own, and Z3 returned `unsat` on the remaining traps in an HTTP header scanner and a varint decoder.
+
+随后，我编写了 3 个暗藏微小 panic 漏洞的解析器。这是其中的第一个——`ParseTwoChunkFrame`：
+
+&gt; Then I wrote three parsers with subtle panics. Here's the first one, `ParseTwoChunkFrame`:
+
+```go
+func ParseTwoChunkFrame(buf []byte) ([]byte, []byte) {
+	if len(buf) &lt; 4 || buf[0] != 0xA5 || buf[1] != 0x5A {
+		return nil, nil
+	}
+	hdrLen, bodyLen := buf[2], buf[3]
+	total := hdrLen + bodyLen
+	if int(total)+4 &gt; len(buf) {
+		return nil, nil
+	}
+	endHdr := 4 + int(hdrLen)
+	endBody := endHdr + int(bodyLen)
+	return buf[4:endHdr], buf[endHdr:endBody]
+}
+```
+
+在 RISC-V 反汇编代码中，这一缺陷变得清晰易见：
+
+&gt; In the RISC-V disassembly, the bug is much easier to see:
+
+```plaintext
+0x0060  ADD    X16, X9, X5                 ; X5 = hdrLen + bodyLen
+0x0064  MOVBU  X5, X5                      ; TRUNCATE to uint8: X5 = X5 &amp; 0xff
+0x0068  ADDI   $4, X5, X5                  ; X5 = int(total) + 4
+0x006a  BLT    X11, X5, 0x00bc             ; guard: if len(buf) &lt; X5, return nil, nil
+0x006e  MOV    X9, X11                     ; X11 = int(hdrLen)
+0x0070  MOV    X16, X14                    ; X14 = int(bodyLen)
+0x0072  ADD    X14, X11, X9                ; X9 = int(hdrLen) + int(bodyLen) (unmasked!)
+0x0076  ADDI   $4, X11, X16                ; X16 = endHdr = 4 + int(hdrLen)
+0x007a  BLTU   X12, X16, 0x00ec            ; if cap(buf) &lt; endHdr -&gt; runtime.panicBounds
+...
+0x0090  ADDI   $4, X9, X9                  ; X9 = endBody = 4 + int(hdrLen) + int(bodyLen)
+0x0092  BLTU   X12, X9, 0x00e8             ; if cap(buf) &lt; endBody -&gt; runtime.panicBounds
+```
+
+代码中的 `total := hdrLen + bodyLen` 是将两个 `uint8` 类型的变量相加，因此在长度防护条件执行判定前，汇编中的 `MOVBU` 指令已经 [在 256 处发生了整数回绕溢出 (Integer Overflow Wrap)](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Integer_overflow)；而在计算 `endBody` 时，指令相加的却是完整的 64 位整数。Argon 将这些汇编指令转化为一条 Z3 求解查询：询问对于一个长度至多为 64 字节的新建切片，是否存在某种输入不仅能够通过长度防护判断，而且仍会在 `0x0092` 处触发 `endBody` 边界检查失败：
+
+&gt; `total := hdrLen + bodyLen` adds two `uint8` values, so `MOVBU` [wraps the sum at 256](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Integer_overflow) before the length guard checks it, while `endBody` adds the full 64-bit ints. Argon turned those instructions into a Z3 query asking whether a fresh slice of up to 64 bytes can pass the guard and still fail the `endBody` check at `0x0092`:
+
+```python
+import z3
+
+s = z3.Solver()
+length, capacity = z3.BitVecs("length capacity", 64)
+b0, b1, hdrLen8, bodyLen8 = z3.BitVecs("b0 b1 hdrLen8 bodyLen8", 8)
+
+wrapped_sum64 = z3.ZeroExt(56, hdrLen8 + bodyLen8) + z3.BitVecVal(4, 64)
+end_hdr64 = z3.BitVecVal(4, 64) + z3.ZeroExt(56, hdrLen8)
+end_body64 = end_hdr64 + z3.ZeroExt(56, bodyLen8)
+
+s.add(z3.UGE(length, 4), z3.ULE(length, 64), capacity == length)
+s.add(b0 == 0xA5, b1 == 0x5A)
+s.add(z3.UGE(length, wrapped_sum64), z3.ULE(end_hdr64, capacity))
+s.add(z3.UGT(end_body64, capacity))  # panic at 0x0092
+assert s.check() == z3.sat
+print(s.model())
+```
+
+Z3 迅速给出了一个 59 字节的反例输入，其中 `hdrLen = 48` 且 `bodyLen = 236`：它们作为 `uint8` 相加后，其数值从 284 回绕溢出缩小至 28（因此 28 + 4 ≤ 59 顺利通过了长度防护），而随后执行的 `buf[endHdr:endBody]` 却要求截取到下标 288，从而直接引发了 panic 崩溃。
+
+&gt; Z3 returned a 59-byte counterexample with `hdrLen = 48` and `bodyLen = 236`: their `uint8` sum wraps from 284 down to 28 (so 28 + 4 ≤ 59 passes the guard), and `buf[endHdr:endBody]` then slices to index 288 and panics.
+
+---
+
+## 为什么 Go 模糊测试器会漏掉概率高达 1/5 的崩溃
+
+&gt; ## Why Go's fuzzer missed a 1-in-5 crash
+
+在 59 字节的长度下，所有可能的 `(hdrLen, bodyLen)` 取值组合中有高达 19.4% 的概率会触发这一崩溃。然而，无论是 3 秒的模糊测试还是连续三次 60 秒的完整测试，全部无一例外地漏掉了该漏洞。
+
+&gt; At 59 bytes, 19.4% of all possible `(hdrLen, bodyLen)` pairs trigger this crash. Yet a 3-second fuzz run missed it, and so did three 60-second runs.
+
+Go 语言在对形如 `buf[endHdr:endBody]` 的 [切片表达式 (Slice Expression)](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Slice_expressions) 进行越界检查时，依据的标准是切片的底层容量 (Capacity)，而非当前长度 (Length)；而 Go 自带的模糊测试器在传入切片时，几乎总是带有充足的闲置容量。在一次包含 386,741 次模糊测试调用、历时 10 秒的探针探测中，89% 的测试输入本质上都是指向同一个约 100 MB 共享缓冲区的切片视图，其中仅有 0.07% 的用例满足 `cap == len`。在拥有如此充裕的闲置容量下，最大不超过 514 的 `endBody` 永远不会超过 `cap(buf)`，导致存在缺陷的解析器直接静默返回了超出 `buf` 有效长度的脏数据，而完全没有触发 panic 报警。
+
+&gt; Go checks a [slice expression](https://go.dev/ref/spec?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#Slice_expressions) like `buf[endHdr:endBody]` against the slice's capacity, not its length, and Go's fuzzer rarely passes a slice without spare capacity. In a 10-second probe of 386,741 fuzz calls, 89% of inputs were views into a shared ~100 MB buffer, and only 0.07% had `cap == len`. With that much spare capacity, endBody (at most 514) never exceeds `cap(buf)`, so the buggy parser returns bytes past the end of `buf` instead of panicking.
+
+第二个目标函数 `ExtractQuotedToken` 也掉入了相同的盲区：当末尾的反斜杠导致索引超出 `len(buf)` 刚好 1 个字节时，Z3 凭借仅仅 2 个字节的输入 `[]byte{'"', '\\'}` 瞬间就捕获了缺陷，而模糊测试器却将这一微小的越界直接吸收在闲置容量中，毫无知觉。
+
+&gt; The second target, `ExtractQuotedToken`, hit the same blind spot when a trailing backslash pushed the index one byte past `len(buf)`. Z3 caught it immediately with the 2-byte input `[]byte{'"', '\\'}`, while the fuzzer absorbed the overrun in spare capacity.
+
+通过使用完整三索引切片表达式将容量截齐至当前长度，任何超出 `len` 的越界切片都会立即转化为 panic：
+
+&gt; Clipping capacity to length with a full slice expression turns any slice past `len` into a panic:
+
+```go
+f.Fuzz(func(t *testing.T, data []byte) {
+	data = data[:len(data):len(data)] // cap == len: slicing past the end now panics
+	ParseTwoChunkFrame(data)
+})
+```
+
+完成这一行关键修改后，模糊测试器在三次测试中均成功触发了 `ParseTwoChunkFrame` 和 `ExtractQuotedToken` 的崩溃（耗时中位数分别仅为 0.28 秒和 0.17 秒）。第三个测试目标 `ParseMagicPacket` 则是作为对照组设置的：由于其内部有符号 `int8` 长度逻辑会在负数索引上引发 panic（无论容量多大都会报错），模糊测试器在无论修改前后均能稳定捕捉到该问题。然而，模糊测试始终无法为你提供覆盖其余路径的 `unsat`（证明无崩溃可能）信号，而这正是用于验证那 3 个安全解析器及检验 Argon 补丁代码有效性的决定性机制。
+
+&gt; After that change, the fuzzer crashed both `ParseTwoChunkFrame` and `ExtractQuotedToken` in all three runs (median 0.28 s and 0.17 s). The third target, `ParseMagicPacket`, was a control because its signed `int8` length bug panics on a negative index regardless of capacity, and the fuzzer found it in every run either way. Fuzzing still can't give you an `unsat` signal across the remaining paths, which is how I checked the three safe parsers and Argon's patches.
+
+![parser-benchmark-table](./images/4e1fc9865948.png)
+*图 2：将切片容量截齐至长度，消除了模糊测试器在两处越界缺陷上的盲区；而 Argon 与 Z3 则不仅捕获了全部 3 处崩溃，还成功验证了每个修复补丁的正确性。*
+
+&gt; *Clipping slice capacity to length fixes the fuzzer's blind spot on both overrun bugs, while Argon and Z3 catch all three crashes and check each patched parser.*
+
+---
+
+## 在实际项目 skill-lint 中的实战检验
+
+&gt; ## Running it on skill-lint
+
+接下来，我将该流水线投入到 `skill-lint` 项目本体的真实检验中。一个完整的 Go 命令行程序过于庞大，无法直接整体丢给约束求解器：即使是一个仅有 10 行的解析器，也会从 Go 运行时链接多达 1,559 个符号，而体积达 28 MB 的 `skill-lint` 二进制文件总共包含 32,321 个符号。遵循“函数式核心、命令式外壳 (Functional Core, Imperative Shell)”的软件设计原则，我将命令行参数解析、网络请求以及文件 I/O 依然交由 `go test -fuzz` 和 `go test -race` 处理，仅对从文件读取逻辑中提炼出的纯函数 (Pure Functions) 和切片辅助工具执行求解器验证。
+
+&gt; Next, I pointed the pipeline at skill-lint itself. A whole Go CLI is too large to hand to a solver directly. Even a 10-line parser links 1,559 symbols from the Go runtime, and the 28 MB skill-lint binary has 32,321 symbols in total. Following [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell), I left CLI flags, network calls, and file I/O to `go test -fuzz` and `go test -race`, and ran the solver only on pure functions and slice helpers extracted from file-reading code.
+
+![verification-rings](./images/78338d782d02.png)
+*图 3：将解析与切片运算提取为纯函数交由约束求解器检验，而将文件 I/O、命令行参数及网络调用留给标准的模糊测试与竞态检测。*
+
+&gt; *Pull parsing and slice math into pure functions for the solver, and leave file I/O, CLI flags, and network calls to standard fuzzing and race detection.*
+
+在我测试的 5 个函数中，有 2 个扫描器经验证返回了 `unsat`（其中包括一个在 SSA 优化后依然保留 6 处边界检查的 CRLF 行切分器），而其余 3 个函数均被抓出了真缺陷。其中最隐蔽也最棘手的一个位于 `ApplyReplacementChunks` 中，该函数的作用是根据初始行数校验大语言模型生成的 `{StartLine, EndLine}` 编辑区块，并将其自底向上逆向排序，以防止前置编辑的插入导致后置行号发生偏移：
+
+&gt; Of the five functions I tested, two scanners came back `unsat` (including a CRLF line splitter with six surviving bounds checks), and the other three had bugs. The sharpest was in `ApplyReplacementChunks`, which validates LLM-generated `{StartLine, EndLine}` edits against the initial line count and sorts them bottom-to-top so earlier edits don't shift later line numbers:
+
+```go
+for _, c := range chunks {
+	if c.StartLine &lt; 1 || c.EndLine &gt; len(lines) || c.StartLine &gt; c.EndLine {
+		return nil
+	}
+}
+sort.Slice(chunks, func(i, j int) bool {
+	return chunks[i].StartLine &gt; chunks[j].StartLine
+})
+for _, c := range chunks {
+	lines = append(lines[:c.StartLine-1],
+		append(c.Replacement, lines[c.EndLine:]...)...)
+}
+```
+
+Z3 迅速给出了 `sat`（可满足）判定，因为仅按 `StartLine` 降序排序并不能防止两个编辑块产生重叠。在一次性预先做完边界检查的辅助函数中，如果一个总长 4 行的文件在应用第 3、4 行替换为 1 行后，`lines` 会缩短至 3 个元素；此时若第二个编辑块覆盖第 2 到 4 行，在执行到 `lines[4:]` 时便会直接因越界抛出 `slice bounds out of range [4:3]` 导致崩溃。而在已发布的生产版 `ApplyChunks` 中，每次循环迭代时的边界检查会将此情况转变为一种极具误导性的范围错误；更糟的是，若重叠编辑块的范围依然落在 `len(lines)` 内，后执行的编辑便会悄无声息地覆盖掉先前的编辑。在完成排序后增加一步重叠校验并直接拒绝重叠区块，即可彻底根治这两种问题。
+
+&gt; Z3 immediately returned `sat` because sorting by `StartLine` doesn't prevent two chunks from overlapping. In the extracted helper, which checks bounds once up front, replacing lines 3 and 4 of a 4-line file with one line shrinks `lines` to 3 elements, so a second chunk spanning lines 2 through 4 evaluates `lines[4:]` and panics with `slice bounds out of range [4:3]`. In the shipped `ApplyChunks`, a per-iteration bounds check turns that case into a misleading range error, while overlapping chunks that stay within `len(lines)` silently overwrite the earlier edit. Rejecting overlapping chunks after the sort fixes both.
+
+其余两处缺陷也是类似的边界核算差错。在本地修复器中，每个违规项的行号只在最初检查了一次，但在随后的内部循环中如果执行了删除操作就会缩小切片长度（一旦修复器在删除后返回第二个块，就会触发潜在的崩溃，虽然目前 `DeleteLineFix` 仅返回一个块）。而在提示词打包器中，截断检查硬编码预留了 100 字节用于容纳约 70 字节的外层包装以及文件路径；一旦文件路径超过约 30 字节，在生产代码中就会超出 2 MB 的上下文预算，并在提炼出的辅助函数中引发 panic。
+
+&gt; The other two bugs were similar accounting errors. In the local fixer, target line numbers were checked once per violation before the inner chunk loop applied deletions that shrank the slice (a latent panic if a fixer ever returns a second chunk after a deletion, though `DeleteLineFix` only returns one today). In the prompt packer, a truncation check reserved a flat 100 bytes for a ~70-byte wrapper plus file path, overshooting the 2 MB context budget in the shipped code when a path exceeds about 30 bytes and panicking in the extracted helper.
+
+当你像这样对函数进行模块化检验时，目标函数必须自行包含完整的入口防护逻辑（例如 `ApplyReplacementChunks` 中的边界检查与排序）。如果一个内部辅助函数暗含了某些仅由上层调用方保证或仅在文档注释中说明的前置假设条件，Z3 就会毫不客气地构造出违反这些假设的极端反例输入。正因为我提取的每个辅助函数都完备地保留了入口守卫，误报 (False Positives) 在本测试中完全不是问题：在我测试的全部 6 个存在缺陷的函数中，Z3 返回的第一个 `sat` 赋值用例均在 `go test` 中触发了百分之百真实的崩溃，根本无需额外过滤非崩溃候选解或重新向求解器反馈迭代。
+
+&gt; When you check a function modularly like this, the target has to include its own entry-point guards (like the bounds check and sort in `ApplyReplacementChunks`). If an internal helper assumes preconditions that are only enforced by its caller or stated in a doc comment, Z3 will happily invent inputs that violate them. Because each extracted helper included its entry guards, false positives weren't an issue: across all six buggy functions in my tests, the first `sat` assignment Z3 returned triggered a real panic in `go test` without needing to filter out non-crashing candidates or loop back into the solver.
+
+当我把这些辅助工具函数与文件 I/O 剥离之后，短短 3 秒的模糊测试同样也抓出了这 3 个缺陷。为了确认 Argon 并不是依靠测试文件中的源码注释来“投机取巧”，我还特意将所有代码注释剥离后重新对 `skill-lint` 的测试目标运行了一遍；结果证明，Argon 与 Z3 依然稳定捕获了全部 3 处缺陷，并对 2 个扫描器及所有 3 个修复补丁正确返回了 `unsat`。
+
+&gt; Once I pulled these helpers away from file I/O, a 3-second fuzz run caught all three bugs too. To make sure Argon wasn't leaning on source comments in my test files, I also reran the skill-lint targets with all comments stripped; Argon and Z3 still caught all three bugs and returned `unsat` on the two scanners and all three patches.
+
+---
+
+## 在 Go 工程工作流中的最佳实践定位
+
+&gt; ## Where this fits in a Go workflow
+
+如果完全局限在目标语言的表层语义中，智能体很难察觉某一类深层次的代码缺陷。当大语言模型直接审查 Go 源代码时，像 `if int(total)+4 &gt; len(buf)` 这样的语句看起来就像教科书般无懈可击的标准边界检查；而当它运行 `go test -fuzz` 时，目标语言运行时的底层细节（例如闲置切片容量或多步前置条件检查）又会将崩溃完全隐藏起来。让智能体将 Go 源码和底层汇编代码转译为约束求解器规则，迫使它改变了思考与表示形式——剥离掉表层的语法修饰，将每一位的位宽截断与切片边界显式暴露出来；与此同时，`go test` 又能将求解器的命中断言精准转化为可实际运行的 Go 复现代码。
+
+&gt; Staying entirely inside the target language makes a whole class of bugs hard for an agent to see. When an LLM reviews Go source directly, a line like `if int(total)+4 &gt; len(buf)` looks like a textbook bounds check, and when it runs `go test -fuzz`, target-language runtime details like spare slice capacity or multi-step precondition checks can hide the crash indefinitely. Asking the agent to translate Go and assembly into a constraint solver forces a change of representation that strips away surface syntax and makes every bit width and slice bound explicit, while `go test` turns any solver hit back into a concrete Go reproducer.
+
+对于绝大多数常规 Go 代码而言，只需将切片容量截齐至当前长度，对纯辅助函数进行模糊测试就能在数秒内捕获绝大部分边界缺陷。而在那些既逃过了编译器范围证明优化器、又在快速模糊测试中幸存下来的高危代码陷阱上，花额外 1 分钟调用约束求解器是极具性价比的——尤其是在需要根据多字段报头或行号范围复杂计算偏移量的各类解析器和文本编辑器中。
+
+&gt; For most Go code, fuzzing pure helpers with slice capacity clipped to length will catch bounds bugs in seconds. A solver is worth the extra minute on the traps that survive both the compiler's range prover and a quick fuzz run, especially in parsers and editors that compute offsets from multi-field headers or line ranges.
+
+单线程约束求解器模型无法捕捉数据竞态 (Data Races) 或死锁等并发问题，因此并发代码的验证依然应当依赖 [竞态检测器 (Race Detector)](https://go.dev/doc/articles/race_detector?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026)、[确定性并发测试](https://go.dev/pkg/testing/synctest?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026) 以及 Go 1.27 的 [Goroutine 泄漏分析 (Goroutine Leak Profiles)](https://go.dev/doc/go1.27?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#goroutineleak-profiles)。
+
+&gt; Single-threaded solver models don't see data races or deadlocks, so concurrent code still belongs with the [race detector](https://go.dev/doc/articles/race_detector?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026), [deterministic concurrency testing](https://go.dev/pkg/testing/synctest?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026), and Go 1.27's [goroutine leak profiles](https://go.dev/doc/go1.27?utm_team=DSS+DevRel&amp;utm_campaign=default&amp;utm_source=blog&amp;utm_medium=article&amp;utm_content=b583878026#goroutineleak-profiles).
+
+如果你也在探索将约束求解器或编码智能体引入 Go 语言开发，欢迎在 [X](https://x.com/kweinmeister) 或 [LinkedIn](https://www.linkedin.com/in/karlweinmeister/) 上与我交流心得。
+
+&gt; If you're experimenting with solvers or coding agents on Go, let's compare notes on [X](https://x.com/kweinmeister) or [LinkedIn](https://www.linkedin.com/in/karlweinmeister/).</description>
+    </item>
+    <item>
+      <title>文件系统发生写入错误后的未知状态与架构权衡</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-14/文件系统发生写入错误后的未知状态与架构权衡/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-14/文件系统发生写入错误后的未知状态与架构权衡/</guid>
+      <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在计算机系统中，当应用程序向磁盘写入数据失败时，我们往往直觉地认为操作“完全没发生”或“直接报错回滚”。然而在现代复杂的存储设备与硬件控制器面前，一旦写入发生 I/O 错误，底层的物理介质究竟写入了多少、处于何种状态实际上是完全不可知的。这种硬件物理层面的不确定性，直接给操作系统内核与现代文件系统 (如 OpenZFS) 带来了严峻的一致性困境：内存中的数据对象究竟该保留还是删除？为了兼顾数据完整性与系统高可用，文件系统在传统的“遇错直接停机 (Panic)”与“容忍错误继续运行 (Continue)”之间做出了艰难的架构权衡。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+当文件系统遭遇写入输入输出 (I/O) 错误时——例如在创建目录的过程中——底层存储介质真实的物理与逻辑状态便会陷入未知的混沌之中。存储设备往往无法准确汇报某次写入操作究竟是已经成功落盘、部分写入完成，还是在触碰介质前就彻底失败。当数据持久化 (Persistence) 受阻时，这给像 ZFS 这样的现代文件系统带来了棘手的两难抉择：既要防范磁盘上潜在的数据损坏风险，又要维系操作系统内存中状态的一致性。
+
+&gt; When a filesystem encounters a write I/O error—such as during the creation of a directory—the true physical and logical state of the storage becomes uncertain. Devices cannot reliably report whether a write succeeded, partially succeeded, or failed entirely before encountering an error. This creates a difficult dilemma for filesystems like ZFS regarding how to handle both on-disk corruption risks and in-memory consistency when persistence fails.
+
+---
+
+## 问题的根源：ZFS 与写入错误
+
+&gt; ## The Root of the Problem: ZFS and Write Errors
+
+在围绕 `mkdir` 命令及其底层系统调用 `mkdir(2)` 抛出错误时的行为讨论中，关于文件系统韧性经常会出现这样一个疑问：
+
+&gt; In discussions regarding `mkdir`'s behavior when `mkdir(2)` experiences an error, a common question arises regarding filesystem resilience: 
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; “这难道不纯粹是 ZFS 自身的问题吗？如果在创建目录时遇到了任何差错，它究竟为什么还会允许这个目录继续存在呢？”
+&gt;
+&gt; *“Isn't the problem here squarely with ZFS? What in the world is it doing letting the directory live if there was any problem at all birthing it?”*
+
+[ZFS 的这一具体案例](https://github.com/openzfs/zfs/commit/323d497d324c3673a235003bca641bb83d32bb85) ( [在官方测试用例中也有体现](https://github.com/openzfs/zfs/blob/master/tests/zfs-tests/tests/functional/failmode/failmode_create_continue.ksh) ) 发生在 ZFS 向磁盘发起写入以确保新目录持久化存储时，磁盘却返回了一个 I/O 错误。
+
+&gt; The [specific ZFS situation](https://github.com/openzfs/zfs/commit/323d497d324c3673a235003bca641bb83d32bb85) ([also tested here](https://github.com/openzfs/zfs/blob/master/tests/zfs-tests/tests/functional/failmode/failmode_create_continue.ksh)) occurs when ZFS sends a write to the disk to make a directory creation durable, only to receive an I/O error in return. 
+
+然而，对于*任何*文件系统而言，普遍面临的核心难题在于：一旦发生写入 I/O 错误，现实世界的真实物理状态就会变得未知且不可捉摸。这不仅适用于一般的常规写入，在涉及对象创建等元数据 (Metadata) 操作时更是尤为突出。
+
+&gt; However, the general problem for *any* filesystem is that after a write I/O error, the true state of the world is unknown and uncertain. This applies to writes in general, but it is especially pronounced during metadata operations like object creation.
+
+## 为什么写入错误会带来不确定性？
+
+&gt; ## Why Write Errors Create Uncertainty
+
+硬件设备返回的写入 I/O 错误或 I/O 超时，仅仅代表“某个环节出了故障”。它**并不能**说明数据到底有没有真正触及并写入物理存储介质：
+
+&gt; A device write I/O error or I/O timeout only communicates that a problem occurred. It does **not** indicate whether the write actually made it to the storage media:
+
+* **时序模糊性 (Timing ambiguities)**：除非硬件设备在错误代码中给出明确承诺，否则文件系统根本无从知晓错误是在写入完成*之前*、*期间*还是*之后*发生的。
+* **部分写入 (Partial writes)**：当一次写入涉及多个磁盘扇区时，可能只有一部分扇区成功提交到了介质中，而另一部分却写入失败。
+* **数据损坏 (Data corruption)**：存储驱动器在发生写入错误后通常不对介质上的残留数据做任何保证。最终留下的数据可能既不是旧版本，也不是新版本，而是一份半新半旧的混合残片，甚至是纯粹的损坏乱码 (Garbage)。
+
+&gt; * **Timing ambiguities:** Unless the device explicitly promises otherwise in its error code, the filesystem cannot know if the error occurred *before*, *during*, or *after* the write completed.
+&gt; * **Partial writes:** When writing multiple sectors, some sectors may successfully commit to media while others do not. 
+&gt; * **Data corruption:** Storage drives generally make no guarantees about the data remaining after a write error. The resulting data may be neither the old version nor the new version, but rather a hybrid or pure corruption (garbage).
+
+*(虽然事后立即尝试将数据重新读取一遍有时能够帮助理清状态，但这种尝试在实践中往往同样会失败，甚至可能让硬件故障雪上加霜)*。
+
+&gt; *(While immediately attempting to read the data back can sometimes clarify the state, it frequently fails or exacerbates the problem).*
+
+## 内存状态与磁盘状态的割裂
+
+&gt; ## In-Memory State vs. Disk State
+
+除了物理存储介质带来的不确定性之外，文件系统或操作系统内核 (Kernel) 可能已经在系统内存中建立了全新状态的数据结构表示。
+
+&gt; Beyond the physical uncertainties of the storage media, the filesystem or kernel may have already established in-memory representations of the new state. 
+
+对于新建的文件系统对象，通常的做法是先在内存中构建好该对象，最后一步才将其持久化刷新到磁盘介质上。而一旦这一步持久化发生故障，文件系统便面临着艰难的二选一抉择：
+
+&gt; For new filesystem objects, the in-memory version is typically created first, with persistence to disk handled as the final step. When this persistence fails, the filesystem faces a difficult choice:
+
+1. **清理并移除内存中的对象**：应用程序可能会观察到某个对象在没有任何显式删除操作的情况下突然凭空消失；或者恰恰相反，如果磁盘底层其实已经成功完成了写入，该对象后续又会“神奇地”重新冒出来。
+2. **保留内存中的对象**：这就会导致类似 ZFS 展现出的行为现象——即使 `mkdir(2)` 系统调用明确返回了错误，该目录在内存中却依然可见；然而，如果它在磁盘上从未真正物理生成过，它随后便可能在卸载或重载时离奇消失，或者在后续访问中引发新的故障。
+
+&gt; 1. **Remove the in-memory object:** Programs might observe an object that appears and disappears without explicit user action, or conversely, it may "magically" reappear later if the disk turns out to have successfully written it after all.
+&gt; 2. **Keep the in-memory object:** This leads to scenarios like ZFS's behavior, where a directory appears to exist despite the `mkdir(2)` system call returning an error—though it may subsequently vanish or trigger future faults if it never truly materialized on disk.
+
+## 乱局之下的抉择：停机恐慌还是继续运行？
+
+&gt; ## Handling the Mess: Panic vs. Continue
+
+应对这种状态歧义的传统策略之一，便是在发生未处理的写入错误时立即冻结文件系统或触发系统崩溃恐慌 (Panic)，将文件系统转为只读或挂起状态，交由系统管理员事后人工介入排查损坏。
+
+&gt; One traditional way to deal with this ambiguity is to immediately freeze or panic the filesystem the moment an unhandled write error occurs, leaving a system administrator to sort out the corruption by hand. 
+
+ZFS 默认采用这种极其保守的防御性策略，而这有时会让运维人员与用户感到十分棘手与沮丧。因此，ZFS 也提供了绕过冻结、仅向调用方直接返回 I/O 错误的配置选项 (例如 `failmode=continue` 设置)。然而，一旦文件系统选择在持续出现写入错误的情况下硬着头皮继续运行，它就必须无可避免地接受并承受这些与生俱来的状态不确定性。
+
+&gt; ZFS adopts this defensive approach by default, which can frustrate users. Consequently, ZFS provides an option to bypass freezing and simply return I/O errors instead (such as the `failmode=continue` setting). Yet, once a filesystem chooses to continue operating in the face of active write errors, it must inevitably live with these inherent uncertainties.</description>
+    </item>
+    <item>
+      <title>llama.cpp v1.0.0 正式发布：为本地 AI 生态奠定坚实基石</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-14/llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-14/llama-cpp-v1-0-0-正式发布-为本地-AI-生态奠定坚实基石/</guid>
+      <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+      <description>作为当今开源 AI 领域最著名的轻量级推理引擎，`llama.cpp` 历经 3.5 年的高速演进与全球开源社区的共同打磨，终于正式迎来了具有里程碑意义的 **v1.0.0** 正式版本。本次发布标志着该项目正式引入严格规范的**语义化版本控制 (Semantic Versioning, SemVer)**，从底层确立了 C 语言应用程序接口 (Application Programming Interface, API) 与二进制接口 (Application Binary Interface, ABI) 的长期稳定性契约，使企业与开发者能够安心地进行生产级集成与长期维护。凭借底层 `ggml` 统一张量计算库，`llama.cpp` 不仅实现了从移动端、PC 到数据中心跨平台的全硬件覆盖，更已原生支持多达 150 多种主流大语言模型 (Large Language Model, LLM) 架构变体与投机解码加速技术。作为端侧和私有化 AI 推理事实上的“黄金基石”，`llama.cpp v1.0.0` 的发布将为全球开发者构建自主可控、极速高效的本地 AI 应用生态提供坚不可摧的支撑。
+
+---
+
+## 📌 核心概要
+
+&gt; ## 📌 Summary
+
+`llama.cpp v1.0.0` 的推出，标志着本地 AI 基础设施演进历程中一座至关重要的里程碑。在过去的 3.5 年中，该项目已迅速成长为全球不可或缺、极致轻量且功能全面的跨平台私有化 AI 推理中枢。随着本次正式版的发布，`llama.cpp` 与底层的张量计算库 `ggml` 正式引入了严格规范的**语义化版本控制 (SemVer)**，以此全面保障 API 与 ABI 的长期稳定性，为全球广大开发者以及依赖于该生态的各类下游软件集成，筑牢了一套值得长期信赖的坚实底座。
+
+&gt; `llama.cpp v1.0.0` marks a major milestone in the evolution of local AI infrastructure. Over the past 3.5 years, the project has grown into an essential, lightweight, and versatile platform for cross-platform and private AI inference. With this release, `llama.cpp` and `ggml` introduce formal **Semantic Versioning (SemVer)** to guarantee API/ABI stability, solidifying a dependable foundation for developers and downstream integrations worldwide.
+
+---
+
+## 版本发布
+
+&gt; ## Releases
+
+| 发布版本 (Release) | 核心库 (Library) | 公共头文件 (Public header(s)) |
+| :--- | :--- | :--- |
+| [llama.cpp v1.0.0](https://github.com/ggml-org/llama.cpp/releases/tag/v1.0.0) - C/C++ 语言大模型推理引擎 (LLM inference in C/C++) | `libllama` | [`llama.cpp/include/`](https://github.com/ggml-org/llama.cpp/blob/master/include/) |
+| [ggml v1.0.0](https://github.com/ggml-org/ggml/releases/tag/v1.0.0) - 机器学习专用张量计算库 (Tensor library for machine learning) | `libggml` | [`ggml/include/`](https://github.com/ggml-org/llama.cpp/blob/master/ggml/include/) |
+
+---
+
+## 语义化版本更新规范
+
+&gt; ## Semantic Version update rules
+
+以下规范适用于所有采用[语义化版本控制 (Semantic Versioning, SemVer)](https://semver.org)的 [ggml-org](https://huggingface.co/ggml-org) 开源项目：
+
+&gt; The following rules apply to all [ggml-org](https://huggingface.co/ggml-org) projects using [semantic versioning](https://semver.org):
+
+| 变更类型 (Change type) | 版本号递增规则 (Bump) |
+| :--- | :--- |
+| **主版本号 (MAJOR)** | 对 `./include` 中的公开 C 语言 API 引入不兼容的重大破坏性变更 |
+| **次版本号 (MINOR)** | 向后兼容的新特性、计算后端更新、新模型架构支持或新增 API |
+| **修订版本号 (PATCH)** | 不涉及任何 API 变动的缺陷修复 (Bug fix) |
+
+---
+
+## 软件分发渠道
+
+&gt; ## Distribution
+
+我们正在积极拓展 `ggml-org` 旗下软件触达开发者与终端用户的多元化渠道。有关软件包封装与发布交付流水线 (Release Pipelines) 的更多技术细节，欢迎查阅此处的[深度讨论](https://github.com/ggml-org/ggml/discussions/1579)。
+
+&gt; We are expanding the ways `ggml-org` software reaches developers and end-users. For more information on packaging and release pipelines, check out the following [discussion](https://github.com/ggml-org/ggml/discussions/1579).
+
+| 分发渠道 (Channel) | 支持平台 (Platforms) |
+| :--- | :--- |
+| [**预发布编译产物 (Pre-release artifacts)**](https://github.com/ggml-org/llama.cpp/releases) | Linux, macOS, Windows, Android, iOS |
+| **Docker** | Linux |
+| **Debian** | Linux |
+| **Homebrew** | macOS, Linux |
+| **conda-forge** | Windows, macOS, Linux |
+| **MacPorts** | macOS |
+| **Winget** | Windows |
+| **XCFramework** | iOS, macOS |
+
+---
+
+## 项目研发与持续集成
+
+&gt; ## Development
+
+本项目的蓬勃生机，源自令人惊叹的全球开源社区的鼎力支持。随着大模型能力的突飞猛进，我们也在研发全生命周期中严谨、深思熟虑地深度引入大模型辅助工程。在此过程中，恪守高品质的代码标准、牢牢掌控整体架构设计的演进方向，并透彻理解底层实现的每一处细节，始终是团队最为核心的首要原则。
+
+&gt; The project thrives thanks to an incredible open-source community. As AI capabilities rapidly advance, we continue to thoughtfully integrate LLMs into our development cycle. Maintaining a high-quality codebase, keeping control of the architecture, and understanding implementation details remain our top priorities.
+
+为了支撑更为敏捷的研发迭代速度，我们正在大规模扩展持续集成 (Continuous Integration, CI) 基础设施。依托 Hugging Face 所提供的先进技术支撑——例如 [HF Buckets](https://huggingface.co/docs/huggingface_hub/en/guides/buckets) 与 [HF Jobs](https://huggingface.co/docs/huggingface_hub/en/guides/jobs)，我们能够严密检验合入 `master` 主分支的每一行代码改动，全方位确保软件的逻辑正确性。与此同时，在来自 NVIDIA、AMD、Qualcomm、Arm、IBM 以及 Intel 等芯片巨头所提供的多元硬件支持下，我们持续在所有主流计算硬件平台上增设自托管运行节点 (Self-hosted Runners)。
+
+&gt; To support faster development, we are heavily scaling our CI infrastructure. Thanks to Hugging Face technologies like [HF Buckets](https://huggingface.co/docs/huggingface_hub/en/guides/buckets) and [HF Jobs](https://huggingface.co/docs/huggingface_hub/en/guides/jobs), we ensure correctness for every change landing on the `master` branches. With hardware support from NVIDIA, AMD, Qualcomm, Arm, IBM, and Intel, we continue to add self-hosted runners across all major hardware platforms.
+
+---
+
+## 计算后端与模型架构支持
+
+&gt; ## Backend and model coverage
+
+作为 `llama.cpp` 底层的核心机器学习推理引擎，`ggml` 的精妙架构使其能够通过编译为动态链接库的专用后端算子，在几乎所有类型的计算硬件上高效驰骋。若想查阅当前已实现的完整后端计算支持列表，请参阅[此处官方源码仓库](https://github.com/ggml-org/ggml/tree/master/src)。
+
+&gt; The underlying machine learning engine of `llama.cpp`—`ggml`—is designed to run on virtually any hardware through dedicated backends compiled as dynamic libraries. A complete list of implemented backends can be found [here](https://github.com/ggml-org/ggml/tree/master/src).
+
+&lt;video autoplay="" controls="" loop="" muted="" playsinline="" src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/llama.cpp/llama-cpp-hardware-coverage-final.mp4"&gt;&lt;/video&gt;
+
+我们始终坚定不移地为各类模型拓扑架构提供全面且持久的适配支持。截至目前，`llama.cpp` 已经原生支持超过 [150 种模型架构变体](https://github.com/ggml-org/llama.cpp/tree/master/src/models)，并完整兼容当前学术界与工业界所有主流的投机解码 (Speculative Decoding) 加速算法。
+
+&gt; We are committed to providing continuous support for all model architectures. Currently, `llama.cpp` supports over [150 architecture variants](https://github.com/ggml-org/llama.cpp/tree/master/src/models) and all mainstream speculative decoding methods.
+
+&lt;video autoplay="" controls="" loop="" muted="" playsinline="" src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/llama.cpp/llama-cpp-model-coverage-final.mp4"&gt;&lt;/video&gt;
+
+---
+
+## 致谢
+
+&gt; ## Thanks
+
+身处 Hugging Face 的 `llama.cpp` 核心团队，对来自全球开源社区各界的慷慨援手与无私奉献致以最由衷的感谢。我们特别向所有[长期核心维护者](https://github.com/ggml-org/llama.cpp/blob/master/CODEOWNERS)以及每一位提交代码与建议的[社区贡献者](https://github.com/ggml-org/llama.cpp/graphs/contributors?from=8%2F8%2F2026)致以崇高敬意。若没有大家的通力协作与并肩前行，今天这一历史性的里程碑就绝无可能实现！
+
+&gt; The `llama.cpp` team at Hugging Face is deeply grateful for the incredible support from the community. Special thanks go out to the [long-time maintainers](https://github.com/ggml-org/llama.cpp/blob/master/CODEOWNERS) and all [contributors](https://github.com/ggml-org/llama.cpp/graphs/contributors?from=8%2F8%2F2026). This milestone would not have been possible without our joint efforts!
+
+---
+
+## 扩展资源
+
+&gt; ## Additional resources
+
+* [llama.cpp 官方代码示例](https://github.com/ggml-org/llama.cpp/tree/master/examples)
+* [Hugging Face 上的 ggml-org 组织主页](https://huggingface.co/ggml-org)
+* [GitHub 上的 ggml-org 开源主页](https://github.com/ggml-org)
+* 欢迎体验专为 macOS 与 Windows 量身打造的 [Llama](https://llama.app/) 桌面端应用，它由 `llama.cpp` 幕后团队与 Hugging Face 倾情联合打造并呈现。
+
+&gt; * [llama.cpp examples](https://github.com/ggml-org/llama.cpp/tree/master/examples)
+&gt; * [ggml-org at Hugging Face](https://huggingface.co/ggml-org)
+&gt; * [ggml-org at GitHub](https://github.com/ggml-org)
+&gt; * Check out [Llama](https://llama.app/) desktop apps for macOS and Windows, shipped with love by the team behind `llama.cpp` and Hugging Face.</description>
+    </item>
+    <item>
       <title>从字节码到静态单赋值：构建虚拟栈的抽象解释器实战</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-13/从字节码到静态单赋值-构建虚拟栈的抽象解释器实战/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-13/从字节码到静态单赋值-构建虚拟栈的抽象解释器实战/</guid>
@@ -4408,337 +4905,6 @@ audio, rate = say(open("voices/transcript.txt").read(), mixed)  # say() is shown
 sf.write("voices/final.flac", audio, rate)
 final = fingerprint("voices/final.flac")
 ```</description>
-    </item>
-    <item>
-      <title>Prime Intellect 发布 Prime Mega MoE：支持反向传播的融合 MoE 算子，前向提速 3.11 倍</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-30/Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/Prime-Intellect-发布-Prime-Mega-MoE-支持反向传播的融合-MoE-算子/</guid>
-      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>混合专家模型 (Mixture-of-Experts, MoE) 虽具备以更低计算成本扩展参数规模的优势，但在分布式训练中，Token 在不同 GPU 专家节点间的频繁跨卡通信往往会造成严重的计算空闲与显卡性能浪费。此前，DeepSeek 开源的 Mega MoE 融合算子虽然大幅优化了前向通信与计算重叠，却缺少训练不可或缺的反向传播 (Backward Pass) 实现。分布式 AI 计算创新机构 Prime Intellect 填补了这一空白，推出了支持完整反向传播的 Prime Mega MoE 融合算子，实现了计算与通信的高效重叠，在 Qwen3 MoE 模型训练中带来高达 55% 的端到端训练步耗时缩短，前向推理加速更达 3.11 倍，为开源大模型训练团队节省了海量宝贵的 GPU 算力资源。
-
----
-
-## 核心总结
-
-&gt; ## Summary
-
-[Prime Intellect](https://www.primeintellect.ai/) 正式发布了 [Prime Mega MoE](https://www.primeintellect.ai/blog/prime-mega-moe)，这是针对 DeepSeek 融合版 Mega MoE 算子的一项突破性训练级扩展。DeepSeek 最初开源的算子仅支持前向传播 (Forward Pass)，而 Prime Intellect 创新性地引入了超高速且支持通信与计算重叠的反向传播机制，使得这款融合算子能够真正投入到端到端的模型训练当中。在集成到 [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) 训练框架后，针对 Qwen3 混合专家 (Mixture-of-Experts, MoE) 模型的完整训练迭代步耗时最高缩短了 34%——与 PyTorch 官方的 TorchTitan 相比更是快了 55%，直接为 AI 团队大幅削减了昂贵的 GPU 训练时长与算力开销。
-
-&gt; [Prime Intellect](https://www.primeintellect.ai/) has released [Prime Mega MoE](https://www.primeintellect.ai/blog/prime-mega-moe), a groundbreaking training extension for DeepSeek’s fused Mega MoE kernel. While DeepSeek's original kernel was limited to the forward pass, Prime Intellect has introduced a fast, overlapping backward pass, making the fused kernel fully viable for model training. Integrated into the [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) trainer, full training steps on Qwen3 Mixture-of-Experts (MoE) models execute up to 34% faster—and up to 55% faster compared to TorchTitan—providing a direct reduction in GPU hours for AI teams.
-
----
-
-## 极速速览
-
-&gt; ## TL;DR
-
-* **定位属性**：这是一个专门针对底层优化的 GPU 算子内核，而非独立模型。已在 Qwen3-30B-A3B 与 Qwen3-235B-A22B 架构上经过充分验证 (128 个专家，Top-8 动态路由)。
-* **运行平台**：支持 NVIDIA Hopper (分块 FP8 精度) 与 Blackwell (MXFP8 精度) 架构 GPU，两者均原生支持 BF16。官方公开测试数据均基于 8×H200 节点、共 32 至 128 块 GPU 集群实测。
-* **整体性能**：端到端单步训练时间比 `prime-rl` 基础基准提速 32% 至 34%；比 TorchTitan 快 48% 至 55%。
-* **最佳表现**：在 Qwen3-30B-A3B 的 MoE 层上前向传播提速达 3.11 倍 (耗时从 12.0 毫秒骤降至 3.9 毫秒)。
-* **下限表现**：在规模更大的 Qwen3-235B-A22B MoE 层上反向传播提速 1.24 倍 (耗时从 30.5 毫秒降低至 24.6 毫秒)。
-
-&gt; * **Size:** A GPU kernel, not a model. Tested on Qwen3-30B-A3B and Qwen3-235B-A22B (128 experts, top-8 routing).
-&gt; * **Runs on:** NVIDIA Hopper (blockwise FP8) and Blackwell (MXFP8) GPUs, BF16 on both. Published numbers use 8×H200 nodes, 32 to 128 GPUs.
-&gt; * **Performance:** 32% to 34% faster full training steps than the `prime-rl` baseline. 48% to 55% faster than TorchTitan.
-&gt; * **Best:** 3.11x faster forward pass on a Qwen3-30B-A3B MoE layer (12.0 ms to 3.9 ms).
-&gt; * **Worst:** 1.24x backward pass on a Qwen3-235B-A22B MoE layer (30.5 ms to 24.6 ms).
-
----
-
-## 什么是 Prime Mega MoE？
-
-&gt; ## What is Prime Mega MoE?
-
-Prime Mega MoE 是一款专为大模型训练量身打造的算子融合与计算通信重叠 (Overlapping) MoE 内核。它直接脱胎于 DeepSeek 开源的高性能矩阵计算库 [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) 中的 Mega MoE 算子，并完成了关键的训练能力补全。
-
-&gt; Prime Mega MoE is a fused, overlapping MoE kernel designed specifically for training. It builds directly upon the Mega MoE kernel found in DeepSeek’s open-source [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) library.
-
----
-
-## 为什么 MoE 模型的训练极易受限于跨卡通信？
-
-&gt; ## Why is MoE Training Communication-Bound?
-
-在混合专家 (MoE) 架构中，输入的每个 Token 仅会被路由分发给一小部分特定专家，而这些专家通常分散驻留在集群中不同的 GPU 显卡上。正因如此，每一个 MoE 神经网络层在执行时，都必须经历“将 Token 打包发送出去、在目标专家处执行矩阵计算、再把处理结果传回汇聚”的往返过程。更为关键的是，这一复杂的跨卡流转闭环在模型的前向传播和反向传播阶段均会发生一次。
-
-&gt; In a Mixture-of-Experts (MoE) architecture, each token is routed to a small subset of experts distributed across different GPUs. Consequently, every layer must send tokens out, perform expert computations, and send the results back—a cycle that occurs during both the forward and backward passes.
-
-在业界的标准实现中，上述各个步骤往往是割裂且串行运作的：GPU 必须先花费时间对 Token 进行排序重组，接着停下计算干等通信传输层完成数据跨卡搬运；等数据全到了才开始计算，算完又要把结果交还给网络并再次陷入漫长的等待。这种计算与通信脱节的状态，导致极为昂贵的 GPU 核心长期处于空转等待的低效状态。
-
-&gt; In standard setups, these steps operate independently. The GPU sorts tokens and waits on the transport layer, performs computations, hands results back, and waits again, resulting in idle GPU time.
-
----
-
-## 融合算子究竟是如何高效运转的？
-
-&gt; ## How Does the Fused Kernel Work?
-
-[DeepSeek 开源的 Mega MoE](https://github.com/deepseek-ai/DeepGEMM) 彻底颠覆了这种碎片化的串行调用链路，将其收敛整合进单次算子调用中。它将专家并行分发 (Dispatch)、专家内两层线性投影层计算、SwiGLU 激活函数以及最终的特征组合 (Combine) 步骤高度融合在一起。在底层调度上，当一组 Token 还在网络中飞速传输时，内核已经同步在对先前已抵达的 Token 组展开高并发计算；同时通过显存原生的临时暂存区 (Scratch Buffers) 彻底规避了中间张量的反复存取。然而，DeepSeek 最初开源的官方版本仅实现了前向推理，并没有提供训练必不可少的反向传播算子。
-
-&gt; [DeepSeek’s Mega MoE](https://github.com/deepseek-ai/DeepGEMM) replaces this fragmented chain with a single kernel call. It fuses expert-parallel dispatch, the two expert linear layers, SwiGLU, and combination steps. While one token group is in transit, the kernel computes on a group that has already arrived, skipping intermediate tensors by using GPU-only scratch buffers. However, it originally shipped without a backward implementation.
-
-Prime Intellect 团队精准补全了这块关键拼图：他们全新编写了缺失的反向传播内核，并同样赋予了其强大的计算与通信异步重叠能力。该算子全面支持多种前沿数据类型，涵盖 BF16、MXFP8 (专供 Blackwell 架构) 以及分块式 FP8 (专供 Hopper 架构)。在 [prime-rl 配置项](https://github.com/PrimeIntellect-ai/prime-rl) 中，用户甚至可以启用极具性价比的 `fp8_bwd` 混合精度模式 (即前向使用 BF16 保持高精度，反向传播采用 FP8 极致加速)。
-
-&gt; Prime Intellect solved this by writing the missing backward kernel, which also features overlapping execution. Supported data types include BF16, MXFP8 (Blackwell only), and blockwise FP8 (Hopper only). The [prime-rl config](https://github.com/PrimeIntellect-ai/prime-rl) also supports an `fp8_bwd` mode (BF16 forward, FP8 backward).
-
----
-
-## Prime Mega MoE 的实际加速表现究竟有多快？
-
-&gt; ## How Fast is Prime Mega MoE?
-
-以下所有性能指标均由 Prime Intellect 官方团队实测公布，基准测试环境采用 8×H200 计算节点、FP8 精度、16,384 长度的 Token 序列，并开启了全激活重计算 (Full Activation Checkpointing)。各项数据均为训练第 6 步至第 20 步实测值的算术平均值。
-
-&gt; All metrics below are self-reported by Prime Intellect, utilizing 8×H200 nodes, FP8, 16,384-token sequences, and full activation checkpointing. Each result represents the mean of steps 6 through 20.</description>
-    </item>
-    <item>
-      <title>NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型，仅需约 4B 激活参数</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-30/NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型/</guid>
-      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>长期以来，语音识别领域大多依赖传统的级联系统，将语音转录、说话人区分、时间戳对齐等任务拆分到不同模块中，不仅部署繁琐，也难以根据上下文灵活调整输出格式。NVIDIA 此次开源的 Nemotron 3.5 Transcribe 突破性地将 40 种语言的自动语音识别、说话人日志、时间戳对齐与多语种翻译统一集成到单个混合专家大模型 (MoE) 架构中。该模型总参数达 34B，但得益于稀疏激活机制，单次推理仅需约 4.3B 激活参数，甚至可通过量化在消费级显卡上流畅运行。这一开源成果在多项基准测试中刷新了开源模型纪录，不仅极大降低了长音频会议转录与多模态交互的门槛，也为开源语音大模型技术树立了崭新的里程碑。
-
----
-
-## 内容概要
-
-&gt; ## Summary
-
-NVIDIA 正式推出了 **Nemotron 3.5 Transcribe**，这是一款前沿的开源权重语音大语言模型 (Large Language Model, LLM)，旨在化繁为简、重塑语音转录全流程。该模型支持 40 种主流语言，单次能够处理长达 1 小时的完整音频，将自动语音识别 (Automatic Speech Recognition, ASR)、说话人日志 (Speaker Diarization，即分辨谁在什么时间说了什么)、时间戳强制对齐以及跨语种翻译全部整合进统一的模型架构中。借助纯文本提示词 (Prompt) 驱动，用户可以随心所欲定制转录格式与风格——无论是分毫不差的原声逐字转录、规范的书面整理格式，还是带有精准说话人标记、融合上下文背景的意译均可轻松胜任。尽管该模型在主流 ASR 公开评测基准中刷新了开源模型的领先纪录，但它目前仅支持离线批处理，且在复杂的多人远场普通话会议场景下仍存在一定的准确率短板。
-
-&gt; NVIDIA has introduced **Nemotron 3.5 Transcribe**, a cutting-edge, open-weights speech Large Language Model (LLM) designed to streamline transcription tasks. Capable of handling 40 languages and recordings up to one hour in length, the model unifies automatic speech recognition (ASR), speaker diarization, alignment, and translation into a single framework. Driven by text instructions, users can customize output styles—ranging from verbatim and written forms to speaker-attributed and context-aware translations. While it outperforms existing open-weights models on major ASR leaderboards, it operates strictly offline and exhibits lower accuracy in complex multi-speaker Mandarin meeting scenarios.
-
----
-
-## 核心速览 (TL;DR)
-
-&gt; ## TL;DR
-
-* **模型规模**：总参数量达 34B，推理时动态激活约 4.3B 参数；原生支持 65,536 个 Token 的超长上下文窗口，单次最大支持 1 小时音频。
-* **硬件要求**：BF16 精度下可在单张 H100 80 GB GPU 上运行。官方还提供了深度优化的 FP8 (约 35 GB 显存) 和 NVFP4 (约 21 GB 显存) 权重，其中 NVFP4 版本可在消费级 RTX 5090 显卡上流畅部署。此外还提供专为 `NeMo-Speech.cpp` 定制的 GGUF 格式。
-* **基准性能**：在英语及多语种 Open ASR 排行榜上全面领跑主流开源模型，但与业界顶尖的商业闭源 API 相比仍有微弱差距。
-* **核心优势**：在 9 个公开的英语 Open ASR 评测集上创下平均 4.71% 词错误率 (Word Error Rate, WER) 的顶尖成绩，显著优于此前开源模型的 4.94%。
-* **主要短板**：在 AliMeeting 中文远场多人会议场景下的串联字错误率 (cpCER) 高达 34.95%，识别能力有待提升。
-* **总结评价**：一款集文本转录、说话人角色标签、精准时间戳与跨语种翻译于一体的顶尖开源语音模型，虽然目前仅限离线部署且中文会议场景表现相对偏弱，但综合实用价值极高。
-
-&gt; * **Size:** 34B total parameters and ~4.3B active parameters; supports a 65,536-token context window and audio lengths up to 1 hour.
-&gt; * **Hardware Requirements:** Runs on 1x H100 80 GB in BF16. Optimized FP8 (~35 GB) and NVFP4 (~21 GB) checkpoints are available (with NVFP4 capable of running on an RTX 5090). GGUF files are tailored for `NeMo-Speech.cpp`.
-&gt; * **Performance:** Leads open-weights models on English and multilingual Open ASR Leaderboards, though top commercial APIs still maintain an edge.
-&gt; * **Strengths:** Achieves a leading 4.71% mean WER across 9 public English Open ASR sets (surpassing the previous open model benchmark of 4.94%).
-&gt; * **Weaknesses:** Registers 34.95% cpCER on AliMeeting Mandarin far-field meetings.
-&gt; * **Bottom Line:** A unified open model providing transcripts, speaker labels, timestamps, and translation, though limited to offline deployment with weaker Mandarin meeting performance.
-
----
-
-## 什么是 Nemotron 3.5 Transcribe？
-
-&gt; ## What is Nemotron 3.5 Transcribe?
-
-Nemotron 3.5 Transcribe 是由 NVIDIA 研发的语音增强语言模型 (Speech-Augmented Language Model, SALM)，它能够将输入的音频与文本指令直接转化为结构化的文本输出。通过将音频编码特征直接注入大模型解码器，该模型让语音转录天生具备了“可提示词调优 (Promptable)”的强大能力。正如 NVIDIA 在其[技术研究报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf)中所述，语音转录本质上具有极强的主观性——例如数字是写成阿拉伯数字还是中文汉字、是否过滤口头语气词、专业术语如何规范书写等，都高度取决于阅读者的实际意图。因此，NVIDIA 将这款模型精准定位于专注于语音转录任务的“超级专家”，而非面面俱到的通用聊天助手。
-
-&gt; Nemotron 3.5 Transcribe is a speech-augmented language model (SALM) developed by NVIDIA that translates audio inputs and text instructions into structured text outputs. By routing audio embeddings through an encoder directly into an LLM decoder, the model makes transcription natively promptable. According to NVIDIA’s [technical research report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf), transcription is inherently subjective—formatting choices like numbers, fillers, and domain-specific terms depend heavily on the reader's intent. Consequently, NVIDIA positions this model as a dedicated transcription specialist rather than a general-purpose assistant.
-
----
-
-## 它的底层架构是如何运作的？
-
-&gt; ## How Does the Architecture Work?
-
-该模型的核心架构主要由以下三大组件构成：
-
-&gt; The model’s architecture consists of three primary components:
-
-* **并行专家编码器 (Parallel Expert Encoder)**：由一个可训练的 0.6B Transformer 语音识别编码器，与一个冻结权重的 [Nemotron 3 Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization) 说话人日志模型并行运行。该日志模块能够同时追踪多达 8 位说话人，每隔 80 毫秒将说话人活跃度特征无缝融入 ASR 特征中。这使得大语言模型无需改动核心架构，便能在原生状态下敏锐捕捉说话人轮替与转换。
-* **大模型主干网络 (LLM Backbone)**：基于 [Nemotron 3.5 Lightning 30B-A3B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) 混合架构，融合了 Mamba-2 与 Transformer 混合专家模型 (Mixture of Experts, MoE)。模型共包含 52 层网络 (23 层 Mamba-2、23 层 MoE 以及 6 层自注意力机制 Attention 层)。每一层 MoE 都会将 Token 动态路由至 128 个专家中的 6 个，并外加 1 个共享专家。大幅精简注意力层使得处理长达一小时的超长音频时，键值缓存 (KV Cache) 依然保持极其轻量紧凑。
-* **功能扩展插件 (Add-ons)**：配备了一个共享的多 Token 预测 (Multi-Token Prediction, MTP) 层，用于在投机解码 (Speculative Decoding) 中快速生成候选 Token；同时集成了参数量仅为 50M 的 CTC 适配器模块，用于在转录完成后将文本与原始音频强制对齐，从而输出毫秒级的精准字词时间戳。
-
-&gt; * **Parallel Expert Encoder:** A trainable 0.6B Transformer ASR encoder running alongside a frozen [Nemotron 3 Diarization](https://huggingface.co/nvidia/Nemotron-3-Diarization) model. The diarizer tracks up to 8 speakers, feeding speaker activity directly into the ASR features every 80 ms. This allows the LLM to inherently recognize speaker turns without altering its core architecture.
-&gt; * **LLM Backbone:** Built on the [Nemotron 3.5 Lightning 30B-A3B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16) hybrid Mamba-Transformer Mixture-of-Experts (MoE). It contains 52 layers (23 Mamba-2, 23 MoE, and 6 attention layers). Each MoE layer routes tokens to 6 of 128 experts plus 1 shared expert. The minimal use of attention layers keeps the KV cache compact for hour-long audio files.
-&gt; * **Add-ons:** Includes a shared multi-token prediction (MTP) layer to draft tokens for speculative decoding, alongside a 50M-parameter CTC adapter that force-aligns completed transcripts with audio to provide precise word timestamps.
-
-虽然官方将其命名为“30B-A4B”，但该模型的实际检查点文件总计包含约 340 亿参数，多出的部分主要来自 1.3B 的 MTP 模块与音频前置处理组件。在训练流程上，团队首先在由 256 张 H100 GPU 组成的高性能集群上进行了 28,500 步的监督微调 (Supervised Fine-Tuning, SFT)，随后执行了精炼的强化学习阶段 (以 $1 - \text{WER}$ 为奖励指标进行了 400 次 GSPO 策略更新)。在整个训练周期内，模型累计学习了约 172 万小时各不相同的真实音频 (计入多轮重复训练后累计达 650 万小时)。
-
-&gt; Although named "30B-A4B," the checkpoint contains roughly 34 billion parameters, with the additional weight driven by the 1.3B MTP module and audio components. Training utilized a supervised fine-tuning stage across 256 H100 GPUs for 28,500 steps, followed by a brief reinforcement learning stage (400 GSPO updates using a reward metric of $1 - \text{WER}$). The model was exposed to ~1.72M unique hours of audio (6.5M hours including repeats).
-
----
-
-## 基准测试性能表现
-
-&gt; ## Benchmark Performance
-
-*所有指标数据均源自 NVIDIA 在其[技术研究报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf)中公布的实测结果。*
-
-&gt; *All metrics are self-reported by NVIDIA in their [technical research report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf).*
-
-* **英语公开 ASR 评测 (9 个公开数据集)**：取得 4.71% 的平均词错误率 (WER)，超越了此前表现最优的开源模型 [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) (4.94%)；而顶尖的闭源商业系统 (如 OtterAI speech-v3.1) 则仍以 3.88% 保持领先。
-* **多语种公开 ASR 评测 (7 种主流语言)**：测得 4.62% 的平均 WER，大幅优于 Qwen3-ASR-1.7B 的 6.49%；该类别的榜首由商业系统 ElevenLabs Scribe v2 以 3.56% 占据。
-* **长音频 ASR 转录**：平均 WER 达到 10.98%，显著超越 Parakeet-TDT-0.6B-v3 (13.37%)。
-* **完整多人会话场景**：平均串联词错误率 (Concatenated Permutation WER, cpWER) 达到 15.80%，击败了基于 DiariZen 的 DiCoW v3.3 传统方案 (16.83%)，成为该领域首个性能超越传统级联方案的语音增强大模型 (SALM)。
-* **上下文感知 ASR**：通过在提示词中附加专业实体列表，ContextASR-Bench 评测上的命名实体识别错误率从 12.21% 骤降至 2.20%。
-
-&gt; * **English Open ASR (9 public sets):** Achieves a mean Word Error Rate (WER) of 4.71%, beating the next best open model, [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) (4.94%). Commercial systems like OtterAI speech-v3.1 still lead at 3.88%.
-&gt; * **Multilingual Open ASR (7 languages):** Records a mean WER of 4.62%, compared to 6.49% for Qwen3-ASR-1.7B. ElevenLabs Scribe v2 leads this category at 3.56%.
-&gt; * **Long-form ASR:** Scores 10.98% mean WER, outperforming Parakeet-TDT-0.6B-v3 (13.37%).
-&gt; * **Multi-speaker Full Sessions:** Reaches 15.80% mean cpWER, beating DiCoW v3.3 with DiariZen (16.83%), making it the first SALM to outperform cascaded systems in this domain.
-&gt; * **Contextual ASR:** Utilizing an entity list reduces named-entity WER on ContextASR-Bench from 12.21% down to 2.20%.
-
----
-
-## 如何部署 Nemotron 3.5 Transcribe
-
-&gt; ## How to Deploy Nemotron 3.5 Transcribe
-
-目前，模型完整权重已正式上线 Hugging Face，提供 [BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)、[FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-FP8)、[NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-NVFP4) 以及 [GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-GGUF) 多种格式，同时还配套了可选的 [DFlash2 草稿模型](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-DFlash2)。开源协议遵循对商业应用十分友好的 [OpenMDW-1.1 开源协议](https://openmdw.ai/license/1-1/)。
-
-&gt; Model weights are available on Hugging Face in [BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B), [FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-FP8), [NVFP4](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-NVFP4), and [GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-GGUF) formats, with an optional [DFlash2 draft model](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B-DFlash2). Usage is governed by the commercial-friendly [OpenMDW-1.1 license](https://openmdw.ai/license/1-1/).
-
-在推理运行时方面，该模型已支持 vLLM 0.32.0 (需配合 [NeMo Speech 插件](https://github.com/NVIDIA-NeMo/Speech))、Hugging Face Transformers 以及 [SGLang-Omni 0.2.0](https://sgl-project.github.io/sglang-omni/cookbook/nemotron_transcribe.html)；其中 vLLM 还提供了与 OpenAI 完全兼容的标准 API 接口。
-
-&gt; Supported runtimes include vLLM 0.32.0 (with the [NeMo Speech plugin](https://github.com/NVIDIA-NeMo/Speech)), Hugging Face Transformers, and [SGLang-Omni 0.2.0](https://sgl-project.github.io/sglang-omni/cookbook/nemotron_transcribe.html), with vLLM providing an OpenAI-compatible API.
-
-若追求极限吞吐量，搭载 NVFP4 精度与 DFlash2 的 Nemotron Transcribe NIM 微服务可在单张 RTX PRO 6000 Blackwell 服务器版 GPU 上达到每秒处理 2,238 秒音频的惊人速度，转录一段 30 秒的语音片段仅需 0.13 秒。虽然基于开源 vLLM 的实现方案速度约为 NIM 的一半，但单张 H100 在 BF16 精度搭配 MTP2 下依然能实现约 410 倍实时转录速率 (RTFx)。
-
-&gt; For maximum throughput, the Nemotron Transcribe NIM (utilizing NVFP4 and DFlash2) enables an RTX PRO 6000 Blackwell Server Edition to process 2,238 seconds of audio per second, returning a 30-second clip in just 0.13 seconds. While open-source vLLM implementations run roughly twice as slow, a single H100 in BF16 with MTP2 achieves approximately 410 RTFx.
-
----
-
-## 与其他主流开源 ASR 模型的横向对比
-
-&gt; ## Comparison with Other Open ASR Models
-
-| 特性 (Feature) | **Nemotron 3.5 Transcribe** | [Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) | [Canary-Qwen-2.5B](https://huggingface.co/nvidia/canary-qwen-2.5b) | [Whisper-large-v3](https://huggingface.co/openai/whisper-large-v3) |
-| :--- | :--- | :--- | :--- | :--- |
-| **参数量 (Parameters)** | 总计 34B，激活约 4.3B | 1.7B | 2.5B | 1.55B |
-| **支持语言数 (Languages)** | 40 种 | 30 种 + 22 种中文方言 | 仅限英语 | 99 种 (HF 标签) |
-| **单次请求最大音频时长** | 1 小时 | 未公开 | 训练时为 40 秒 | 30 秒窗口 (长音频分块切片) |
-| **说话人归属识别** | 原生内置 (支持多达 8 位说话人) | 未列出 | 未列出 | 未列出 |
-| **字词级时间戳** | 原生内置 (CTC 适配器) | 需外接独立 ForcedAligner-0.6B | 未列出 | 支持 (词级) |
-| **开源许可协议** | OpenMDW-1.1 | Apache-2.0 | CC-BY-4.0 | Apache-2.0 |
-| **英语 Open ASR (9个公开集，平均 WER)** | **4.71%** | 4.94%\* | 5.38%\* | 6.66%\* |
-| **多语种 Open ASR (7种语言，平均 WER)** | **4.62%** | 6.49%\* | 不适用 (仅限英语) | 7.94%\* |
-| **参考运行硬件** | 1 张 H100 80 GB (BF16) | 未公开 | 已在 A6000、A100、RTX 5090 上测试 | 未公开 |
-
-*\*更新后的 9 集排行榜上的竞品分数引自 NVIDIA 技术报告，参考了 2026 年 10 月的 Hugging Face 排行榜评测结果。*\*
-
-&gt; *\*Competitor scores on the updated 9-set leaderboard are sourced from NVIDIA's technical report, referencing Hugging Face leaderboard evaluations from October 2026.\*
-
----
-
-## 核心要点总结
-
-&gt; ## Key Takeaways
-
-* **全功能一体化整合**：在单一开源模型中完整囊括了 40 种语言的基础文本转录、说话人日志、毫秒级时间戳以及跨语种翻译。
-* **领跑开源生态的顶尖性能**：在英语语音识别开源方案中斩获 4.71% 的领先 WER，不过头部商业闭源 API 仍保持着微弱优势。
-* **灵活适配不同算力硬件**：仅需约 4.3B 动态激活参数，适配弹性极广——既可以在数据中心以 BF16 跑在 H100 上，也能通过 NVFP4 量化本地部署在消费级 RTX 5090 显卡上。
-* **出色的上下文精准度**：只需在提示词中附带专业术语或实体词表，即可将命名实体识别错误率从 12.21% 锐减至 2.20%。
-* **当前存在的技术局限**：目前仅支持离线批处理模式，且在中文普通话远场会议以及中英混杂 (Code-Switching) 场景下的错误率相对偏高。
-
-&gt; * **All-in-One Capability:** Handles raw transcriptions, speaker diarization, timestamps, and translations across 40 languages within a single open model.
-&gt; * **Top-Tier Open Performance:** Achieves a leading 4.71% English WER among open-weights solutions, though commercial APIs maintain a slight advantage.
-&gt; * **Flexible Footprint:** Features ~4.3B active parameters that scale across environments—from BF16 on an H100 down to NVFP4 running locally on an RTX 5090.
-&gt; * **Contextual Precision:** Providing an entity list drastically reduces named-entity error rates from 12.21% down to 2.20%.
-&gt; * **Current Limitations:** Restricted to offline batch processing, with notably higher error rates on Mandarin meetings and code-switching tasks.
-
----
-
-## 资源链接
-
-&gt; ## Resource Links
-
-* **技术文档与代码**：[技术报告](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf) | [项目主页](https://research.nvidia.com/labs/nemotron/NVIDIA-Nemotron-3.5-Transcribe/) | [在线演示 (Live Demo)](https://huggingface.co/spaces/nvidia/nemotron-transcribe)
-* **模型权重下载**：[Hugging Face 权重集合](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)
-
-&gt; * **Documentation &amp; Code:** [Technical Report](https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3.5-Transcribe-Technical-Report.pdf) | [Project Page](https://research.nvidia.com/labs/nemotron/NVIDIA-Nemotron-3.5-Transcribe/) | [Live Demo](https://huggingface.co/spaces/nvidia/nemotron-transcribe)
-&gt; * **Model Weights:** [Hugging Face Collection](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B)</description>
-    </item>
-    <item>
-      <title>Infini-AI-Lab 开源智能体测试夹具适配框架 Hermit：无需微调基座即可演进 Agent</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-30/Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-30/Infini-AI-Lab-开源智能体测试夹具适配框架-Hermit/</guid>
-      <pubDate>Fri, 30 Oct 2026 00:00:00 GMT</pubDate>
-      <description>在当前的 AI 智能体 (AI Agent) 研发中，想要提升智能体在特定复杂任务中的表现，开发者通常面临两难困境：要么微调大语言模型 (Large Language Model, LLM) 底层权重（成本高昂且容易破坏通用泛化能力），要么大改智能体的闭源或精密代码脚手架（极易引发组件冲突）。卡内基梅隆大学 (CMU) 博士后 Haizhong Zheng 等人主导的 Infini-AI-Lab 团队正式开源了 Hermit 框架，创新性地提出了“测试夹具适配器 (Harness Adapter)”概念。它就像给智能体的外部运行环境穿上一套轻量、可插拔的“技能外骨骼”，在完全冻结基座大模型和原有脚手架的前提下，通过强化学习驱动的演进循环自动优化提示词、记忆、工具与协同逻辑，极大降低了智能体针对新任务持续进化的技术门槛。
-
----
-
-## 执行摘要
-
-&gt; ## Executive Summary
-
-Infini-AI-Lab 推出了开源 Python 框架 **Hermit** (v0.1.0)。该框架旨在保持底层基础大语言模型 (Large Language Model, LLM) 与智能体测试夹具 (Agent Harness) 完全冻结的前提下，为 AI 智能体 (AI Agent) 训练外置的“测试夹具适配器 (Harness Adapter)”。该项目由 CMU 博士后 Haizhong Zheng 发布，提供了一套统一的训练循环机制，用以系统化优化指令、技能、记忆、工具以及执行逻辑。开发者无需微调基座模型权重，也无需分叉修改现有代码库，只需通过 PyPI 执行 `pip install hermit-harness`，即可轻松将 Codex 或 Claude Code 等主流编程智能体适配到全新的复杂任务中。
-
-&gt; Infini-AI-Lab has introduced **Hermit** (v0.1.0), an open-source Python framework designed to train external "harness adapters" for AI agents while keeping the underlying foundation model and agent harness completely frozen. Announced by CMU postdoc Haizhong Zheng, Hermit provides a unified training loop to optimize instructions, skills, memory, tools, and execution logic. Developers can easily adapt popular coding agents—such as Codex or Claude Code—to new tasks via PyPI (`pip install hermit-harness`) without the need to fine-tune weights or fork codebases.
-
----
-
-## 核心要点速览
-
-&gt; ## TL;DR
-
-* **极小占用 (Footprint)**：作为轻量级 Python 框架，本身不包含任何原生模型参数。采用 Apache-2.0 开源许可协议，可通过 `pip install hermit-harness` 一键安装。
-* **硬件要求 (Hardware Requirements)**：离线快速入门 (Quick Start) 无需任何 GPU、模型账号或外部数据集。生产环境支持任意 API 后端，亦可通过 vLLM、SGLang 或 Ollama 进行本地推理部署。
-* **基准性能 (Performance)**：在 OfficeQA、CL-Bench 以及 ServeLearnBench 评估测试中（以 GLM 5.3 Flash 为测试模型），相较无适配器的基线方案展现出了显著的性能提升。
-* **核心亮点 (Highlights)**：
-  * *最佳表现*：MetaWorld Model (MWM) 适配器在 CL-Bench 数据库探索任务中取得了 **0.795 的准确率**（相比之下，上下文学习基线仅为 0.580）。
-  * *最低表现*：仅依赖提示词的适配器 (Prompt-only Adapter) 在同一基准测试中仅取得 **0.470**，甚至低于标准基线表现。
-* **一句话总结 (Bottom Line)**：Hermit 提供了支持 5 种不同夹具演进方法的统一训练循环，不过目前披露的多数成果仍来自于单次自测运行数据。
-
-&gt; * **Footprint:** A lightweight Python framework with no native parameters of its own. Available under the Apache-2.0 license via `pip install hermit-harness`.
-&gt; * **Hardware Requirements:** The offline Quick Start requires no GPU, model account, or external dataset. Production runs support any API backend or local serving setups via vLLM, SGLang, or Ollama.
-&gt; * **Performance:** Demonstrates notable improvements over no-adapter baselines across OfficeQA, CL-Bench, and ServeLearnBench (evaluated using GLM 5.3 Flash).
-&gt; * **Highlights:** 
-&gt;   * *Best Performer:* The MetaWorld Model (MWM) adapter hits **0.795 accuracy** on CL-Bench database exploration (compared to 0.580 for the in-context baseline).
-&gt;   * *Lowest Performer:* The prompt-only adapter scores **0.470** on the same benchmark, falling below the standard baseline.
-&gt; * **Bottom Line:** Hermit offers a single training loop supporting 5 distinct harness evolution methods, though most reported results currently stem from single, self-reported runs.
-
----
-
-## 什么是测试夹具适配器？
-
-&gt; ## What is a Harness Adapter?
-
-[测试夹具适配器 (Harness Adapter)](https://infini-ai-lab.github.io/hermit/) 的功能类似于为现有智能体运行环境量身定制的可训练插件。传统的模型适配器（例如 LoRA）是通过修改底层神经网络的权重来提升能力的，而**测试夹具适配器**则是对包裹在大模型外部的智能体系统框架进行适配与改造。
-
-&gt; A [harness adapter](https://infini-ai-lab.github.io/hermit/) functions similarly to a trainable plugin for existing agent environments. While model adapters (like LoRA) modify the underlying neural network weights, a **harness adapter** adapts the surrounding agentic framework.
-
-该适配器将提示词指令、操作技能、记忆状态、外部工具、可执行代码以及多智能体协同逻辑封装在一起——本质上充当了模块化的代码仓库扩展包。它的规范定义了可学习的参数空间与校验标准，而将基座大模型和底层运行环境完整保留，完全无需任何改动。
-
-&gt; The adapter encapsulates instructions, operational skills, memory states, tools, executable code, and agent coordination logic—essentially acting as a modular repository extension. Its specification defines learnable parameters and validation criteria, leaving the base model and harness entirely untouched.
-
-Infini-AI-Lab 强调了采用这种设计架构的三大核心考量：
-
-&gt; Infini-AI-Lab highlights three core motivations for this design:
-
-1. 业界许多先进的智能体运行环境与支撑脚手架至今仍处于闭源状态。
-2. 直接修改开源运行环境中的代码，往往会破坏其内部经过精细调优的脆弱组件联动关系。
-3. 一旦训练出成熟的适配器，就可以无缝迁移到其他兼容的大模型和运行环境中。
-
-&gt; 1. Many agent harnesses remain closed-source.
-&gt; 2. Direct modifications to open harnesses frequently break fragile, finely-tuned component interactions.
-&gt; 3. A learned adapter can be seamlessly ported across compatible models and harnesses.
-
----
-
-## Hermit 是如何训练适配器的？
-
-&gt; ## How Does Hermit Train an Adapter?
-
-Hermit 采用了一套强化学习 (RL) 风格的训练闭环，核心由三大组件构成：
-
-&gt; Hermit utilizes an RL-style training loop comprising three primary components:
-
-1. **训练器 (Trainer)**：使用当前版本的适配器，驱动实际执行动作的智能体批量运行任务。
-2. **裁判员 (Judge)**：对智能体的执行输出进行打分评估，并生成结构化的反馈意见。
-3. **演进器 (Evolver)**：深度分析执行轨迹与反馈日志，进而提出经过优化演化后的新一代适配器方案。
-
-&gt; 1. **Trainer:** Runs batches of tasks through the acting agent using the current adapter version.
-&gt; 2. **Judge:** Evaluates outputs and provides structured feedback.
-&gt; 3. **Evolver:** Analyzes execution trajectories and feedback to propose updated adapter iterations. 
-
-训练器会在将演进方案提交保存为新版本之前，依据预设模板对其进行严格验证。每一个版本的适配器都会妥善存储在一个内部 Git 树结构中，便于开发者随时检视演化过程、回滚历史版本或将特定迭代快速交付投产。在运行学习程序的环境沙箱方面，需要在 Linux 系统中配备 `bubblewrap` 隔离工具。
-
-&gt; The Trainer validates these proposals against a predefined template before committing them as the next version. Every adapter version is stored within an internal git tree, allowing developers to inspect, roll back, or ship any historical iteration. Sandbox execution of learner programs requires Linux with `bubblewrap`.</description>
     </item>
   </channel>
 </rss>
