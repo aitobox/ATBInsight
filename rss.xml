@@ -5,6 +5,70 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>Hegel-clj 发布：面向 Clojure 的下一代生成式测试库</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-16/Hegel-clj-发布-面向-Clojure-的下一代生成式测试库/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-16/Hegel-clj-发布-面向-Clojure-的下一代生成式测试库/</guid>
+      <pubDate>Mon, 16 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在现代软件工程中，生成式测试 (Generative Testing) 能够自动产生海量随机输入，是挖掘系统隐蔽漏洞的利器。然而，Clojure 社区长期依赖的主力库 `test.check` 基于“缩减树 (Shrink Trees) ”机制，在面对由 `bind` 组合的复杂生成器时，缩减算法经常陷入僵局，留下充斥着无用零值的庞大失败样例，给排查问题带来极大困扰。Python 生态著名的 Hypothesis 库开创了“内部测试用例缩减 (Internal Test-Case Reduction) ”范式，通过在测试失败时让生成器重新生成更小、更相似的输入，彻底解决了该难题。著名分布式系统专家 aphyr 结合这一最新理念，将新一代跨平台测试引擎 Hegel 引入 Clojure 生态并发布了 Hegel-clj，为开发者带来了兼具确定性随机数、极致缩减与原生 `clojure.test` 协同的现代化生成式测试体验。
+
+---
+
+我刚刚发布了 [hegel-clj](https://github.com/aphyr/hegel-clj)，这是面向 [Hegel](https://hegel.dev) 生成式测试 (Generative Testing) 库的 Clojure 接口。你可以直接跳到 [官方文档](https://cljdoc.org/d/com.aphyr/hegel-clj/0.1.1/doc/readme) 阅读上手指南，不过我想聊聊为什么我们还需要一个新的测试库，这背后的技术思考或许会更有趣。
+
+&gt; I’ve just released [hegel-clj](https://github.com/aphyr/hegel-clj), a Clojure interface for the [Hegel](https://hegel.dev) generative testing library. You can jump right to [the docs](https://cljdoc.org/d/com.aphyr/hegel-clj/0.1.1/doc/readme), but I thought it might be interesting to explain why I want another testing library.
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+* **`test.check` 的固有缺陷**：像 `test.check` 这样复杂的生成式测试库依赖缩减树 (Shrink Trees) 。当使用通过 `bind` 组合的生成器时，测试用例的缩减过程经常会卡死，导致吐出庞大得有些滑稽的失败样例 (例如：一个仅仅因为缩减算法无法有效缩减绑定参数，而充斥着大量无用零值的超长向量) 。
+* **Hypothesis 开创的全新思路**：[Hypothesis](https://hypothesis.works/) 开创了“内部测试用例缩减 (Internal Test-Case Reduction) ”技术。生成器先产生单一值，并在测试失败时重新运行生成器，寻找更小但相似的变体。这一机制正是 **Hegel** 的基石。
+* **全新亮相的 Hegel-clj**：为 Hegel 打造的简洁、跨平台 Clojure 包装层，提供了极其稳健的用例缩减能力、可预测的生成器组合机制、强大的宏 (`let`、`composite`) ，以及与 `clojure.test` 的无缝集成。
+
+&gt; * **The Problem with `test.check`:** Complex generative testing libraries like `test.check` rely on shrink trees. When using generators combined via `bind`, shrinking can frequently get stuck, yielding comically oversized failure cases (e.g., a massive vector padded with zeroes simply because the shrinking algorithm couldn't efficiently reduce the bound parameters).
+&gt; * **The Hypothesis Approach:** [Hypothesis](https://hypothesis.works/) pioneered *internal test-case-reduction*, where generators produce a single value and re-run to find smaller variations if a test fails. This is the foundation of **Hegel**.
+&gt; * **Introducing Hegel-clj:** A clean, cross-platform Clojure wrapper for Hegel that provides robust shrinking, predictable composition, powerful macros (`let`, `composite`), and a smooth `clojure.test` integration.
+
+---
+
+## 为什么 `test.check` 会在缩减时陷入僵局
+
+&gt; ## Why `test.check` Gets Stuck
+
+在 Clojure 开发中，我经常使用优秀的 [test.check](https://github.com/clojure/test.check) 库来进行生成式测试。然而，使用 `test.check` 的过程有时令人相当抓狂！尤其是那些复杂的生成器，在用例缩减 (Shrinking) 阶段很容易卡死，结果往往只能靠人工手动去一点点裁剪复杂的失败数据结构。
+
+&gt; I do a lot of generative testing in Clojure with the excellent [test.check](https://github.com/clojure/test.check). However, using `test.check` can be frustrating! In particular, complex generators can get stuck during shrinking, leaving me trying to prune down a complex data structure by hand. 
+
+导致这种窘境的罪魁祸首通常是 `bind`。如果你还不熟悉 `test.check`、Quickcheck 或该家族中的其他测试库，简单来说，`bind` 是这样一种生成器：它首先抽取一个随机值，接着以该值为基础构建一个**全新的**生成器，再由后者去抽取另一个值。
+
+&gt; The culprit is usually `bind`. If you’re not familiar with `test.check`, Quickcheck, or other libraries in this family, `bind` is a generator which draws some random value, then uses that to construct a *new* generator, which in turn is used to draw some other value.
+
+```clojure
+(require '[clojure.test.check :as tc]
+         '[clojure.test.check.generators :as tcg]
+         '[clojure.test.check.properties :as tcp])
+
+(tcg/bind ; Take a number from `nat`, a generator of small positive
+          ; integers.
+          tcg/nat
+          ; Now with that number, construct a generator of vectors, each
+          ; with that many elements.
+          (fn [size]
+            (tcg/vector tcg/large-integer size)))
+```
+
+我们也可以用 `test.check` 的 `let` 宏来编写相同的逻辑，它在底层会被展开为一系列相互嵌套的 `bind` 调用。
+
+&gt; We can also write this using `test.check`’s `let` macro, which expands to a series of nested `bind`s under the hood.
+
+```clojure
+(tcg/let [size tcg/nat]
+  (tcg/vector tcg/large-integer size))
+```</description>
+    </item>
+    <item>
       <title>构建全天候 AI 智能体：驱动持久自主运行的五大核心原语</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-15/构建全天候-AI-智能体-驱动持久自主运行的五大核心原语/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-15/构建全天候-AI-智能体-驱动持久自主运行的五大核心原语/</guid>
@@ -4766,63 +4830,6 @@ systemctl mask tmp.mount
 &gt; 2. **Stiemke Duality Condition:** Demonstrates that a strictly positive price on prompts is the exact condition for specialization trade-offs.
 &gt; 3. **Totally Positive Bound:** Establishes that the number of `pass@k` crossovers is tightly bounded by the sign variation of the shift in per-prompt success.
 &gt; 4. **Unified Theory of Entropy Collapse:** Connects policy optimization trade-offs with entropy collapse and the entropy-performance law via a unified tilt identity.</description>
-    </item>
-    <item>
-      <title>GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-31/GAUSS-面向大语言模型推理服务的负载感知仿真器/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/GAUSS-面向大语言模型推理服务的负载感知仿真器/</guid>
-      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 深度融入生产级应用，如何在保障严格服务等级目标 (SLO) 的同时降低昂贵的算力成本，成为基础设施架构的核心挑战。传统的推理评估往往依赖单一的吞吐量指标，无法捕捉生成式两阶段（预填充与解码）耦合及持续批处理机制所引发的非线性长尾延迟。为此，研究团队推出了名为 GAUSS 的新型负载感知分析与蒙特卡洛仿真器。它通过为预填充和解码构建专属延迟曲面，结合 Lindley 递归排队理论与集成蒙特卡洛采样，实现了对首字延迟 (Time-to-First-Token, TTFT) 与字间延迟 (Time-Between-Tokens, TBT) 全性能分布的精确预测。该工作为未部署硬件评估、新型请求调度算法验证以及精准容量规划提供了兼顾精度与效率的仿真基准。
-
----
-
-## 📌 内容概要
-
-&gt; ## 📌 Summary
-
-当前，大语言模型 (LLM) 推理已演进为一项核心的企业级生产负载，需要针对延迟服务等级目标 (SLO) 进行严谨的资源供给、性能监控以及用量计费。然而，传统的单一吞吐量指标在这一场景下往往失效——这是因为生成式服务将预填充 (prefill) 与解码 (decode) 这两个特征截然不同的阶段紧密耦合，而持续批处理 (continuous batching) 机制更是从根本上重构了实际的服务处理流程。
-
-&gt; Large language model (LLM) inference has evolved into a core operational workload requiring strict provisioning, monitoring, and billing against latency Service-Level Objectives (SLOs). Traditional single-throughput metrics fall short because generative serving couples two distinct phases (prefill and decode) with vastly different characteristics, while continuous batching fundamentally alters the effective service process.
-
-针对这些局限性，作者团队推出了 **GAUSS**——一个兼具工作负载感知能力的解析与蒙特卡洛 (Monte-Carlo) 仿真器。该仿真器旨在针对特定工作负载、推理引擎与硬件加速器，精准预测完整的性能分布——尤其是**首字延迟 (Time-to-First-Token, TTFT)** 与**字间延迟 (Time-Between-Tokens, TBT)**，并给出系统可稳定承载的可持续请求速率。
-
-&gt; To address these limitations, the authors introduce **GAUSS**, a workload-aware analytical and Monte-Carlo simulator designed to predict full performance distributions—specifically **Time-to-First-Token (TTFT)** and **Time-Between-Tokens (TBT)**—alongside sustainable request rates for specific workloads, engines, and accelerators.
-
----
-
-## 🔑 核心特性与方法论
-
-&gt; ## 🔑 Key Features &amp; Methodology
-
-* **阶段专属延迟曲面 (Phase-Specific Latency Surfaces)**：为预填充和解码阶段分别配备校准后的专属延迟曲面模型。
-* **Lindley 递归排队模型 (Lindley-Recurrence Queueing Model)**：精准建模随机请求到达场景下的排队动态与等待行为。
-* **集成蒙特卡洛采样 (Ensemble Monte-Carlo Sampling)**：借助高鲁棒性的蒙特卡洛采样而非单纯重放孤立的历史追踪日志来评估系统性能，从而赋能运维团队：
-  * 对尚未部署的新型硬件、全新路由策略及假设性工作负载进行前瞻性建模；
-  * 精准捕捉传统追踪驱动型仿真器往往采样不足的长尾延迟 (Latency Tails)。
-* **高级容量规划 (Advanced Capacity Planning)**：强力支撑关键的运维决策，包括最优工作点选取、流量智能分流，以及基于最短剩余处理时间 (SRPT) 的高效调度策略。
-
-&gt; * **Phase-Specific Latency Surfaces:** Pairs calibrated latency models for prefill and decode phases.
-&gt; * **Lindley-Recurrence Queueing Model:** Accurately models queueing behavior under stochastic request arrivals.
-&gt; * **Ensemble Monte-Carlo Sampling:** Estimates performance through robust sampling rather than replaying isolated historical traces, enabling operators to:
-&gt;   * Model undeployed hardware, novel routing policies, and hypothetical workloads.
-&gt;   * Accurately capture latency tails that trace-driven simulators typically under-sample.
-&gt; * **Advanced Capacity Planning:** Supports critical operational decisions including operating-point selection, traffic segmentation, and shortest-remaining-processing-time (SRPT) scheduling.
-
----
-
-## 🔗 快速链接与资源
-
-&gt; ## 🔗 Quick Links &amp; Resources
-
-* **全文阅读：** [查看 PDF](https://arxiv.org/pdf/2610.37989)
-* **音频解读：** [收听音频概要](/audio/2610.37989)
-* **授权协议：** [知识共享署名 4.0 国际许可协议 (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/) `&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;`
-* **外部学术引用：** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.37989) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.37989) | [SciX](https://scixplorer.org/abs/arXiv:2610.37989)
-
-&gt; * **Full-Text Access:** [View PDF](https://arxiv.org/pdf/2610.37989)
-&gt; * **Audio Summary:** [Listen to Audio Summary](/audio/2610.37989)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/) `&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png"&gt;`
-&gt; * **External Citations:** [Google Scholar](https://scholar.google.com/scholar_lookup?arxiv_id=2610.37989) | [Semantic Scholar](https://api.semanticscholar.org/arXiv:2610.37989) | [SciX](https://scixplorer.org/abs/arXiv:2610.37989)</description>
     </item>
   </channel>
 </rss>
