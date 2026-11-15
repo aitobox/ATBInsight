@@ -1325,6 +1325,10 @@ title: 标签浏览
 - [关系核心图分析：以SQL规模查询图数据，以及为什么节点/边模型是性能税而非连接数据的真实写照](blog/posts/2026-09-03-关系核心图分析：以SQL规模查询图数据，以及为什么节点-边模型是性能税而非连接数据的真实写照.md)
 - [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 
+## Clojure
+
+- [Hegel-clj 发布：面向 Clojure 的下一代生成式测试库](blog/posts/2026-11-16-Hegel-clj-发布-面向-Clojure-的下一代生成式测试库.md)
+
 ## Clos架构
 
 - [弃权协议：Clos 网络架构的根本原因分析 (RCA)](blog/posts/2026-08-26-弃权协议：Clos 网络架构的根本原因分析 -RCA.md)
@@ -13028,6 +13032,7 @@ title: 标签浏览
 
 - [FVSpec：将现实世界的基于属性的测试转化为 Lean 挑战](blog/posts/2026-08-20-FVSpec：将现实世界的基于属性的测试转化为 Lean 挑战.md)
 - [KONTOGRAPH：在 200 毫秒决策预算下实现实时反洗钱的验证点时间特征一致性与摊销解释](blog/posts/2026-08-26-KONTOGRAPH：在 200 毫秒决策预算下实现实时反洗钱的验证点时间特征一致性与摊销解释.md)
+- [Hegel-clj 发布：面向 Clojure 的下一代生成式测试库](blog/posts/2026-11-16-Hegel-clj-发布-面向-Clojure-的下一代生成式测试库.md)
 
 ## 嵌入优化
 
@@ -20522,6 +20527,10 @@ title: 标签浏览
 
 - [NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人](blog/posts/2026-08-07-NVIDIA Cosmos-H-Dreams：将实时生成式模拟引入手术机器人.md)
 
+## 生成式测试
+
+- [Hegel-clj 发布：面向 Clojure 的下一代生成式测试库](blog/posts/2026-11-16-Hegel-clj-发布-面向-Clojure-的下一代生成式测试库.md)
+
 ## 生成式重排
 
 - [SPD：生成式重排的单次前向传递解码方法](blog/posts/2026-09-08-SPD：生成式重排的单次前向传递解码方法.md)
@@ -26567,6 +26576,10 @@ title: 标签浏览
 ## 软件调试
 
 - [使用差异覆盖率精准定位代码缺陷：一种高效的软件调试技术](blog/posts/2026-11-06-使用差异覆盖率精准定位代码缺陷-一种高效的软件调试技术.md)
+
+## 软件质量
+
+- [Hegel-clj 发布：面向 Clojure 的下一代生成式测试库](blog/posts/2026-11-16-Hegel-clj-发布-面向-Clojure-的下一代生成式测试库.md)
 
 ## 软件逆向
 
