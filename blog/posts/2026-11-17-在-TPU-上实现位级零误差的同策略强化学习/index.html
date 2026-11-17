@@ -1,0 +1,819 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-17-%E5%9C%A8-TPU-%E4%B8%8A%E5%AE%9E%E7%8E%B0%E4%BD%8D%E7%BA%A7%E9%9B%B6%E8%AF%AF%E5%B7%AE%E7%9A%84%E5%90%8C%E7%AD%96%E7%95%A5%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>在 TPU 上实现位级零误差的同策略强化学习 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tpu" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              在 TPU 上实现位级零误差的同策略强化学习
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="tpu">在 TPU 上实现位级零误差的同策略强化学习</h1>
+<blockquote>
+<h1 id="unlocking-stable-on-policy-rl-on-tpu-with-bitwise-zero-traininference-mismatch">Unlocking Stable On-Policy RL on TPU with Bitwise-Zero Train–Inference Mismatch</h1>
+</blockquote>
+<p><strong>发布日期：</strong> 2026 年 11 月 16 日  </p>
+<blockquote>
+<p><strong>Published Date:</strong> November 16, 2026  </p>
+</blockquote>
+<p><strong>作者：</strong> Yuxuan Zhang (Software Engineer), Lin Chai (Senior Software Engineer), Lance Wang (Senior Software Engineer), Tianshu Bao (Senior Staff Software Engineer), Weiren Yu (Senior Product Manager)  </p>
+<blockquote>
+<p><strong>Authors:</strong> Yuxuan Zhang (Software Engineer), Lin Chai (Senior Software Engineer), Lance Wang (Senior Software Engineer), Tianshu Bao (Senior Staff Software Engineer), Weiren Yu (Senior Product Manager)</p>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>大语言模型 (Large Language Model, LLM) 的强化学习训练对数值精度极其敏感，微小的计算误差即可导致训练严重失稳。然而在工业生产实践中，为了兼顾高吞吐与高算力，采样推理与梯度训练往往被切分在两条独立的计算流水线上；浮点运算在多轮长对话轨迹中累积的舍入偏差，悄然引入了隐秘的“异策略漂移”。为了攻克这一系统难题，Google Tunix 团队在 64 块 TPU v5p 集群拓扑上构建并验证了 Zero-TIM 架构，通过对分片内算子内核的精确固化、跨卡规约通信的严格时序重组以及自动微分与推理算子的解耦复用，首次实现了推理与训练在位级别 (Bitwise) 完全零误差的一致性。这项突破彻底消除了困扰分布式大模型强化学习的数值漂移，为业界在大规模 TPU 集群上稳定训练前沿推理模型树立了全新的技术标杆。</p>
+<hr />
+<h2 id="_2">内容提要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>大语言模型 (Large Language Model, LLM) 的强化学习 (Reinforcement Learning, RL) 训练对数值不稳定性极其敏感。在轨迹采样生成 (rollout generation) 与梯度更新之间，哪怕产生极其微小的数值出入，都可能导致训练失稳甚至收敛停滞。在工业界实际的生产级强化学习系统中，采样与训练通常分别运行在独立的专用执行路径上；浮点数舍入误差随着多轮交互轨迹层层累加，无意间引入了隐秘的异策略 (off-policy) 偏差。</p>
+<blockquote>
+<p>Reinforcement learning (RL) for large language models is notoriously sensitive to numerical instabilities. Even tiny discrepancies between rollout generation and gradient updates can destabilize training or stall convergence. Production RL stacks typically run sampling and training through separate execution paths, inadvertently introducing a hidden off-policy gap that compounds over multi-turn trajectories due to floating-point rounding errors.</p>
+</blockquote>
+<p>本文向大家介绍 <strong>训练-推理位级零误差 (Zero Train–Inference Mismatch, Zero-TIM)</strong>——该方案在开源库 <a href="https://github.com/google/tunix">Tunix</a> 中构建，并在由 64 块 TPU v5p 芯片 (<code>DP8×TP8</code>) 组成的多主机集群规模下完成了验证。Zero-TIM 能够确保在模型权重完全相同的前提下，采样器与训练器针对完全一致的动作与 Token 历史，计算出在位级别 (Bitwise) 分毫不差的对数概率 (logprobs)，为 TPU 上的强化学习训练带来真正坚固的同策略稳定性。</p>
+<blockquote>
+<p>This post introduces <strong>Zero Train–Inference Mismatch (Zero-TIM)</strong>—developed in <a href="https://github.com/google/tunix">Tunix</a> and verified at multi-host scale across 64 TPU v5p chips (<code>DP8×TP8</code>). Zero-TIM ensures that the sampler and trainer assign bitwise-identical logprobs to the same action and token history under identical weights, bringing true on-policy stability to TPU RL training.</p>
+</blockquote>
+<hr />
+<p><img alt="zero_tim_tpu_blog_header_1600x900" src=".././images/b7cd9f1dbad1.png" /></p>
+<hr />
+<h2 id="_3">问题的根源：隐秘的异策略偏差</h2>
+<blockquote>
+<h2 id="the-problem">The Problem</h2>
+</blockquote>
+<p>在基于大语言模型的强化学习中，模型本身充当策略函数 <span class="arithmatex">\(\pi(\text{action} \mid \text{previous tokens})\)</span>，而纯粹的同策略学习要求每次参数更新中的每一个动作，都必须由该策略本身生成并以完全一致的逻辑进行评估。尽管同步训练循环能够确保用于打分的模型权重与生成采样数据时的权重完全一致，但背后还有一个至关重要的数值计算前提：采样器与训练器对该策略的数值计算结果必须完全一致。</p>
+<blockquote>
+<p>In LLM RL, the model serves as the policy <span class="arithmatex">\(\pi(\text{action} \mid \text{previous tokens})\)</span>, and true on-policy learning requires every action in an update to be generated and evaluated by that exact same policy. While a synchronous loop ensures each rollout batch is scored using the same weights that generated it, a critical numerical requirement remains: the sampler and trainer must evaluate that policy identically.</p>
+</blockquote>
+<p>在实际生产实践中，强化学习架构通常将采样推理与模型训练划分到两条不同且高度优化的执行路径中：</p>
+<ul>
+<li><strong>采样器 (Sampler)</strong>：在自回归增量解码 (incremental decoding) 期间逐一选择每个动作 Token，并记录其行为对数概率；</li>
+<li><strong>训练器 (Trainer)</strong>：在批量前向和反向传播计算中评估相同的 Token，从而计算其当前对数概率以及梯度。</li>
+</ul>
+<blockquote>
+<p>In practice, production RL stacks run sampling and training through separate, specialized execution paths:
+* <strong>The sampler</strong> chooses each action token during incremental decoding and records its behavior logprob.
+* <strong>The trainer</strong> evaluates the same token in batched forward-backward passes to compute its current logprob and gradients.</p>
+</blockquote>
+<p>即便在模型权重毫无二致的情况下，这两条截然不同的执行路径依然可能针对同一个上下文和相同的 Token，计算出存在细微差异的对数概率。从算法调度逻辑来看，整个训练流程虽然名义上是同策略的，但在底层数值计算层面，却悄然潜入了隐秘的异策略偏差，并在多轮交互的长轨迹中如滚雪球般累积放大。</p>
+<blockquote>
+<p>Under the same weights, these differing execution paths can still assign different logprobs to the same token and context. The training schedule is on-policy, but the numerical execution has introduced a hidden off-policy gap that compounds over multi-turn trajectories.</p>
+</blockquote>
+<hr />
+<h2 id="_4">偏差由何而来：浮点运算的非结合律</h2>
+<blockquote>
+<h2 id="why-it-happens">Why It Happens</h2>
+</blockquote>
+<p>计算机中的规约 (reduction) 运算本质上是由浮点数加法构建的计算树。由于浮点加法并不满足数学上的结合律，计算树的结构一旦改变，舍入发生的位置也会随之改变。这种效应在精度低于 float32 的 <strong>bfloat16</strong> 格式下尤其容易暴露。</p>
+<blockquote>
+<p>A reduction is a tree of floating-point additions. Floating-point addition is not associative, so changing the tree changes where rounding occurs. The effect is easier to expose in <strong>bfloat16</strong>, which retains less precision than float32.</p>
+</blockquote>
+<p>下面这个 bfloat16 示例清晰地展示了规约加法顺序带来的影响：</p>
+<blockquote>
+<p>The following bfloat16 example isolates the effect of reduction order:</p>
+</blockquote>
+<p><img alt="figure-1-reduction-trees" src=".././images/4a452048f8a3.png" />
+图 1: 在数值 2.0 附近，每个 0.0078125 输入刚好是到达下一个可表示 bfloat16 数值距离的一半。“舍入到最近的偶数”规则在单独相加时会丢弃每个输入；而先将相同的小输入合并相加，则能顺利进位到下一个数值。</p>
+<blockquote>
+<p><strong>Figure 1.</strong> Near 2.0, each 0.0078125 input is half the distance to the next representable bfloat16 value. Round-to-nearest-even discards each input when added separately; grouping the same inputs first reaches the next value.</p>
+</blockquote>
+<p>同样的问题也会在深度学习模型的规约计算中频繁出现：矩阵乘法需要累加部分和 (partial sums)，归一化层需要计算统计量，张量并行 (tensor-parallel) 的不同分片需要汇总合并各自分片的部分输出。在我们早期的系统实现中，采样器的解码过程与训练器的前向传播采用了不同的 Token 数组形状以及不同的前向计算实现方式。JAX 会根据输入张量的形状专门特化编译计算图，而且训练时的前向传播是在自动微分程序内部运行的。</p>
+<blockquote>
+<p>The same issue appears in model reductions: matrix products accumulate partial sums, normalization computes statistics, and tensor-parallel shards combine partial outputs. In our original stack, sampler decode and trainer forward used different token-array shapes and forward implementations. JAX specializes computations to their input shapes, and the training forward also runs inside a differentiated program.</p>
+</blockquote>
+<p>在这些不同的执行路径之间，规约加法的顺序以及中间计算精度未能保持严格一致。微小的浮点舍入差异最终转化为对数概率在二进制位层面的不同。模型权重和数学公式虽然完全一样，但底层的实际算术计算过程却各不相同。</p>
+<blockquote>
+<p>Across these paths, reduction order and intermediate precision were not consistently aligned. Floating-point rounding turned those arithmetic differences into different logprob bits. The weights and model equations were identical; the arithmetic was not.</p>
+</blockquote>
+<hr />
+<h2 id="_5">对齐约定：三方一致性校验契约</h2>
+<blockquote>
+<h2 id="the-alignment-contract">The Alignment Contract</h2>
+</blockquote>
+<p>这项对齐约定十分明确：在采样解码 (sampler decode)、推理预填充 (serving prefill) 以及训练前向传播 (trainer forward) 这三条路径之间，对于每一个被采样的动作，都必须产生位级完全一致的对数概率——在相同的采样权重、Token 历史和采样配置下，直接对比底层原始的浮点字节，允许的舍入误差或公差为绝对的零。</p>
+<blockquote>
+<p>The contract is simple: across sampler decode, serving prefill, and trainer forward, all three paths must produce bitwise-identical logprobs for every sampled action—comparing raw floating-point bytes under the same rollout weights, token history, and sampling settings, with zero rounding or tolerance.</p>
+</blockquote>
+<p>为什么是三条路径而不是两条？在一个解耦的强化学习系统栈中，如果直接发现采样器与训练器存在数值分歧，我们只能确认存在数值偏差，却无法定位偏差究竟是在哪个环节产生的。通过引入推理预填充作为中间检查点，数值对齐转变成了一套<strong>任何强化学习架构均可采用的系统化两步诊断机制</strong>：</p>
+<blockquote>
+<p>Why three paths instead of two? In a decoupled RL stack, a direct sampler–trainer disagreement shows that a numerical gap exists, but not where it enters. Introducing serving prefill as a middle checkpoint turns alignment into a <strong>systematic two-step diagnostic that any RL stack can adopt</strong>:</p>
+</blockquote>
+<ul>
+<li><strong>采样解码 vs. 推理预填充</strong>：验证推理服务引擎在自回归增量 Token 生成与全序列重新打分之间，自身内部是否完全一致。</li>
+<li><strong>推理预填充 vs. 训练器</strong>：验证推理服务引擎与训练引擎在跨越不同编译优化与自动微分边界时，是否保持完全一致。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Sampler decode vs. prefill</strong> verifies that the serving engine agrees with itself between incremental token generation and full-sequence re-scoring.</li>
+<li><strong>Prefill vs. trainer</strong> verifies that the serving and training engines agree across compilation and differentiation boundaries.</li>
+</ul>
+</blockquote>
+<p><img alt="figure-2-policy-contract" src=".././images/ec9f4e9ddd92.png" />
+图 2: 在完全相同的采样权重下，对推理引擎内部以及推理与训练边界之间的采样动作对数概率进行位级比对。</p>
+<blockquote>
+<p><strong>Figure 2.</strong> Bitwise comparisons of sampled-action logprobs within the serving engine and across the serving–training boundary, evaluated at the same rollout weights.</p>
+</blockquote>
+<hr />
+<h2 id="tpu-zero-tim">我们如何在 TPU 上构建 Zero-TIM</h2>
+<blockquote>
+<h2 id="how-we-built-zero-tim-on-tpu">How We Built Zero-TIM on TPU</h2>
+</blockquote>
+<p>实现 Zero-TIM 并不需要把采样器和训练器强行合并为一个臃肿的单体引擎。相反，我们采用了一套<strong>极具通用性的四步工程方案</strong>，在跨多主机 TPU 网格拓扑上无缝衔接独立的推理与训练流水线：锁定分片内的算子内核累加过程、规范跨分片的规约顺序、标准化动作对数概率评分尾部，以及为推理内核封装自定义微分求导规则。</p>
+<blockquote>
+<p>Achieving Zero-TIM does not require merging the sampler and trainer into a single monolithic engine. Instead, we use a <strong>generalizable four-part recipe</strong> that bridges separate serving and training pipelines across multi-host TPU meshes: locking within-shard kernel accumulation, ordering cross-shard reductions, standardizing the logprob scoring tail, and wrapping serving kernels with custom differentiation rules.</p>
+</blockquote>
+<h3 id="1">1. 固化分片内算术累加机制</h3>
+<blockquote>
+<h3 id="1-fix-within-shard-arithmetic">1. Fix Within-Shard Arithmetic</h3>
+</blockquote>
+<p>在每个张量并行秩 (rank) 内部，与批次无关 (batch-invariant) 的 Pallas 内核严格控制着累加顺序和中间精度。投影内核按固定顺序遍历收缩分块 (contraction blocks)，确保规约分块逻辑完全独立于当前处理的 Token 行数。部分积统一在 float32 精度下累加，仅在最后输出时进行显式类型转换。</p>
+<blockquote>
+<p>Inside each tensor-parallel rank, batch-invariant Pallas kernels control accumulation order and intermediate precision. Projection kernels traverse fixed contraction blocks in order, keeping the reduction blocking independent of token-row count. Partial products accumulate in float32, with explicit output casts.</p>
+</blockquote>
+<p>生产环境中的内核在遍历分块 (tile traversal) 之前先初始化暂存累加器，随后对每个分块执行以下核心计算：</p>
+<blockquote>
+<p>The production kernel initializes its scratch accumulator before the tile traversal, then applies this core to each tile:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">input_tile</span> <span class="o">=</span> <span class="n">x_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<span class="n">weight_tile</span> <span class="o">=</span> <span class="n">y_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+<span class="n">partial</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+    <span class="n">input_tile</span><span class="p">,</span>
+    <span class="n">weight_tile</span><span class="p">,</span>
+    <span class="n">preferred_element_type</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">acc_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">acc_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">+</span> <span class="n">partial</span>
+<span class="n">out_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">acc_ref</span><span class="p">[</span><span class="o">...</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">out_ref</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+</code></pre></div>
+<p>下一个分块的计算将直接从 float32 累加器继续累加，而不是从已经转换类型的输出值中读取。这种设计覆盖了注意力投影、MLP 投影以及语言模型头 (LM head)。我们还开发了专用内核来固化 RMSNorm 规约计算以及 SwiGLU 的中间类型转换，并保留了现有的 Pallas 分页注意力 (paged-attention) 前向算子。</p>
+<blockquote>
+<p>The next tile continues from the float32 accumulator, not the cast output. This construction covers the attention and MLP projections and the LM head. Dedicated kernels fix RMSNorm reductions and SwiGLU’s intermediate casts. The existing Pallas paged-attention forward is retained.</p>
+</blockquote>
+<h3 id="2">2. 规范跨分片规约顺序</h3>
+<blockquote>
+<h3 id="2-order-cross-shard-reductions">2. Order Cross-Shard Reductions</h3>
+</blockquote>
+<p>对于行并行 (row-parallel) 投影，每个张量并行分片都会生成一部分局部输出。我们将跨卡通信与相加操作彻底解耦：先使用 <code>ppermute</code> 在卡间传输各个局部结果，然后让每个分片严格按照相同的源分片顺序进行累加。规约的顺序在代码逻辑中明确写死，而不再依赖集合通信库的隐式实现。</p>
+<blockquote>
+<p>For row-parallel projections, each tensor-parallel rank produces a partial output. We separate communication from addition: <code>ppermute</code> transports the partials, then every rank adds them in the same source-rank order. The reduction order is explicit in the program rather than selected by a collective implementation.</p>
+</blockquote>
+<h3 id="3">3. 共享动作对数概率计算路径</h3>
+<blockquote>
+<h3 id="3-share-the-action-logprob-path">3. Share the Action-Logprob Path</h3>
+</blockquote>
+<p>一致性对齐不仅要覆盖模型输出的 Logits，更必须延伸至实际采样动作的概率计算。解码、预填充和训练器均采用相匹配的采样变换，使用同一套固定的 Pallas log-softmax 计算构造，并精确选取所记录的动作 Token。</p>
+<blockquote>
+<p>Alignment must extend beyond model logits to the probability of the sampled action. Decode, prefill, and trainer apply matching sampling transforms, use the same fixed Pallas log-softmax construction, and select the recorded action token.</p>
+</blockquote>
+<p>预填充和训练器直接为采样阶段生成的动作进行打分，而不是重新选择新的动作。同时，我们在跨交互轮次中完整保留了采样的 Token ID，从而确保所有计算路径评估的都是完全相同的 Token 历史。</p>
+<blockquote>
+<p>Prefill and trainer score the action generated during rollout rather than choosing another action. We also preserve sampled token IDs across environment turns so that every path evaluates the same token history.</p>
+</blockquote>
+<h3 id="4">4. 为推理前向算子提供自定义微分求导</h3>
+<blockquote>
+<h3 id="4-differentiate-the-serving-forward">4. Differentiate the Serving Forward</h3>
+</blockquote>
+<p>训练器复用了推理服务的预填充计算逻辑。通过自定义向量-雅可比积 (vector-Jacobian products, VJP)，我们在前向评估中复用推理内核，并为其提供专门的反向传播规则。下面的矩阵乘法示例展示了这种设计分离：</p>
+<blockquote>
+<p>The trainer reuses the serving prefill computation. Custom vector–Jacobian products retain the serving kernels for forward evaluation and provide their backward rules. The matmul example shows this separation:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nd">@jax</span><span class="o">.</span><span class="n">custom_vjp</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">serving_matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pallas_matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">matmul_forward</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">pallas_matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">matmul_backward</span><span class="p">(</span><span class="n">saved</span><span class="p">,</span> <span class="n">output_gradient</span><span class="p">):</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">saved</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">pullback</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vjp</span><span class="p">(</span>
+        <span class="n">differentiable_matmul</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">weights</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pullback</span><span class="p">(</span><span class="n">output_gradient</span><span class="p">)</span>
+
+<span class="n">serving_matmul</span><span class="o">.</span><span class="n">defvjp</span><span class="p">(</span><span class="n">matmul_forward</span><span class="p">,</span> <span class="n">matmul_backward</span><span class="p">)</span>
+</code></pre></div>
+<p>可微副本严格复刻了推理内核的累加顺序和类型转换，但它仅用于构建反向拉回 (pullback) 梯度计算。前向计算产生的值依然完全来自推理服务的 Pallas 内核。</p>
+<blockquote>
+<p>The differentiable replica mirrors the kernel’s accumulation and casts, but is used only to construct the pullback. Forward values still come from the serving Pallas kernel.</p>
+</blockquote>
+<p>在训练时，该前向算子置于可自动微分的 JAX 程序内部运行。我们通过 <code>XLA_FLAGS</code> 向编译器传递 <code>--xla_allow_excess_precision=false</code> 标志，从而抑制 Pallas 内核周边算术操作中产生的额外中间精度。</p>
+<blockquote>
+<p>Training places that forward inside a differentiated JAX program. We pass <code>--xla_allow_excess_precision=false</code> through <code>XLA_FLAGS</code> to the compiler process, constraining excess intermediate precision in the operations surrounding the Pallas kernels.</p>
+</blockquote>
+<p>针对超长交互轨迹，系统将其划分为固定大小的分块 (chunks) 进行评估，并沿计算流传递分页键值缓存 (paged KV cache)。所有动作的对数概率都会注入到完整训练批次的强化学习损失函数中。反向传播过程沿着这些缓存连接反向传递梯度，并在优化器更新参数前汇总所有的参数梯度贡献。</p>
+<blockquote>
+<p>Long trajectories are evaluated in fixed-size chunks, carrying the paged KV cache forward. All action logprobs feed the complete train-batch RL loss. The reverse pass propagates gradients through those cache connections and combines parameter-gradient contributions before the optimizer update.</p>
+</blockquote>
+<p><img alt="figure-3-chunked-differentiation" src=".././images/43416acb6380.png" />
+图 3: 键值缓存 (KV cache) 状态连接了前向计算分块；缓存梯度则连接了反向传播过程。在优化器更新参数前，系统会将所有参数梯度的贡献进行合并汇总。</p>
+<blockquote>
+<p><strong>Figure 3.</strong> KV-cache state connects the forward chunks; cache gradients connect their reverse passes. Parameter-gradient contributions are combined before the optimizer update.</p>
+</blockquote>
+<hr />
+<h2 id="tpu_1">将前沿强化学习数值对齐能力引入 TPU</h2>
+<blockquote>
+<h2 id="bringing-frontier-rl-numerical-alignment-to-tpu">Bringing Frontier RL Numerical Alignment to TPU</h2>
+</blockquote>
+<p>在整个 AI 系统社区中，消除训练与推理之间的不一致性，已迅速成为稳定大规模强化学习收敛的顶尖标配要求。最近的开源前沿成果——包括 <a href="https://vllm-project.github.io/2025/11/10/bitwise-consistent-train-inference.html">vLLM 与 TorchTitan 的结合</a> 以及 <a href="https://www.lmsys.org/blog/2025-11-19-miles/">RadixArk/LMSys Miles</a>——均已充分证明，批次无关内核与位级数值对齐技术能够有效防止策略优化过程中的异策略漂移。</p>
+<blockquote>
+<p>Across the AI systems community, eliminating train–inference mismatch has rapidly become a state-of-the-art requirement for stabilizing large-scale RL convergence. Recent open-source efforts—including <a href="https://vllm-project.github.io/2025/11/10/bitwise-consistent-train-inference.html">vLLM with TorchTitan</a> and <a href="https://www.lmsys.org/blog/2025-11-19-miles/">RadixArk/LMSys Miles</a>—have demonstrated how batch-invariant kernels and bitwise numerical alignment prevent off-policy drift during policy optimization.</p>
+</blockquote>
+<p>我们的工作在 Tunix 中为 TPU 提供了基于 JAX/XLA 和 Pallas 的开源模块化实现。经过在 <strong>64 块 TPU v5p 多主机网格 (<code>DP8×TP8</code>)</strong> 上的严格验证，这些算子内核与集合通信模式提供了一套可复用的工程蓝图，便于工程团队直接采用并在分布式 JAX/TPU 架构上实现位级完全精准的同策略强化学习。</p>
+<blockquote>
+<p>Our work delivers an open-source, modular JAX/XLA and Pallas implementation of this contract for TPU in Tunix. Verified across a <strong>multi-host 64 TPU v5p (<code>DP8×TP8</code>) mesh</strong>, these kernel and collective patterns provide a reusable blueprint that teams can adopt to achieve bit-exact on-policy RL across distributed JAX/TPU stacks.</p>
+</blockquote>
+<hr />
+<h2 id="_6">实验评估与测试结果</h2>
+<blockquote>
+<h2 id="evaluation-and-results">Evaluation and Results</h2>
+</blockquote>
+<p>为了对我们的 TPU 内核进行基准测试，我们在合成的 FrozenLake 环境上运行了 200 步的数值验证测试，采用公开的 Qwen3-8B 检查点作为基线测试用例，并在由 64 块 TPU v5p 组成的 <code>DP8×TP8</code> 网格上运行。训练方案采用带留一法优势估计 (leave-one-out advantages) 的 GSPO-token 损失函数。我们将三种配置进行了对比：采用训练器旧对数概率且无额外采样修正的标准训练 (Standard)、Token 级别的截断重要性采样 (Truncated Importance Sampling, TIS)，以及 Zero-TIM。</p>
+<blockquote>
+<p>To benchmark our TPU kernels, we run a 200-step numerical verification test on the synthetic FrozenLake environment using a public Qwen3-8B checkpoint as a baseline test case using 64 TPU v5p chips with a <code>DP8×TP8</code> mesh. The recipe uses a GSPO-token loss with leave-one-out advantages. We compare Standard training with trainer-old logprobs and no additional sampler correction, token-level truncated importance sampling (TIS), and Zero-TIM.</p>
+</blockquote>
+<p>Zero-TIM 配置还使用了 Token 进/Token 出 (Token-in/Token-out, TiTO) 处理，以跨环境交互轮次完整保留采样的 Token ID。对比基线则保留了其既有的分词处理路径。</p>
+<blockquote>
+<p>The Zero-TIM configuration also uses token-in/token-out (TiTO) handling to preserve sampled token IDs across environment turns. The comparison runs retain their existing tokenization paths.</p>
+</blockquote>
+<p><img alt="figure-4-results" src=".././images/54b852fb658a.png" />
+图 4: 在 2×2 到 9×9 网格大小的 FrozenLake 环境中进行的单随机种子训练运行，最多支持 5 轮交互。两幅图均展示了前 200 个训练步。对数概率差异未经平滑直接绘制；求解成功率显示了浅色原始测量值和 10 步滑动平均曲线。曲线末端标签展示了最终 10 步的平均值。</p>
+<blockquote>
+<p><strong>Figure 4.</strong> Single-seed training runs on FrozenLake grids from 2×2 through 9×9, with up to five interaction turns. Both panels show the first 200 training steps. Logprob differences are plotted without smoothing; solve rates show faint raw measurements and a ten-step trailing average. Endpoint labels show the final ten-step averages.</p>
+</blockquote>
+<p>在该记录时间窗口内的每一个采样步，Zero-TIM 记录的采样器与训练器平均绝对对数概率差异均恒为零，同时其训练任务求解成功率稳步攀升。相比之下，标准训练与 TIS 均保留了非零的数值差异：TIS 仅仅是调整了这些误差对参数更新的贡献权重，并未从根本上消除底层的数值不匹配。在这些测试运行中，Zero-TIM 取得了显著更高的求解成功率。</p>
+<blockquote>
+<p>Zero-TIM records zero mean absolute sampler–trainer logprob difference at every logged step in this window, while its training solve rate increases. Standard and TIS retain nonzero differences: TIS adjusts their contribution to the update without removing the underlying mismatch. Zero-TIM reaches higher observed solve rates in these runs.</p>
+</blockquote>
+<hr />
+<h2 id="_7">开源代码与最新进展</h2>
+<blockquote>
+<h2 id="code-and-updates">Code and Updates</h2>
+</blockquote>
+<p>我们将 Zero-TIM 原型作为 <a href="https://github.com/google/tunix">Tunix</a> 的一部分进行开发，Tunix 是 Google 面向 Cloud TPU 推出的开源原生 JAX 强化学习与后训练库。这些内核模式和三方验证契约均采用了模块化设计，能够极其便捷地集成到现有的多主机 JAX/TPU 推理与训练流水线中；目前我们正在积极推进将其支持扩展到线性注意力 (linear-attention) 以及混合专家模型 (Mixture-of-Experts, MoE) 架构。</p>
+<blockquote>
+<p>We developed the Zero-TIM prototype as part of <a href="https://github.com/google/tunix">Tunix</a>, Google's open-source, JAX-native library for LLM RL and post-training on Cloud TPU. The kernel patterns and three-way verification contract are modular by design—making them straightforward to adopt across existing multi-host JAX/TPU serving and training pipelines—and we are actively extending support to linear-attention and Mixture-of-Experts (MoE) architectures.</p>
+</blockquote>
+<ul>
+<li><a href="https://github.com/google/tunix/blob/yuxzhang/canon-zero-tim/canon-zero-tim/blog_reprod/README.md">预览当前代码实现</a></li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://github.com/google/tunix/blob/yuxzhang/canon-zero-tim/canon-zero-tim/blog_reprod/README.md">Preview the current implementation</a></li>
+</ul>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">强化学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">TPU</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">JAX</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统优化</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
