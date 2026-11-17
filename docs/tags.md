@@ -2565,6 +2565,7 @@ title: 标签浏览
 
 - [SoRoMoX：快速、可微分且可并行化的软体机器人模型](blog/posts/2026-08-11-SoRoMoX：快速、可微分且可并行化的软体机器人模型.md)
 - [Fortran 通用转译器：概念验证](blog/posts/2026-08-11-Fortran 通用转译器：概念验证.md)
+- [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 
 ## JEPA
 
@@ -2986,6 +2987,7 @@ title: 标签浏览
 - [形式化验证费马大定理：Claude历时11天实现数学史里程碑](blog/posts/2026-09-06-形式化验证费马大定理：Claude历时11天实现数学史里程碑.md)
 - [在 Lean 中形式化 PTX 以证明 GPU 算子正确性](blog/posts/2026-11-05-在-Lean-中形式化-PTX-以证明-GPU-算子正确性.md)
 - [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
+- [在编程语言中实现全自动形式化证明](blog/posts/2026-11-17-在编程语言中实现全自动形式化证明.md)
 
 ## Lean 4
 
@@ -4694,6 +4696,7 @@ title: 标签浏览
 
 - [SOVER：通过大模型辅助的SMT验证实现优化问题重构的形式化认证](blog/posts/2026-09-03-SOVER：通过大模型辅助的SMT验证实现优化问题重构的形式化认证.md)
 - [引入非基项子句学习拓展 SMT 求解能力](blog/posts/2026-09-13-引入非基项子句学习拓展-SMT-求解能力.md)
+- [在编程语言中实现全自动形式化证明](blog/posts/2026-11-17-在编程语言中实现全自动形式化证明.md)
 
 ## SMU
 
@@ -5120,6 +5123,7 @@ title: 标签浏览
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 - [MaxText 推出上下文并行技术：在 TPU 上实现数百万 Token 级别长上下文训练](blog/posts/2026-11-11-MaxText-推出上下文并行技术-在-TPU-上实现长上下文训练.md)
 - [Google Cloud Pathways 运行时在 GKE 上正式商用：为超大规模 TPU 集群打造统一控制平面](blog/posts/2026-11-11-Google-Cloud-Pathways-运行时在-GKE-上正式商用.md)
+- [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 
 ## TRL
 
@@ -12062,6 +12066,7 @@ title: 标签浏览
 - [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 - [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
+- [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 
 ## 大语言模型代理
 
@@ -13981,6 +13986,7 @@ title: 标签浏览
 - [Kimina-Prover-RL：面向 Lean 4 形式化定理证明的高效开源强化学习训练方案](blog/posts/2026-10-28-Kimina-Prover-RL-面向-Lean-4-形式化定理证明的高效开源强化学习训练方案.md)
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 - [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
+- [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 
 ## 强化学习与SFT
 
@@ -14126,6 +14132,7 @@ title: 标签浏览
 - [GPT-6 Astra 测试与验证技术的有效性评估](blog/posts/2026-11-07-GPT-6-Astra-测试与验证技术的有效性评估.md)
 - [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 - [结合 Gemini 与约束求解器捕捉模糊测试错漏的 Go 代码缺陷](blog/posts/2026-11-14-结合-Gemini-与约束求解器捕捉模糊测试错漏的-Go-代码缺陷.md)
+- [在编程语言中实现全自动形式化证明](blog/posts/2026-11-17-在编程语言中实现全自动形式化证明.md)
 
 ## 形式语言学
 
@@ -22448,6 +22455,7 @@ title: 标签浏览
 
 - [模型路由看似简单，实则不然](blog/posts/2026-08-07-模型路由看似简单，实则不然.md)
 - [面向高扇出智能体沙箱的内存压缩技术](blog/posts/2026-09-13-面向高扇出智能体沙箱的内存压缩技术.md)
+- [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 
 ## 系统可靠性
 
@@ -23068,6 +23076,10 @@ title: 标签浏览
 
 - [快节奏与硬核代码](blog/posts/2026-08-24-快节奏与硬核代码.md)
 - [Quasar：专为大模型代码操作而设计的编程语言](blog/posts/2026-08-27-Quasar：专为大模型代码操作而设计的编程语言.md)
+
+## 编程语言设计
+
+- [在编程语言中实现全自动形式化证明](blog/posts/2026-11-17-在编程语言中实现全自动形式化证明.md)
 
 ## 编程语言语义
 
