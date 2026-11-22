@@ -1,0 +1,844 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-22-%E5%9C%A8-Datalog-%E4%B8%AD%E5%AE%9E%E7%8E%B0%E7%BA%BF%E6%80%A7%E6%89%AB%E6%8F%8F%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%86%E9%85%8D/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>在 Datalog 中实现线性扫描寄存器分配 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#datalog" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              在 Datalog 中实现线性扫描寄存器分配
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="datalog">在 Datalog 中实现线性扫描寄存器分配</h1>
+<blockquote>
+<h1 id="linear-scan-register-allocation-in-datalog">Linear Scan Register Allocation in Datalog</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>寄存器分配是现代编译器后端中最核心、也是计算最复杂的优化阶段之一。传统的线性扫描寄存器分配算法本质上是一种强依赖状态变更、高度过程式的贪心算法，通常使用命令式语言实现。本文由作者与程序分析领域著名学者 Yannis Smaragdakis 合作，探索了如何在声明式逻辑编程语言 Datalog 中纯规则化地表达线性扫描算法。文章展示了 Datalog 在处理控制流图重构与活跃性分析时的优雅自如，并揭示了利用“全称量词仿真 (Forall Emulation)”技巧在互递归规则中模拟顺序状态演化与寄存器溢出决策的高级范式。</p>
+<hr />
+<h2 id="_2">摘要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>本文探讨了如何与 Yannis Smaragdakis 合作，在 Datalog 中以纯声明式的方式实现一个完整的线性扫描寄存器分配器 (Linear Scan Register Allocator)。诸如还原控制流图 (Control-Flow Graph, CFG) 以及计算变量活跃区间 (Liveness Intervals) 等分析任务，能够天然映射为 Datalog 的递归推导规则；但要模拟线性扫描中带有强先后顺序的命令式步骤——例如判断生命周期结束释放寄存器、选择溢出受害者 (Spill Victims) 等——则需要借助高级推导技巧。特别是，本实现依赖在有序寄存器集合上的<strong>全称量词仿真 (Forall Emulation)</strong>，从而在相互递归的逻辑规则中精确完成寄存器溢出候选变量的裁决。</p>
+<blockquote>
+<p>This post explores implementing a complete linear scan register allocator declaratively in Datalog, developed in collaboration with Yannis Smaragdakis. While tasks like recovering control-flow graphs and computing liveness intervals map naturally to recursive Datalog rules, simulating the sequential, imperative steps of linear scan—such as expiring intervals and selecting spill victims—requires advanced techniques. In particular, the implementation relies on <strong>forall emulation</strong> over an ordered set of registers to pick spill candidates within mutually recursive rules.</p>
+</blockquote>
+<hr />
+<blockquote>
+<p>💬 <em>作者注：这篇文章原本计划在 PLDI 2026 结束后立刻发布，但我迟迟没有动笔，因为我并不像 Yannis 那样是 Datalog 的原生老手，而我又习惯于完全吃透自己写的每一行内容后再发表。不过，这大概就是拥有专家级合著者最大的好处吧！虽然成文略显粗粝，但拖得实在太久，再纠结排版反而耽误了分享。祝大家阅读愉快。</em></p>
+<p>💬 [原文引用 / Original Quote]:
+<em>Note: This was supposed to be published basically immediately after PLDI 2026, but I got hung up on posting it because I am not a Datalog native like Yannis is, and I like understanding everything I post. But I guess that's what expert co-authors are for, right? It's a little rough, but it's been so long that the editing is holding up the posting. Happy reading.</em></p>
+</blockquote>
+<p>去年，我写了<a href="https://bernsteinbear.com/blog/linear-scan">我的第一个寄存器分配器</a>：一个在静态单赋值 (Static Single Assignment, SSA) 形式下用 Ruby 实现的小型线性扫描算法。文章刚发布不久，我就与 <a href="https://waleedkhan.name">Waleed Khan</a> 通了一次电话，他带着我用 Datalog 一步步实现了基于不动点 (Fixpoint) 算法的活跃性分析。当时我们就畅想过：干脆把整个寄存器分配器都搬到 Datalog 里实现吧——这能有多难呢？但那次脑暴最终没有落地。</p>
+<blockquote>
+<p>Last year I wrote <a href="https://bernsteinbear.com/blog/linear-scan">my first register allocator</a>: a small linear scan implementation in Ruby on SSA. Immediately after publishing the post, I had a call with <a href="https://waleedkhan.name">Waleed Khan</a> where he walked me through implementing the liveness fixpoint algorithm in Datalog. We talked about doing the whole register allocator in Datalog—how hard could it be?—but it never materialized.</p>
+</blockquote>
+<p>不过到了今年，我在 PLDI 会议上遇见了 <a href="https://yanniss.github.io/">Yannis Smaragdakis</a>。我又使出了自己的看家本领——“忽悠”顶级极客一起跳进有趣的深坑：这一次，我们要用 Datalog 纯手搓一套完整的线性扫描分配器。在经历了短短几个小时的头脑风暴并干掉几杯啤酒之后，我们真的拿出了可运行的实现代码，尽管直到现在我也只是“基本理解”了它。</p>
+<blockquote>
+<p>This year, though, I met <a href="https://yanniss.github.io/">Yannis Smaragdakis</a> at PLDI. I did my usual thing, which is to nerd-snipe other people into doing interesting projects: in this case, full linear scan in Datalog. Several short hours and several beers later, we have an implementation that I only mostly understand.</p>
+</blockquote>
+<p>总的来看，这是一次展示 Datalog 编程威力的绝佳范例。它生动展现了 Datalog 最擅长处理的那些优雅任务：比如基本块 (Basic Block) 划分与活跃性分析 (Liveness Analysis)，用短短几行规则就能搞定。</p>
+<blockquote>
+<p>Overall, this is an excellent demonstration of programming in Datalog. It shows tasks that Datalog handles very elegantly, such as basic block computation and liveness analysis, which take just a handful of lines.</p>
+</blockquote>
+<p>但与此同时，它也淋漓尽致地揭示了如何在 Datalog 中表达那些本质上极具过程式特性的复杂逻辑——即线性扫描算法本体。线性扫描高度依赖指令顺序与命令式状态变更，充斥着诸如“移除已失效的活跃区间”或“更新活跃区间栈以驱逐最晚结束的变量”等操作。在 Datalog 中，所有这些状态变化都必须通过声明式逻辑来精准模拟。</p>
+<blockquote>
+<p>At the same time, it demonstrates how to express operations that are inherently complex in Datalog—namely, the linear scan algorithm itself. Linear scan is very sequential and imperative-style, involving steps like "remove an interval that expires" or "update the stack of intervals to evict the one ending last." All of these operations have to be simulated declaratively.</p>
+</blockquote>
+<p>最终的成果凝聚了 Datalog 编程中最精妙的高级模式之一——<strong>全称量词仿真 (Forall Emulation)</strong>：以纯声明式的方式遍历一个预先确定的有限集合（在本案例中，用于精确选出需要被溢出驱逐的变量所对应的活跃区间）。</p>
+<blockquote>
+<p>The final result contains perhaps the most advanced Datalog programming pattern, <strong>forall emulation</strong>: iterating declaratively over a pre-determined set (in this case, to select the interval corresponding to the variable to spill).</p>
+</blockquote>
+<p>下面，让我们正式进入程序的建模与表示环节。</p>
+<blockquote>
+<p>Let's get into the program representation.</p>
+</blockquote>
+<hr />
+<h2 id="_3">程序编码与建模</h2>
+<blockquote>
+<h2 id="encoding">Encoding</h2>
+</blockquote>
+<p>正如之前与 Waleed 合作时那样，我们依然沿用了过去两篇文章中的 Wimmer2010 控制流图示例。</p>
+<blockquote>
+<p>As with Waleed, we started off with the Wimmer2010 CFG example from the last two posts.</p>
+<p>💬 <strong>关于控制流图示例 (Wimmer2010)：</strong></p>
+<p>来自 Wimmer2010 论文中的那个经典流图又回来了！请注意，我们在这里使用的是基本块参数 (Block Arguments) 而非传统的 Phi 节点，因此 <code>B1(R10, R11)</code> 会在 <code>B1</code> 的第一条指令执行前就完成 <code>R10</code> 与 <code>R11</code> 的定义。</p>
+<p>此外，我们对图中的指令进行了重新编号。对于每一条定义变量值的指令，我们都为其分配了两个独立的编号：编号 <span class="arithmatex">\(N\)</span> 用于读取/使用输入操作数，编号 <span class="arithmatex">\(N+1\)</span> 用于定义/写入输出结果。</p>
+<p>我们之所以这样做，是为了让分析逻辑能够逐一处理离散事件：保证某个变量活跃区间的终结时刻，严格先于新变量赋值时可能引发的寄存器分配需求。这一点在标号 <code>8</code> 与 <code>9</code>、以及 <code>14</code> 与 <code>15</code> 中清晰可见。</p>
+<p>同样，我们也对块参数进行了类似处理：通过为同一个基本块中的每个块参数分配不同的指令索引，实现了参数赋值的顺序化。这一点在标号 <code>0</code> 与 <code>1</code> 中得到了体现。</p>
+<p>💬 [原文引用 / Original Quote]:
+<strong>About the CFG Example (Wimmer2010):</strong></p>
+<p>The graph from Wimmer2010 has come back! Again! Remember, we're using block arguments instead of phis, so <code>B1(R10, R11)</code> defines <code>R10</code> and <code>R11</code> before the first instruction in <code>B1</code>.</p>
+<p>Additionally, we have numbered the instructions in the graph. For each instruction that defines a value, we have also given it two separate numbers: one number <span class="arithmatex">\(N\)</span> at which it uses its inputs, and one number <span class="arithmatex">\(N+1\)</span> at which it defines its output.</p>
+<p>We do this so that the logic can process one event at a time: the end of a liveness interval happens before the need to possibly allocate a register when a variable gets assigned. This is visible in labels <code>8</code> and <code>9</code>, as well as <code>14</code> and <code>15</code>.</p>
+<p>We have similarly modified block parameters: we sequentialize assignment by picking different instruction indices for each block parameter in a block. This is visible in labels <code>0</code> and <code>1</code>.</p>
+</blockquote>
+<p>不过这一次，我们直接从<strong>指令</strong>层级而非基本块层级对程序进行建模，形式化描述每条指令使用 (<code>var_use</code>) 了哪些寄存器，以及定义 (<code>var_def</code>) 了哪些寄存器：</p>
+<blockquote>
+<p>This time, however, we encoded the program in terms of <strong>instructions</strong> instead of blocks, modeling which instructions use which registers and define (<code>def</code>) which registers:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>.type Block &lt;: number
+.type Var &lt;: symbol
+.type Instruction &lt;: number
+
+// Input
+.decl var_use(insn:Instruction, var:Var)
+.decl var_def(insn:Instruction, var:Var)
+
+.decl jump(insn:Instruction, next:Instruction)
+.decl jumpi(insn:Instruction, next:Instruction, otherNext:Instruction)
+.decl ret(insn:Instruction)
+
+#define NUM_REGS 2
+
+// Facts: maintain the property that defs use a unique instruction so that
+// liveness intervals end before the def
+var_def(0, &quot;R10&quot;).
+var_def(1, &quot;R11&quot;).
+
+var_use(2, &quot;R11&quot;).
+
+var_def(3, &quot;R12&quot;).
+var_def(4, &quot;R13&quot;).
+
+var_use(5, &quot;R13&quot;).
+
+var_use(8, &quot;R12&quot;).
+var_use(8, &quot;R13&quot;).
+var_def(9, &quot;R14&quot;).
+
+var_use(10, &quot;R13&quot;).
+var_def(11, &quot;R15&quot;).
+
+var_use(12, &quot;R14&quot;).
+var_use(12, &quot;R15&quot;).
+
+var_use(14, &quot;R10&quot;).
+var_use(14, &quot;R12&quot;).
+var_def(15, &quot;R16&quot;).
+
+var_use(16, &quot;R16&quot;).
+
+.decl min_instruction(insn:Instruction)
+min_instruction(-1).
+
+.decl max_instruction(insn:Instruction)
+max_instruction(16).
+
+jump(2, 3).
+jumpi(6, 7, 13).
+jump(12, 3).
+ret(16).
+</code></pre></div>
+<p>我们还以指令为粒度对控制流进行了建模：明确定义了指令之间的跳转关系，从而在 Datalog 中直接重构出基本块边界与完整的控制流图（此处为篇幅起见略去推导规则）。这就是为什么代码中会出现 <code>jump(2, 3)</code>（表示指令 <code>2</code> 跳转到指令 <code>3</code>）、<code>ret(16)</code>（表示指令 <code>16</code> 为返回指令）等事实的原因。</p>
+<blockquote>
+<p>We also model control flow in terms of instructions: we provide jumps between instructions, from which we recover the basic block boundaries and control-flow graph directly in Datalog (omitted here for brevity). That is why we have facts like <code>jump(2, 3)</code> (meaning a <code>jump</code> at instruction <code>2</code> targeting instruction <code>3</code>), <code>ret(16)</code> (<code>ret</code> at instruction <code>16</code>), and so on.</p>
+</blockquote>
+<p>既然程序已经在 Datalog 中完成了建模表达，我们便可以开始从中推导所需的关键信息——首先从变量活跃性信息着手。</p>
+<blockquote>
+<p>Now that our program is represented in Datalog, we can begin computing what we need from it—starting with liveness information.</p>
+</blockquote>
+<hr />
+<h2 id="_4">活跃性分析</h2>
+<blockquote>
+<h2 id="liveness">Liveness</h2>
+</blockquote>
+<p>由于我们对输入数据的建模做了进一步细化（变量不再是在基本块内笼统定义，而是在专有的指令编号处分别定义），因此必须对上一篇文章中的活跃性分析逻辑进行扩充。现在我们在 Datalog 中推导的内容要丰富得多：</p>
+<blockquote>
+<p>Because we complicated our input data a bit (variables are no longer <code>def</code>-ed in blocks, but instead <code>def</code>-ed at their own instruction indices), we had to expand our liveness logic from the last post. We now compute a lot more in Datalog:</p>
+</blockquote>
+<ul>
+<li>基本块边界（为篇幅起见略去）</li>
+<li>每条指令归属的具体基本块（为篇幅起见略去）</li>
+<li>完整的控制流图结构（为篇幅起见略去）</li>
+<li>每条指令维度的 <code>live_in</code>（入口活跃）与 <code>live_out</code>（出口活跃）集合（而非针对基本块粒度）</li>
+<li>变量的生命周期活跃区间</li>
+</ul>
+<blockquote>
+<ul>
+<li>Basic block boundaries (omitted for brevity)</li>
+<li>Which instructions belong to which block (omitted for brevity)</li>
+<li>The control-flow graph structure (omitted for brevity)</li>
+<li><code>live_in</code> and <code>live_out</code> for each instruction (rather than each block)</li>
+<li>Liveness intervals</li>
+</ul>
+</blockquote>
+<p>尽管增加了这些内容，活跃性分析仍然是整个实现中最直观、最容易理解的部分。四条相互递归的 Datalog 规则精确定义了 <code>live_out</code> 与 <code>live_in</code>，完美对应了教科书中的标准数据流分析方程。（其中的传递函数被拆分为了两条显式规则：当某个变量被当前指令使用、或者在该指令出口处活跃且未被该指令定义时，该变量即在入口处活跃。）</p>
+<blockquote>
+<p>Even with these additions, liveness remains the most straightforward part of the implementation. Four mutually recursive rules define <code>live_out</code> and <code>live_in</code>, corresponding directly to the standard textbook data-flow equations for liveness. (The transfer function is split into two explicit rules: a variable is live-in if it is used by the instruction, or if it is live-out and not <code>def</code>-ed by the instruction.)</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>live_out(insn, var) :-
+  block_succ(prev, succ),
+  block_head(succ, headinsn),
+  live_in(headinsn, var),
+  block_tail(prev, insn).
+
+live_in(insn, var) :-
+  var_use(insn, var).
+
+live_in(insn, var) :-
+  live_out(insn, var),
+  !var_def(insn, var).
+
+live_out(insn, var) :-
+  live_in(next, var),
+  next_in_block(insn, next).
+</code></pre></div>
+<p>这套规则与 Waleed 和我之前构建的活跃性实现非常相似，核心差异仅在于它在细粒度的指令层级而非基本块层级运作。</p>
+<blockquote>
+<p>This looks quite similar to the liveness implementation Waleed and I built previously, except that it operates at the instruction level rather than the block level.</p>
+</blockquote>
+<p>由于上述规则只输出了逐条指令维度的活跃变量集合，接下来我们需要为每个变量提取出其跨越的完整生命周期区间——即变量处于活跃状态的最早指令与最晚指令。在此处我们可以安全地使用 <code>min</code> 和 <code>max</code> 聚合算子，因为这套规则<em>只有在</em>前面的互递归数据流分析完全达到不动点之后才会执行评估：</p>
+<blockquote>
+<p>Because those rules only give us per-instruction liveness sets, we next extract the full extent of the interval for every variable—the earliest instruction where it is live and the latest instruction where it is live. We can safely use <code>min</code> and <code>max</code> aggregations here because this rule is evaluated <em>only after</em> the mutually recursive dataflow has reached a fixpoint:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>// Liveness starts right after start, ends right before end
+.decl liveness_interval(start:Instruction, end:Instruction, var:Var)
+
+liveness_interval(start, end, var) :-
+  live_out(_, var),
+  start = min b : { live_out(b, var) },
+  end = max b : { live_in(b, var) }.
+</code></pre></div>
+<p>一旦求出了所有变量的活跃区间，接下来就该为它们分配物理寄存器了。[^intervals]</p>
+<blockquote>
+<p>Once we have the intervals, we need to assign physical registers to the variables.[^intervals]</p>
+</blockquote>
+<hr />
+<h2 id="_5">寄存器分配</h2>
+<blockquote>
+<h2 id="register-assignment">Register Assignment</h2>
+</blockquote>
+<p>计算中最具挑战性的部分正是线性扫描寄存器分配算法本身。我们借助谓词 <code>reg_assignment</code> 对此进行建模，它模拟了在对指令进行线性扫描的每一步推进过程中，算法所处的瞬时分配状态：</p>
+<blockquote>
+<p>The challenging part of the computation is the linear scan register allocation itself. We encode this using a predicate <code>reg_assignment</code>, which simulates the algorithm's state at every step across a linear scan of instructions:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>// After instruction, this is the register assignment. Var = &quot;none&quot; is a possibility
+.decl reg_assignment(insn:Instruction, reg:Register, var:Var)
+</code></pre></div>
+<p>在处理每一条指令时，算法都会跟踪被分配的各个物理寄存器当前存放的内容。当前未存放任何变量的空闲寄存器，会被填入一个对应其寄存器编号的伪变量 (Pseudo-Variable)——例如，当 <code>0</code> 号寄存器为空时，它存放的是伪变量 <code>none_0</code>。这种编码技巧巧妙地将每一次分配决策都统一转化为了变量之间的优先级对比。在选择需要被溢出的变量时，比较器总是优先选择 <code>"none"</code> 伪变量（相当于直接占用空闲寄存器）而非真实变量；而在多个真实变量狭路相逢时，它则执行标准的线性扫描策略：将活跃区间结束时间最晚的那个变量溢出到栈中。</p>
+<blockquote>
+<p>At every instruction, the algorithm tracks the current contents of each physical register being allocated. Registers not currently holding a variable instead hold a pseudo-variable corresponding to the register's name—for instance, when register <code>0</code> is empty, it contains the variable <code>none_0</code>. This encoding lets us phrase every allocation decision as a comparison between variables. When choosing a variable to spill, the comparator always prefers a <code>"none"</code> variable over a real one; between real variables, it applies the standard linear scan policy of spilling whichever variable's liveness interval ends last.</p>
+</blockquote>
+<h3 id="_6">处理扫描过程中的每一步骤</h3>
+<blockquote>
+<h3 id="handling-each-step-in-the-scan">Handling Each Step in the Scan</h3>
+</blockquote>
+<p>代码中的注释详细阐明了算法需要处理的各种情况：</p>
+<blockquote>
+<p>Comments in the code explain all the cases the algorithm handles:</p>
+</blockquote>
+<ul>
+<li><strong>状态顺延 (Propagation)：</strong> 如果在当前指令处既没有活跃区间到期失效，也没有新变量被定义 (<code>def</code>/赋值)，则现有寄存器与变量的映射关系原封不动顺延至下一条指令。</li>
+<li><strong>生命周期终止 (Expiration)：</strong> 当某个变量的活跃区间结束时，存放该变量的寄存器（若有）会被重置为其对应的 <code>"none"</code> 伪变量。</li>
+<li><strong>分配与溢出 (Allocation and Spilling)：</strong> 最核心的情况发生在遇到新变量的 <code>def</code> 指令时。我们必须做出溢出决策——即判定应该由哪个寄存器（如果有的话）来容纳这个新定义的变量。受害者选择策略被高度模块化地封装在 <code>better_victim_var</code> 谓词中，该谓词预先算好了所有可能变量对之间的比较优劣结果。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Propagation:</strong> The register-to-variable assignment is carried forward unchanged if no liveness interval ends and no new variable is <code>def</code>-ed (assigned) at the current instruction.</li>
+<li><strong>Expiration:</strong> When a liveness interval expires, the register holding that variable (if any) is reset to its corresponding <code>"none"</code> pseudo-variable.</li>
+<li><strong>Allocation and Spilling:</strong> The interesting case occurs when we encounter a new variable <code>def</code>. We must decide which variable to spill—that is, which register (if any) should hold the newly <code>def</code>-ed variable. The victim-selection policy is completely modular and encapsulated in a <code>better_victim_var</code> predicate, which pre-calculates the result of all possible variable comparisons.</li>
+</ul>
+</blockquote>
+<h3 id="_7">全称量词仿真</h3>
+<blockquote>
+<h3 id="forall-emulation">Forall Emulation</h3>
+</blockquote>
+<p>这里的核心绝技正是编码在 <code>best_victim_up_to_reg</code> 与 <code>all_reg_best_victim</code> 两组规则中的<strong>全称量词仿真 (Forall Emulation)</strong> 机制（后者虽然可以微不足道地内联简化，但为了让这种设计模式更加清晰直观，我们特意将其保持独立）。全称量词仿真按顺序依序遍历所有寄存器，并在每一步维护并传递当前找到的最佳受害者变量。当我们遍历到最后一个寄存器时，便得出了全局最优的溢出候选受害者。</p>
+<blockquote>
+<p>The core trick here is the <strong>forall emulation</strong> encoded in the rules for <code>best_victim_up_to_reg</code> and <code>all_reg_best_victim</code> (the latter could trivially be inlined, but is kept separate to make the pattern explicit). The forall emulation iterates over all registers in order, tracking the current best victim variable at each step. Once we reach the final register, we have the overall best victim.</p>
+</blockquote>
+<p>回到核心算法的主流程：</p>
+<blockquote>
+<p>Returning to the core algorithm:</p>
+</blockquote>
+<ul>
+<li>如果选出的最佳溢出受害者就是刚刚被定义的变量自身，那么所有现有的寄存器分配保持不变，新定义的变量不会被分配寄存器（直接溢出到内存）。</li>
+<li>如果最佳受害者是当前正驻留在某个物理寄存器中的变量，那么该寄存器会被重新分配给新定义的变量，而其余所有寄存器存放的内容则继续原样复制传递到下一条指令。</li>
+</ul>
+<blockquote>
+<ul>
+<li>If the chosen victim variable is the <code>def</code>-ed variable itself, all existing register assignments are carried over unchanged, and the <code>def</code>-ed variable does not receive a register.</li>
+<li>If the best victim is a variable currently held in a register, that register is reassigned to the <code>def</code>-ed variable, while all other registers are copied over to the next instruction.</li>
+</ul>
+</blockquote>
+<p>全称量词仿真属于 Datalog 中相当精深的高级编程技巧。通常情况下，全称量词 (<code>forall</code>) 可以通过否定与存在量词组合 (<code>not exists</code>) 来优雅改写；但当涉及的谓词参与了相互递归 (Mutual Recursion) 时，这种改写方法便不再奏效，必须依赖全称量词仿真。从计算复杂性理论的视角来看，全称量词仿真对于 Datalog 具备表达所有多项式时间 (<strong>PTIME</strong>) 算法的能力至关重要（尽管在工程实践中，现代 Datalog 引擎通常引入了算术运算与元组支持，使其具备了图灵完备性）。如果脱离了全称量词仿真——这种技术本质上依赖底层对数据值的严格排序——未经扩展的纯 Datalog 只能表达多项式时间算法的一个真子集。</p>
+<blockquote>
+<p>Forall emulation is an advanced Datalog coding pattern. It is required whenever a universal quantifier (<code>forall</code>) cannot simply be rewritten using negation (<code>not exists</code>) because the predicates involved participate in mutual recursion. From a complexity theory standpoint, forall emulation is essential for Datalog to express all <strong>PTIME</strong> algorithms (though practical Datalog engines also include arithmetic and tuples, making them Turing-complete). Without forall emulation—which itself relies on an underlying ordering of values—pure Datalog without extra features can only express a strict subset of polynomial-time algorithms.</p>
+</blockquote>
+<h3 id="_8">简化假设与未来优化方向</h3>
+<blockquote>
+<h3 id="simplifications-and-future-optimizations">Simplifications and Future Optimizations</h3>
+</blockquote>
+<p>该算法在最后一步的处理上做了一定的简化：只有当某个物理寄存器能够容纳变量的整个生命周期时，才会将该寄存器分配给该变量。这是线性扫描最精简的原型形态；开发者完全可以对其进行拓展，允许物理寄存器仅在变量生命周期的一部分时间段内为其服务。</p>
+<blockquote>
+<p>The final step of the algorithm assigns a register to a variable only if that register can hold the variable for its entire lifetime. This is the simplest form of linear scan; one could extend it to allow registers to hold a variable for only part of its lifetime.</p>
+</blockquote>
+<p>此外，在提升推导效率方面，当前的实现还有几处值得探索的优化空间：</p>
+<blockquote>
+<p>There are also several ways to improve the implementation's efficiency:</p>
+</blockquote>
+<ol>
+<li><strong>跳过无实质动作的指令：</strong> 目前的扫描过程会逐一走过每一条指令。实际上，算法完全可以直接从一个“关键事件指令”跳转到下一个关键指令——即只在出现变量定义 (<code>def</code>) 或区间到期时触发更新，从而跳过那些纯粹进行寄存器映射复制的中间指令。</li>
+<li><strong>按需惰性对比：</strong> 与其在一开始就预先计算出所有可能变量对在 <code>better_victim_var</code> 中的胜负关系，不如采用请求-响应 (Request-Response) 模式进行惰性求值，仅针对实际执行过程中真正狭路相逢、需要做出取舍的变量对触发比较推导。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Skip uninteresting instructions:</strong> Currently, the scan iterates over every single instruction. Instead, it could jump directly from one "interesting" instruction to the next—namely, <code>def</code>s and interval expirations—skipping instructions that merely copy register assignments forward.</li>
+<li><strong>On-demand comparisons:</strong> Rather than precomputing <code>better_victim_var</code> for all possible variable pairs up front, victim comparisons could be evaluated lazily using a request-response pattern, firing only for the pairs of variables that actually need to be compared during execution.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="_9">结语</h2>
+<blockquote>
+<h2 id="conclusion">Conclusion</h2>
+</blockquote>
+<p>Datalog 实在太有趣了。虽然它或许并不适合所有人，也无法通吃所有工程问题，但我总是乐于在学术会议上“拉人入坑”。由衷感谢 Yannis 的倾力合作——他贡献了本文一半的核心代码与思路，并且在漫长的文章发布等待过程中表现出了极大的耐心！</p>
+<blockquote>
+<p>Datalog is fun. It's not for everyone or everything, but I love nerd-sniping people at conferences. Thank you to Yannis for playing along, writing half of this article, and being so patient while waiting for it to be published!</p>
+</blockquote>
+<p>欢迎查阅<a href="https://gist.github.com/yanniss/c04e75faf8dc395a5055cdabe7c6e3d4">完整实现代码</a>。</p>
+<blockquote>
+<p>See the full <a href="https://gist.github.com/yanniss/c04e75faf8dc395a5055cdabe7c6e3d4">implementation</a>.</p>
+</blockquote>
+<p>[^intervals]: 在其他寄存器分配器实现及学术文献中，通常所说的都是为<em>区间 (Intervals)</em> 分配物理寄存器，而不是为<em>变量 (Variables)</em> 分配。但在本文这种每个变量对应单一区间的线性扫描实现中，二者是等价的：一个变量在其整个生命周期中只存在于唯一的存储位置。</p>
+<blockquote>
+<p>[^intervals]: In other register allocator implementations and in the literature, we normally speak of assigning physical registers to <em>intervals</em>, not to <em>variables</em>. However, in this one-interval-per-variable implementation of linear scan, they are the same thing: a variable has only one location for its entire lifetime.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">编译器技术</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Datalog</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">寄存器分配</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

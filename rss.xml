@@ -5,6 +5,580 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>导数对偶翻转：从正则导数到多项式自动微分的新视角</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-22/导数对偶翻转-从正则导数到多项式自动微分的新视角/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-22/导数对偶翻转-从正则导数到多项式自动微分的新视角/</guid>
+      <pubDate>Sun, 22 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在现代科学计算与深度学习中，高阶导数 (例如拉普拉斯算子或黑塞矩阵) 的求解往往面临着巨大的计算复杂度与内存开销。本文提出了一种令人耳目一新的全新思维范式：借鉴理论计算机科学中处理正则表达式的经典 Brzozowski 导数，在多元多项式空间构建起一种对称微分配对。通过将“微分算子”与“被求导表达式”的对偶身份巧妙翻转，让原本复杂的运算图作为算子去作用在极其简洁的目标多项式上，中间可能出现的状态被奇迹般地锁定在极小维度的固定基底空间内。这一优雅的洞见不仅为 Microsoft 开源的高性能库 `folx` 以及前沿的泰勒模式折叠自动微分算法提供了坚实直观的代数解释，更为我们设计下一代轻量级自动微分框架开辟了全新的数学视野。
+
+---
+
+## 内容概要
+
+&gt; ## Summary
+
+本文探讨了一种受正则表达式领域 **Brzozowski 导数** 启发而来的自动微分 (Automatic Differentiation, AD) 新视角。通过在多元多项式之间定义一种对称配对 $\langle p, q \rangle$ ——即令其中一个多项式作为微分算子作用于另一个多项式并在零点处求值——我们可以将“微分算子”与“被求导表达式”进行令人惊叹的角色“翻转” ($\langle p, q \rangle = \langle q, p \rangle$) 。将一个复杂的表达式作为微分算子作用于一个简单的算子多项式 (比如拉普拉斯算子 $x^2 + y^2$) 时，求导过程中产生的所有中间表达式的复杂度会被严格限制在一个极小的固定基底空间内。这为诸如泰勒模式折叠 (Taylor-mode collapsing) 和 `folx` 等高效自动微分算法提供了一种极其直观的代数理论基石。
+
+&gt; This post explores an alternative perspective on automatic differentiation (AD) inspired by **Brzozowski derivatives** for regular expressions. By defining a symmetric pairing $\langle p, q \rangle$ between multivariate polynomials—where one polynomial acts as a differential operator on the other before evaluating at zero—we can "flip" the differentiator and the differentiated expression ($\langle p, q \rangle = \langle q, p \rangle$). Applying a complex expression as a differential operator to a simple operator polynomial (such as the Laplacian $x^2 + y^2$) bounds the space of intermediate expressions to a small, fixed basis, providing an intuitive foundation for efficient AD algorithms like Taylor-mode collapsing and `folx`.
+
+---
+
+```haskell
+{-# OPTIONS_GHC -Wincomplete-patterns #-}
+```
+
+我想带领大家换个角度来重新审视自动微分。在这篇文章中，我并不打算直接给出一个可以直接投入生产的完整自动微分算法，但它将揭示某些高级自动微分算法的实现机理——并有望为理解近年来学界发表的一些相关论文提供更直观、更通透的思维模型。
+
+&gt; I want to take a look at another way of thinking about automatic differentiation. I'm not going to give an actual AD algorithm, but this will show how to implement some AD algorithms—and possibly provide an easier way to think about some published work.
+
+## 背景知识：Brzozowski 导数
+
+&gt; ## Background: Brzozowski Derivatives
+
+首先，我想聊聊利用 Brzozowski 导数进行正则表达式匹配的原理。如果你对这块已经很熟悉，或者只想看核心微积分，完全可以跳过这一节；不过，这正是我在编写下文 Haskell 代码时脑海中涌现的灵感源泉。
+
+&gt; First, I want to talk about regular expression matching using the Brzozowski derivative. You can skip this bit, though it's what I was thinking about as I wrote the code below.
+
+我们先定义一个尖括号配对算子 $\langle\cdot,\cdot\rangle$ ：如果正则表达式 $R$ 能够匹配字符串 $S$ ，则 $\langle R,S\rangle=1$ ；若不能匹配，则为 $0$ 。我从 [Wikipedia](https://en.wikipedia.org/wiki/Brzozowski_derivative#Computation) 摘录了 Brzozowski 导数的定义，并对记号做了微调：
+
+&gt; Let's define the angle bracket operator $\langle\cdot,\cdot\rangle$ by $\langle R,S\rangle=1$ if $R$ is a regular expression matching the string $S$, and $0$ if it doesn't match. I'll copy the definition from [Wikipedia](https://en.wikipedia.org/wiki/Brzozowski_derivative#Computation), modifying the notation slightly:
+
+$$
+\begin{aligned}
+\partial_a a &amp;= 1 \\
+\partial_a b &amp;= 0 \qquad \text{for each symbol } b \ne a \\
+\partial_a \varepsilon &amp;= 0 \\
+\partial_a \varnothing &amp;= 0 \\
+\partial_a (R^*) &amp;= (\partial_a R)R^* \\
+\partial_a (RS) &amp;= (\partial_a R)S \lor \nu(R)\partial_a S \\
+\partial_a (R \lor S) &amp;= (\partial_a R) \lor (\partial_a S)
+\end{aligned}
+$$
+
+在 Wikipedia 上还附带有一些辅助定义 (例如判空函数 $\nu(R)$ 等) 。
+
+&gt; (along with some auxiliary definitions on Wikipedia).
+
+如果你以前从没接触过这一概念，上面的公式看起来可能有点让人望而生畏，但其精髓其实全部凝聚在一条极其核心的性质之中：
+
+&gt; If you've not seen it before, that definition looks scary, but it all comes down to one key property:
+
+$$
+\langle R,aS\rangle = \langle \partial_a R,S\rangle
+$$
+
+你看，要想知道某个正则表达式是否能匹配字符串 $S$ ，我们只需将字符串开头的字符一个个剥离下来，并把对应的导数算子依次作用在正则表达式 $R$ 上即可。在此过程中，我们还需要在正则代数体系中进行化简消零。如果在处理完所有字符后，最终剩下的正则表达式能够匹配空字符串，那就意味着初始的正则表达式成功匹配了原字符串！关于如何将其工程化并高效落地的更多细节，可以参阅 Scott Owens 、 John Reppy 与 Aaron Turon 合著的经典论文 [*Regular-expression derivatives reexamined*](https://aturon.github.io/academic/re-deriv.pdf) 。
+
+&gt; So, to find out if a regular expression matches a string $S$, we can peel off the letters from the front of it one by one and apply the corresponding derivative operator to $R$. We also need to perform algebraic simplifications in the regexp algebra. If we end up with a regular expression that matches the empty string, then the original regexp matched the original string. For more details on making this practical, see [*Regular-expression derivatives reexamined*](https://aturon.github.io/academic/re-deriv.pdf) by Scott Owens, John Reppy, and Aaron Turon.
+
+虽然直觉上我们会担心：随着导数一层层求下去，中间生成的表达式会不会无限膨胀失控？但令人惊奇的是，在化简等价性 (即两个正则表达式匹配完全相同的字符串集合) 后，我们实际能得到的本质不同的独立表达式数量是严格有限的！这些有限的表达式，正好构成了用于识别目标正则语言的有限状态自动机 (Finite State Automaton, FSA) 的各个状态。
+
+&gt; Although we might expect to get all manner of intermediate expressions when we keep differentiating, there is only a finite number of truly distinct expressions we can obtain (considering two regexps equivalent if they match identical sets of strings). They form the states of a finite state automaton for recognizing the regexp's target.
+
+## 微积分中的微分配对
+
+&gt; ## Differential Pairing in Calculus
+
+现在，让我们把这种绝妙的思想平移到普通微积分中。给定一对多元多项式 $p$ 与 $q$ ，我们定义如下的微分配对：
+
+&gt; Let's mimic that for ordinary calculus. Given a pair of multivariate polynomials $p$ and $q$, define:
+
+$$
+\langle p,q\rangle = \left. p(\partial_1, \partial_2, \ldots)\,q(x_1, x_2, \ldots) \right|_{x_1=x_2=\cdots=0}
+$$
+
+我们可以直接在 Haskell 中将这一机制完整实现出来。最终，我将定义一个函数 `pair p q` ，专门用于计算上述尖括号所表示的配对值。
+
+&gt; We can go ahead and implement this in Haskell. Ultimately, I'll define `pair p q`, which computes the pairing defined by the angle brackets.
+
+## Haskell 代码实现
+
+&gt; ## Haskell Implementation
+
+首先，我们在数域 `a` 上由变量元素 `v` 生成的环中定义表达式的数据结构：
+
+&gt; First, I'll define expressions in a ring generated by elements of `v` over `a`:
+
+```haskell
+data Expr v a = Var v
+              | Expr v a :+: Expr v a
+              | Expr v a :*: Expr v a
+              | Lit a
+              deriving (Eq, Show)
+```
+
+接下来，我们为该表达式类型实现 `Num` 数值接口，使其支持自然的算术运算：
+
+&gt; Now we can give it the `Num` interface:
+
+```haskell
+instance Num a =&gt; Num (Expr v a) where
+  fromInteger = Lit . fromInteger
+  (+) = (:+:)
+  (*) = (:*:)
+  negate x = Lit (negate 1) * x
+  signum = undefined
+  abs = undefined
+```
+
+理论上我还应该加入代数化简逻辑，不过作为纯粹用于教学演示的概念验证代码，倒也无需过度复杂化。紧接着，我们实现将 `p` 解释为作用于 `q` 上的微分算子的核心规则：
+
+&gt; I should add simplification, though there's no real need when this code is purely pedagogical. Next, we implement the rules that interpret `p` as a differential operator acting on `q`:
+
+```haskell
+apply :: (Eq v, Num a) =&gt; Expr v a -&gt; Expr v a -&gt; Expr v a
+```
+
+下面这段代码表达了基本微分关系 $\partial_i x_j = \delta_{ij}$ (当且仅当自变量相同求导才为 1，其余全为 0) ：
+
+&gt; This states $\partial_i x_j = \delta_{ij}$:
+
+```haskell
+apply (Var v) (Var w) | v == w = 1
+apply (Var v) (Var w) = 0
+```
+
+线性叠加性：
+
+&gt; Linearity:
+
+```haskell
+apply (a :+: b) c = apply a c + apply b c
+```
+
+这正是我觉得特别有意思的地方：在配对符号 $\langle\cdot,\cdot\rangle$ 的右侧，乘法就是常规的多项式相乘；但在左侧，乘法却对应着微分算子的复合操作！
+
+&gt; I find this interesting: multiplication on the right of $\langle\cdot,\cdot\rangle$ is ordinary polynomial multiplication, but on the left it is composition of differential operators:
+
+```haskell
+apply (a :*: b) c = (apply a . apply b) c
+
+apply a@(Lit _) b = a * b
+apply a (b :+: c) = apply a b + apply a c
+```
+
+我们熟知的乘积求导法则——莱布尼茨法则 (Leibniz Rule) ：
+
+&gt; The usual Leibniz rule:
+
+```haskell
+apply v@(Var _) (b :*: c) = apply v b * c + b * apply v c
+
+apply v@(Var _) (Lit _) = 0
+```
+
+现在我们在零点处进行求值。请注意，这恰好完美对应了正则表达式中“判断剩余残差表达式是否能匹配空字符串”的判定步骤：
+
+&gt; Now we evaluate at zero. Note that this corresponds to the situation with regular expressions where you ask if the residual expression matches the empty string:
+
+```haskell
+atZero :: (Num a, Eq v) =&gt; Expr v a -&gt; a
+atZero (Lit a) = a
+atZero (Var _) = 0
+atZero (a :+: b) = atZero a + atZero b
+atZero (a :*: b) = atZero a * atZero b
+```
+
+最后，组装出我们的配对函数：
+
+&gt; And finally, the pairing:
+
+```haskell
+pair a b = atZero (apply a b)
+```
+
+## 颠倒乾坤：翻转求导角色
+
+&gt; ## Flipping the Derivative
+
+见证奇迹的时刻到了。在数学上有两个极其关键的定理：
+
+&gt; Now comes the magic bit. We have two theorems:
+
+$$
+\langle p,x_i q\rangle = \langle \partial_i p,q\rangle
+$$
+
+而更令人惊叹的是——考虑到多项式在配对左侧 (作为微分算子) 与右侧 (作为被求导函数) 的解释方式是如此迥然不同——它们之间竟然存在着无与伦比的完全对称性：
+
+&gt; And, perhaps more surprisingly given how differently polynomials are interpreted on the left versus the right:
+
+$$
+\langle p,q\rangle = \langle q,p\rangle
+$$
+
+让我们通过一个具体示例来亲身体验：
+
+&gt; Let's set up an example:
+
+```haskell
+main = do
+  let x = Var 0
+  let y = Var 1
+```
+
+基于上述定义，我们引入拉普拉斯算子：
+
+&gt; With this definition:
+
+```haskell
+  let lap = x * x + y * y
+```
+
+这里的 $\langle \mathrm{lap}, q \rangle$ 就代表 $q$ 在 $x = y = 0$ 处求值的拉普拉斯算子 (Laplacian) ：
+
+&gt; $\langle \mathrm{lap}, q \rangle$ is the Laplacian of $q$ evaluated at $x = y = 0$:
+
+```haskell
+  print $ pair lap ((x + y + 1) * (x - 3 * y + 2) * (x + y + 3))
+```
+
+高潮来了，让我们看看反转后的惊人反差：
+
+&gt; Now comes the plot twist:
+
+```haskell
+  print $ pair ((x + y + 1) * (x - 3 * y + 2) * (x + y + 3)) lap
+```
+
+与以往“用一个简单的微分算子去作用于极其复杂的长表达式”截然相反，现在我们是在“用一个极其复杂的微分算子去作用在一个极其简单的多项式上”！这意味着，无论输入的函数表达式 $p$ 有多么复杂庞大，它在一步步作用于 $q$ 的过程中所产生的任何中间结果，其代数复杂度都是被严格封顶约束的。例如在当前二维拉普拉斯的情形下，不论中间怎么求导展开，我们所能得到的全部中间结果永远只是下列基底项的线性组合 (Linear Combinations) ：
+
+&gt; Instead of applying a simple differential operator to a complicated expression, we are applying a complicated differential operator to a simple expression. No matter how complicated an expression $p$ we apply, the intermediate results of applying it to $q$ are always bounded in complexity. For example, in this case we are only ever going to get linear combinations of:
+
+$$
+x^2+y^2,\quad \partial_x(x^2+y^2)=2x,\quad \partial_y(x^2+y^2)=2y,\quad \partial_x(2x)=2
+$$
+
+仅此而已！后续过程中出现的任何多项式，无一例外都只是这 4 个项的线性组合。这揭示了一个颠覆性的结论：如果我们要在二维空间中计算拉普拉斯算子，整个自动微分计算过程中我们自始至终只需要跟踪 4 个标量系数——根本不需要在内存中维护完整的黑塞矩阵 (Hessian) ！实际上，我们完全可以直接把配对右侧的多项式替换为一个四维向量 (4-vector) ，并把 `apply` 替换为直接在该向量表示上运行的轻量矩阵变换代码。
+
+&gt; and that's it. Anything else that pops up is just going to be a linear combination of these. This means that if we're interested in computing the Laplacian in 2D, we only ever need to track 4 coefficients—we don't need to keep track of the full Hessian. In fact, we can replace the polynomial on the right of the pairing with a 4-vector and replace `apply` with code that acts directly on that representation.
+
+至此，我们用全新的现代视角重新推导出了我多年前在博文 [*Computing errors with square roots of infinitesimals*](https://blog.sigfpe.com/2011/08/computing-errors-with-square-roots-of.html) 中提出的拉普拉斯算子快速算法。而现在的视角更加普适统一，可以直接推广到任意常系数微分算子中！例如，双调和算子 (Biharmonic Operator) 对应于多项式 $(\sum_i x_i^2)^2$ 。当你枚举反复应用偏导算子 $\partial_i$ 所能产生的所有可能表达式时，它们张成的空间基底维度，远远小于盲目携带直至 4 阶的完整泰勒幂级数展开所需的巨大空间！
+
+&gt; We have just rediscovered the method for computing Laplacians I described many years ago in [*Computing errors with square roots of infinitesimals*](https://blog.sigfpe.com/2011/08/computing-errors-with-square-roots-of.html). Now it's more general, and we can use this for any constant differential operator. For example, the biharmonic operator corresponds to the polynomial $(\sum_i x_i^2)^2$. When you compute all of the possible expressions that can arise from applying the $\partial_i$ operator, it forms a far smaller space than what you would get from naively carrying along the power series up to degree 4.
+
+## 结语与发散思考
+
+&gt; ## Final Words
+
+在我最早提出最初的拉普拉斯快速计算方法多年之后，这一思路最终被学界重新独立发现，并在 Microsoft 开源的高性能计算库 [folx](https://github.com/microsoft/folx) 中被工程化实现为极致优化的代码。如今，它已被广泛应用于物理信息神经网络 (Physics-Informed Neural Networks, PINNs) 与变分蒙特卡洛 (Variational Monte Carlo, VMC) 等诸多尖端科学计算场景中。
+
+&gt; After I proposed my original Laplacian method, it was eventually rediscovered and turned into well-optimized code in [folx](https://github.com/microsoft/folx), which is used in many places such as PINNs and VMC.
+
+读者不妨也将该视角与近期发表的研究论文 [*Collapsing Taylor Mode Automatic Differentiation*](https://arxiv.org/abs/2505.13644) 进行对照阅读，二者在底层代数结构上有着异曲同工之妙。
+
+&gt; Compare also with the paper [*Collapsing Taylor Mode Automatic Differentiation*](https://arxiv.org/abs/2505.13644).
+
+ChatGPT 一直试图把这套理论归入一个被称为“无极代数” (Apolar Algebra) 的古老数学分支 (这恰恰说明现代自动微分领域遇到的许多前沿难题，其实早在一百多年前就已被古典代数几何学家们彻底解决了) ；不过在无极代数中，核心构造是商环 (Quotient) ，而在实际算法实现中商环的处理往往极其繁琐棘手。
+
+&gt; ChatGPT keeps wanting to turn this into a subject called *apolar algebra* (which shows that many AD problems were solved over a century ago), though the key construction there is a quotient, and quotients are hard to work with.
+
+顺带一提 (FWIW) ，尽管我毫无保留地拥抱我们未来的 AI 统治者，但本篇博文的所有内容与数理推导确实是由我本人亲手写就的，我只是把排版与格式适配 blogger.com 的杂活交给了 Codex 。
+
+&gt; FWIW, I fully embrace our new AI overlords, though I actually wrote all of this myself, giving Codex the role of formatting it for blogger.com.
+
+我还想补充指出的是，在量子力学 (Quantum Mechanics) 中，翻转微分算子与被求导态矢角色的对偶思想同样扮演着举足轻重的核心角色。最后，这种对称配对结构也是荫蔽微积分 (Umbral Calculus) 理论大厦的核心支柱。
+
+&gt; I should also mention that the idea of flipping the role of differentiator and differentiated expression plays a major role in quantum mechanics. Lastly, this pairing is central to umbral calculus.</description>
+    </item>
+    <item>
+      <title>在 Datalog 中实现线性扫描寄存器分配</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-22/在-Datalog-中实现线性扫描寄存器分配/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-22/在-Datalog-中实现线性扫描寄存器分配/</guid>
+      <pubDate>Sun, 22 Nov 2026 00:00:00 GMT</pubDate>
+      <description>寄存器分配是现代编译器后端中最核心、也是计算最复杂的优化阶段之一。传统的线性扫描寄存器分配算法本质上是一种强依赖状态变更、高度过程式的贪心算法，通常使用命令式语言实现。本文由作者与程序分析领域著名学者 Yannis Smaragdakis 合作，探索了如何在声明式逻辑编程语言 Datalog 中纯规则化地表达线性扫描算法。文章展示了 Datalog 在处理控制流图重构与活跃性分析时的优雅自如，并揭示了利用“全称量词仿真 (Forall Emulation)”技巧在互递归规则中模拟顺序状态演化与寄存器溢出决策的高级范式。
+
+---
+
+## 摘要
+
+&gt; ## Summary
+
+本文探讨了如何与 Yannis Smaragdakis 合作，在 Datalog 中以纯声明式的方式实现一个完整的线性扫描寄存器分配器 (Linear Scan Register Allocator)。诸如还原控制流图 (Control-Flow Graph, CFG) 以及计算变量活跃区间 (Liveness Intervals) 等分析任务，能够天然映射为 Datalog 的递归推导规则；但要模拟线性扫描中带有强先后顺序的命令式步骤——例如判断生命周期结束释放寄存器、选择溢出受害者 (Spill Victims) 等——则需要借助高级推导技巧。特别是，本实现依赖在有序寄存器集合上的**全称量词仿真 (Forall Emulation)**，从而在相互递归的逻辑规则中精确完成寄存器溢出候选变量的裁决。
+
+&gt; This post explores implementing a complete linear scan register allocator declaratively in Datalog, developed in collaboration with Yannis Smaragdakis. While tasks like recovering control-flow graphs and computing liveness intervals map naturally to recursive Datalog rules, simulating the sequential, imperative steps of linear scan—such as expiring intervals and selecting spill victims—requires advanced techniques. In particular, the implementation relies on **forall emulation** over an ordered set of registers to pick spill candidates within mutually recursive rules.
+
+---
+
+&gt; 💬 *作者注：这篇文章原本计划在 PLDI 2026 结束后立刻发布，但我迟迟没有动笔，因为我并不像 Yannis 那样是 Datalog 的原生老手，而我又习惯于完全吃透自己写的每一行内容后再发表。不过，这大概就是拥有专家级合著者最大的好处吧！虽然成文略显粗粝，但拖得实在太久，再纠结排版反而耽误了分享。祝大家阅读愉快。*
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; *Note: This was supposed to be published basically immediately after PLDI 2026, but I got hung up on posting it because I am not a Datalog native like Yannis is, and I like understanding everything I post. But I guess that's what expert co-authors are for, right? It's a little rough, but it's been so long that the editing is holding up the posting. Happy reading.*
+
+去年，我写了[我的第一个寄存器分配器](https://bernsteinbear.com/blog/linear-scan)：一个在静态单赋值 (Static Single Assignment, SSA) 形式下用 Ruby 实现的小型线性扫描算法。文章刚发布不久，我就与 [Waleed Khan](https://waleedkhan.name) 通了一次电话，他带着我用 Datalog 一步步实现了基于不动点 (Fixpoint) 算法的活跃性分析。当时我们就畅想过：干脆把整个寄存器分配器都搬到 Datalog 里实现吧——这能有多难呢？但那次脑暴最终没有落地。
+
+&gt; Last year I wrote [my first register allocator](https://bernsteinbear.com/blog/linear-scan): a small linear scan implementation in Ruby on SSA. Immediately after publishing the post, I had a call with [Waleed Khan](https://waleedkhan.name) where he walked me through implementing the liveness fixpoint algorithm in Datalog. We talked about doing the whole register allocator in Datalog—how hard could it be?—but it never materialized.
+
+不过到了今年，我在 PLDI 会议上遇见了 [Yannis Smaragdakis](https://yanniss.github.io/)。我又使出了自己的看家本领——“忽悠”顶级极客一起跳进有趣的深坑：这一次，我们要用 Datalog 纯手搓一套完整的线性扫描分配器。在经历了短短几个小时的头脑风暴并干掉几杯啤酒之后，我们真的拿出了可运行的实现代码，尽管直到现在我也只是“基本理解”了它。
+
+&gt; This year, though, I met [Yannis Smaragdakis](https://yanniss.github.io/) at PLDI. I did my usual thing, which is to nerd-snipe other people into doing interesting projects: in this case, full linear scan in Datalog. Several short hours and several beers later, we have an implementation that I only mostly understand.
+
+总的来看，这是一次展示 Datalog 编程威力的绝佳范例。它生动展现了 Datalog 最擅长处理的那些优雅任务：比如基本块 (Basic Block) 划分与活跃性分析 (Liveness Analysis)，用短短几行规则就能搞定。
+
+&gt; Overall, this is an excellent demonstration of programming in Datalog. It shows tasks that Datalog handles very elegantly, such as basic block computation and liveness analysis, which take just a handful of lines.
+
+但与此同时，它也淋漓尽致地揭示了如何在 Datalog 中表达那些本质上极具过程式特性的复杂逻辑——即线性扫描算法本体。线性扫描高度依赖指令顺序与命令式状态变更，充斥着诸如“移除已失效的活跃区间”或“更新活跃区间栈以驱逐最晚结束的变量”等操作。在 Datalog 中，所有这些状态变化都必须通过声明式逻辑来精准模拟。
+
+&gt; At the same time, it demonstrates how to express operations that are inherently complex in Datalog—namely, the linear scan algorithm itself. Linear scan is very sequential and imperative-style, involving steps like "remove an interval that expires" or "update the stack of intervals to evict the one ending last." All of these operations have to be simulated declaratively.
+
+最终的成果凝聚了 Datalog 编程中最精妙的高级模式之一——**全称量词仿真 (Forall Emulation)**：以纯声明式的方式遍历一个预先确定的有限集合（在本案例中，用于精确选出需要被溢出驱逐的变量所对应的活跃区间）。
+
+&gt; The final result contains perhaps the most advanced Datalog programming pattern, **forall emulation**: iterating declaratively over a pre-determined set (in this case, to select the interval corresponding to the variable to spill).
+
+下面，让我们正式进入程序的建模与表示环节。
+
+&gt; Let's get into the program representation.
+
+---
+
+## 程序编码与建模
+
+&gt; ## Encoding
+
+正如之前与 Waleed 合作时那样，我们依然沿用了过去两篇文章中的 Wimmer2010 控制流图示例。
+
+&gt; As with Waleed, we started off with the Wimmer2010 CFG example from the last two posts.
+
+&gt; 💬 **关于控制流图示例 (Wimmer2010)：**
+&gt;
+&gt; 来自 Wimmer2010 论文中的那个经典流图又回来了！请注意，我们在这里使用的是基本块参数 (Block Arguments) 而非传统的 Phi 节点，因此 `B1(R10, R11)` 会在 `B1` 的第一条指令执行前就完成 `R10` 与 `R11` 的定义。
+&gt;
+&gt; 此外，我们对图中的指令进行了重新编号。对于每一条定义变量值的指令，我们都为其分配了两个独立的编号：编号 $N$ 用于读取/使用输入操作数，编号 $N+1$ 用于定义/写入输出结果。
+&gt;
+&gt; 我们之所以这样做，是为了让分析逻辑能够逐一处理离散事件：保证某个变量活跃区间的终结时刻，严格先于新变量赋值时可能引发的寄存器分配需求。这一点在标号 `8` 与 `9`、以及 `14` 与 `15` 中清晰可见。
+&gt;
+&gt; 同样，我们也对块参数进行了类似处理：通过为同一个基本块中的每个块参数分配不同的指令索引，实现了参数赋值的顺序化。这一点在标号 `0` 与 `1` 中得到了体现。
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; **About the CFG Example (Wimmer2010):**
+&gt;
+&gt; The graph from Wimmer2010 has come back! Again! Remember, we're using block arguments instead of phis, so `B1(R10, R11)` defines `R10` and `R11` before the first instruction in `B1`.
+&gt;
+&gt; Additionally, we have numbered the instructions in the graph. For each instruction that defines a value, we have also given it two separate numbers: one number $N$ at which it uses its inputs, and one number $N+1$ at which it defines its output.
+&gt;
+&gt; We do this so that the logic can process one event at a time: the end of a liveness interval happens before the need to possibly allocate a register when a variable gets assigned. This is visible in labels `8` and `9`, as well as `14` and `15`.
+&gt;
+&gt; We have similarly modified block parameters: we sequentialize assignment by picking different instruction indices for each block parameter in a block. This is visible in labels `0` and `1`.
+
+不过这一次，我们直接从**指令**层级而非基本块层级对程序进行建模，形式化描述每条指令使用 (`var_use`) 了哪些寄存器，以及定义 (`var_def`) 了哪些寄存器：
+
+&gt; This time, however, we encoded the program in terms of **instructions** instead of blocks, modeling which instructions use which registers and define (`def`) which registers:
+
+```datalog
+.type Block &lt;: number
+.type Var &lt;: symbol
+.type Instruction &lt;: number
+
+// Input
+.decl var_use(insn:Instruction, var:Var)
+.decl var_def(insn:Instruction, var:Var)
+
+.decl jump(insn:Instruction, next:Instruction)
+.decl jumpi(insn:Instruction, next:Instruction, otherNext:Instruction)
+.decl ret(insn:Instruction)
+
+#define NUM_REGS 2
+
+// Facts: maintain the property that defs use a unique instruction so that
+// liveness intervals end before the def
+var_def(0, "R10").
+var_def(1, "R11").
+
+var_use(2, "R11").
+
+var_def(3, "R12").
+var_def(4, "R13").
+
+var_use(5, "R13").
+
+var_use(8, "R12").
+var_use(8, "R13").
+var_def(9, "R14").
+
+var_use(10, "R13").
+var_def(11, "R15").
+
+var_use(12, "R14").
+var_use(12, "R15").
+
+var_use(14, "R10").
+var_use(14, "R12").
+var_def(15, "R16").
+
+var_use(16, "R16").
+
+.decl min_instruction(insn:Instruction)
+min_instruction(-1).
+
+.decl max_instruction(insn:Instruction)
+max_instruction(16).
+
+jump(2, 3).
+jumpi(6, 7, 13).
+jump(12, 3).
+ret(16).
+```
+
+我们还以指令为粒度对控制流进行了建模：明确定义了指令之间的跳转关系，从而在 Datalog 中直接重构出基本块边界与完整的控制流图（此处为篇幅起见略去推导规则）。这就是为什么代码中会出现 `jump(2, 3)`（表示指令 `2` 跳转到指令 `3`）、`ret(16)`（表示指令 `16` 为返回指令）等事实的原因。
+
+&gt; We also model control flow in terms of instructions: we provide jumps between instructions, from which we recover the basic block boundaries and control-flow graph directly in Datalog (omitted here for brevity). That is why we have facts like `jump(2, 3)` (meaning a `jump` at instruction `2` targeting instruction `3`), `ret(16)` (`ret` at instruction `16`), and so on.
+
+既然程序已经在 Datalog 中完成了建模表达，我们便可以开始从中推导所需的关键信息——首先从变量活跃性信息着手。
+
+&gt; Now that our program is represented in Datalog, we can begin computing what we need from it—starting with liveness information.
+
+---
+
+## 活跃性分析
+
+&gt; ## Liveness
+
+由于我们对输入数据的建模做了进一步细化（变量不再是在基本块内笼统定义，而是在专有的指令编号处分别定义），因此必须对上一篇文章中的活跃性分析逻辑进行扩充。现在我们在 Datalog 中推导的内容要丰富得多：
+
+&gt; Because we complicated our input data a bit (variables are no longer `def`-ed in blocks, but instead `def`-ed at their own instruction indices), we had to expand our liveness logic from the last post. We now compute a lot more in Datalog:
+
+* 基本块边界（为篇幅起见略去）
+* 每条指令归属的具体基本块（为篇幅起见略去）
+* 完整的控制流图结构（为篇幅起见略去）
+* 每条指令维度的 `live_in`（入口活跃）与 `live_out`（出口活跃）集合（而非针对基本块粒度）
+* 变量的生命周期活跃区间
+
+&gt; * Basic block boundaries (omitted for brevity)
+&gt; * Which instructions belong to which block (omitted for brevity)
+&gt; * The control-flow graph structure (omitted for brevity)
+&gt; * `live_in` and `live_out` for each instruction (rather than each block)
+&gt; * Liveness intervals
+
+尽管增加了这些内容，活跃性分析仍然是整个实现中最直观、最容易理解的部分。四条相互递归的 Datalog 规则精确定义了 `live_out` 与 `live_in`，完美对应了教科书中的标准数据流分析方程。（其中的传递函数被拆分为了两条显式规则：当某个变量被当前指令使用、或者在该指令出口处活跃且未被该指令定义时，该变量即在入口处活跃。）
+
+&gt; Even with these additions, liveness remains the most straightforward part of the implementation. Four mutually recursive rules define `live_out` and `live_in`, corresponding directly to the standard textbook data-flow equations for liveness. (The transfer function is split into two explicit rules: a variable is live-in if it is used by the instruction, or if it is live-out and not `def`-ed by the instruction.)
+
+```datalog
+live_out(insn, var) :-
+  block_succ(prev, succ),
+  block_head(succ, headinsn),
+  live_in(headinsn, var),
+  block_tail(prev, insn).
+
+live_in(insn, var) :-
+  var_use(insn, var).
+
+live_in(insn, var) :-
+  live_out(insn, var),
+  !var_def(insn, var).
+
+live_out(insn, var) :-
+  live_in(next, var),
+  next_in_block(insn, next).
+```
+
+这套规则与 Waleed 和我之前构建的活跃性实现非常相似，核心差异仅在于它在细粒度的指令层级而非基本块层级运作。
+
+&gt; This looks quite similar to the liveness implementation Waleed and I built previously, except that it operates at the instruction level rather than the block level.
+
+由于上述规则只输出了逐条指令维度的活跃变量集合，接下来我们需要为每个变量提取出其跨越的完整生命周期区间——即变量处于活跃状态的最早指令与最晚指令。在此处我们可以安全地使用 `min` 和 `max` 聚合算子，因为这套规则*只有在*前面的互递归数据流分析完全达到不动点之后才会执行评估：
+
+&gt; Because those rules only give us per-instruction liveness sets, we next extract the full extent of the interval for every variable—the earliest instruction where it is live and the latest instruction where it is live. We can safely use `min` and `max` aggregations here because this rule is evaluated *only after* the mutually recursive dataflow has reached a fixpoint:
+
+```datalog
+// Liveness starts right after start, ends right before end
+.decl liveness_interval(start:Instruction, end:Instruction, var:Var)
+
+liveness_interval(start, end, var) :-
+  live_out(_, var),
+  start = min b : { live_out(b, var) },
+  end = max b : { live_in(b, var) }.
+```
+
+一旦求出了所有变量的活跃区间，接下来就该为它们分配物理寄存器了。[^intervals]
+
+&gt; Once we have the intervals, we need to assign physical registers to the variables.[^intervals]
+
+---
+
+## 寄存器分配
+
+&gt; ## Register Assignment
+
+计算中最具挑战性的部分正是线性扫描寄存器分配算法本身。我们借助谓词 `reg_assignment` 对此进行建模，它模拟了在对指令进行线性扫描的每一步推进过程中，算法所处的瞬时分配状态：
+
+&gt; The challenging part of the computation is the linear scan register allocation itself. We encode this using a predicate `reg_assignment`, which simulates the algorithm's state at every step across a linear scan of instructions:
+
+```datalog
+// After instruction, this is the register assignment. Var = "none" is a possibility
+.decl reg_assignment(insn:Instruction, reg:Register, var:Var)
+```
+
+在处理每一条指令时，算法都会跟踪被分配的各个物理寄存器当前存放的内容。当前未存放任何变量的空闲寄存器，会被填入一个对应其寄存器编号的伪变量 (Pseudo-Variable)——例如，当 `0` 号寄存器为空时，它存放的是伪变量 `none_0`。这种编码技巧巧妙地将每一次分配决策都统一转化为了变量之间的优先级对比。在选择需要被溢出的变量时，比较器总是优先选择 `"none"` 伪变量（相当于直接占用空闲寄存器）而非真实变量；而在多个真实变量狭路相逢时，它则执行标准的线性扫描策略：将活跃区间结束时间最晚的那个变量溢出到栈中。
+
+&gt; At every instruction, the algorithm tracks the current contents of each physical register being allocated. Registers not currently holding a variable instead hold a pseudo-variable corresponding to the register's name—for instance, when register `0` is empty, it contains the variable `none_0`. This encoding lets us phrase every allocation decision as a comparison between variables. When choosing a variable to spill, the comparator always prefers a `"none"` variable over a real one; between real variables, it applies the standard linear scan policy of spilling whichever variable's liveness interval ends last.</description>
+    </item>
+    <item>
+      <title>利用大模型将 Rockbox 固件移植到 9 美元 AliExpress MP3 播放器</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-22/利用大模型将-Rockbox-固件移植到-9-美元-AliExpress-MP3-播放器/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-22/利用大模型将-Rockbox-固件移植到-9-美元-AliExpress-MP3-播放器/</guid>
+      <pubDate>Sun, 22 Nov 2026 00:00:00 GMT</pubDate>
+      <description>作者借助 Claude / Opus 5.5 大语言模型 (Large Language Model, LLM) 智能体 (AI Agent) 与 Ghidra MCP 逆向工具，在完全不拆机、不焊接任何排线的纯软件环境下，奇迹般地将经典开源音频固件 Rockbox 移植到了一款售价仅 9 美元、毫无硬件文档的 AliExpress “YP3” MP3 播放器上。面对仅有 512 KiB SRAM 的极限内存瓶颈（远低于 Rockbox 以往 2 MiB 的官方最低运行门槛），AI 智能体通过网络摄像头、音频线路输入与定制的双向 USB 终端，通宵达旦地自主完成了逆向分析、固件烧录、驱动适配与压力测试，甚至实现了蓝牙音频传输及 357 款游戏插件移植。这项硬核工程不仅展现了 AI 在高难度嵌入式系统与底层驱动开发中的惊人自主潜能，更沉淀出了一套可复用的自动化固件移植工具箱。
+
+---
+
+## 概述
+
+&gt; ## Summary
+
+借助大语言模型编程智能体（主要使用 Claude / Opus 5.5，并搭配 Ghidra MCP 逆向工具及净室逆向工程体系），作者成功将著名的开源播放器固件 [Rockbox](https://www.rockbox.org/) 移植到了一款硬件信息毫无公开文档、售价仅 9 美元的 AliExpress “YP3” MP3 播放器上。该播放器搭载了一颗神秘的国产芯片 Smartlink SL6801 片上系统 (SoC)，其内部仅有 512 KiB 的静态随机存取内存 (SRAM)——远低于 Rockbox 此前官方要求的 2 MiB 最低运行门槛。在完全无需电烙铁焊接、甚至连外壳都未曾拆开的纯软件操作下，AI 智能体配合网络摄像头、电脑音频输入口 (Line In)、蓝牙适配器以及扩展的双向 USB 开发者终端，完全自主地完成了固件烧录、驱动调试、XIP Flash 性能瓶颈分析以及通宵达旦的高强度破坏性测试。最终的移植固件不仅支持绝大多数主流音频编解码器、蓝牙音频与 HID 外设、纯磁盘音乐数据库和自定义主题，还具备约 20 小时的超长电池续航，并新增了多达 357 款游戏与插件；同时该项目还沉淀出了一套通用的自动化移植工具链 [auto-rockbox](https://github.com/jaydens-tasty-slop/auto-rockbox)，随后仅用 4 小时就成功将 Rockbox 移植到了另一款全新的播放器上。
+
+&gt; Using LLM coding agents (primarily Claude/Opus 5.5 alongside Ghidra MCP and a cleanroom reverse-engineering setup), the author ported [Rockbox](https://www.rockbox.org/) to an undocumented, $9 AliExpress "YP3" MP3 player powered by a mystery Smartlink SL6801 SoC with just 512 KiB of SRAM—well below Rockbox’s previous 2 MiB minimum target. Operating entirely via software without soldering or opening the case, the agent used a webcam, PC line-in audio, a Bluetooth dongle, and an extended bidirectional USB dev shell to autonomously flash firmware, debug drivers, profile XIP flash bottlenecks, and torture-test the device overnight. The resulting port supports most major audio codecs, Bluetooth audio and HID devices, an on-disk database, custom themes, ~20-hour battery life, and 357 newly added games and plugins, while producing a reusable [auto-rockbox](https://github.com/jaydens-tasty-slop/auto-rockbox) toolkit that subsequently ported Rockbox to another player in just four hours.
+
+---
+
+对于各种经典 MP3 播放器和 iPod 而言，[Rockbox](https://www.rockbox.org/) 是一个充满极客情怀且历史悠久的第三方开源固件项目。当年给我的 [Sansa E200](https://en.wikipedia.org/wiki/Sansa_e200_series) 刷入 Rockbox 的经历，堪称我人生中的一次顿悟时刻：计算机无处不在，如果它们不能做一些很酷的事情，那只是因为还没有人花心思去为它们编写对应的程序而已。回想起来，这对我后来的职业生涯抉择起到了不可忽视的作用。
+
+&gt; [Rockbox](https://www.rockbox.org/) is a wonderful old custom firmware project for a variety of MP3 players and iPods. Flashing Rockbox to my [Sansa E200](https://en.wikipedia.org/wiki/Sansa_e200_series) was a seminal moment for me: computers were everywhere, and if they didn’t do cool things, it was because no one had bothered to program them to do so. Looking back, that played no small part in my choice of career.
+
+然而到了 2026 年，市面上似乎已经找不到任何 Rockbox 官方支持的廉价 MP3 播放器了。逆向工程这样一套未知的嵌入式硬件平台，是我能想到的技术挑战中最艰难的事情之一。于是我决定咬咬牙，花大价钱订阅了带有高额补贴的 Token 套餐，打算把大模型的能力压榨到极限——而正好我手头就躺着这么一台在 AliExpress 上花 9 美元淘来的白菜价 MP3 播放器。
+
+&gt; It seems like in 2026 there aren’t any cheap MP3 players that Rockbox supports, though. Reverse engineering an embedded platform like this is one of the hardest things I can think of, so I decided to pay the big bucks for one of those subsidized token plans to push it as hard as I could—and I happened to have a dirt-cheap $9 AliExpress MP3 player lying around.
+
+**太长不看 (TL;DR)**：AI 成功把 Rockbox 移植到了一台只有 512 KiB 内存的设备上，而我几乎全程都在甩手当掌柜。随后我让它基于第一次尝试中行之有效的经验，构建了一套可复用的工具包与移植技能库，接着 Claude 仅用了 4 个小时，就让 Rockbox 在另一款全新的 MP3 播放器 (TS47) 上顺利跑了起来。
+
+&gt; **TL;DR:** It ported Rockbox to a 512 KiB player, and I was barely involved. Then I had it build a reusable toolkit and set of skills for future ports based on what worked from the first attempt, and Claude was able to get Rockbox running on another MP3 player (TS47) in 4 hours.
+
+- **演示视频**：[在 YouTube 上观看](https://www.youtube-nocookie.com/embed/4_XmC1UqO1U?si=zrLtwsddV3i1syp6)
+- **项目主页**：[https://rockslop.jayd.ml](https://rockslop.jayd.ml)
+- **移植工具箱**：[GitHub 上的 auto-rockbox](https://github.com/jaydens-tasty-slop/auto-rockbox)
+
+&gt; - **Demo Video:** [Watch on YouTube](https://www.youtube-nocookie.com/embed/4_XmC1UqO1U?si=zrLtwsddV3i1syp6)
+&gt; - **Project Website:** [https://rockslop.jayd.ml](https://rockslop.jayd.ml)
+&gt; - **Porting Toolkit:** [auto-rockbox on GitHub](https://github.com/jaydens-tasty-slop/auto-rockbox)
+
+---
+
+## 登场：神秘的 YP3 播放器
+
+&gt; ## Enter: The YP3
+
+![listing from aliexpress](./images/274098369b87.png)
+
+这是一款典型的白牌播放器，在 Amazon 和 AliExpress 上以各种如同乱码辅音拼凑出的山寨品牌名进行销售。如果你从 Alibaba 上大批量批发，单个进货价甚至还不到 7 美元。
+
+&gt; This is an unbranded player sold under a variety of fake consonant-soup brands on Amazon as well as AliExpress. You can order them wholesale from Alibaba for less than $7 each.
+
+在系统内置的“关于”菜单里，它将自己标识为 `yp3_2.0.43`。[这里似乎是 YP3 的一个购买链接](https://www.aliexpress.us/item/3256807764385286.html)（我当初买的原始商品页面已经下架了；我买的时候包邮花了 9.71 美元）。
+
+&gt; It identifies itself as `yp3_2.0.43` in the "About" menu. [This appears to be a listing for a YP3](https://www.aliexpress.us/item/3256807764385286.html) (the original listing is gone; I paid $9.71 shipped for mine).
+
+&gt; 💬 [原文提示 / Original Note]:
+&gt; **注意**：在大家急着跑去下单之前提醒一下，我还有另一款设备的 Rockbox 移植工作大概再过一两周就能完工——目前已经能够稳定开机，只需进行更多验收测试。那台设备非常相似，但配备了 4 MiB 的伪静态随机存取内存 (PSRAM)，因此做出的功能妥协要少得多。[打折促销时只需 20 美元](https://www.tengsen.vip/pages/mp3-player-w1.html)。
+&gt;
+&gt; 我手头还堆了一大堆各种随手买来的杂牌 MP3 播放器，打算后续挨个复现这个移植流程。详情可以查看项目主页：[https://rockslop.jayd.ml](https://rockslop.jayd.ml)。
+
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; &gt; **Note:** Before you run off and buy one, I have another Rockbox port that is probably a week or two out—it is booting and stable, and just needs more acceptance testing. That device is extremely similar but has 4 MiB PSRAM, so it has fewer compromises. [It was $20 on sale](https://www.tengsen.vip/pages/mp3-player-w1.html).
+&gt; &gt;
+&gt; &gt; I also have a stack of other random MP3 players I intend to repeat this with. See the project website: [https://rockslop.jayd.ml](https://rockslop.jayd.ml).</description>
+    </item>
+    <item>
       <title>在编程语言中实现全自动形式化证明</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-17/在编程语言中实现全自动形式化证明/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-17/在编程语言中实现全自动形式化证明/</guid>
@@ -4603,211 +5177,6 @@ GURU 作为闭环控制系统运转，调度各司其职的专业 AI 智能体 (
 *注：如需了解系统完整实现细节、架构拓扑设计以及数学公式推导，请参阅 [arXiv 官方发表论文](https://arxiv.org/abs/2611.01001)。*
 
 &gt; *Note: For complete implementation details, architectural schemas, and mathematical formulations, please refer to the [official arXiv publication](https://arxiv.org/abs/2611.01001).*</description>
-    </item>
-    <item>
-      <title>Exo：面向系统运行时持续自我进化的智能体架构</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-04/Exo-运行时自进化智能体架构设计/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/Exo-运行时自进化智能体架构设计/</guid>
-      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型 (Large Language Model, LLM) 在实际系统中的广泛部署，AI 智能体 (AI Agent) 的环境治理机制 (Harness，即规范模型如何与外部环境安全交互的控制中枢) 成为决定任务成败与运行成本的关键。然而，传统的手工调优极其繁琐昂贵，现有的自动化优化手段又强依赖静态数据集和高开销的离线执行。来自 UC Berkeley 等机构的研究团队提出了创新的运行时智能体架构 **Exo**，其核心突破在于将优化循环直接折叠进正在执行的任务流程中，使智能体能够在实际工作中安全、自主地持续修改自身的治理机制与求解策略。通过极简受保护机制层对执行历史与策略激活进行安全隔离与审计，Exo 在开放世界游戏、AppWorld 以及 SREGym 等多个极具挑战性的基准测试中，将模型成本削减高达 12% 至 82%，大幅缩短了任务排障与执行时间。这一工作标志着 AI 智能体正式由“离线预设固定系统”迈向“线上自主协同进化”的新阶段。
-
----
-
-## 📌 内容概要
-
-&gt; ## 📌 Summary
-
-对于 AI 智能体而言，纯手工编写环境治理机制 (Agent Harness，用以规范大语言模型与外部环境交互行为的控制策略) 是一项极其复杂的系统工程；而传统的自动化优化手段，往往需要专门构建代表性的离线数据集并承担高昂的重复执行成本。本文提出了 **Exo**——一种专为智能体在日常实际执行过程中实现安全学习与自适应演化而设计的创新运行时架构。
-
-&gt; Designing agent harnesses (which govern how language models interact with environments) manually is exceptionally difficult, while traditional automated techniques demand representative datasets and costly executions. This paper introduces **Exo**, an innovative agent runtime architecture designed for safe learning during ongoing work.
-
-通过将优化反馈循环直接嵌入并压缩到任务执行流程之中，Exo 赋能智能体在运转中动态迭代其环境治理机制以及解决问题的具体策略。系统内部设计了一个极简的受保护机制层，在安全封存完整执行历史的同时严密把控策略的激活生效，确保环境治理机制通过完全透明、可审查的代码变更实现平稳进化。
-
-&gt; By collapsing the optimization loop directly into task execution, Exo empowers agents to dynamically revise both their harnesses and problem-solving strategies. A minimal protected mechanism layer safely preserves execution history and governs policy activation, ensuring that the harness evolves smoothly through inspectable code changes.</description>
-    </item>
-    <item>
-      <title>DeepSeek 开源 dsh-superagent：采用 Router-Worker 架构的代码智能体原型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-02/DeepSeek-开源-dsh-superagent-Router-Worker-架构代码智能体/</guid>
-      <pubDate>Mon, 02 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在当前的软件工程与自动化浪潮中，主流代码智能体多依赖单会话模式工作，面对高并发的消息轰炸与复杂的任务流时，开发者的注意力往往成为制约效率的最大瓶颈。DeepSeek 团队正式开源了研究级原型项目 **dsh-superagent**，创新性地采用“路由调度-多工并发 (Router-Worker)”架构。主路由长驻监听来自 GitHub 与 Feishu 的事件流，并按需解耦为完全隔离的独立工单 (Tickets)，交由各执行节点并行推进，不仅能主动感知未指派的潜在需求，还能全自动化静默执行并交付拉取请求 (Pull Request, PR)。模拟测试显示，该框架在海量并发请求下将任务交付时长缩短了近一半，展示了未来全自主代码仓库管家的全新范式。
-
----
-
-## 📋 概要
-
-&gt; ## 📋 Summary
-
-DeepSeek Harness 团队正式开源了 **dsh-superagent**。这是一个基于 MIT 协议发布的研究原型项目，专为单个 GitHub 代码仓库打造全自动、主动式编程 AI 智能体 (AI Agent)。该系统采用了创新的 **Router-Worker 架构**，能够实时监听来自 GitHub 与 Feishu 的事件消息流，并智能地将复杂需求拆解为相互隔离、支持并行处理的独立任务工单 (Tickets)。仿真测试数据显示，在高负载的消息洪峰下，这种超级智能体架构的任务交付速度比传统的单会话基线方案快了将近一倍 (p95 耗时仅为 15.7 分钟，而基线方案需要 29.5 分钟)，有效化解了 AI 辅助编程场景中人类工程师精力无法兼顾多任务的注意力瓶颈。
-
-&gt; The DeepSeek Harness team has open-sourced **dsh-superagent**, an MIT-licensed research prototype designed to act as a proactive coding agent for a single GitHub repository. Operating on a **Router-Worker architecture**, the agent listens to GitHub and Feishu event streams, automatically breaking down requests into parallelized, isolated work items (Tickets). Simulations indicate that the super-agent framework completes tasks nearly twice as fast as single-session baselines (p95 of 15.7 minutes vs. 29.5 minutes) under heavy message streams, mitigating human attention bottlenecks in AI-assisted development.
-
----
-
-## 📌 核心速览 (TL;DR)
-
-&gt; ## 📌 TL;DaR (Too Long; Didn't Read)
-
-* **它是什么？** 一套基于 MIT 开源协议发布的 TypeScript v0.1.0 代码包，可灵活适配 DeepSeek Harness 配置支持的任意底层大模型。
-* **环境要求**：以专用的 DeepSeek Harness 配置文件形式在本地运行。系统需预装 Node.js (22.19+ 或 24+)、Git (2.32+)、Python 3.8+、tmux 以及 GitHub CLI (2.48+)。
-* **性能表现**：在处理高并发、杂乱的消息流时，效率显著超越传统的单会话智能体。
-  * **最佳战绩**：任务完成耗时 p95 为 15.7 分钟，对比单会话基线的 29.5 分钟，提速约 1.9 倍。
-  * **当前局限**：目前主要在合成消息流和模拟工具环境下完成测试，在真实工业级编程场景中的代码交付质量尚待进一步检验。
-
-&gt; * **What is it?** A TypeScript v0.1.0 bundle released under the MIT license, adaptable to any model supported by DeepSeek Harness profiles.
-&gt; * **System Requirements:** Runs locally as a dedicated DeepSeek Harness profile. Requires Node.js (22.19+ or 24+), Git (2.32+), Python 3.8+, tmux, and GitHub CLI (2.48+).
-&gt; * **Performance:** Handles noisy message streams significantly faster than single-session agents.
-&gt;   * **Best Case:** p95 task completion in 15.7 minutes vs. 29.5 minutes for the single-session baseline (~1.9x faster).
-&gt;   * **Limitations:** Tested primarily on synthetic messages and simulated tools; real-world coding quality remains unmeasured.
-
----
-
-## 什么是 DeepSeek dsh-superagent？
-
-&gt; ## What is DeepSeek dsh-superagent?
-
-`dsh-superagent` 是一款既能“有求必应”又兼具“主动出击”能力的 GitHub 智能体。一旦被授权用户唤醒，它便会立即创建一个名为 **Ticket** (任务工单) 的专属工作单元。每个工单都会在完全独立、隔离的会话和工作目录中运行，互不干扰，最终将执行成果——通常是一份准备就绪的拉取请求 (Pull Request, PR) ——自动汇报给最初的发起会话。此外，它还配备了一个本地 Web 操作看板，专为少数确实需要人类介入决策的节点提供集中管控入口。
-
-&gt; `dsh-superagent` is a reactive and proactive GitHub agent. When triggered by an authorized user, it initializes a dedicated work item called a **Ticket**. Each Ticket executes in its own isolated session and directory, returning results—often in the form of pull requests—back to the original conversation thread. A local web panel provides a centralized interface for tasks requiring human intervention.
-
-根据官方 [README](https://github.com/deepseek-ai/dsh-superagent-prototype) 与 [设计哲学文档 (Philosophy Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/000-philosophy.md) 的说明，系统的核心工程哲学在于：**在创造最大实用价值的同时，将人类的注意力开销降至最低**。智能体在接收并确认需求后便会“静默深耕”，在代码编写和调试过程中绝不无故打扰用户；唯有在最终呈现成果、遇到必须由人裁决的阻塞卡点，或是汇报执行异常时，才会主动与开发者交互。
-
-&gt; According to the official [README](https://github.com/deepseek-ai/dsh-superagent-prototype) and [Philosophy Documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/000-philosophy.md), the core design philosophy centers on **maximizing value while minimizing human attention overhead**. The agent confirms requests once, operates silently during execution, and communicates only when presenting results, blocking questions, or reporting failures.
-
----
-
-## DeepSeek 为何要打造超级智能体？
-
-&gt; ## Why Did DeepSeek Build a Super-Agent?
-
-当前主流的 AI 编程智能体通常把“单一交互会话”作为不可分割的工作基本单元。然而在实际工作场景中，人类程序员能够同时兼顾、有效跟踪的活跃会话上限通常只有 3 到 5 个。正如相关研究与 [凤凰网报道 (reported by ifeng)](https://tech.ifeng.com/c/8xg9tbvWnnf) 所强调的那样：在多任务并发的智能体工作流中，**制约整体效率的头号瓶颈已不再是底层大模型的能力上限，而是人类极其有限的注意力资源**。
-
-&gt; Mainstream AI coding agents traditionally treat a single session as the atomic unit of work. However, human developers can effectively monitor and manage only 3 to 5 active sessions simultaneously. As highlighted in research [reported by ifeng](https://tech.ifeng.com/c/8xg9tbvWnnf), **human attention—rather than model capability—becomes the primary bottleneck** for multitasking in agentic workflows.
-
----
-
-## Router-Worker 架构是如何运作的？
-
-&gt; ## How Does the Router-Worker Architecture Work?
-
-该研究原型实现了一种优雅解耦的双层分工架构：
-
-&gt; The research prototype implements a decoupled, two-layer architecture:
-
-1. **路由器 (Router)**：负责全天候长驻运行，专门接管外界交互、研判事件价值并进行工单派发；
-2. **工作节点 (Workers)**：各个相互隔离的执行会话，专职并行执行被指派的具体编码任务。
-
-&gt; 1. **The Router:** A long-running session responsible for handling interaction, event evaluation, and task dispatching.
-&gt; 2. **Workers:** Isolated sessions that execute specific tasks in parallel.
-
-根据 [领域模型文档 (Domain Model Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/001-domain.md) 的定义，整体工作流转过程如下：
-
-&gt; As defined in the [domain model documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/001-domain.md), the workflow proceeds as follows:
-
-* **数据源 → 触发器 (Source → Trigger)**：系统自动摄入并监听来自 GitHub 或 Feishu 的事件消息；
-* **评估机制 (Evaluation)**：系统审视并研判传入的触发事件是否值得转化为新的开发工作；
-* **工单创建 (Ticket)**：一旦确认立项，系统便生成一个获得明确授权的工作单元，并附带一份不可篡改的 **任务授权书 (Mandate)**，明确划定其职责范围与权限边界；
-* **事件订阅 (Subscription)**：后续若在相关拉取请求 (PR) 下追加讨论或评论，系统会自动将其路由至负责该任务的原专属 Worker 会话，无需人类开发者反复重新 @ 智能体。
-
-&gt; * **Source → Trigger:** Events are ingested from GitHub or Feishu.
-&gt; * **Evaluation:** The system assesses whether incoming triggers warrant new work.
-&gt; * **Ticket:** An authorized unit of work accompanied by an immutable **Mandate** outlining its scope and permissions.
-&gt; * **Subscription:** Follow-up comments on pull requests are automatically routed to the correct Worker without requiring fresh mentions.
-
-在具体运行中，主会话加载轻量级工具集的 `dsh-superagent-router` 预设，而各个具体的 Worker 节点则执行 `dsh-superagent-worker`。正如 [执行指南 (Execution Guide)](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/003-execution.md) 中所强调的，为了保证主交互通道永远保持丝滑顺畅与持续响应，所有 Shell 命令行操作在执行满 5 秒后都会被自动转入后台异步运行。
-
-&gt; The main session runs the `dsh-superagent-router` preset with a lightweight toolset, while individual Workers execute `dsh-superagent-worker`. To maintain continuous responsiveness, shell commands are automatically backgrounded after 5 seconds, as outlined in the [execution guide](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/003-execution.md).
-
-智能体的主动执行行为受到极其严格的用户权限约束。根据 [权限授权文档 (Authorization Documentation)](https://github.com/deepseek-ai/dsh-superagent-prototype/docs/002-authorization.md) 的规定，系统提供了三种接收模式：
-
-&gt; Proactive operations are strictly governed by user permissions. The [authorization documentation](https://github.com/deepseek-ai/dsh-superagent-prototype/docs/002-authorization.md) specifies three accept modes:
-
-* `off`：完全关闭主动操作；
-* `observe` (默认模式，智能体只在日志中记录其“本打算”采取的操作，而不实际执行)；
-* `auto`：完全开启自动执行模式。
-
-&gt; * `off`
-&gt; * `observe` (default mode, which logs actions the agent *would* have taken)
-&gt; * `auto`
-
----
-
-## 性能测试与效果评估
-
-&gt; ## Performance &amp; Evaluation
-
-DeepSeek 团队利用模拟群聊和 GitHub CI 事件流对该系统进行了严格评测。在连续 5 轮迭代测试中，每轮测试均注入了约 300 条模拟消息 (其中穿插了约 20 条真实的有效开发请求)。
-
-&gt; DeepSeek evaluated the system using simulated group chat and GitHub CI event streams, with each run containing approximately 300 messages (including ~20 legitimate work requests) across five iterative test runs.
-
-* **超级智能体表现**：任务交付周期的 p50 为 12.4 分钟，p95 为 15.7 分钟；
-* **单会话 + 子智能体 (中性提示词基线)**：任务交付周期的 p95 为 29.5 分钟 (未披露 p50 数据)。在中性提示词条件下，基线模型在全部 5 轮测试中调用子智能体的次数为 0 次；
-* **路由器负载伸缩能力**：当外部事件到达速率从每分钟 1 次激增至 40 次时，系统的平均批处理规模从 1.0 增至 2.8，而单次请求的处理延迟仅从 2.5 秒温和微增到 3.9 秒；
-* **消融实验 (Ablation Study)**：若移除事件直接透传通道，将导致路由器的决策次数增加约 30%，同时缓存读取 Token 数量增加约 37% (从 2323 万 Token 暴增至 3177 万 Token)。
-
-&gt; * **Super-Agent Performance:** p50 of 12.4 minutes; p95 of 15.7 minutes.
-&gt; * **Single Session + Subagents (Neutral Prompt):** p95 of 29.5 minutes (p50 metrics were not disclosed). Under neutral prompts, the baseline model invoked subagents 0 times across 5 runs.
-&gt; * **Router Load Scaling:** As arrival rates increased from 1 to 40 events per minute, average batch sizes grew from 1.0 to 2.8, while per-request latency increased modestly from 2.5 to 3.9 seconds.
-&gt; * **Ablation Study:** Removing direct event pass-through resulted in a ~30% increase in router decisions and a ~37% increase in cache-read tokens (jumping from 23.23M to 31.77M). 
-
-* (注：以上所有数据均为基于该研究成果二次分析所得的自测公开数据。) *
-
-&gt; *(Note: All figures are self-reported via secondary analyses of the research findings.)*
-
----
-
-## 横向对比一览：dsh-superagent 与其他编程智能体
-
-&gt; ## Comparative Overview: dsh-superagent vs. Other Coding Agents
-
-| 特性 (Feature) | DeepSeek dsh-superagent | GitHub Copilot Cloud Agent | Claude Code Action | OpenAI Codex |
-| :--- | :--- | :--- | :--- | :--- |
-| **触发机制 (Trigger Mechanism)** | 白名单用户 @ 唤醒；严格的书面规则触发 | Issue 指派、聊天界面、API、Slack 等 | `@claude` 唤醒、Issue 指派、工作流提示词 | Slack 中 `@Codex`；云端任务 |
-| **主动式 (无需提问) 工作 (Proactive Work)** | 支持，受规则门控约束 (默认处于 `observe` 观察模式) | 支持，通过自动化流程 | 支持，通过工作流事件 | 未披露 |
-| **并行隔离会话 (Parallel Isolated Sessions)** | 支持，每个工单对应 1 个独立会话 | 未披露 | 未披露 | 未披露 |
-| **执行环境 (Execution Environment)** | 本地机器 (Harness 专用配置文件) | 云端托管 (GitHub 后台运行) | GitHub Actions 运行器 (Runner) | Codex 云端 |
-| **聊天工具集成 (Chat Integrations)** | Feishu (可选) | Slack, Microsoft Teams | 未披露 | Slack |
-| **开源协议 (License)** | MIT | 未披露 | MIT | CLI 智能体开源 |
-| **可用性与获取门槛 (Availability)** | 研究原型项目 | 需订阅 Copilot 付费套餐 | 自备 API Key / 云服务商 | ChatGPT Plus 及更高订阅级别 |
-
----
-
-## 核心要点总结
-
-&gt; ## Key Takeaways
-
-* **开创性的主动式原型**：DeepSeek 发布的 `dsh-superagent` 是一份基于 MIT 协议的开源蓝图，展示了实现自主化代码仓库治理的前沿探索；
-* **解耦式并发扩展**：通过核心中央路由器进行任务智能研判与派发，并在完全隔离的 Worker 节点中并行执行，实现了优雅的横向扩容；
-* **显著的效率跃升**：在模拟高负载测试中，任务交付效率大幅领先传统模式 (p95 耗时仅 15.7 分钟，而传统单会话基线高达 29.5 分钟)；
-* **安全防护与沙箱隔离**：由于智能体在执行时拥有完整的用户级操作系统权限，在实际生产环境中部署前，强烈建议配置严格的安全隔离与沙箱运行机制。
-
-&gt; * **Proactive Prototype:** DeepSeek released `dsh-superagent` as an MIT-licensed blueprint for autonomous repository management.
-&gt; * **Decoupled Scaling:** Work is intelligently dispatched via a central Router and executed concurrently across isolated Worker sessions.
-&gt; * **Efficiency Gains:** Simulated workloads demonstrated significantly faster task completion (p95: 15.7 mins vs. 29.5 mins for traditional single sessions).
-&gt; * **Security &amp; Isolation:** Because the agent executes with full user-level OS access, proper containment and sandboxing are strongly recommended before deployment.
-
----</description>
-    </item>
-    <item>
-      <title>代数世界模型：从环境探索到形式化数学证明</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-10-31/代数世界模型-从环境探索到形式化数学证明/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-10-31/代数世界模型-从环境探索到形式化数学证明/</guid>
-      <pubDate>Sat, 31 Oct 2026 00:00:00 GMT</pubDate>
-      <description>随着形式化数学与自动化定理证明技术的飞速发展，现代 AI 已经在已知公理体系下解决了大量高难度数学问题。然而在真实的探索场景中，更关键的挑战在于：面对一个完全未知的陌生环境，AI 智能体 (AI Agent) 能否自主总结抽象规律并完成严密的形式化数学推理？清华大学与图灵奖得主 Andrew Chi-Chih Yao 等人联合提出的“代数世界模型” (Algebraic World Model, AWM) 首次架起了这一关键桥梁。该框架让 AI 能够像科学家一样，从主动环境交互中迭代提取 Python 经验假设，再借助范畴论进行结构化化简，并将其转化为经 Lean 4 内核校验的严格证明。在具有挑战性的 ARC-AGI-3 基准测试中，AWM 展现出跨越经验的卓越泛化能力，为迈向兼具数学洞察与可靠性保证的下一代通用人工智能 (AGI) 提供了全新范式。
-
----
-
-## 论文摘要概览
-
-&gt; ## Abstract Summary
-
-现代人工智能已经在数学领域取得了令人瞩目的里程碑式突破，不仅能够成功求解极具挑战性的前沿数学难题，还能生成经过机器严格验证的形式化证明代码 (例如使用 Lean 语言) 。然而，现有的推理系统普遍高度依赖于预先设定好的人类数学公理定义与形式化规范。这就引出了一个最为根本的核心问题：**AI 智能体 (AI Agent) 究竟能否在一个完全未知的陌生世界中，自主展开严密的形式化数学推理？**
-
-&gt; Modern AI has achieved remarkable milestones in mathematics, successfully solving challenging problems paired with machine-checkable proofs (such as in Lean). However, these systems traditionally rely on pre-existing mathematical definitions and formal specifications. This introduces a fundamental question: **Can an AI agent rigorously reason about an entirely unknown world?**
-
-本篇论文提出了**代数世界模型** (Algebraic World Model, AWM) ，这是一套全新的理论与工程框架，成功弥合了“主动环境探索”与“显式形式化数学推理”之间的鸿沟。
-
-&gt; This paper introduces the **Algebraic World Model (AWM)**, a novel framework that bridges the gap between active environment exploration and explicit, formal mathematical reasoning.</description>
     </item>
   </channel>
 </rss>
