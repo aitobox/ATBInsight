@@ -259,6 +259,7 @@ title: 标签浏览
 - [Google 开源 Elephant-Goldfish 插件：专为 AI 编程智能体打造的“规范优先”设计与审查架构](blog/posts/2026-11-09-Google-开源-Elephant-Goldfish-插件-AI-智能体规范优先审查架构.md)
 - [AWS Emulator 正式发布：当 AI 智能体编写代码时，软件工程师的角色如何演变？](blog/posts/2026-11-12-AWS-Emulator-发布-当-AI-智能体编写代码时软件工程师的角色演变.md)
 - [利用大模型将 Rockbox 固件移植到 9 美元 AliExpress MP3 播放器](blog/posts/2026-11-22-利用大模型将-Rockbox-固件移植到-9-美元-AliExpress-MP3-播放器.md)
+- [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
 
 ## AI 智能体安全
 
@@ -622,6 +623,10 @@ title: 标签浏览
 
 - [OpenNMC：昂贵 APC 管理卡的开源替代方案](blog/posts/2026-09-09-OpenNMC：昂贵 APC 管理卡的开源替代方案.md)
 
+## APFS
+
+- [APFS 中的 Unicode 正规化与大小写折叠如何引发安全漏洞](blog/posts/2026-11-25-APFS中的Unicode正规化与大小写折叠如何引发安全漏洞.md)
+
 ## API
 
 - [Data API 路由至最近的只读副本](blog/posts/2026-08-13-Data API 路由至最近的只读副本.md)
@@ -910,6 +915,10 @@ title: 标签浏览
 ## AutoTuring
 
 - [AI 智能体真的懂计算机体系结构吗？AutoTuring 基准测试揭示底层思考本质](blog/posts/2026-09-19-AI-智能体真的懂计算机体系结构吗-AutoTuring-基准测试揭示底层思考本质.md)
+
+## AutomationBench
+
+- [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
 
 ## Azure
 
@@ -3581,6 +3590,7 @@ title: 标签浏览
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 - [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 - [NVIDIA Vera CPU 在智能体速度与能效上全面超越传统 x86](blog/posts/2026-11-06-NVIDIA-Vera-CPU-在智能体速度与能效上全面超越传统-x86.md)
+- [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
 
 ## NVIDIA A100
 
@@ -3639,6 +3649,7 @@ title: 标签浏览
 - [斩获 IMO 金牌的开源秘籍：面向奥林匹克数学的 Nemotron 训练实践](blog/posts/2026-09-13-斩获IMO金牌的开源秘籍-面向奥林匹克数学的Nemotron训练实践.md)
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 - [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
+- [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
 
 ## Netflix
 
@@ -5496,6 +5507,7 @@ title: 标签浏览
 
 - [针对大型语言模型的Unicode文本水印方法安全性与可检测性分析](blog/posts/2026-08-16-针对大型语言模型的Unicode文本水印方法安全性与可检测性分析.md)
 - [Python 邮件解析中的字节与 Unicode 混淆问题剖析](blog/posts/2026-08-27-Python 邮件解析中的字节与 Unicode 混淆问题剖析.md)
+- [APFS 中的 Unicode 正规化与大小写折叠如何引发安全漏洞](blog/posts/2026-11-25-APFS中的Unicode正规化与大小写折叠如何引发安全漏洞.md)
 
 ## Unix
 
@@ -5872,6 +5884,7 @@ title: 标签浏览
 ## macOS
 
 - [介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案](blog/posts/2026-08-22-介绍 Dashboard Touch：打造你自己的 Touch ID 替代方案.md)
+- [APFS 中的 Unicode 正规化与大小写折叠如何引发安全漏洞](blog/posts/2026-11-25-APFS中的Unicode正规化与大小写折叠如何引发安全漏洞.md)
 
 ## mmWave
 
@@ -12447,6 +12460,7 @@ title: 标签浏览
 - [包管理器之间的代码共享](blog/posts/2026-08-12-包管理器之间的代码共享.md)
 - [隐藏在请求之中：通过词元相关性解释不道德的大模型依从现象](blog/posts/2026-08-26-隐藏在请求之中：通过词元相关性解释不道德的大模型依从现象.md)
 - [已被撤销却依然具备权威性：对智能体记忆系统中撤销执行情况的实证研究](blog/posts/2026-09-10-已被撤销却依然具备权威性：对智能体记忆系统中撤销执行情况的实证研究.md)
+- [APFS 中的 Unicode 正规化与大小写折叠如何引发安全漏洞](blog/posts/2026-11-25-APFS中的Unicode正规化与大小写折叠如何引发安全漏洞.md)
 
 ## 安全研究
 
@@ -14013,6 +14027,7 @@ title: 标签浏览
 - [Kimina-Prover：在大型形式化推理模型中引入测试时强化学习搜索](blog/posts/2026-10-28-Kimina-Prover-在大型形式化推理模型中引入测试时强化学习搜索.md)
 - [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 - [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
+- [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
 
 ## 强化学习与SFT
 
@@ -16041,6 +16056,7 @@ title: 标签浏览
 
 - [当文件系统卸载时如何停止 Systemd 服务](blog/posts/2026-08-18-当文件系统卸载时如何停止 Systemd 服务.md)
 - [文件系统发生写入错误后的未知状态与架构权衡](blog/posts/2026-11-14-文件系统发生写入错误后的未知状态与架构权衡.md)
+- [APFS 中的 Unicode 正规化与大小写折叠如何引发安全漏洞](blog/posts/2026-11-25-APFS中的Unicode正规化与大小写折叠如何引发安全漏洞.md)
 
 ## 文化偏见
 
