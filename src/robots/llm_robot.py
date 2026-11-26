@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger("ai_insight")
 
 def _get_llm_config():
-    load_dotenv()
+    load_dotenv(override=True)
     api_base = os.getenv("NEWAPI_URL") or os.getenv("LLM_API_BASE") or "https://api.openai.com/v1"
     if not api_base.endswith("/v1"):
         api_base = f"{api_base.rstrip('/')}/v1"
@@ -24,7 +24,7 @@ def _chat_completion_with_fallback(
     messages: list[dict],
     temperature: float = 0.2,
     timeout: int = 30,
-    backoff_delays: tuple[int, ...] = (8, 16, 32, 64),
+    backoff_delays: tuple[int, ...] = (2, 5),
 ) -> str:
     api_base, api_key, models = _get_llm_config()
     headers = {
@@ -51,6 +51,13 @@ def _chat_completion_with_fallback(
                     headers=headers,
                     timeout=timeout,
                 )
+                if resp.status_code == 429:
+                    # If quota exceeded, don't keep retrying the same dead model
+                    err_msg = resp.text
+                    if "exceeded your current quota" in err_msg or "limit exceeded" in err_msg:
+                        logger.warning(f"Model {model} quota exceeded. Skipping to fallback model.")
+                        last_exception = requests.HTTPError(err_msg, response=resp)
+                        break
                 resp.raise_for_status()
                 return resp.json()["choices"][0]["message"]["content"]
             except Exception as e:
@@ -122,14 +129,30 @@ def score_article(entry: dict) -> float:
 
     system_prompt = load_screener_prompt()
 
+    # Clean preview for editorial evaluation if content is HTML
+    eval_source = content_text
+    if "<div" in content_text or "<main" in content_text or "<p" in content_text:
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content_text, "html.parser")
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside", "svg"]):
+                tag.decompose()
+            clean = soup.get_text(separator="\n")
+            clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
+            if len(clean) >= 500:
+                eval_source = clean
+        except Exception:
+            pass
+
+    eval_len = len(eval_source)
     # Smart sampling up to 8000 characters for deep engineering articles
-    if char_count <= 8000:
-        content_preview = content_text
+    if eval_len <= 8000:
+        content_preview = eval_source
     else:
         content_preview = (
-            content_text[:5000]
+            eval_source[:5000]
             + "\n\n... [Middle content truncated for editorial evaluation] ...\n\n"
-            + content_text[-3000:]
+            + eval_source[-3000:]
         )
 
     title = entry.get("title", "Untitled")

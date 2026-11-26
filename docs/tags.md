@@ -2429,6 +2429,7 @@ title: 标签浏览
 - [Transformers 原生支持运行 llama.cpp (GGUF) 量化模型：Apple Silicon 性能逼近原生](blog/posts/2026-09-23-Transformers-原生支持运行-llama.cpp-GGUF-量化模型：Apple-Silicon-性能逼近原生.md)
 - [Hugging Face 携手 TorchTPU：让 TPU 获得原生 PyTorch 支持](blog/posts/2026-10-21-Hugging-Face-携手-TorchTPU-让-TPU-获得原生-PyTorch-支持.md)
 - [Transformers 模型集成契约：构建轻量化 CPU 级自动化回归测试体系](blog/posts/2026-11-04-Transformers-模型集成契约-轻量化-CPU-自动化回归测试框架.md)
+- [集群、鸟群与协作组：如何构建、训练与评估多智能体系统](blog/posts/2026-11-27-集群-鸟群与协作组-如何构建-训练与评估多智能体系统.md)
 
 ## Humanize
 
@@ -3595,6 +3596,7 @@ title: 标签浏览
 - [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 - [NVIDIA Vera CPU 在智能体速度与能效上全面超越传统 x86](blog/posts/2026-11-06-NVIDIA-Vera-CPU-在智能体速度与能效上全面超越传统-x86.md)
 - [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
+- [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
 
 ## NVIDIA A100
 
@@ -3654,6 +3656,7 @@ title: 标签浏览
 - [NVIDIA 发布开源语音大模型 Nemotron 3.5 Transcribe 与 46 万小时语音数据集 Granary v2](blog/posts/2026-10-29-NVIDIA-发布开源语音大模型-Nemotron-3-5-Transcribe-与-46-万小时语音数据集.md)
 - [NVIDIA 发布 Nemotron 3.5 Transcribe：30B 开源多语种语音转录 MoE 大模型](blog/posts/2026-10-30-NVIDIA-发布-Nemotron-3.5-Transcribe-30B-开源多语种转录-MoE-大模型.md)
 - [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
+- [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
 
 ## Netflix
 
@@ -5161,6 +5164,7 @@ title: 标签浏览
 - [使用 Hugging Face Bucket 传输万亿参数：TRL 中的 Delta 权重同步机制](blog/posts/2026-08-07-使用 Hugging Face Bucket 传输万亿参数：TRL 中的 Delta 权重同步机制.md)
 - [通过 100 步 GRPO 微调 350M 模型以获得更好的结构化输出](blog/posts/2026-09-04-通过 100 步 GRPO 微调 350M 模型以获得更好的结构化输出.md)
 - [使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型](blog/posts/2026-09-04-使用 TRL 与 OpenEnv 训练会用代码画水彩画的代码模型.md)
+- [集群、鸟群与协作组：如何构建、训练与评估多智能体系统](blog/posts/2026-11-27-集群-鸟群与协作组-如何构建-训练与评估多智能体系统.md)
 
 ## TRUSS
 
@@ -10755,6 +10759,7 @@ title: 标签浏览
 - [MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口](blog/posts/2026-09-11-MOSAIC：用于跨范式智能体混合与人机协作的通用智能体级接口.md)
 - [我是如何借助 AI 与 Lean 证明康威50年猜想的：Dan Abramov 的一月通关实录](blog/posts/2026-09-19-我是如何借助-AI-与-Lean-证明康威50年猜想的-Dan-Abramov-的一月通关实录.md)
 - [扩展代码智能体团队的经验教训：仅用 30% 成本触达前沿能力](blog/posts/2026-10-15-扩展代码智能体团队的经验教训-仅用-30-成本触达前沿能力.md)
+- [集群、鸟群与协作组：如何构建、训练与评估多智能体系统](blog/posts/2026-11-27-集群-鸟群与协作组-如何构建-训练与评估多智能体系统.md)
 
 ## 多智能体谈判
 
@@ -12109,6 +12114,7 @@ title: 标签浏览
 - [Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法](blog/posts/2026-11-05-Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法.md)
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 - [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
+- [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
 
 ## 大语言模型代理
 
@@ -14037,6 +14043,8 @@ title: 标签浏览
 - [RLVR 没有免费午餐：每一个 pass@1 的提升都伴随着 pass@k 的代价](blog/posts/2026-10-31-RLVR没有免费午餐-每一个pass1的提升都伴随着passk的代价.md)
 - [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 - [不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力](blog/posts/2026-11-25-不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力.md)
+- [集群、鸟群与协作组：如何构建、训练与评估多智能体系统](blog/posts/2026-11-27-集群-鸟群与协作组-如何构建-训练与评估多智能体系统.md)
+- [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
 
 ## 强化学习与SFT
 
@@ -16191,6 +16199,7 @@ title: 标签浏览
 
 - [PaDoc：基于版面基础的文档解析并行解码框架](blog/posts/2026-08-07-PaDoc：基于版面基础的文档解析并行解码框架.md)
 - [PaddleOCR 3.5：使用 Transformers 后端运行 OCR 与文档解析任务](blog/posts/2026-08-07-PaddleOCR 3.5：使用 Transformers 后端运行 OCR 与文档解析任务.md)
+- [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
 
 ## 文档问答
 
@@ -16891,6 +16900,10 @@ title: 标签浏览
 ## 智能体隐私
 
 - [ContextLeak：通过恶意工具窃取大模型智能体上下文](blog/posts/2026-09-01-ContextLeak：通过恶意工具窃取大模型智能体上下文.md)
+
+## 智能体集群
+
+- [集群、鸟群与协作组：如何构建、训练与评估多智能体系统](blog/posts/2026-11-27-集群-鸟群与协作组-如何构建-训练与评估多智能体系统.md)
 
 ## 智能制造
 
