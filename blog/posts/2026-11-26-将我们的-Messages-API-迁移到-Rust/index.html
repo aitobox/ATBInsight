@@ -1,0 +1,781 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-26-%E5%B0%86%E6%88%91%E4%BB%AC%E7%9A%84-Messages-API-%E8%BF%81%E7%A7%BB%E5%88%B0-Rust/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#messages-api-rustanthropic" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="messages-api-rustanthropic">将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战</h1>
+<blockquote>
+<h1 id="migrating-our-messages-api-to-rust">Migrating our Messages API to Rust</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在 2024 至 2026 年间，Anthropic 核心 Messages API 的调用流量激增了整整 1800 倍。随着请求处理流程愈发复杂，最初用 Python 编写的服务在对象创建、垃圾回收以及异步任务切换中遭遇了严峻的 CPU 与内存性能瓶颈。面对如此庞大且高速演进的关键基础设施，如何在完全不中断服务的前提下将其彻底重写为 Rust？Anthropic 团队没有依赖滞后陈旧的离线测试，而是将生产环境本身变成了实时判题机，构建起由 AI 智能体 (AI Agent) 主导的“三层验证循环”——即毫秒级本地沙盒测试（内环）、全量生产影子流量 (Shadow Traffic) 验证（外环）与沉淀工程师经验规则的记忆闭环（记忆环）。这一自动化闭环不仅消除了生成代码与生产验证之间的鸿沟，更平稳实现了单请求 CPU 开销降低约 70%、内存占用减少超 80%、首 Token 延迟 (Time to First Token) 缩短约 20% 的傲人战果。</p>
+<hr />
+<h2 id="_2">核心摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>对庞大且经过严密测试的生产系统进行重构迁移，往往会暴露出明显的“生成器与验证器鸿沟 (Generator-Verifier Gap)”：尤其是在 AI 辅助编程时代，生成新代码的速度快如闪电，但在真实的线上生产环境中验证其正确性却难如登天。</p>
+<blockquote>
+<p>Migrating large, well-tested production systems often presents a "generator–verifier" gap: while generating new code is fast—especially with AI assistants—verifying its correctness in live environments is extremely difficult. </p>
+</blockquote>
+<p>本文详细揭秘了 Anthropic 如何在 2024 至 2026 年业务流量激增 1800 倍的极限挑战下，将其核心服务 <strong>Messages API</strong> 从 Python 彻底迁移至 Rust。工程团队并没有单纯依赖陈旧的历史测试用例，而是通过一套创新的<strong>影子流量系统 (Shadowing System)</strong>，把生产环境的 Messages API 本身变成了一台自动化的验证机。通过构建极其严密的验证闭环（涵盖本地沙盒测试的内环、生产影子流量的外环以及规则沉淀的记忆环），他们在服务完全不离线的情况下顺利完成了向 Rust 的平滑切换，取得了亮眼的性能突破：</p>
+<blockquote>
+<p>This article details how Anthropic migrated its core <strong>Messages API</strong> from Python to Rust amidst an 1,800x traffic growth between 2024 and 2026. Rather than relying solely on legacy tests, the engineering team turned the production Messages API itself into an automated verifier using a novel <strong>shadowing system</strong>. By implementing rigorous verification loops (inner sandbox testing, outer production loops, and memory loops), they successfully transitioned to Rust without taking the service offline, resulting in:</p>
+</blockquote>
+<ul>
+<li><strong>单请求 CPU 占用降低约 70%</strong>；</li>
+<li><strong>单请求内存开销减少超 80%</strong>；</li>
+<li><strong>首 Token 延迟中位数缩短约 20%</strong>。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>~70% less CPU usage</strong> per request.</li>
+<li><strong>&gt;80% less memory usage</strong> per request.</li>
+<li><strong>~20% reduction</strong> in median time to first token.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_3">为什么必须迁移？</h2>
+<blockquote>
+<h2 id="why-migrate">Why Migrate?</h2>
+</blockquote>
+<p>Messages API 最初于 2023 年使用 Python 构建，起初仅是一个简易的请求转发服务。然而截至 2025 年底，流经该 API 的每个请求都需要经历庞杂的输入校验、提示词 (Prompt) 格式转换、分词处理 (Tokenization)、安全内容过滤以及流式 Token 解析。Python 在高并发场景下创建对象、回收内存以及异步任务交接时产生了极为显著的系统开销。</p>
+<blockquote>
+<p>Built in Python in 2023, the Messages API started as a simple request forwarder. However, by late 2025, every request required extensive validation, prompt conversion, tokenization, safety screening, and token stream parsing. Python added significant overhead during object creation, memory freeing, and task handoffs. </p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                      The Monthly Average of API Requests               │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="Bar chart of API requests per day by month, from January 2024 to October 2026. Bars are barely visible through 2024, rise gradually in 2025, and climb steeply in 2026 to their highest point in October." src=".././images/2299ce96894e.png" /></p>
+<h3 id="_4">渐进式改造还是一步到位？</h3>
+<blockquote>
+<h3 id="incremental-or-all-at-once">Incremental or All at Once?</h3>
+</blockquote>
+<p>Anthropic 最初曾尝试采用渐进式重写方案，仅将下游的输出解析逻辑移植为 Rust。然而，这种“混血架构”导致每个请求在处理流式 Token 时，必须在 Python 与 Rust 的语言边界之间来回跨越三次，由此引入的跨语言交互开销直接抵消了 Rust 带来的性能红利。</p>
+<blockquote>
+<p>Anthropic initially attempted an incremental rewrite by porting just the output parsing logic to Rust. However, this hybrid approach caused tokens to cross the Python/Rust boundary three times per request, introducing additional overhead that negated the performance benefits. </p>
+</blockquote>
+<p>到了 2026 年中，随着 Claude 编写的代码已经占到团队合并代码总量的 80% 以上，全量迁移到 Rust 变得切实可行。此时工程推进的核心瓶颈早已不再是<em>生成代码</em>，而变成了如何<em>验证其正确性</em>。</p>
+<blockquote>
+<p>By mid-2026, with Claude writing over 80% of merged code, a full migration became feasible. The remaining bottleneck was no longer <em>generating</em> code, but <em>verifying</em> its correctness.</p>
+</blockquote>
+<hr />
+<h2 id="_5">我们如何验证迁移的正确性</h2>
+<blockquote>
+<h2 id="how-we-verified-the-migration">How We Verified the Migration</h2>
+</blockquote>
+<p>为了确保重构后的 Rust 新服务与遗留的 Python 老服务表现完全等价，团队横向对比了保障正确性的三种经典范式：形式化规则 (如 Lean 交互式定理证明器)、样例测试集 (如单元测试套件) 以及现存运行系统 (充当实时的真实基准/Oracle)。鉴于 Messages API 伴随着新功能和新模型在持续高速迭代，传统的离线测试不仅覆盖率不足，而且往往与遗留代码的具体实现细节高度耦合。</p>
+<blockquote>
+<p>To ensure parity between the legacy Python service and the new Rust service, the team compared general approaches to correctness: rules (e.g., Lean proof assistants), examples (test suites), and existing systems (acting as live oracles). Because the Messages API constantly evolved with new features and models, tests alone were insufficient and often coupled to the legacy implementation.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                   Three Common Sources of “Correctness”                │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="Three rows, each sending a signal to a Claude agent. A rule, like Lean for proofs, is all written down and flags a step that doesn’t follow. Examples, like Bun’s test suite, are partly written down and flag a failing test. An existing system, like our Python service, has no answers written down, so you build a checker that flags where the two differ." src=".././images/74183e4e2d6f.png" /></p>
+<h3 id="_6">在生产环境中捕捉行为偏差</h3>
+<blockquote>
+<h3 id="detecting-parity-with-production">Detecting Parity with Production</h3>
+</blockquote>
+<p>直接在线上生产环境中接入影子流量面临着极其独特的挑战：</p>
+<blockquote>
+<p>Running live shadow traffic presented unique challenges:</p>
+</blockquote>
+<ol>
+<li><strong>计费与配额控制</strong>：不能对用户请求产生二次计费或重复扣减调用配额；</li>
+<li><strong>输出的不确定性</strong>：大语言模型 (Large Language Model, LLM) 本身的输出具有随机性，传统的 Diff 工具很容易将输出的自然波动直接视作噪声丢弃，从而掩盖真正的底层 Bug。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Billing &amp; Limits:</strong> Requests could not be double-counted or double-billed.</li>
+<li><strong>Nondeterminism:</strong> Because Claude's outputs vary naturally, traditional diff tools would discard output differences as noise, masking underlying bugs. </li>
+</ol>
+</blockquote>
+<p>为了攻克这一难题，系统采取的方案是：让模型只执行一次真实推理，随后将完全相同的模型输出结果分别回放到 Python 与 Rust 两套实现中，逐一对输入和输出处理链路的每一个关键步骤进行精准对比。</p>
+<blockquote>
+<p>To solve this, the system ran the model once and replayed the exact model output to both Python and Rust implementations, comparing every step of the input and output paths.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│               The Messages API’s Input and Output Paths                │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="Flow diagram of a request. The input path accepts or rejects it, resolves settings, and builds the prompt; about a quarter of inputs matched at first. Claude runs once. The output path sorts the reply, streams it, and counts usage. Examples of differences include a rejected field, a 1M limit read as 200K, a missing tool description, stripped newlines, and missing usage fields. The risk designed against is a copy counted twice." src=".././images/fbbb7feb0bcc.png" /></p>
+<p>为了在不窥探用户具体提示词文本的前提下全面捍卫隐私，工程师们通过记录差异的“<strong>形态特征 (Shape)</strong>”来进行追踪定位：</p>
+<blockquote>
+<p>To protect user privacy without reading prompt text, engineers recorded the <strong>shape</strong> of differences using:</p>
+</blockquote>
+<ul>
+<li><strong>检查点比对 (Checkpointing)</strong>：分步对比关键中间结果 (例如提示词组装、参数校验等)，精确定位代码行为发生分歧的具体执行节点；</li>
+<li><strong>特征指纹识别 (Fingerprinting)</strong>：依据在提示词中的偏移位置与长度偏差对错误进行聚类归类，从而区分出互不相干的独立缺陷。</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Checkpointing:</strong> Comparing step-by-step results (e.g., prompt building, validation) to isolate the exact place code diverged.</li>
+<li><strong>Fingerprinting:</strong> Grouping errors by prompt position and length gaps to distinguish specific bugs.</li>
+</ul>
+</blockquote>
+<div class="highlight"><pre><span></span><code>step:        build prompt     ← where in the code
+piece:       2                ← where in the prompt
+first diff:  byte 17          ← fingerprint
+python:      190 bytes        ← fingerprint
+rust:        190 bytes        ← fingerprint
+</code></pre></div>
+<hr />
+<h2 id="_7">核心验证循环</h2>
+<blockquote>
+<h2 id="verification-loops">Verification Loops</h2>
+</blockquote>
+<p>为了能够完全自主化地消化并修复成千上万条差异记录，Anthropic 建立了一套三层递进的验证闭环机制：</p>
+<blockquote>
+<p>To manage thousands of diff records autonomously, Anthropic established a three-tiered verification loop:</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                          Verification Loops                            │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="Three nested loops. The inner loop asks whether an edit fixes the difference, using local checks that take under a second to compare. The outer loop asks whether it is gone in production, using shadowed live traffic over hours or days. The memory loop asks why it keeps happening, and turns people’s corrections into new rules." src=".././images/c410940618bc.png" /></p>
+<h3 id="1">1. 本地沙盒测试（内环）</h3>
+<blockquote>
+<h3 id="1-inner-loop">1. Inner Loop</h3>
+</blockquote>
+<p>AI 智能体工作在具备极速本地检测能力的受控云端沙盒环境中。在无需调用大模型的前提下，本地的输入/输出检查工具可以在不到 1 秒的时间内迅速对比新老代码库的行为差异。一旦智能体成功复现出偏差，便会着手修改 Rust 代码并补全回归测试，随后发起 Pull Request 提交人工审查。</p>
+<blockquote>
+<p>Agents operated inside a secure cloud sandbox equipped with fast local checks. Without calling the model, local input/output checks compared codebase behavior in under a second. Once an agent reproduced a discrepancy, it edited the Rust code and added a regression test before opening a Pull Request for human review.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                               Inner Loop                               │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="The inner loop, highlighted. From a fingerprint, the agent guesses the cause and writes a triggering request or reply. Input and output checks run it through both versions. If they match, it guesses again; if they differ as the record did, it edits the Rust and rechecks. Once they match after the edit, it opens a PR with a fix and a test." src=".././images/3bd29e883161.png" /></p>
+<h3 id="2">2. 生产影子流量验证（外环）</h3>
+<blockquote>
+<h3 id="2-outer-loop">2. Outer Loop</h3>
+</blockquote>
+<p>经人工审核通过的补丁被合并后，会部署至预发环境，并在真实的线上生产影子流量下接受持续监控。如果在数小时或数天的大规模真实流量冲刷下，对应缺陷的特征指纹彻底消失，该修复任务才会标记为圆满闭环。</p>
+<blockquote>
+<p>Approved fixes were merged, deployed to staging environments, and monitored against shadowed live production traffic. If the bug's fingerprint vanished from live traffic over extended periods, the task closed successfully.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                               Outer Loop                               │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="The outer loop, highlighted. An engineer reviews the PR, which merges and deploys to a test environment, then production. Shadowed live traffic is watched for the fingerprint. If it remains, work returns to the inner loop. If repeated checks find it gone, the task closes, and the thread reopens if it returns." src=".././images/21bf77f8b146.png" /></p>
+<h3 id="3">3. 经验沉淀与规范进化（记忆环）</h3>
+<blockquote>
+<h3 id="3-memory-loop">3. Memory Loop</h3>
+</blockquote>
+<p>人类工程师在代码审查中的每一条反馈与修正意见，都会被系统自动捕获并持久化沉淀到 <code>CLAUDE.md</code> 以及共享知识库中。这种机制防止了智能体反复踩进同一条河流，并能促使智能体主动对整个代码库进行排查，清理潜在的类似缺陷。</p>
+<blockquote>
+<p>Human feedback and reviewer corrections were automatically captured as persistent rules in <code>CLAUDE.md</code> and shared memory notes. This prevented agents from repeating past mistakes and allowed them to proactively audit the codebase for similar latent bugs.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                              Memory Loop                               │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="The memory loop, highlighted. A repeated mistake prompts an engineer’s correction, “Did you make that up yourself?” It becomes a rule each new agent reads first, a search by another agent that finds the same mistake in seven places, and a test that fails if the versions drift. A daily read of merged changes flags what Rust might need to mirror." src=".././images/d46fd3425949.png" /></p>
+<hr />
+<h2 id="_8">成果与核心经验启示</h2>
+<blockquote>
+<h2 id="results-and-lessons-learned">Results and Lessons Learned</h2>
+</blockquote>
+<p>通过由严密验证闭环驱动的自主化智能体体系，Anthropic 在生产环境完全不离线的情况下，平稳完成了对这项核心关键基础设施的彻底重构。</p>
+<blockquote>
+<p>By utilizing autonomous agents governed by rigorous verification loops, Anthropic safely overhauled a live, mission-critical infrastructure service.</p>
+</blockquote>
+<p><div class="highlight"><pre><span></span><code>┌────────────────────────────────────────────────────────────────────────┐
+│                     Performance Gains in Rust API                      │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<img alt="Three charts of the move from Python to Rust. CPU used per request falls by about 70% and memory used per request by more than 80%, both from August to October. Median time to first token falls by about 20% between roughly September 7 and 21." src=".././images/3f08dddf531c.png" /></p>
+<h3 id="_9">核心经验启示</h3>
+<blockquote>
+<h3 id="key-takeaways">Key Takeaways</h3>
+</blockquote>
+<ol>
+<li><strong>验证能力成为全新生产力瓶颈</strong>：当代码生成的边际成本与耗时无限趋近于零时，工程研发的实际迭代速率完全取决于你验证代码正确性的速度与可靠性；</li>
+<li><strong>显式设计可观测调试信号</strong>：生产系统本身并不会主动吐出适合调试的比对信号，构建分步检查点 (Checkpointing) 与指纹聚类 (Fingerprinting) 机制是填补这一可观测鸿沟的关键生命线；</li>
+<li><strong>构建高可信闭环自动化</strong>：将毫秒级本地测试沙盒（内环）、高并发全量生产影子流量验证（外环）与持久化记忆规则库深度结合，方能使 AI 智能体在规模化真实软件工程中安全、可靠、高产地发挥效能。</li>
+</ol>
+<blockquote>
+<ol>
+<li><strong>Verification is the New Bottleneck:</strong> When code generation is cheap and fast, your engineering velocity is strictly bounded by how quickly and reliably you can verify correctness.</li>
+<li><strong>Design Explicit Signals:</strong> Production systems do not naturally output debugging signals. Building checkpointing and fingerprinting mechanisms is essential to bridge this gap.</li>
+<li><strong>Build Closed-Loop Automation:</strong> Combining fast local sandboxes (inner loops), live shadow traffic verification (outer loops), and persistent memory rules allows AI agents to operate safely and effectively at scale.</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="_10">作者与致谢</h2>
+<blockquote>
+<h2 id="authors-acknowledgements">Authors &amp; Acknowledgements</h2>
+</blockquote>
+<ul>
+<li><strong>撰写作者：</strong> Lance Martin, Jake Eaton, Arvin Aminpour, Emma Webb, Bharat Mediratta, 以及 Ravi Trivedi</li>
+<li><strong>编辑指导：</strong> Caitlin Love</li>
+</ul>
+<blockquote>
+<ul>
+<li><strong>Written by:</strong> Lance Martin, Jake Eaton, Arvin Aminpour, Emma Webb, Bharat Mediratta, and Ravi Trivedi  </li>
+<li><strong>Editorial Guidance:</strong> Caitlin Love  </li>
+</ul>
+</blockquote>
+<p><em>如需了解更多技术细节，欢迎查阅官方 <a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">Messages API 文档</a>。</em></p>
+<blockquote>
+<p><em>For more details, check out the official <a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages">Messages API Documentation</a>.</em></p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Anthropic</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Claude</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">架构迁移</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">AI智能体</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,763 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-26-%E5%BA%9F%E9%99%A4-Lock-Poisoning-%E9%94%81%E4%B8%AD%E6%AF%92%E6%9C%BA%E5%88%B6-Rust-%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E7%9A%84%E5%8F%8D%E6%80%9D/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>废除 Lock Poisoning：Rust 并发编程的反思与演进 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#lock-poisoningrust" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              废除 Lock Poisoning：Rust 并发编程的反思与演进
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="lock-poisoningrust">废除 Lock Poisoning：Rust 并发编程的反思与演进</h1>
+<blockquote>
+<h1 id="abolish-lock-poisoning">Abolish Lock Poisoning</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>Rust 标准库中的互斥锁 (Mutex) 设计了一项名为“锁中毒 (Lock Poisoning)”的独特机制：当持有锁的线程发生恐慌 (Panic) 时，该互斥锁会被标记为中毒状态，以防其他线程读到损坏的不完整数据。然而在十多年的工业实践中，开发者们发现这套理论上美好的设计在现实中沦为灾难——几乎没有任何代码能真正安全地恢复中毒状态，惯用的 <code>lock().unwrap()</code> 反而将单次恐慌演变为死锁、级联测试崩溃乃至无声的服务瘫痪。随着 Tokio、parking_lot 等核心生态库彻底弃用锁中毒，Rust 官方团队也在积极推进在未来的语言版本中将非中毒锁设为默认行为。</p>
+<hr />
+<h2 id="_2">核心概要</h2>
+<blockquote>
+<h2 id="summary">Summary</h2>
+</blockquote>
+<p>Rust 标准库中的 <code>std::sync::Mutex</code> 包含一项名为<strong>互斥锁中毒 (Mutex Poisoning)</strong> 的特性：一旦某个线程在持有互斥锁期间发生恐慌 (Panic)，该互斥锁就会被标记为“中毒”；此后其他线程对 <code>lock()</code> 的调用都会返回一个 <code>PoisonError</code> 错误。</p>
+<blockquote>
+<p>Rust’s <code>std::sync::Mutex</code> includes a feature called <strong>mutex poisoning</strong>, which marks a mutex as "poisoned" if a thread panics while holding the lock, causing subsequent calls to <code>lock()</code> to return a <code>PoisonError</code>. </p>
+</blockquote>
+<p>从理论设计的初衷来看，锁中毒旨在保护内部数据的不变量 (Invariant)，防止系统在恐慌后遗留下损坏的状态。但本文指出，这项机制在实践中其实是一个失败的尝试。在真实的软件代码库中，几乎没有任何代码能够正确处理中毒的锁；而 Rust 社区惯用的错误处理方式 (即 <code>lock().unwrap()</code>) 更是频繁引发死锁、级联测试失败乃至无声无息的生产事故。随着各大核心项目以及标准库自身越来越多地弃用中毒机制，转而投向诸如 <code>parking_lot</code> 这类非中毒替代方案，Rust 生态系统最明智的选择就是彻底移除锁中毒作为默认行为。</p>
+<blockquote>
+<p>While theoretically intended to protect internal data invariants from being left in a broken state, this post argues that lock poisoning is a failed experiment. In practice, codebases rarely handle poisoned locks correctly, and idiomatic error handling (<code>lock().unwrap()</code>) frequently leads to deadlocks, cascading test failures, and silent production outages. With major projects and the standard library itself increasingly abandoning poisoning in favor of non-poisoning alternatives like <code>parking_lot</code>, the Rust ecosystem would be best served by removing lock poisoning as a default behavior.</p>
+</blockquote>
+<hr />
+<h2 id="_3">为什么反对锁中毒机制？</h2>
+<blockquote>
+<h2 id="the-case-against-poisoning">The Case Against Poisoning</h2>
+</blockquote>
+<p>Rust 拥有一个相当奇特的特性——如果不是因为早期的历史遗留包袱，我认为这项特性放在今天绝不可能被并入这门语言：它就是互斥锁中毒。当 Rust 代码在持有 <code>std::sync::Mutex</code> 时发生恐慌，该互斥锁就会“中毒”。这意味着后续对 <code>lock()</code> 的任何调用都会返回一个 <code>PoisonError</code>。这项特性的初衷是：对象内部可能维系着一些必须得到保证的不变量，而在不恰当的时机发生恐慌可能会打破这些假设，从而使对象陷入不可预知的损坏状态。</p>
+<blockquote>
+<p>Rust has a curious feature that I don’t think the language would land today if it were not a legacy artifact: mutex poisoning. When some Rust code panics while holding a <code>std::sync::Mutex</code>, the mutex is <em>poisoned</em>. That means any further call to <code>lock()</code> returns a <code>PoisonError</code>. The motivation for this feature is that an object might have some internal invariants that need to be upheld, and panicking at the wrong moment might invalidate assumptions and leave an object behind in a broken state.</p>
+</blockquote>
+<p>就我个人而言，我极其讨厌这项特性。我在它身上踩过无数次坑，却想不起有哪怕一次它真正帮到了我。目前 Rust 库团队 (libs team) 正在<a href="https://github.com/rust-lang/rust/issues/149359">热烈讨论</a>是否要在下一个版本纪元 (Edition) 中将非中毒互斥锁设为默认行为，不出所料，这引发了相当一部分人站出来为这项旧特性辩护。</p>
+<blockquote>
+<p>Personally, I absolutely hate this feature. It has bitten me so many times, and I cannot recall a single instance where it actually helped me. The libs team is currently <a href="https://github.com/rust-lang/rust/issues/149359">discussing</a> making non-poisoning locks the default in the next edition, which predictably has caused quite a few people to jump to the defense of the feature.</p>
+</blockquote>
+<p>在这篇文章中，我想详细陈述我个人的观点：为什么中毒锁应该被彻底废除，或者至少降级为极少使用的特殊情况。</p>
+<blockquote>
+<p>In this post, I want to make my personal case for why poisoned locks should either be entirely removed or made the exception.</p>
+</blockquote>
+<p>首要原因在于，在现实世界的所有代码库中，我至今还没有遇到过任何能够正确处理中毒锁的实现。相反，我见到了大量错误处理它的代码，其造成的破坏甚至远远恶劣于完全不支持中毒机制的 <a href="https://docs.rs/parking_lot">parking_lot</a> 互斥锁。</p>
+<blockquote>
+<p>Primarily, this is because I have yet to come across code in the wild that handles a poisoned lock correctly. On the other hand, I have come across enough code that mishandles it, resulting in behavior worse than a <a href="https://docs.rs/parking_lot">parking_lot</a> lock (which does not support poisoning).</p>
+</blockquote>
+<p><a href="https://news.ycombinator.com/item?id=46041342">Josh Triplett</a> 在 Hacker News 的一条评论中直截了当地指出：</p>
+<blockquote>
+<p>“在标准库的整个演进历史中，我们从未见过哪怕一次有开发者尝试从锁中毒中恢复状态的报告。”</p>
+<p><a href="https://news.ycombinator.com/item?id=46041342">Josh Triplett</a> put it quite strongly in a Hacker News comment: 
+💬 [原文引用 / Original Quote]:
+“In the entire history of the standard library, we have never once seen a single report of anyone attempting to recover from poison.”</p>
+</blockquote>
+<p>当线程持有互斥锁并发生恐慌时，通常只有两种合理的应对方式：要么直接终止整个进程，要么忽略中毒标记继续执行。如果采用 <code>panic = "abort"</code>，系统会自动执行前者，锁中毒问题压根不会出现；但根据我所见过的所有现实案例，在基于栈展开 (Unwinding) 的默认模式下，社区习以为常的 <code>lock().unwrap()</code> 写法却恰恰选了最糟糕的一条路。</p>
+<blockquote>
+<p>When a panic happens with a lock held, there are two reasonable reactions: shut the process down, or carry on and ignore the flag. With <code>panic = "abort"</code>, you get the former, and poisoning never comes up. From all the evidence I have seen, with unwinding, the idiomatic <code>lock().unwrap()</code> picks the worst option of all.</p>
+</blockquote>
+<p>这是因为它既不停止进程，也不允许程序正常继续运行；相反，它会将未来的每一次加锁尝试都变成一次恐慌，有时还会引发灾难性的后果。但这还远远不是该机制现存的唯一问题。下面我将列举其中的几大核心痛点，并结合真实世界中坑害过开发者的开源代码进行剖析。</p>
+<blockquote>
+<p>That’s because it neither stops the process nor lets it continue; instead, it turns every future lock attempt into a panic with sometimes disastrous effects. But that is not the only issue with the system today. Below, I want to share some of the core problems, referencing real-world code where people got bitten.</p>
+</blockquote>
+<hr />
+<h2 id="_4">错误对象持有互斥锁：潜在的死锁隐患</h2>
+<blockquote>
+<h2 id="the-error-holds-the-lock">The Error Holds the Lock</h2>
+</blockquote>
+<p>锁中毒机制中有一个非常隐蔽的细节：<code>PoisonError</code> 错误对象本身必须持有锁守卫 (Guard)。这是因为如果你想要忽略中毒标记并继续访问受保护的数据，你必须从这个错误对象中提取出锁守卫。这意味着：只要错误对象还没有被释放，互斥锁就一直处于被锁定的状态！</p>
+<blockquote>
+<p>One subtle aspect of poisoning is that the <code>PoisonError</code> needs to hold the guard. That’s because in order to ignore the poison flag, you need to fetch the guard from the error object. Holding on to the error means holding on to the lock!</p>
+</blockquote>
+<p>这就很容易导致那些涉及错误包装或类型转换的常规代码暗藏死锁 (Deadlock) 隐患。在一个返回 <code>Box&lt;dyn Error&gt;</code> 或类似类型的函数中，看起来人畜无害的 <code>m.lock()?</code> 写法，只要错误对象生命周期还在，就会一直锁住互斥锁 (参考 issue <a href="https://github.com/rust-lang/rust/issues/159930">#159930</a>)。</p>
+<blockquote>
+<p>That can cause common code that does error wrapping or error conversions to introduce a deadlock hazard. The innocent-looking <code>m.lock()?</code> in a function returning <code>Box&lt;dyn Error&gt;</code> or similar keeps the mutex locked for as long as the error lives (<a href="https://github.com/rust-lang/rust/issues/159930">#159930</a>).</p>
+</blockquote>
+<p>类似的问题同样会出现在 <code>if let</code> 语句中。例如在 <a href="https://github.com/farion1231/cc-switch/commit/43077f5539235f0255642ec9aab558d29f3f1b33">cc-switch</a> 项目中，测试用例发生了卡死挂起，原因就在于其 <code>if let Ok(..) = lock() { .. } else { .. }</code> 逻辑的分支中试图再次获取同一个互斥锁，而此时条件表达式中未命名的临时 <code>PoisonError</code> 仍然牢牢持有锁守卫。<a href="https://github.com/David-Martel/PC-AI/pull/273/changes">PC-AI</a> 的 <code>match</code> 分支中也出现过一模一样的 Bug，在 <a href="https://github.com/anatolykoptev/ox-embed-server/issues/152">ox-embed-server</a> 中也能找到类似的受害者。</p>
+<blockquote>
+<p>This can also happen with <code>if let</code>. For instance, in <a href="https://github.com/farion1231/cc-switch/commit/43077f5539235f0255642ec9aab558d29f3f1b33">cc-switch</a>, a test hung because an <code>if let Ok(..) = lock() { .. } else { .. }</code> fallback locked the same mutex again while the unnamed <code>PoisonError</code> from the condition still owned the guard. <a href="https://github.com/David-Martel/PC-AI/pull/273/changes">PC-AI</a> had the same bug in a <code>match</code> arm, and another case can be found in <a href="https://github.com/anatolykoptev/ox-embed-server/issues/152">ox-embed-server</a>.</p>
+</blockquote>
+<hr />
+<h2 id="_5">从局部恐慌演变为全盘瘫痪</h2>
+<blockquote>
+<h2 id="panic-to-outage">Panic to Outage</h2>
+</blockquote>
+<p>更为刁钻的是，锁中毒并不会做到“快速失败 (Fail-fast)”；一旦处理失当，它会导致系统“永久失败 (Fail forever)”。最开始的恐慌仅仅发生在一个线程上的一次调用中，而且往往发生在与后续失败毫无关联的边角位置。然而在此之后，该互斥锁上后续执行的所有 <code>lock().unwrap()</code> 都会紧跟着发生恐慌。由于现代 Rust 代码普遍能够容忍并隔离单点恐慌 (例如线程池、Web 请求处理器、Tokio 异步任务、FFI 外部函数接口边界)，整个宿主进程依然存活，却彻底沦为无法处理任何业务的“僵尸服务”：</p>
+<blockquote>
+<p>Deviously, poisoning does not fail fast; when done wrong, it fails <em>forever</em>. The original panic happens once, on one thread, often somewhere unrelated to future failures. However, every later <code>lock().unwrap()</code> on that lock now panics as well. Because so much Rust code survives panics (thread pools, request handlers, Tokio tasks, FFI boundaries), the process stays up and becomes completely useless:</p>
+</blockquote>
+<ul>
+<li>在 RLS (Rust Language Server) 中，一次失败的 Cargo 构建在持有 <code>ENV_LOCK</code> 环境变量锁时发生恐慌，<a href="https://github.com/rust-lang/rls/pull/492">导致后续的所有构建运行都无法执行</a>；</li>
+<li>Mozilla 的 <a href="https://github.com/mozilla/application-services/issues/4661">application-services</a> 项目在崩溃统计中发现 <code>PoisonError</code> <a href="https://github.com/mozilla/application-services/issues/4658">一路跃升至第 5 位</a>，在得出从中毒处理中得不到任何实质收益的结论后，团队果断<a href="https://github.com/mozilla/application-services/pull/4663">迁移到了 parking_lot</a>；</li>
+<li>运行在预发布环境中的 <a href="https://github.com/neondatabase/neon/issues/2200">Neon safekeeper</a> 服务在某个持有全局锁的线程恐慌后，后续的所有时间线查询全部宣告失败，而在系统日志中甚至连最初发生恐慌的原始现场都早已无处寻觅。</li>
+</ul>
+<blockquote>
+<ul>
+<li>In RLS, a failed Cargo build panicked with <code>ENV_LOCK</code> held, <a href="https://github.com/rust-lang/rls/pull/492">making any subsequent runs impossible</a>.</li>
+<li>Mozilla’s <a href="https://github.com/mozilla/application-services/issues/4661">application-services</a> saw <code>PoisonError</code> <a href="https://github.com/mozilla/application-services/issues/4658">rise to rank 5</a> in crash stats and <a href="https://github.com/mozilla/application-services/pull/4663">moved to parking_lot</a> after concluding they gained no benefit from poison handling.</li>
+<li>A <a href="https://github.com/neondatabase/neon/issues/2200">Neon safekeeper</a> on staging failed every timeline lookup after a panic with a global lock held, and the original panic could not even be found in the logs.</li>
+</ul>
+</blockquote>
+<p>除了线上长期运行的服务，自动化测试套件同样深受其害。单个测试用例的断言失败会让共享的静态锁中毒，进而导致其后执行的每一个测试用例都因 <code>PoisonError</code> 而连环暴毙。这种级联崩溃问题先后在 <a href="https://github.com/rust-lang/cargo/pull/12264">cargo</a>、<a href="https://github.com/denoland/deno/pull/6567">deno</a>、<a href="https://github.com/pola-rs/polars/pull/26627">polars</a> 以及 <a href="https://github.com/rust-lang/rust/issues/43155#issuecomment-315535095">rustc</a> 编译器自身中频繁出现。</p>
+<blockquote>
+<p>While not live services, test suites show the same general issue. One failing test poisons a shared static, and every test after it fails with <code>PoisonError</code>. This problem showed up for <a href="https://github.com/rust-lang/cargo/pull/12264">cargo</a>, <a href="https://github.com/denoland/deno/pull/6567">deno</a>, <a href="https://github.com/pola-rs/polars/pull/26627">polars</a>, and <a href="https://github.com/rust-lang/rust/issues/43155#issuecomment-315535095">rustc</a> itself.</p>
+</blockquote>
+<hr />
+<h2 id="_6">徒劳的中毒恢复尝试</h2>
+<blockquote>
+<h2 id="attempt-at-recovery">Attempt at Recovery</h2>
+</blockquote>
+<p>即便你在捕获错误后通过 <code>into_inner()</code> 提取守卫尝试恢复，互斥锁的中毒标记依然会被保留，后续的所有加锁操作仍会继续走入恢复分支。需要记住的是，在锁中毒特性落地的最初九年里，你甚至根本没有办法清除这一标记——直到 Rust 1.77 版本才正式引入了 <code>clear_poison</code> API。无法清除标记意味着：从发生单次恐慌那一刻起，各种潜在高开销的副作用将在随后的每一次访问中反复重演：</p>
+<blockquote>
+<p>If you recover with <code>into_inner()</code>, the flag stays set, and every later access takes the recovery path again. Remember that for the first nine years of Rust after the poisoning feature landed, you could not even clear it, as <code>clear_poison</code> only arrived in version 1.77. Not clearing the flag means that potentially expensive side effects will happen repeatedly from that point onward:</p>
+</blockquote>
+<ul>
+<li><a href="https://github.com/jarida-io/goose-in-a-pond/commit/8c7e7fed06385d3dfd2958ba86ef0bb119d56688">goose-in-a-pond</a> 在遭遇单次恐慌后，后续的每一次转录操作都会全量重建解码器状态；</li>
+<li><a href="https://github.com/librefang/librefang/commit/5edca0bfcf856324a6fc3701bf441d87ec7c9cca">librefang</a> 在随后的每一次访问中都会无休止地打印相同的警告日志；</li>
+<li><a href="https://github.com/anatolykoptev/ox-embed-server/issues/94">ox-embed-server 中的连接池</a> 在每次对象归还时都不得不直接丢弃模型。</li>
+</ul>
+<blockquote>
+<ul>
+<li><a href="https://github.com/jarida-io/goose-in-a-pond/commit/8c7e7fed06385d3dfd2958ba86ef0bb119d56688">goose-in-a-pond</a> rebuilt its decoder state on every transcription after a single panic.</li>
+<li><a href="https://github.com/librefang/librefang/commit/5edca0bfcf856324a6fc3701bf441d87ec7c9cca">librefang</a> logged the same warning on every access.</li>
+<li>A <a href="https://github.com/anatolykoptev/ox-embed-server/issues/94">pool in ox-embed-server</a> threw its model away on every return.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="_7">没人依赖锁中毒，甚至连标准库自己都不用</h2>
+<blockquote>
+<h2 id="nobody-relies-on-it-not-even-std">Nobody Relies on It, Not Even <code>std</code></h2>
+</blockquote>
+<p>那么到底有谁真正在严肃处理锁中毒呢？我实在说不上来——但可以肯定的是，标准库 (std) 自己绝对没有。在标准库自身的源码实现中，锁中毒几乎在所有地方都被直接忽略了。早在 <a href="https://github.com/rust-lang/rust/commit/2e8e8ab5648">2015 年 3 月</a> (距离 Rust 1.0 正式发布还有两个月)，标准 I/O 模块就选择了直接忽略中毒，理由是“任何中毒必然源自用户代码，而这根本不是互斥锁所负责保护的范畴”。这是一个非常普遍的痛点：锁中毒错误往往与互斥锁本身真正受保护的数据毫无干系。</p>
+<blockquote>
+<p>So who is handling poisonings? I’m really not sure—definitely not the standard library. Almost everywhere in the standard library's own code, it is ignored. Standard I/O has done so since <a href="https://github.com/rust-lang/rust/commit/2e8e8ab5648">March 2015</a> (two months before 1.0) because “any poison must have been the result of user code which the lock isn’t protecting.” This is a common issue: poisoning errors frequently have nothing to do with the actual mutex that was held.</p>
+</blockquote>
+<p>同样的情况也出现在<a href="https://github.com/rust-lang/rust/commit/72e96604c01">恐慌输出捕获</a>、<a href="https://github.com/rust-lang/rust/commit/2d2c9e44939">回溯信息锁 (Backtrace Lock)</a> 以及 <a href="https://github.com/rust-lang/rust/commit/9530ba0fe21">WASI 环境锁</a> 中。它们全都无一例外地绕过了锁中毒机制。毫无意外，目前官方代码库中正有一个<a href="https://github.com/rust-lang/rust/pull/148689">开放的 PR</a>，旨在将 <code>std</code> 内部所有的互斥锁全面迁移至 <code>nonpoison</code> (非中毒版本)。</p>
+<blockquote>
+<p>The same applies to <a href="https://github.com/rust-lang/rust/commit/72e96604c01">panic output capture</a>, the <a href="https://github.com/rust-lang/rust/commit/2d2c9e44939">backtrace lock</a>, and the <a href="https://github.com/rust-lang/rust/commit/9530ba0fe21">WASI environment lock</a>. They all bypass poisoning, and unsurprisingly, there is an <a href="https://github.com/rust-lang/rust/pull/148689">open PR</a> to move <code>std</code>'s internal mutexes to <code>nonpoison</code>.</p>
+</blockquote>
+<p>而整个开源生态系统也大体得出了完全相同的结论：</p>
+<blockquote>
+<p>The ecosystem has largely come to the same conclusion:</p>
+</blockquote>
+<ul>
+<li>Tokio 自带的互斥锁完全不具备中毒特性。在内部实现中，它用一个<a href="https://github.com/tokio-rs/tokio/blob/master/tokio/src/loom/std/mutex.rs">剥离中毒特性的适配层</a>将标准库锁封装了起来。该特性合并时，Carl Lerche 曾直言不讳地评价道：<a href="https://github.com/tokio-rs/tokio/pull/2814#discussion_r485760722">“我宁愿假装锁中毒机制根本就不存在。”</a>；</li>
+<li>在某个场景中，Eliza Weisman <a href="https://github.com/tokio-rs/tokio/pull/2828#discussion_r492350077">必须借助 <code>into_inner</code></a> 在 Drop 析构阶段解绑等待者，“否则链表中就会残留潜在的悬垂指针 (Dangling Pointer)”。我特别想强调这个案例，因为它生动揭示了锁中毒机制如何反过来阻碍了内存安全——而具有讽刺意味的是，内存安全往往是支持者鼓吹保留锁中毒机制的最大借口；</li>
+<li>Wasmtime、<code>crossbeam-channel</code> 以及 <code>tracing-subscriber</code> 始终对锁中毒视而不见，直接予以忽略；</li>
+<li><code>rust-analyzer</code> 在任务取消导致其求解器频繁中毒后，<a href="https://github.com/rust-lang/rust-analyzer/pull/1359">全面切换到了 parking_lot</a>，就像早先的 RLS 一样；</li>
+<li><code>parking_lot</code> 的维护者更是<a href="https://github.com/Amanieu/parking_lot/issues/324#issuecomment-1059616487">将锁中毒形容为</a>一项“严重伤害易用性与可靠性的负面反向特性 (Anti-feature)”，我对这种观点深表赞同。</li>
+</ul>
+<blockquote>
+<ul>
+<li>Tokio’s own locks do not poison. Internally, it wraps the standard library lock in an <a href="https://github.com/tokio-rs/tokio/blob/master/tokio/src/loom/std/mutex.rs">adapter that removes poison</a>. When it landed, Carl Lerche remarked, <a href="https://github.com/tokio-rs/tokio/pull/2814#discussion_r485760722">“I rather pretend lock poisoning isn’t a thing.”</a> </li>
+<li>In one case, Eliza Weisman <a href="https://github.com/tokio-rs/tokio/pull/2828#discussion_r492350077">needed <code>into_inner</code></a> to unlink a waiter during drop, or “we’ll leave the list with a potentially dangling pointer.” I want to point to this in particular because it demonstrates a case where poisoning stood in the way of memory safety—ironically, a property commonly argued as a reason to keep poisoning.</li>
+<li>Wasmtime, <code>crossbeam-channel</code>, and <code>tracing-subscriber</code> always ignore lock poisoning.</li>
+<li><code>rust-analyzer</code> <a href="https://github.com/rust-lang/rust-analyzer/pull/1359">switched to parking_lot</a> after cancellation poisoned its solver, much like RLS before it.</li>
+<li>The <code>parking_lot</code> maintainer <a href="https://github.com/Amanieu/parking_lot/issues/324#issuecomment-1059616487">described poisoning</a> as an “anti-feature that hurts usability and reliability,” a sentiment with which I strongly concur.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="mutex">为什么只有 Mutex 中毒？设计维度的巨大割裂</h2>
+<blockquote>
+<h2 id="why-only-mutex">Why Only Mutex?</h2>
+</blockquote>
+<p>另一个极其刺眼的设计矛盾在于：为什么只有 <code>Mutex</code> 实现了中毒机制，而 <code>RefCell</code> 却没有？如果说为锁引入中毒机制的理由在于某些代码在临时打破不变量时发生恐慌、进而让其他代码观察到损坏状态，那么这套逻辑毫无疑问应该对单线程内部可变性 (Interior Mutability) 容器一视同仁。</p>
+<blockquote>
+<p>Another glaring inconsistency is why poisoning is implemented for <code>Mutex</code> but not for <code>RefCell</code>. Surely, if the case for poisoning is that some code temporarily breaks an invariant, panics, and someone else observes the broken state, this logic should apply equally to single-threaded interior mutability.</p>
+</blockquote>
+<p>只要拿那些常被用来为锁中毒辩护的经典示例，将其中的 <code>Mutex</code> 替换为 <code>RefCell</code>，你就会遭遇<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=549fb7c9c0626a0ebd29bfa3a2e97ad4">完全一模一样的问题</a>。这甚至根本不需要多线程参与。而且这绝非仅仅停留在理论推演：Tokio 会自动捕获每个任务的恐慌；当与 <code>LocalSet</code> 配合使用时，任务恐慌会体现为 <code>JoinError</code>，而紧随其后的下一次 <code>borrow()</code> 依然会成功借用，进而<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=925975f7d49c10c0d6821cfeb00e1f60">读取到一个空指针 (Null Pointer)</a>——这与官方 Issue 追踪器中关于互斥锁的恐慌案例毫无二致。</p>
+<blockquote>
+<p>Take the usual example argued in favor of poisoning, replace <code>Mutex</code> with <code>RefCell</code>, and you have <a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=549fb7c9c0626a0ebd29bfa3a2e97ad4">exactly the same problem</a>. Threads are not even required. This is far from hypothetical: Tokio catches every task panic. Paired with a <code>LocalSet</code>, the panic surfaces as a <code>JoinError</code>, the next <code>borrow()</code> succeeds, and it <a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=925975f7d49c10c0d6821cfeb00e1f60">reads a null pointer</a> just like the mutex example from the issue tracker.</p>
+</blockquote>
+<p>考虑到异步代码中普遍存在大量的恐慌捕获逻辑——其中很多为了极致性能而被设计为 <code>!Send</code>——我根本不认为恐慌在多线程代码中被捕获的频率会显著高于单线程。然而，从来没有任何人跳出来要求让 <code>RefCell</code> 也支持中毒机制。</p>
+<blockquote>
+<p>Given how much panic-catching occurs in async code—much of which is <code>!Send</code> for performance reasons—I am not convinced panics are caught more frequently in multi-threaded code. Yet, nobody is asking for <code>RefCell</code> to poison.</p>
+</blockquote>
+<p>甚至标准库在自身的各个类型设计上也自相矛盾：</p>
+<blockquote>
+<p>The standard library isn’t even consistent with itself:</p>
+</blockquote>
+<ul>
+<li><code>LazyLock</code> 一旦发生恐慌便永久中毒，再也无法读取；</li>
+<li><code>OnceLock</code> 发生恐慌后永远不会中毒；</li>
+<li><code>Mutex</code> 发生恐慌会中毒，但却允许你手动恢复数据。</li>
+</ul>
+<blockquote>
+<ul>
+<li><code>LazyLock</code> poisons for good.</li>
+<li><code>OnceLock</code> never poisons.</li>
+<li><code>Mutex</code> poisons, but lets you recover.</li>
+</ul>
+</blockquote>
+<p>更为关键的是，锁中毒机制仅仅能够追踪恐慌，而更加普遍的提前返回 (Early Return) 模式同样会引发完全相同的状态损坏问题。使用 <code>?</code> 运算符 (以及早已废弃的 <code>try!</code> 宏) 随时可能在临界区执行中途提前退出并返回错误，从而在一个并未中毒的正常互斥锁背后留下同样被破坏的不变量。</p>
+<blockquote>
+<p>Furthermore, poisoning only tracks panics, whereas more common early-return patterns have the exact same issue. The <code>?</code> operator (and the legacy <code>try!</code> macro) can return early from the middle of a critical section, leaving the same broken invariant behind an unpoisoned lock.</p>
+</blockquote>
+<p>还需注意到，将中毒逻辑强行捆绑在互斥锁上完全是<a href="https://github.com/rust-lang/rust/issues/134645#issuecomment-3590942770">历史原因造成的巧合</a>。如果真正有需要，完全可以提供一个显式的 <code>Poison&lt;T&gt;</code> 泛型包装类型，让开发者在真正需要时能够自主选择为<em>任何</em>内部可变性容器引入中毒语义。</p>
+<blockquote>
+<p>Note also that the coupling of poisoning to mutexes <a href="https://github.com/rust-lang/rust/issues/134645#issuecomment-3590942770">is historical</a>. An explicit <code>Poison&lt;T&gt;</code> type would instead allow developers to opt into poisoning for <em>any</em> interior mutability wrapper if they truly wanted it.</p>
+</blockquote>
+<hr />
+<h2 id="_8">我的诉求与未来展望</h2>
+<blockquote>
+<h2 id="what-i-want">What I Want</h2>
+</blockquote>
+<p>就我个人而言，我由衷希望 Rust 官方团队能够尽快稳定 <code>std::sync::nonpoison</code>，并让 <code>std::sync::Mutex</code> 在默认情况下直接<a href="https://github.com/rust-lang/libs-team/issues/169">解析为非中毒锁</a>。如果某些场景确实需要中毒保护，官方可以提供一个独立的 <code>Poison&lt;T&gt;</code> 包装容器，让那些确信自己需要 (且有能力正确处理) 该特性的开发者按需选择，并将其自由套用到任何类型上 (无论是 <code>RefCell</code> 还是 Tokio 异步线程任务)。</p>
+<blockquote>
+<p>Personally, I hope the Rust team stabilizes <code>std::sync::nonpoison</code> and has <code>std::sync::Mutex</code> <a href="https://github.com/rust-lang/libs-team/issues/169">resolve to it by default</a>. If someone genuinely wants poisoning, a separate <code>Poison&lt;T&gt;</code> wrapper can be provided so that anyone who believes they need it (and can handle it) can opt into it for any type, including <code>RefCell</code> or Tokio threads.</p>
+</blockquote>
+<p>最糟糕的解决方式莫过于妥协性的反向提案：保留锁中毒机制，但将 <code>lock()</code> 改为在遇到中毒时直接发生恐慌、而不是返回 <code>Result</code>。这种做法除了能稍微理顺持有锁守卫的语义 (并略微提升代码调用的简便性) 之外，只会将系统无声无息的缓慢瘫痪永久固化为<em>唯一</em>的行为模式。这与当下大家普遍滥用 <code>lock().unwrap()</code> 的后果在本质上毫无差别，而上文罗列的大量真实案例已经充分证明：在存在 <code>catch_unwind</code> 恐慌捕获的环境中，这种设计具有极大的系统破坏性。</p>
+<blockquote>
+<p>The worst possible outcome would be the counter-proposal: keeping poisoning, but having <code>lock()</code> panic instead of returning a <code>Result</code>. That would only fix held-guard lock semantics (and slightly improve ergonomics), but it would cement the slow, silent outage as the <em>only</em> option. That is essentially what every <code>lock().unwrap()</code> does today, and the issues listed above provide plenty of evidence that this behavior is deeply problematic in the presence of <code>catch_unwind</code>.</p>
+</blockquote>
+<p>文章<a href="https://sunshowers.io/posts/on-poisoning/">《为锁中毒辩护》 (In defense of lock poisoning)</a> 从反方视角给出了最有力、最精彩的论辩，非常值得一读。但我坚信，现实中压倒性的客观证据所指向的是完全相反的方向——而且大多数严苛的生产级系统 (例如 Oxide) 在遭遇恐慌时都会直接选择终止进程 (Abort)，这显然是一种远比锁中毒更加健壮、更具确定性的工程实践。</p>
+<blockquote>
+<p>The post <a href="https://sunshowers.io/posts/on-poisoning/">In defense of lock poisoning</a> is the best argument for the other side and is well worth reading. However, I believe the evidence points overwhelmingly the other way—and most production systems (such as Oxide) abort on panic anyway, which is a far more robust and reasonable behavior.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">Rust</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">并发编程</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">锁中毒</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">系统架构</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

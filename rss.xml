@@ -5,6 +5,415 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-26/陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-26/陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示/</guid>
+      <pubDate>Thu, 26 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在实际构建“让 AI 与企业私有数据对话”的应用时，许多开发者常误将提示词视作绝对可靠的安全边界。本文作者团队刚发布了一份关于如何限制 AI 智能体 (AI Agent) 权限的技术实战指南，短短数小时内便被一位素未谋面的外部开发者成功攻破，暴露了三大致命安全盲区：遗漏特定数据表的行级安全策略、允许智能体执行可篡改自身权限的动态查询，以及数据库连接池复用时的状态残留边界问题。这次被攻破的经历给所有开发者敲响了警钟——大模型绝不可能被纯文本指令彻底约束，真正的访问控制与权限防护必须下沉至底层数据库体系中，严格践行最小权限原则与自动化系统审查。
+
+---
+
+![A robotic gripper reaches over a metal divider from a row of blue folders and lifts a gold folder from the neighboring compartment.](./images/3e290e37f782.png)
+
+## 核心概要
+
+&gt; ## Summary
+
+当一位开发者在某篇刚发布数小时的 AI 智能体安全实战指南中，轻而易举地绕过了其设定的安全护栏时，整个团队在 AI 数据访问设计上的严重盲区被彻底暴露在聚光灯下。本文深入剖析了这起攻破事件背后的三大关键安全漏洞——被遗忘的数据表权限、极具破坏性的智能体自修改查询能力，以及数据库连接池在状态复用时引发的边缘异常；同时阐明了为何诸如最小权限原则和严格的集成测试等传统软件工程基石，才是抵御 AI 越权利用与安全漏洞的唯一真正防线。
+
+&gt; When a developer successfully bypassed the guardrails of a newly published AI agent security walkthrough within hours of its release, it exposed critical vulnerabilities in how teams approach AI data access. This article breaks down three major security gaps—forgotten table permissions, dangerous self-modifying agent queries, and connection-pooling edge cases—and explains how traditional software engineering principles like least privilege and rigorous integration testing remain the only true defense against AI exploits.
+
+---
+
+## 核心要点
+
+&gt; ## Key Takeaways
+
+* **提示词并非安全边界**：大模型很容易通过巧舌如簧的上下文绕过系统提示词；真正的访问控制必须牢牢扎根于底层数据库本身。
+* **审视每一项赋予的能力**：赋予 AI 智能体的每一个工具或能力，都可能沦为攻击者反向渗透的潜在攻击面。
+* **让安全审计全面自动化**：纯凭人脑记忆编写的测试，永远只能覆盖你恰好想到的角落。系统权限与数据表资产清单必须通过程序进行自动化审计。
+
+&gt; * **Prompts Are Not Boundaries:** Models can easily talk their way past system prompts; real access control must live inside the underlying database.
+&gt; * **Assess Every Capability:** Every tool or capability handed to an AI agent is a potential vector an attacker can exploit.
+&gt; * **Automate Security Audits:** Tests written purely from memory will only cover what you remember. System permissions and table inventories should be programmatically audited instead.
+
+---
+
+## 提示词绝非安全边界
+
+&gt; ## The Prompt Is Not the Boundary
+
+几周前，我们针对几乎所有参与过的 AI 项目中都会碰到的一个棘手难题，发表了一篇技术实战指南：如何阻止 AI 智能体读取它不该碰的数据？文章给出的精简方案是——为该智能体在数据库中创建专有角色，仅授予其必要字段的读取权限，利用行级安全 (Row-Level Security, RLS) 将每条查询死死绑定在当前客户的作用域内，并编写试图刺探泄漏数据的测试用例。这是我们一直极力推荐的设计模式，而且在文章发布前，我们亲手跑通并验证了其中的每一行代码片段。
+
+&gt; A few weeks ago, we published a technical walkthrough on a problem we see in almost every AI project we take on: how to stop an AI agent from reading data it shouldn’t. The short version was that you give the agent its own database role, grant it only the columns it needs, pin every query to one customer with row-level security, and write a test that tries to leak data. It’s the pattern we recommend, and we tested every snippet before publishing.
+
+然而就在文章发布的当天，一位素不相识的开发者在评论区留言了。他根据文章内容完整重现了整套架构，灌入了两名测试客户的数据，并运行了我们的测试套件。测试全部顺利通过。随后，他尝试亲手攻破这套防御体系，结果竟一口气找出了三种截然不同的方法，能以其中一个客户的身份登录，神不知鬼不觉地读取到另一位客户的私密数据。
+
+&gt; The same day, a developer we had never met left a comment. He had rebuilt the whole setup from the article, seeded it with two test customers, and run our tests. They passed. Then he tried to break it, and found three separate ways to read one customer’s data while logged in as another.
+
+令人汗颜的是，他的这三处漏洞全部属实。我们在改动任何代码前一一复现了这些问题，迅速修正了文章中的纰漏，并在文章开头醒目地向他致谢。但相比于这几个具体缺陷本身，它们背后所折射出的深层现象才更值得警醒——那就是包括我们自己在内的大多数技术团队，目前在应对 AI 智能体安全时的思考盲区。
+
+&gt; He was right about all three. We reproduced each one before changing anything, fixed the article, and credited him at the top. But the bugs themselves matter less than what they say about how most teams are approaching AI agent security right now, ourselves included.
+
+在各类“与数据对话 (chat with your data)”的功能设计中，最常见的致命误区就是把写给大模型的提示词当成真正的访问控制。一句诸如“只准回答关于当前客户的问题”的系统提示词，充其量只是一声恳切的“请求”。绝大多数情况下模型确实会乖乖照办，但只要遇上一句精心构造的巧妙提问、一份充满歧义的文档，抑或是一次恶意的[提示词注入 (Prompt Injection)](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/)，这道防线就会瞬间土崩瓦解。
+
+&gt; The most common mistake in "chat with your data" features is treating instructions to the model as access control. A system prompt that says "only answer questions about the current customer" is a request. Models follow it most of the time, and then a cleverly worded question, a confusing document or a [prompt injection](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) gets past it.
+
+OWASP 发布的顶级大语言模型 (LLM) 应用程序安全风险清单中，为这种底层缺陷确立了一个专属名称：[过度代理授权 (Excessive Agency)](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)——意指 AI 系统被赋予了超出其工作职责所需的过多权限。OWASP 给出的建议，与安全工程师们几十年来反复强调的原则如出一辙：严格限制组件能够执行的操作，并将这些限制强制部署在组件无法通过“巧言令色”绕过的深层系统之中。这与[“AI 智能体需要的是明确的岗位权责规范，而不是更好的提示词”](https://www.unite.ai/ai-agent-governance-authority-limits/)背后的底层洞察完全一致：智能体的法定权限边界必须被定义在模型之外，而非写在模型内部。
+
+&gt; OWASP’s list of the top risks for LLM applications has a name for the underlying problem: [excessive agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/), meaning an AI system that has been given more permissions than its job requires. Their advice is the same advice security engineers have given for decades: limit what the component can do, and enforce the limit somewhere the component cannot talk its way past. It’s the same instinct behind the argument that [AI agents need job descriptions, not better prompts](https://www.unite.ai/ai-agent-governance-authority-limits/): an agent’s authority should be defined outside the model, not inside it.
+
+对于需要执行数据库查询的智能体来说，这个“模型之外”的安全锚点理所当然就是数据库本身。我们当初的文章确实把限制设在了数据库层，但即便如此，我们依然在三处细节上栽了跟头。而这，恰恰是最值得大家深思与汲取教训的地方。
+
+&gt; For an agent that queries a database, that somewhere is the database itself. Our article put the limits there, and we still got it wrong in three places. That’s the part worth learning from.
+
+---
+
+## 漏洞一：那张被我们抛诸脑后的数据表
+
+&gt; ## Gap One: The Table We Forgot
+
+我们为 AI 对应的数据库角色赋予了 `orders` (订单表) 和 `products` (产品表) 这两张表的读取权限。我们为 `orders` 表开启了[行级安全](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)策略，但却自始至终忘记在 `products` 表上开启它。
+
+&gt; We granted the AI role read access to two tables, `orders` and `products`. We switched on [row-level security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html) for `orders`. We never switched it on for `products`.
+
+我们编写的每一个测试用例全都是围绕订单展开的，因为订单包含敏感交易，是我们当时唯一放心不下的数据。结果这位读者只是向智能体的“库存预警查询”工具提了个问题，就轻轻松松拿到了两位客户完整的专属产品目录。
+
+&gt; Every test we wrote was about orders, because orders were what we were worried about. The reader asked the agent’s "low stock" tool a question and got back both customers’ product catalogues.
+
+这带来的教训绝不是轻飘飘的“下次记住所有表”。因为单凭人脑记忆，根本不可能做到滴水不漏。真正发人深省的启示在于：仅凭人脑记忆编写出来的测试，永远只能覆盖你当下记起来的东西。这位读者的修复方案比我们的高明得多：编写一段自动化测试，主动向数据库动态查询 AI 角色当前拥有读取权限的每一张表，一旦发现其中任何一张表缺乏行级安全策略，测试便直接报错失败。它完全不依赖任何人的记忆，而且在明年某位完全没读过这篇文章的新同事在数据库中新增一张表时，这项自动化保护依然固若金汤。
+
+&gt; The lesson isn’t "remember every table." People don’t remember every table. The lesson is that a test written from memory only covers what you remembered. His fix was better than ours: a test that asks the database for every table the AI role can read, and fails if any of them lacks a policy. It doesn’t depend on anyone’s memory, and it keeps working when a new table is added next year by someone who never read the article.
+
+---
+
+## 漏洞二：智能体竟能私自修改自身权限
+
+&gt; ## Gap Two: The Agent Could Change Its Own Permissions
+
+在我们最初的设计中，业务程序通过在数据库中设置一个会话变量 (Session Value) 来声明当前请求归属于哪个客户，而行级安全策略则在底层将数据表的每一行记录与该变量进行比对。这个客户标识是由上层业务应用牢牢把控并注入的，模型本身绝无权限设置。
+
+&gt; Our design told the database which customer a request belonged to by setting a session value, and the security policy compared every row against that value. The application set it, never the model.
+
+只要大模型仅能调用我们预先编写好的固定 SQL 模板，这套设计就是无懈可击的。但在原文中，我们顺带提了一笔未来可能的扩展构想——允许大模型自主编写并执行动态 SQL。这位敏锐的读者立刻向我们演示了这意味着什么灾难。在 Postgres 中，任何数据库角色都可以调用内置的[配置函数](https://www.postgresql.org/docs/current/functions-admin.html)来更改当前会话的运行时设置。这就意味着，一条构造巧妙的查询可以在执行中途强行篡改客户变量，从而肆意窥探其他客户的订单！更严重的是，同样的函数还能被用来直接关掉我们为了防止恶意慢查询拖垮数据库而设置的查询超时限制。
+
+&gt; That holds as long as the model can only call the fixed queries we wrote. We had also mentioned, as a later option, letting the model write its own SQL. The reader showed what that would mean. Postgres lets any role call a built-in [configuration function](https://www.postgresql.org/docs/current/functions-admin.html) that changes session settings. A single query could change the customer value halfway through and read another customer’s orders. The same function could switch off the timeout we had set to protect the database from runaway queries.
+
+这种架构模式恰恰是当下一波智能体工具开发潮中最让我忧心忡忡的地方。我们赋予智能体的每一项自由权限，都可能成为攻击者借刀杀人的武器。[模型上下文协议 (Model Context Protocol, MCP) 的安全规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices)在协议层面上也明确指出了这一点：工具必须被赋予其任务所需的最小权限。而放任大模型随意编写非受控的动态 SQL，与这一原则完全背道而驰。如今，我们向所有客户明确强调：默认必须采用预先命名的静态固定查询；而大模型自主生成的 SQL，必须通过严苛的白名单机制彻底审查其具体语句行为后，才被允许真正执行。
+
+&gt; This is the pattern that worries me most about the current wave of agent tooling. Every capability we give an agent is a capability an attacker can try to use through it. The [security guidance for the Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices) makes the same point at the protocol level: tools should get the narrowest permissions their task needs. Letting a model write free-form SQL is the opposite of narrow. We now tell clients plainly that named, fixed queries are the default, and model-written SQL only runs after it passes a strict allowlist that checks what the statement actually does.
+
+---
+
+## 漏洞三：“故障安全”能否生效，竟然取决于你分到了哪个连接
+
+&gt; ## Gap Three: “Fails Closed” Depended on Which Connection You Got
+
+在设计安全策略时，我们遵循了“故障安全闭合 (Fail-Closed)”的设计哲学。如果某次请求由于程序疏漏未声明客户归属，安全策略会默认拒绝返回任何数据，而不是将所有数据一股脑泄露出来。我们对此做过单独测试，当时表现完美。
+
+&gt; We had designed the policy to fail closed. If a request forgot to say which customer it belonged to, the policy returned nothing rather than everything. We tested it, and it worked.
+
+然而，它之所以能正常工作，是因为当时测试运行在一个全新的空闲数据库连接上。但在真实的生产环境中，应用程序会通过连接池 (Connection Pool) 高频复用数据库连接；在一条已经处理过先前请求的旧连接上，那个原本应该“缺失”的变量并不会表现为空值，而是会被读取为一个空字符串。这时查询虽然不会泄露其他人的数据，却会直接发生崩溃报错，而不是优雅地返回空结果集。更诡异的是，系统是否会发生崩溃，完全取决于连接池当时随机将哪个底层连接分配给了当前的请求。
+
+&gt; It worked on a fresh database connection. In production, applications reuse connections through a pool, and on a connection that had already served a request, the "missing" value came back as an empty string rather than as nothing at all. The query didn’t leak data, but it crashed instead of returning an empty result, and whether it crashed depended on which connection the pool handed out.
+
+单纯坐在电脑前肉眼审查静态代码，任何人都不可能发现这种隐蔽的边界缺陷。它只有在有人真正以贴近生产环境的运行方式实跑代码时才会暴露无遗。修复这一缺陷实际上只需要调用一个特定的底层重置函数；但要找出它，却必须依赖一位不带我们固有偏见、完全脱离我们先验假设的外部观察者。
+
+&gt; No one would have found this from reading the code. It only showed up because someone ran it the way it would really run. The fix was one function call. Finding it took an outsider who didn’t share our assumptions about how the code would be used.
+
+---
+
+## 我们在工程流程上做出的深刻改变
+
+&gt; ## What We Changed in How We Work
+
+虽然文章中的代码已经彻底修正，但更有价值的财富其实沉淀在了我们的工程交付流程之中。
+
+&gt; The article is fixed, but the more useful changes are in our process.
+
+1. **资产清单彻底胜过人脑记忆**：每当安全规则需要涵盖“每一张数据表”、“每一个工具”或“每一个 API 端点”时，我们现在一律通过向系统本身动态索取资产清单来进行自动化比对测试，彻底摒弃手工维护清单的陈旧做法。
+2. **假设工具始终面临对抗利用**：智能体所拥有的每一项能力，我们都会预先假定它已被攻击者恶意利用。在为智能体赋予某个工具之前，我们会先反问自己：如果能与智能体对话的最阴险恶毒的黑客盯上了它，会用这个工具做些什么？如果答案包括能够篡改自身运行权限，那么这个工具就坚决不予上线。
+3. **在高度拟真的生产环境下严苛测试**：我们要求所有安全护栏必须在贴近真实生产环境的条件下进行端到端压测：连接池复用、高并发竞争、失败重试机制以及真实规模的数据量。只能在开发者本地笔记本上跑通的安全护栏，根本谈不上是真正的护栏。
+4. **全面拥抱并欢迎外部审查**：我们现在发自内心地渴望外部开发者的审视与刺探。正是因为将技术架构细节毫无保留地公开发表，才促成了这次及时的被攻破；而在公开发布仅一天之内，被一位友善的同仁在公开透明的环境下指出破绽，已经是一个技术团队所能期待的最幸运的结局。否则，这些隐患早晚会在某位客户真实的生产环境中演变成灾难性的安全事故。
+
+&gt; 1. **Inventory Beats Memory:** Wherever a security rule has to cover "every table", "every tool" or "every endpoint", we now test it by asking the system for its own list instead of writing the list by hand.
+&gt; 2. **Adversarial Tool Assumptions:** Every capability an agent has is assumed to be used against us. Before an agent gets a tool, we ask what the worst person who can talk to the agent could do with it. If the answer includes changing its own permissions, the tool doesn’t ship.
+&gt; 3. **Realistic Testing Conditions:** We test guardrails in the conditions they will actually run in: pooled connections, concurrent requests, retries, real data volumes. A guardrail that only holds on a developer’s laptop isn’t one.
+&gt; 4. **Embrace External Reviews:** We now actively want outsiders to look. Publishing the pattern in detail is what got it broken, and getting it broken in public, by someone friendly, within a day, is the best outcome we could have asked for. The alternative was finding these gaps in a client’s production system.
+
+---
+
+## 更深层次的行业反思
+
+&gt; ## The Broader Point
+
+当前行业内围绕 AI 智能体的大量讨论，几乎完全聚焦于“能力”层面：哪个大模型推理更强、使用哪个框架编排更灵活、智能体接入了多少种花哨的工具。然而，鲜有人关注底层那套略显枯燥却至关重要的基石设施——即决定当大模型做出意料之外的行为时该如何兜底的系统权限、访问策略与自动化测试。
+
+&gt; Much of the conversation about AI agents is about capability: which model, which framework, how many tools. Far less is about the boring layer underneath, the permissions, policies and tests that decide what happens when the model does something nobody intended.
+
+然而，正是这层枯燥的基础设施，维系着真正的安全防线；而且在本质上，它依然属于最传统的经典软件工程范畴。遵循最小权限原则、编写不依赖人脑记忆的自动化测试、引入非原作者视角的代码审查，几十年来一直是业界公认的最佳实践。AI 智能体的浪潮并没有颠覆这些常识；相反，它让忽视这些常识的代价变得前所未有的高昂——因为站在你权限防线对面的，不再是一个按部就班的传统软件模块，而是一个只要被下达指令，就会不知疲倦地尝试撞击每一扇敞开之门的自主系统。
+
+&gt; That layer is where the real risk sits, and it’s mostly ordinary software engineering. Least privilege, tests that don’t rely on memory, and review by people who didn’t write the code have been good practice for decades. AI agents haven’t changed that. They have made the cost of skipping it much higher, because the thing on the other side of your permissions is now a system that will try every door it’s given, as often as it’s asked.
+
+我们当初的实战指南虽然在三处细节实现上存在缺陷，但其核心主张依然坚不可摧：AI 智能体的访问控制必须深植于智能体所触达的底层系统之中，绝不能指望写在提示词里。我们当初只是没能将这个理念贯彻得足够彻底而已。
+
+&gt; Our walkthrough was wrong in three places and right in its main claim. Access control for AI agents belongs in the systems the agent touches, not in the prompt. We just hadn’t taken that idea as far as it needed to go.
+
+这也向当今每一位正在运行或构建 AI 智能体的工程师提出了一个发人深省的问题：如果今天有一位素未谋面的陌生高手花上一整天时间试图突破你智能体的权限体系，他们最先攻破的会是什么？
+
+&gt; Which raises a question worth asking of any agent you run today: if a stranger spent a day trying to break its permissions, what would they find first?
+
+---</description>
+    </item>
+    <item>
+      <title>废除 Lock Poisoning：Rust 并发编程的反思与演进</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-26/废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-26/废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思/</guid>
+      <pubDate>Thu, 26 Nov 2026 00:00:00 GMT</pubDate>
+      <description>Rust 标准库中的互斥锁 (Mutex) 设计了一项名为“锁中毒 (Lock Poisoning)”的独特机制：当持有锁的线程发生恐慌 (Panic) 时，该互斥锁会被标记为中毒状态，以防其他线程读到损坏的不完整数据。然而在十多年的工业实践中，开发者们发现这套理论上美好的设计在现实中沦为灾难——几乎没有任何代码能真正安全地恢复中毒状态，惯用的 `lock().unwrap()` 反而将单次恐慌演变为死锁、级联测试崩溃乃至无声的服务瘫痪。随着 Tokio、parking_lot 等核心生态库彻底弃用锁中毒，Rust 官方团队也在积极推进在未来的语言版本中将非中毒锁设为默认行为。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+Rust 标准库中的 `std::sync::Mutex` 包含一项名为**互斥锁中毒 (Mutex Poisoning)** 的特性：一旦某个线程在持有互斥锁期间发生恐慌 (Panic)，该互斥锁就会被标记为“中毒”；此后其他线程对 `lock()` 的调用都会返回一个 `PoisonError` 错误。
+
+&gt; Rust’s `std::sync::Mutex` includes a feature called **mutex poisoning**, which marks a mutex as "poisoned" if a thread panics while holding the lock, causing subsequent calls to `lock()` to return a `PoisonError`. 
+
+从理论设计的初衷来看，锁中毒旨在保护内部数据的不变量 (Invariant)，防止系统在恐慌后遗留下损坏的状态。但本文指出，这项机制在实践中其实是一个失败的尝试。在真实的软件代码库中，几乎没有任何代码能够正确处理中毒的锁；而 Rust 社区惯用的错误处理方式 (即 `lock().unwrap()`) 更是频繁引发死锁、级联测试失败乃至无声无息的生产事故。随着各大核心项目以及标准库自身越来越多地弃用中毒机制，转而投向诸如 `parking_lot` 这类非中毒替代方案，Rust 生态系统最明智的选择就是彻底移除锁中毒作为默认行为。
+
+&gt; While theoretically intended to protect internal data invariants from being left in a broken state, this post argues that lock poisoning is a failed experiment. In practice, codebases rarely handle poisoned locks correctly, and idiomatic error handling (`lock().unwrap()`) frequently leads to deadlocks, cascading test failures, and silent production outages. With major projects and the standard library itself increasingly abandoning poisoning in favor of non-poisoning alternatives like `parking_lot`, the Rust ecosystem would be best served by removing lock poisoning as a default behavior.
+
+---
+
+## 为什么反对锁中毒机制？
+
+&gt; ## The Case Against Poisoning
+
+Rust 拥有一个相当奇特的特性——如果不是因为早期的历史遗留包袱，我认为这项特性放在今天绝不可能被并入这门语言：它就是互斥锁中毒。当 Rust 代码在持有 `std::sync::Mutex` 时发生恐慌，该互斥锁就会“中毒”。这意味着后续对 `lock()` 的任何调用都会返回一个 `PoisonError`。这项特性的初衷是：对象内部可能维系着一些必须得到保证的不变量，而在不恰当的时机发生恐慌可能会打破这些假设，从而使对象陷入不可预知的损坏状态。
+
+&gt; Rust has a curious feature that I don’t think the language would land today if it were not a legacy artifact: mutex poisoning. When some Rust code panics while holding a `std::sync::Mutex`, the mutex is *poisoned*. That means any further call to `lock()` returns a `PoisonError`. The motivation for this feature is that an object might have some internal invariants that need to be upheld, and panicking at the wrong moment might invalidate assumptions and leave an object behind in a broken state.
+
+就我个人而言，我极其讨厌这项特性。我在它身上踩过无数次坑，却想不起有哪怕一次它真正帮到了我。目前 Rust 库团队 (libs team) 正在[热烈讨论](https://github.com/rust-lang/rust/issues/149359)是否要在下一个版本纪元 (Edition) 中将非中毒互斥锁设为默认行为，不出所料，这引发了相当一部分人站出来为这项旧特性辩护。
+
+&gt; Personally, I absolutely hate this feature. It has bitten me so many times, and I cannot recall a single instance where it actually helped me. The libs team is currently [discussing](https://github.com/rust-lang/rust/issues/149359) making non-poisoning locks the default in the next edition, which predictably has caused quite a few people to jump to the defense of the feature.
+
+在这篇文章中，我想详细陈述我个人的观点：为什么中毒锁应该被彻底废除，或者至少降级为极少使用的特殊情况。
+
+&gt; In this post, I want to make my personal case for why poisoned locks should either be entirely removed or made the exception.
+
+首要原因在于，在现实世界的所有代码库中，我至今还没有遇到过任何能够正确处理中毒锁的实现。相反，我见到了大量错误处理它的代码，其造成的破坏甚至远远恶劣于完全不支持中毒机制的 [parking_lot](https://docs.rs/parking_lot) 互斥锁。
+
+&gt; Primarily, this is because I have yet to come across code in the wild that handles a poisoned lock correctly. On the other hand, I have come across enough code that mishandles it, resulting in behavior worse than a [parking_lot](https://docs.rs/parking_lot) lock (which does not support poisoning).
+
+[Josh Triplett](https://news.ycombinator.com/item?id=46041342) 在 Hacker News 的一条评论中直截了当地指出：
+&gt; “在标准库的整个演进历史中，我们从未见过哪怕一次有开发者尝试从锁中毒中恢复状态的报告。”
+
+&gt; [Josh Triplett](https://news.ycombinator.com/item?id=46041342) put it quite strongly in a Hacker News comment: 
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; “In the entire history of the standard library, we have never once seen a single report of anyone attempting to recover from poison.”
+
+当线程持有互斥锁并发生恐慌时，通常只有两种合理的应对方式：要么直接终止整个进程，要么忽略中毒标记继续执行。如果采用 `panic = "abort"`，系统会自动执行前者，锁中毒问题压根不会出现；但根据我所见过的所有现实案例，在基于栈展开 (Unwinding) 的默认模式下，社区习以为常的 `lock().unwrap()` 写法却恰恰选了最糟糕的一条路。
+
+&gt; When a panic happens with a lock held, there are two reasonable reactions: shut the process down, or carry on and ignore the flag. With `panic = "abort"`, you get the former, and poisoning never comes up. From all the evidence I have seen, with unwinding, the idiomatic `lock().unwrap()` picks the worst option of all.
+
+这是因为它既不停止进程，也不允许程序正常继续运行；相反，它会将未来的每一次加锁尝试都变成一次恐慌，有时还会引发灾难性的后果。但这还远远不是该机制现存的唯一问题。下面我将列举其中的几大核心痛点，并结合真实世界中坑害过开发者的开源代码进行剖析。
+
+&gt; That’s because it neither stops the process nor lets it continue; instead, it turns every future lock attempt into a panic with sometimes disastrous effects. But that is not the only issue with the system today. Below, I want to share some of the core problems, referencing real-world code where people got bitten.
+
+---
+
+## 错误对象持有互斥锁：潜在的死锁隐患
+
+&gt; ## The Error Holds the Lock
+
+锁中毒机制中有一个非常隐蔽的细节：`PoisonError` 错误对象本身必须持有锁守卫 (Guard)。这是因为如果你想要忽略中毒标记并继续访问受保护的数据，你必须从这个错误对象中提取出锁守卫。这意味着：只要错误对象还没有被释放，互斥锁就一直处于被锁定的状态！
+
+&gt; One subtle aspect of poisoning is that the `PoisonError` needs to hold the guard. That’s because in order to ignore the poison flag, you need to fetch the guard from the error object. Holding on to the error means holding on to the lock!
+
+这就很容易导致那些涉及错误包装或类型转换的常规代码暗藏死锁 (Deadlock) 隐患。在一个返回 `Box&lt;dyn Error&gt;` 或类似类型的函数中，看起来人畜无害的 `m.lock()?` 写法，只要错误对象生命周期还在，就会一直锁住互斥锁 (参考 issue [#159930](https://github.com/rust-lang/rust/issues/159930))。
+
+&gt; That can cause common code that does error wrapping or error conversions to introduce a deadlock hazard. The innocent-looking `m.lock()?` in a function returning `Box&lt;dyn Error&gt;` or similar keeps the mutex locked for as long as the error lives ([#159930](https://github.com/rust-lang/rust/issues/159930)).
+
+类似的问题同样会出现在 `if let` 语句中。例如在 [cc-switch](https://github.com/farion1231/cc-switch/commit/43077f5539235f0255642ec9aab558d29f3f1b33) 项目中，测试用例发生了卡死挂起，原因就在于其 `if let Ok(..) = lock() { .. } else { .. }` 逻辑的分支中试图再次获取同一个互斥锁，而此时条件表达式中未命名的临时 `PoisonError` 仍然牢牢持有锁守卫。[PC-AI](https://github.com/David-Martel/PC-AI/pull/273/changes) 的 `match` 分支中也出现过一模一样的 Bug，在 [ox-embed-server](https://github.com/anatolykoptev/ox-embed-server/issues/152) 中也能找到类似的受害者。
+
+&gt; This can also happen with `if let`. For instance, in [cc-switch](https://github.com/farion1231/cc-switch/commit/43077f5539235f0255642ec9aab558d29f3f1b33), a test hung because an `if let Ok(..) = lock() { .. } else { .. }` fallback locked the same mutex again while the unnamed `PoisonError` from the condition still owned the guard. [PC-AI](https://github.com/David-Martel/PC-AI/pull/273/changes) had the same bug in a `match` arm, and another case can be found in [ox-embed-server](https://github.com/anatolykoptev/ox-embed-server/issues/152).
+
+---
+
+## 从局部恐慌演变为全盘瘫痪
+
+&gt; ## Panic to Outage
+
+更为刁钻的是，锁中毒并不会做到“快速失败 (Fail-fast)”；一旦处理失当，它会导致系统“永久失败 (Fail forever)”。最开始的恐慌仅仅发生在一个线程上的一次调用中，而且往往发生在与后续失败毫无关联的边角位置。然而在此之后，该互斥锁上后续执行的所有 `lock().unwrap()` 都会紧跟着发生恐慌。由于现代 Rust 代码普遍能够容忍并隔离单点恐慌 (例如线程池、Web 请求处理器、Tokio 异步任务、FFI 外部函数接口边界)，整个宿主进程依然存活，却彻底沦为无法处理任何业务的“僵尸服务”：
+
+&gt; Deviously, poisoning does not fail fast; when done wrong, it fails *forever*. The original panic happens once, on one thread, often somewhere unrelated to future failures. However, every later `lock().unwrap()` on that lock now panics as well. Because so much Rust code survives panics (thread pools, request handlers, Tokio tasks, FFI boundaries), the process stays up and becomes completely useless:
+
+* 在 RLS (Rust Language Server) 中，一次失败的 Cargo 构建在持有 `ENV_LOCK` 环境变量锁时发生恐慌，[导致后续的所有构建运行都无法执行](https://github.com/rust-lang/rls/pull/492)；
+* Mozilla 的 [application-services](https://github.com/mozilla/application-services/issues/4661) 项目在崩溃统计中发现 `PoisonError` [一路跃升至第 5 位](https://github.com/mozilla/application-services/issues/4658)，在得出从中毒处理中得不到任何实质收益的结论后，团队果断[迁移到了 parking_lot](https://github.com/mozilla/application-services/pull/4663)；
+* 运行在预发布环境中的 [Neon safekeeper](https://github.com/neondatabase/neon/issues/2200) 服务在某个持有全局锁的线程恐慌后，后续的所有时间线查询全部宣告失败，而在系统日志中甚至连最初发生恐慌的原始现场都早已无处寻觅。
+
+&gt; * In RLS, a failed Cargo build panicked with `ENV_LOCK` held, [making any subsequent runs impossible](https://github.com/rust-lang/rls/pull/492).
+&gt; * Mozilla’s [application-services](https://github.com/mozilla/application-services/issues/4661) saw `PoisonError` [rise to rank 5](https://github.com/mozilla/application-services/issues/4658) in crash stats and [moved to parking_lot](https://github.com/mozilla/application-services/pull/4663) after concluding they gained no benefit from poison handling.
+&gt; * A [Neon safekeeper](https://github.com/neondatabase/neon/issues/2200) on staging failed every timeline lookup after a panic with a global lock held, and the original panic could not even be found in the logs.
+
+除了线上长期运行的服务，自动化测试套件同样深受其害。单个测试用例的断言失败会让共享的静态锁中毒，进而导致其后执行的每一个测试用例都因 `PoisonError` 而连环暴毙。这种级联崩溃问题先后在 [cargo](https://github.com/rust-lang/cargo/pull/12264)、[deno](https://github.com/denoland/deno/pull/6567)、[polars](https://github.com/pola-rs/polars/pull/26627) 以及 [rustc](https://github.com/rust-lang/rust/issues/43155#issuecomment-315535095) 编译器自身中频繁出现。
+
+&gt; While not live services, test suites show the same general issue. One failing test poisons a shared static, and every test after it fails with `PoisonError`. This problem showed up for [cargo](https://github.com/rust-lang/cargo/pull/12264), [deno](https://github.com/denoland/deno/pull/6567), [polars](https://github.com/pola-rs/polars/pull/26627), and [rustc](https://github.com/rust-lang/rust/issues/43155#issuecomment-315535095) itself.
+
+---
+
+## 徒劳的中毒恢复尝试
+
+&gt; ## Attempt at Recovery
+
+即便你在捕获错误后通过 `into_inner()` 提取守卫尝试恢复，互斥锁的中毒标记依然会被保留，后续的所有加锁操作仍会继续走入恢复分支。需要记住的是，在锁中毒特性落地的最初九年里，你甚至根本没有办法清除这一标记——直到 Rust 1.77 版本才正式引入了 `clear_poison` API。无法清除标记意味着：从发生单次恐慌那一刻起，各种潜在高开销的副作用将在随后的每一次访问中反复重演：
+
+&gt; If you recover with `into_inner()`, the flag stays set, and every later access takes the recovery path again. Remember that for the first nine years of Rust after the poisoning feature landed, you could not even clear it, as `clear_poison` only arrived in version 1.77. Not clearing the flag means that potentially expensive side effects will happen repeatedly from that point onward:
+
+* [goose-in-a-pond](https://github.com/jarida-io/goose-in-a-pond/commit/8c7e7fed06385d3dfd2958ba86ef0bb119d56688) 在遭遇单次恐慌后，后续的每一次转录操作都会全量重建解码器状态；
+* [librefang](https://github.com/librefang/librefang/commit/5edca0bfcf856324a6fc3701bf441d87ec7c9cca) 在随后的每一次访问中都会无休止地打印相同的警告日志；
+* [ox-embed-server 中的连接池](https://github.com/anatolykoptev/ox-embed-server/issues/94) 在每次对象归还时都不得不直接丢弃模型。
+
+&gt; * [goose-in-a-pond](https://github.com/jarida-io/goose-in-a-pond/commit/8c7e7fed06385d3dfd2958ba86ef0bb119d56688) rebuilt its decoder state on every transcription after a single panic.
+&gt; * [librefang](https://github.com/librefang/librefang/commit/5edca0bfcf856324a6fc3701bf441d87ec7c9cca) logged the same warning on every access.
+&gt; * A [pool in ox-embed-server](https://github.com/anatolykoptev/ox-embed-server/issues/94) threw its model away on every return.
+
+---
+
+## 没人依赖锁中毒，甚至连标准库自己都不用
+
+&gt; ## Nobody Relies on It, Not Even `std`
+
+那么到底有谁真正在严肃处理锁中毒呢？我实在说不上来——但可以肯定的是，标准库 (std) 自己绝对没有。在标准库自身的源码实现中，锁中毒几乎在所有地方都被直接忽略了。早在 [2015 年 3 月](https://github.com/rust-lang/rust/commit/2e8e8ab5648) (距离 Rust 1.0 正式发布还有两个月)，标准 I/O 模块就选择了直接忽略中毒，理由是“任何中毒必然源自用户代码，而这根本不是互斥锁所负责保护的范畴”。这是一个非常普遍的痛点：锁中毒错误往往与互斥锁本身真正受保护的数据毫无干系。
+
+&gt; So who is handling poisonings? I’m really not sure—definitely not the standard library. Almost everywhere in the standard library's own code, it is ignored. Standard I/O has done so since [March 2015](https://github.com/rust-lang/rust/commit/2e8e8ab5648) (two months before 1.0) because “any poison must have been the result of user code which the lock isn’t protecting.” This is a common issue: poisoning errors frequently have nothing to do with the actual mutex that was held.
+
+同样的情况也出现在[恐慌输出捕获](https://github.com/rust-lang/rust/commit/72e96604c01)、[回溯信息锁 (Backtrace Lock)](https://github.com/rust-lang/rust/commit/2d2c9e44939) 以及 [WASI 环境锁](https://github.com/rust-lang/rust/commit/9530ba0fe21) 中。它们全都无一例外地绕过了锁中毒机制。毫无意外，目前官方代码库中正有一个[开放的 PR](https://github.com/rust-lang/rust/pull/148689)，旨在将 `std` 内部所有的互斥锁全面迁移至 `nonpoison` (非中毒版本)。
+
+&gt; The same applies to [panic output capture](https://github.com/rust-lang/rust/commit/72e96604c01), the [backtrace lock](https://github.com/rust-lang/rust/commit/2d2c9e44939), and the [WASI environment lock](https://github.com/rust-lang/rust/commit/9530ba0fe21). They all bypass poisoning, and unsurprisingly, there is an [open PR](https://github.com/rust-lang/rust/pull/148689) to move `std`'s internal mutexes to `nonpoison`.
+
+而整个开源生态系统也大体得出了完全相同的结论：
+
+&gt; The ecosystem has largely come to the same conclusion:
+
+* Tokio 自带的互斥锁完全不具备中毒特性。在内部实现中，它用一个[剥离中毒特性的适配层](https://github.com/tokio-rs/tokio/blob/master/tokio/src/loom/std/mutex.rs)将标准库锁封装了起来。该特性合并时，Carl Lerche 曾直言不讳地评价道：[“我宁愿假装锁中毒机制根本就不存在。”](https://github.com/tokio-rs/tokio/pull/2814#discussion_r485760722)；
+* 在某个场景中，Eliza Weisman [必须借助 `into_inner`](https://github.com/tokio-rs/tokio/pull/2828#discussion_r492350077) 在 Drop 析构阶段解绑等待者，“否则链表中就会残留潜在的悬垂指针 (Dangling Pointer)”。我特别想强调这个案例，因为它生动揭示了锁中毒机制如何反过来阻碍了内存安全——而具有讽刺意味的是，内存安全往往是支持者鼓吹保留锁中毒机制的最大借口；
+* Wasmtime、`crossbeam-channel` 以及 `tracing-subscriber` 始终对锁中毒视而不见，直接予以忽略；
+* `rust-analyzer` 在任务取消导致其求解器频繁中毒后，[全面切换到了 parking_lot](https://github.com/rust-lang/rust-analyzer/pull/1359)，就像早先的 RLS 一样；
+* `parking_lot` 的维护者更是[将锁中毒形容为](https://github.com/Amanieu/parking_lot/issues/324#issuecomment-1059616487)一项“严重伤害易用性与可靠性的负面反向特性 (Anti-feature)”，我对这种观点深表赞同。
+
+&gt; * Tokio’s own locks do not poison. Internally, it wraps the standard library lock in an [adapter that removes poison](https://github.com/tokio-rs/tokio/blob/master/tokio/src/loom/std/mutex.rs). When it landed, Carl Lerche remarked, [“I rather pretend lock poisoning isn’t a thing.”](https://github.com/tokio-rs/tokio/pull/2814#discussion_r485760722) 
+&gt; * In one case, Eliza Weisman [needed `into_inner`](https://github.com/tokio-rs/tokio/pull/2828#discussion_r492350077) to unlink a waiter during drop, or “we’ll leave the list with a potentially dangling pointer.” I want to point to this in particular because it demonstrates a case where poisoning stood in the way of memory safety—ironically, a property commonly argued as a reason to keep poisoning.
+&gt; * Wasmtime, `crossbeam-channel`, and `tracing-subscriber` always ignore lock poisoning.
+&gt; * `rust-analyzer` [switched to parking_lot](https://github.com/rust-lang/rust-analyzer/pull/1359) after cancellation poisoned its solver, much like RLS before it.
+&gt; * The `parking_lot` maintainer [described poisoning](https://github.com/Amanieu/parking_lot/issues/324#issuecomment-1059616487) as an “anti-feature that hurts usability and reliability,” a sentiment with which I strongly concur.
+
+---
+
+## 为什么只有 Mutex 中毒？设计维度的巨大割裂
+
+&gt; ## Why Only Mutex?
+
+另一个极其刺眼的设计矛盾在于：为什么只有 `Mutex` 实现了中毒机制，而 `RefCell` 却没有？如果说为锁引入中毒机制的理由在于某些代码在临时打破不变量时发生恐慌、进而让其他代码观察到损坏状态，那么这套逻辑毫无疑问应该对单线程内部可变性 (Interior Mutability) 容器一视同仁。
+
+&gt; Another glaring inconsistency is why poisoning is implemented for `Mutex` but not for `RefCell`. Surely, if the case for poisoning is that some code temporarily breaks an invariant, panics, and someone else observes the broken state, this logic should apply equally to single-threaded interior mutability.
+
+只要拿那些常被用来为锁中毒辩护的经典示例，将其中的 `Mutex` 替换为 `RefCell`，你就会遭遇[完全一模一样的问题](https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=549fb7c9c0626a0ebd29bfa3a2e97ad4)。这甚至根本不需要多线程参与。而且这绝非仅仅停留在理论推演：Tokio 会自动捕获每个任务的恐慌；当与 `LocalSet` 配合使用时，任务恐慌会体现为 `JoinError`，而紧随其后的下一次 `borrow()` 依然会成功借用，进而[读取到一个空指针 (Null Pointer)](https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=925975f7d49c10c0d6821cfeb00e1f60)——这与官方 Issue 追踪器中关于互斥锁的恐慌案例毫无二致。
+
+&gt; Take the usual example argued in favor of poisoning, replace `Mutex` with `RefCell`, and you have [exactly the same problem](https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=549fb7c9c0626a0ebd29bfa3a2e97ad4). Threads are not even required. This is far from hypothetical: Tokio catches every task panic. Paired with a `LocalSet`, the panic surfaces as a `JoinError`, the next `borrow()` succeeds, and it [reads a null pointer](https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;gist=925975f7d49c10c0d6821cfeb00e1f60) just like the mutex example from the issue tracker.
+
+考虑到异步代码中普遍存在大量的恐慌捕获逻辑——其中很多为了极致性能而被设计为 `!Send`——我根本不认为恐慌在多线程代码中被捕获的频率会显著高于单线程。然而，从来没有任何人跳出来要求让 `RefCell` 也支持中毒机制。
+
+&gt; Given how much panic-catching occurs in async code—much of which is `!Send` for performance reasons—I am not convinced panics are caught more frequently in multi-threaded code. Yet, nobody is asking for `RefCell` to poison.
+
+甚至标准库在自身的各个类型设计上也自相矛盾：
+
+&gt; The standard library isn’t even consistent with itself:
+
+* `LazyLock` 一旦发生恐慌便永久中毒，再也无法读取；
+* `OnceLock` 发生恐慌后永远不会中毒；
+* `Mutex` 发生恐慌会中毒，但却允许你手动恢复数据。
+
+&gt; * `LazyLock` poisons for good.
+&gt; * `OnceLock` never poisons.
+&gt; * `Mutex` poisons, but lets you recover.
+
+更为关键的是，锁中毒机制仅仅能够追踪恐慌，而更加普遍的提前返回 (Early Return) 模式同样会引发完全相同的状态损坏问题。使用 `?` 运算符 (以及早已废弃的 `try!` 宏) 随时可能在临界区执行中途提前退出并返回错误，从而在一个并未中毒的正常互斥锁背后留下同样被破坏的不变量。
+
+&gt; Furthermore, poisoning only tracks panics, whereas more common early-return patterns have the exact same issue. The `?` operator (and the legacy `try!` macro) can return early from the middle of a critical section, leaving the same broken invariant behind an unpoisoned lock.
+
+还需注意到，将中毒逻辑强行捆绑在互斥锁上完全是[历史原因造成的巧合](https://github.com/rust-lang/rust/issues/134645#issuecomment-3590942770)。如果真正有需要，完全可以提供一个显式的 `Poison&lt;T&gt;` 泛型包装类型，让开发者在真正需要时能够自主选择为*任何*内部可变性容器引入中毒语义。
+
+&gt; Note also that the coupling of poisoning to mutexes [is historical](https://github.com/rust-lang/rust/issues/134645#issuecomment-3590942770). An explicit `Poison&lt;T&gt;` type would instead allow developers to opt into poisoning for *any* interior mutability wrapper if they truly wanted it.
+
+---
+
+## 我的诉求与未来展望
+
+&gt; ## What I Want
+
+就我个人而言，我由衷希望 Rust 官方团队能够尽快稳定 `std::sync::nonpoison`，并让 `std::sync::Mutex` 在默认情况下直接[解析为非中毒锁](https://github.com/rust-lang/libs-team/issues/169)。如果某些场景确实需要中毒保护，官方可以提供一个独立的 `Poison&lt;T&gt;` 包装容器，让那些确信自己需要 (且有能力正确处理) 该特性的开发者按需选择，并将其自由套用到任何类型上 (无论是 `RefCell` 还是 Tokio 异步线程任务)。
+
+&gt; Personally, I hope the Rust team stabilizes `std::sync::nonpoison` and has `std::sync::Mutex` [resolve to it by default](https://github.com/rust-lang/libs-team/issues/169). If someone genuinely wants poisoning, a separate `Poison&lt;T&gt;` wrapper can be provided so that anyone who believes they need it (and can handle it) can opt into it for any type, including `RefCell` or Tokio threads.
+
+最糟糕的解决方式莫过于妥协性的反向提案：保留锁中毒机制，但将 `lock()` 改为在遇到中毒时直接发生恐慌、而不是返回 `Result`。这种做法除了能稍微理顺持有锁守卫的语义 (并略微提升代码调用的简便性) 之外，只会将系统无声无息的缓慢瘫痪永久固化为*唯一*的行为模式。这与当下大家普遍滥用 `lock().unwrap()` 的后果在本质上毫无差别，而上文罗列的大量真实案例已经充分证明：在存在 `catch_unwind` 恐慌捕获的环境中，这种设计具有极大的系统破坏性。
+
+&gt; The worst possible outcome would be the counter-proposal: keeping poisoning, but having `lock()` panic instead of returning a `Result`. That would only fix held-guard lock semantics (and slightly improve ergonomics), but it would cement the slow, silent outage as the *only* option. That is essentially what every `lock().unwrap()` does today, and the issues listed above provide plenty of evidence that this behavior is deeply problematic in the presence of `catch_unwind`.
+
+文章[《为锁中毒辩护》 (In defense of lock poisoning)](https://sunshowers.io/posts/on-poisoning/) 从反方视角给出了最有力、最精彩的论辩，非常值得一读。但我坚信，现实中压倒性的客观证据所指向的是完全相反的方向——而且大多数严苛的生产级系统 (例如 Oxide) 在遭遇恐慌时都会直接选择终止进程 (Abort)，这显然是一种远比锁中毒更加健壮、更具确定性的工程实践。
+
+&gt; The post [In defense of lock poisoning](https://sunshowers.io/posts/on-poisoning/) is the best argument for the other side and is well worth reading. However, I believe the evidence points overwhelmingly the other way—and most production systems (such as Oxide) abort on panic anyway, which is a far more robust and reasonable behavior.</description>
+    </item>
+    <item>
+      <title>将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-26/将我们的-Messages-API-迁移到-Rust/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-26/将我们的-Messages-API-迁移到-Rust/</guid>
+      <pubDate>Thu, 26 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在 2024 至 2026 年间，Anthropic 核心 Messages API 的调用流量激增了整整 1800 倍。随着请求处理流程愈发复杂，最初用 Python 编写的服务在对象创建、垃圾回收以及异步任务切换中遭遇了严峻的 CPU 与内存性能瓶颈。面对如此庞大且高速演进的关键基础设施，如何在完全不中断服务的前提下将其彻底重写为 Rust？Anthropic 团队没有依赖滞后陈旧的离线测试，而是将生产环境本身变成了实时判题机，构建起由 AI 智能体 (AI Agent) 主导的“三层验证循环”——即毫秒级本地沙盒测试（内环）、全量生产影子流量 (Shadow Traffic) 验证（外环）与沉淀工程师经验规则的记忆闭环（记忆环）。这一自动化闭环不仅消除了生成代码与生产验证之间的鸿沟，更平稳实现了单请求 CPU 开销降低约 70%、内存占用减少超 80%、首 Token 延迟 (Time to First Token) 缩短约 20% 的傲人战果。
+
+---
+
+## 核心摘要
+
+&gt; ## Executive Summary
+
+对庞大且经过严密测试的生产系统进行重构迁移，往往会暴露出明显的“生成器与验证器鸿沟 (Generator-Verifier Gap)”：尤其是在 AI 辅助编程时代，生成新代码的速度快如闪电，但在真实的线上生产环境中验证其正确性却难如登天。
+
+&gt; Migrating large, well-tested production systems often presents a "generator–verifier" gap: while generating new code is fast—especially with AI assistants—verifying its correctness in live environments is extremely difficult. 
+
+本文详细揭秘了 Anthropic 如何在 2024 至 2026 年业务流量激增 1800 倍的极限挑战下，将其核心服务 **Messages API** 从 Python 彻底迁移至 Rust。工程团队并没有单纯依赖陈旧的历史测试用例，而是通过一套创新的**影子流量系统 (Shadowing System)**，把生产环境的 Messages API 本身变成了一台自动化的验证机。通过构建极其严密的验证闭环（涵盖本地沙盒测试的内环、生产影子流量的外环以及规则沉淀的记忆环），他们在服务完全不离线的情况下顺利完成了向 Rust 的平滑切换，取得了亮眼的性能突破：
+
+&gt; This article details how Anthropic migrated its core **Messages API** from Python to Rust amidst an 1,800x traffic growth between 2024 and 2026. Rather than relying solely on legacy tests, the engineering team turned the production Messages API itself into an automated verifier using a novel **shadowing system**. By implementing rigorous verification loops (inner sandbox testing, outer production loops, and memory loops), they successfully transitioned to Rust without taking the service offline, resulting in:
+
+* **单请求 CPU 占用降低约 70%**；
+* **单请求内存开销减少超 80%**；
+* **首 Token 延迟中位数缩短约 20%**。
+
+&gt; * **~70% less CPU usage** per request.
+&gt; * **&gt;80% less memory usage** per request.
+&gt; * **~20% reduction** in median time to first token.
+
+---
+
+## 为什么必须迁移？
+
+&gt; ## Why Migrate?
+
+Messages API 最初于 2023 年使用 Python 构建，起初仅是一个简易的请求转发服务。然而截至 2025 年底，流经该 API 的每个请求都需要经历庞杂的输入校验、提示词 (Prompt) 格式转换、分词处理 (Tokenization)、安全内容过滤以及流式 Token 解析。Python 在高并发场景下创建对象、回收内存以及异步任务交接时产生了极为显著的系统开销。
+
+&gt; Built in Python in 2023, the Messages API started as a simple request forwarder. However, by late 2025, every request required extensive validation, prompt conversion, tokenization, safety screening, and token stream parsing. Python added significant overhead during object creation, memory freeing, and task handoffs. 
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      The Monthly Average of API Requests               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+![Bar chart of API requests per day by month, from January 2024 to October 2026. Bars are barely visible through 2024, rise gradually in 2025, and climb steeply in 2026 to their highest point in October.](./images/2299ce96894e.png)</description>
+    </item>
+    <item>
       <title>不仅是更优的工具调用：Nemotron 从强化学习中学到了真正的专业判断力</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-25/不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-25/不仅是更优的工具调用-Nemotron从强化学习中学到了真正的专业判断力/</guid>
@@ -4904,260 +5313,6 @@ C++ 标准库中的 `std::sort` 严重依赖调用者提供的自定义比较函
 &gt; * [View PDF](https://arxiv.org/pdf/2611.04447)
 &gt; * [Experimental HTML Version](https://arxiv.org/html/2611.04447v1)
 &gt; * [TeX Source](https://arxiv.org/src/2611.04447)</description>
-    </item>
-    <item>
-      <title>Sarvam AI 开源 Prism 单次前向决策大模型</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-05/Sarvam-AI-开源-Prism-单次前向决策大模型/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/Sarvam-AI-开源-Prism-单次前向决策大模型/</guid>
-      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在企业级 AI 系统与 AI 智能体 (AI Agent) 工作流中，诸如意图路由、模型分发、合规审查与质量判别等决策场景，往往并不需要大模型逐字生成长篇文本，而是对推理延迟、置信度准确度与显存成本有着近乎苛刻的要求。Sarvam AI 正式开源的 Sarvam Prism 决策模型另辟蹊径，舍弃了传统自回归式的逐 Token 生成方式，创新采用“单次前向传递 (Single Forward Pass)”机制，直接对预定义候选项进行并行评分。在单块 NVIDIA B200 GPU (FP8) 上，Prism 实现了中位数仅 44 毫秒的超低响应延迟，且支持高达 131,072 Token 的超长上下文。该模型基于 Apache 2.0 协议开源，为高并发企业级决策与智能体自动化监管树立了新的性能标杆。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-Sarvam AI 正式发布了 **Sarvam Prism**，这是一款基于 Sarvam 105B 基座构建的开源权重企业级决策大模型。不同于传统的逐 Token (Token-by-Token) 文本生成模式，Prism 仅通过单次前向传递即可完成对所有预设候选选项的并行评估与打分。在单张运行 FP8 精度的 NVIDIA B200 GPU 上，该模型实现了令人惊叹的 **44 毫秒**中位数响应时间，并在 Hugging Face 上以 Apache 2.0 协议向全球开发者开放。专为意图路由、文档智能与智能体评估等企业级工作流量身打造的 Prism，完美兼具了极高推理速度、精准置信度校准以及高达 131,072 Token 的超长上下文支持。
-
-&gt; Sarvam AI has released **Sarvam Prism**, an open-weight enterprise decision model built on the Sarvam 105B base. Instead of traditional token-by-token text generation, Prism processes requests in a single forward pass to evaluate and score predefined options. It achieves an impressive 44-millisecond median response time on a single NVIDIA B200 GPU (running in FP8) and is available under an Apache 2.0 license on Hugging Face. Designed for enterprise workflows—such as intent routing, document intelligence, and agent evaluation—Prism combines high inference speed, precise confidence calibration, and support for massive context windows up to 131,072 tokens.
-
----
-
-## 单次前向决策模型架构
-
-&gt; ## A Single-Pass Decision Model
-
-Sarvam AI 于 2026 年 11 月 3 日发布了 **Sarvam Prism**，推出了一款专门针对企业决策场景而非自由文本生成定制的开源权重模型。
-
-&gt; Sarvam released **Sarvam Prism** on November 3, 2026, offering an open-weight model tailored specifically for enterprise decision-making rather than free-form text generation.
-
-提交给 Prism 的每个推理请求由以下三部分组成：
-* 当前系统状态 (Current state)
-* 待决问题 (Question)
-* 任意数量的候选选项（容纳在上下文窗口限制内）
-
-&gt; Each request submitted to Prism consists of:
-&gt; * A current state
-&gt; * A question
-&gt; * Any number of candidate options (fitting within the context window)
-
-模型通过单次前向传递同时处理整组输入。随后，一个轻量级评分头 (Scoring head) 会为每一个候选项分配精准的置信概率。Prism 基于对 Sarvam 105B 系统进行 LoRA 微调打造，针对以下场景进行了深度优化：
-* 客服意图分类路由
-* 跨模型调用动态分发
-* 文档智能分析
-* AI 智能体运行轨迹的自动化评估与监督
-
-&gt; The model processes this input in a single forward pass. A small scoring head then assigns a probability to every option. Built using LoRA fine-tuning applied to the Sarvam 105B system, Prism is optimized for tasks such as:
-&gt; * Customer-support intent routing
-&gt; * Model routing
-&gt; * Document intelligence
-&gt; * Automated evaluation and oversight of AI agent runs
-
----</description>
-    </item>
-    <item>
-      <title>Qrita：基于主元截断与选择的高性能 GPU Top-k 与 Top-p 采样算法</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-05/Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/Qrita-基于主元截断与选择的高性能-GPU-Top-k-与-Top-p-采样算法/</guid>
-      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在大语言模型 (Large Language Model, LLM) 的推理部署流水线中，生成每一个新 Token 的最后关键一步，就是对词表概率分布进行 Top-k 与 Top-p (核采样 / Nucleus Sampling)。随着现代开源大模型词表规模从传统的 3.2 万暴增至 12.8 万甚至更多，传统的全排序算法在 GPU 上带来了沉重的计算开销与显存带宽瓶颈。由加州大学伯克利分校等知名机构学者联合推出的 Qrita 算法，独辟蹊径地采用了基于主元截断与快速选择的创新机制：通过高斯 $\sigma$ 动态截断大幅裁减搜索空间，并利用支持重复值判别的四元主元搜索将迭代次数减半。相较于 SGLang 与 FlashInfer 等顶尖推理引擎，Qrita 实现了高达 1.4 倍的端到端吞吐量提升，显存占用降低 50%，且输出与严格排序完全一致。目前该算法已作为默认算子正式合入 vLLM。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-随着现代语言模型规模的持续膨胀，其词表体积急剧扩张，使得在 GPU 上高效实现 **Top-k** 与 **Top-p** 采样算法成为推理系统面临的一大关键挑战。传统的基于排序的方案在 GPU 上会引入高昂的计算负担与显存开销，而随机近似算法又往往以牺牲输出准确率与稳定性为代价。
-
-&gt; As modern language models scale, their vocabulary sizes grow significantly, making efficient implementation of **Top-k** and **Top-p** sampling algorithms a major challenge on GPUs. Traditional sorting-based approaches introduce heavy computation and memory overhead, while stochastic alternatives compromise output accuracy.
-
-本文提出了 **Qrita**，一种基于主元截断与选择的高性能 GPU Top-k 和 Top-p 采样算法。通过融合**基于高斯分布的 $\sigma$ 截断**（极大压缩了词表的候选搜索空间）与**带重复值处理的四元主元搜索**（将主元迭代次数减半并确保确定性输出），Qrita 相比于 SGLang 和 FlashInfer 等业界领先的大语言模型推理引擎，实现了高达 **1.4 倍的端到端推理服务吞吐量提升**，同时**显存占用直接减半**。Qrita 完全使用 Triton 语言编写，目前已作为 vLLM 官方默认的 Top-k 和 Top-p 采样算子投入生产使用。
-
-&gt; This paper introduces **Qrita**, a high-performance GPU algorithm for Top-k and Top-p sampling utilizing pivot-based truncation and selection. By integrating **Gaussian-based $\sigma$-truncation** (which drastically reduces the vocabulary search space) and **quaternary pivot search with duplication handling** (which halves iterations and ensures deterministic outputs), Qrita achieves up to **1.4$\times$ higher end-to-end serving throughput** with **half the memory usage** compared to leading LLM engines like SGLang and FlashInfer. Qrita is implemented using Triton and serves as the default Top-k and Top-p sampler in vLLM.
-
----
-
-## 论文元数据
-
-&gt; ## Paper Metadata
-
-* **arXiv 编号：** [arXiv:2602.01518](https://arxiv.org/abs/2602.01518) [cs.AI]
-* **作者团队：** Jongseok Park, Sunga Kim, Alvin Cheung, Ion Stoica
-* **提交日期：** 2026 年 2 月 2 日（最新修订：2026 年 11 月 2 日）
-* **开源协议：** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
-
-&lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
-
-&gt; * **arXiv ID:** [arXiv:2602.01518](https://arxiv.org/abs/2602.01518) [cs.AI]
-&gt; * **Authors:** Jongseok Park, Sunga Kim, Alvin Cheung, Ion Stoica
-&gt; * **Submitted:** February 2, 2026 (Last revised: November 2, 2026)
-&gt; * **License:** [Creative Commons Attribution 4.0](http://creativecommons.org/licenses/by/4.0/)
-&gt; &lt;img alt="license icon" role="presentation" src="./images/345c7ad61f1b.png" /&gt;
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-尽管 Top-k 和 Top-p 算法在模型采样中扮演着至关重要的角色，但随着每次新模型发布时词表规模的不断攀升，高效实现这两种采样算法在 GPU 上构成了巨大的工程挑战。现有的方案要么依赖于全局排序，从而在 GPU 上造成极其严重的计算与显存带宽开销；要么依赖于随机近似方法，导致算法输出发生改变。在本项工作中，我们提出了 Qrita——一种基于主元截断与选择的高效 Top-k 和 Top-p 采样算法。Qrita 在 Top-k 与 Top-p 两个任务中均深度利用主元搜索，并引入了两大关键技术：
-1. **基于高斯的 $\sigma$ 截断**：大幅削减词表的搜索空间；
-2. **带重复值处理的四元主元搜索**：将主元搜索迭代次数减半，并保证完全确定性的输出结果。
-
-&gt; Despite their importance in model sampling, efficient implementation of Top-k and Top-p algorithms poses a significant challenge as model vocabularies grow with every new model release. Existing approaches often rely on sorting, which incurs significant computation and memory overhead on GPUs, or on stochastic approaches that alter the algorithm's output. In this work, we propose Qrita, an efficient Top-k and Top-p algorithm based on a pivot-based truncation and selection. Qrita leverages pivot-based search for both Top-k and Top-p with two key techniques: 
-&gt; 1. Gaussian-based $\sigma$-truncation, which greatly reduces the search space of the vocabulary, and 
-&gt; 2. Quaternary pivot search with duplication handling, which halves the number of pivot search iterations and guarantees deterministic output.
-
-我们使用 Triton 语言实现了 Qrita，并在与 SGLang、FlashInfer 等高性能大语言模型执行引擎的 Top-k 和 Top-p 算子对比中评估了其性能。结果表明，Qrita 在端到端推理服务吞吐量上提升高达 1.4 倍，显存占用降低一半，同时能提供与基于稳定排序的 Top-k 和 Top-p 算法完全相同的输出结果。Qrita 目前已成为 vLLM 默认采用的 Triton 版 Top-k 和 Top-p 采样算子，其开源实现可在[官方仓库链接](https://github.com/vllm-project/vllm/blob/main/vllm/v1/sample/ops/topk_topp_triton.py)直接获取。
-
-&gt; We implement Qrita using Triton and evaluate its performance against the Top-k and Top-p kernels of high-performance LLM execution engines such as SGLang and FlashInfer, improving end-to-end serving throughput up to 1.4$\times$ with half the memory usage, while providing the same output of stable sort-based Top-k and Top-p algorithms. Qrita is now the default Triton Top-k and Top-p sampler of vLLM, and its implementation is available at [this link](https://github.com/vllm-project/vllm/blob/main/vllm/v1/sample/ops/topk_topp_triton.py).
-
----
-
-## 核心特性与技术要点
-
-&gt; ## Key Features &amp; Techniques
-
-* **基于高斯的 $\sigma$ 截断 (Gaussian-based $\sigma$-Truncation)**：通过自适应缩小候选搜索空间，最大程度消除不必要的词表遍历开销。
-* **带重复值处理的四元主元搜索 (Quaternary Pivot Search with Duplication Handling)**：将所需的主元搜索迭代次数直接减半，同时确保输出与标准基线排序完全一致且确定。
-* **原生 Triton 实现 (Triton Implementation)**：具备高度优化的原生 GPU 执行效率，并已无缝集成至 vLLM 等工业级主流大模型推理引擎中。
-
-&gt; * **Gaussian-based $\sigma$-Truncation:** Minimizes unnecessary vocabulary exploration by dynamically narrowing down the candidate search space.
-&gt; * **Quaternary Pivot Search with Duplication Handling:** Cuts the required pivot search iterations in half while ensuring fully deterministic, stable outputs matching sort-based baselines.
-&gt; * **Triton Implementation:** Native high-performance GPU execution integrated directly into production engines like vLLM.</description>
-    </item>
-    <item>
-      <title>每任务成本优化：使用轻量级分类器实现 Gemini 多模型与思考层级动态路由</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-04/每任务成本优化-使用轻量级分类器实现-Gemini-多模型与思考层级动态路由/</guid>
-      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在自主编程智能体 (AI Agent) 快速普及的当下，每次微小决策都直接调用昂贵的高思考深度推理模型，导致企业账单急剧攀升。本文由 Google Cloud AI 的技术专家 Sergio Villani 撰写，针对大模型落地的真实痛点，提出了从“单 Token 成本”转向以“任务成功成本 (Cost Per Task)”为核心的衡量体系。文章深入剖析了基于正则或 Token 长度等初级路由策略的失效机理，并开创性地引入 TypeSafe Jev 等极低成本分类器，通过极速判断任务复杂度，将常规任务分流至轻量模型或浅层思考模式，仅在必要时才升级调用深度推理。这一动态分流架构在维持顶尖基准测试 (Benchmark) 准确率的同时，大幅降低了计算开销与响应延迟，为企业构建高性价比、高可用的智能体系统提供了极具指导意义的工程实践方案。
-
----
-
-## 核心摘要
-
-&gt; ## Executive Summary
-
-尽管各大模型的每 Token 调用单价持续走低，但在实际部署中，自主编程智能体消耗的工程账单却不降反升。在真实的生产实践中，真正决定经济效益的黄金指标早已不是“每百万 Token 多少钱”，而是**任务成功成本 (Cost Per Task)** ——即智能体在所有循环轮次、工具调用、错误重试以及内部思维链推理中所产生的总支出，除以最终顺利通过验证的任务总数。
-
-&gt; As per-token API prices continue to fall, engineering bills for autonomous coding agents are climbing. The metric that truly governs production economics is no longer price per million tokens, but **cost per successful task**: the total spend across every loop iteration, tool call, retry, and internal thinking pass divided by the number of tasks that pass verification. 
-
-为了避免在每一个微小的决策节点上都大动干戈地调用高思考深度的推理配置，工程团队可以引入一层轻量级路由层——例如使用 TypeSafe 开发的极低成本分类器 Jev，或是 Google 原生判别模型——在日常平淡无奇的常规决策流向昂贵的推理模型之前将其精准拦截。
-
-&gt; To prevent the unnecessary overhead of calling high-thinking reasoning configurations for every micro-decision, teams can use a lightweight routing layer—such as a cheap classifier like TypeSafe’s Jev or Google-native discriminative models—to intercept routine decisions before they reach an expensive reasoning model.
-
----
-
-## 1. 基于正则与 Token 长度的简易路由在未知智能体任务上全面溃败
-
-&gt; ## 1. Regex and token-length harness routers collapse on unseen agent tasks
-
-单纯依赖简单的提示词 (Prompt) 长度启发式规则，或者靠关键词硬匹配 (例如检查是否包含 `sequence` 或 `modulo` 等特定词汇) ，在面对现实世界真实的智能体流量时往往不堪一击。在从未见过的留出测试集上，这类简陋的关键词启发式规则准确率会出现灾难性下滑：许多看似繁琐却毫无难度的常规任务往往篇幅较长、词数极多；而一些结构精炼但逻辑极为复杂的紧凑型多步骤代码追踪任务，却压根不会出现人工预设的那些“解谜”标志词。
-
-&gt; Relying on naive prompt-length heuristics or simple keyword-matching (e.g., checking for words like `sequence` or `modulo`) quickly degrades when exposed to real-world agent traffic. On unseen held-out tasks, simple keyword heuristics drop significantly in accuracy because normal, straightforward tasks often exceed word counts, while concise multi-step code traces lack hardcoded puzzle words.
-
-相反，将复杂的任务判断拆解为“原子级”的微观判定——例如通过评估一个二元概率指标 (在 Jev 分类器中称为 `noul`) 来判断当前任务是否需要多步连续计算、模拟或逻辑推演——能够取得令人惊艳的高精度分类表现。
-
-&gt; Decomposing broad questions into atomic checks—such as evaluating a binary probability statement (`noul`) regarding whether a task requires multiple sequential calculations—yields vastly superior classification results.
-
-```python
-def call_jev(question_text):
-    body = {
-        "state": question_text,
-        "model": "jev-latest",
-        "questions": {
-            "multi_step": {
-                "type": "noul",
-                "instructions": (
-                    "Answering this requires performing more than one "
-                    "sequential calculation, simulation step, or logical "
-                    "deduction, rather than a single direct lookup, format "
-                    "check, or one-step classification."
-                ),
-            }
-        },
-    }
-    # Send the request above to the classifier's API.
-    # response.answers["multi_step"].noul is the probability used to route.
-```
-
-![table_1_task_routing_sample](./images/62e28af3cba1.jpg)
-
-![table_2_benchmark_split_agreement](./images/b9defa5a041c.jpg)
-
----
-
-## 2. MaxOutputTokens 是硬性输出上限，绝非控制思考预算的调节旋钮
-
-&gt; ## 2. MaxOutputTokens is a ceiling, not a thinking-budget dial
-
-许多开发者容易陷入一个误区，以为在推理模型上将 `maxOutputTokens` 调小，就能“强迫”模型在简单任务上节省算力与思考预算。然而事实恰恰相反，输出上限仅仅是一道刚性的“天花板”：简单任务原本生成的回复就极为简短，根本触碰不到设定的上限阀值，因此模型消耗的思考 Token 与输出开销完全没有减少；反而是当遇到真正复杂的困难任务时，被人为压低的上限会导致输出在推演半途被生硬截断，直接引发任务崩溃。
-
-&gt; A common misconception is that setting a low `maxOutputTokens` cap on a reasoning model will force it to spend fewer resources on easy tasks. However, output caps act strictly as ceilings; easy answers never approach the limit, meaning token and thinking spend remain virtually identical while artificially restricted caps risk truncating or breaking hard tasks.
-
-![table_3_easy_task_configuration](./images/f3c63b5a2852.jpg)
-
-&gt; 💬 [原文说明 / Note]:
-&gt; *注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。*
-&gt;
-&gt; *Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.*
-
----
-
-## 3. 性能基准实测：Jev 分流方案对决最强无路由配置
-
-&gt; ## 3. Benchmark Jev against the strongest setup without a router
-
-将轻量化模型策略 (例如直接使用 Flash-Lite，或是将 Gemini Flash 设置为较低的思考深度) 与引入智能路由的配置方案进行基准测试对比，可以清晰揭示：在核心大模型处理前加入极低成本的智能预处理分流，是如何在大幅压低延迟的同时实现惊人的成本优化的。
-
-&gt; Benchmarking lightweight options (such as Flash-Lite or Gemini Flash set to low thinking levels) against routing configurations reveals how intelligent preprocessing can optimize both latency and cost.
-
-![table_4_strategy_performance_comparison](./images/f4b22d599756.jpg)
-
-&gt; 💬 [原文说明 / Note]:
-&gt; *注：上述数据来源于样本测试套件上的单次实验测算；在生产环境中，实际延迟、Token 数量与计费开销会随提示词长度、上下文缓存以及服务并发负载而有所浮动。*
-&gt;
-&gt; *Note: Figures reflect single-run experimental measurements on a sample test suite; actual latencies, token counts, and billed costs will vary based on prompt length, context caching, and production load.*
-
-![table_5_task_bucket_breakdown (1)](./images/d36ffbe95b2e.jpg)
-
-* **Jev 路由表现优异**：默认将所有日常任务首先分配给 Flash-Lite 处理，仅对被 Jev 标记为高复杂度的任务进行动态升级；这种策略在完美达到顶级基准准确率的同时，彻底免去了简单任务上毫无必要的深度思考等待时间。
-* **智慧升级原则**：只有当低梯度的模型或配置确实无力解决任务时，调用计算开销更大的重量级升级模型才具有切实的经济与效果价值。
-
-&gt; * **The Jev router succeeded:** By sending every task to Flash-Lite first and escalating complex items flagged by Jev, it matched top-tier baseline accuracy while reducing unnecessary deep-reasoning wait times.
-&gt; * **Escalating smartly:** A heavier escalation target is only beneficial when lower-tier settings begin to fail.
-
----
-
-## 4. 单 Token 标价掩盖的工程真相：缓存与模型特性的深层博弈
-
-&gt; ## 4. Price per token doesn't tell the whole story
-
-* **动态路由与上下文缓存互有权衡**：在处理大型代码仓库目录映射或繁杂的工具定义时，上下文缓存 (Context Caching) 能呈数量级削减 Token 支出，但缓存必须绑定特定的具体模型。如果在 Flash-Lite 与 Flash 之间进行高频来回切换，反而会击穿并破坏缓存复用效率。因此，动态路由器最适合应用于那些简短、自包含且上下文独立的离散子任务中。
-* **模型选型严格匹配业务负载特性**：像 Gemini Pro 这样的深度推理模型，应当被专门保留给那些需要多步推演、复杂归纳的高难度攻坚场景；而针对绝大多数常规检索、快速查询与信息抽取操作，直接交给轻快的 Flash 基础配置即可游刃有余。
-
-&gt; * **Routing and caching pull in opposite directions:** Context caching dramatically reduces token costs for large repository maps or tool definitions, but caches are bound to specific models. Frequent switching between Flash-Lite and Flash can break caching efficiency. Reserve routers for short, self-contained tasks.
-&gt; * **Match the model to the workload:** Deep reasoning models like Gemini Pro are best reserved for complex multi-step reasoning, whereas quick lookups and extractions belong on Flash configurations.
-
----
-
-## 总结与落地工程建议
-
-&gt; ## Summary Recommendations
-
-1. **优先尝试 Flash 的 `low` 低思考配置**：在急于搭建复杂的自定义路由组件之前，不妨先直接测试较低的思考深度档位 (例如设置 `thinkingLevel: "LOW"`) ，因为在很多工程场景下，它仅需默认配置极小一部分的成本，就能以极高成功率攻克绝大部分任务。
-2. **在简短独立任务中引入 Jev 分类器**：利用细粒度原子化“是/否”判定问题，将简单任务精准分流至 Flash-Lite，遇到复杂难题再动态转交至开启浅思考的 Flash 方案。
-3. **建立全局端到端智能体成本监控体系**：借助 Google Cloud 的 Cloud Logging 与 BigQuery 全程追踪调用追踪链 (Trace) 与思考 Token 真实开销，始终紧扣“单次成功任务成本”这一关键商业指标来评估系统综合表现。
-
-&gt; 1. **Start with Flash on `low` thinking:** Before building a custom router, test lower thinking levels directly (`thinkingLevel: "LOW"`), as they frequently solve tasks successfully at a fraction of default costs.
-&gt; 2. **Use Jev for short, standalone tasks:** Direct simple tasks to Flash-Lite and hard tasks to Flash (low thinking), leveraging atomic yes-or-no classification questions.
-&gt; 3. **Measure true agent expenditures:** Track traces and thinking tokens via Cloud Logging and BigQuery to monitor performance against actual costs per successful task.
-
----
-![image3 (1)](./images/85cf26014b0f.jpg)</description>
     </item>
   </channel>
 </rss>
