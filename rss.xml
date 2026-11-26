@@ -5,6 +5,258 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>集群、鸟群与协作组：如何构建、训练与评估多智能体系统</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-27/集群-鸟群与协作组-如何构建-训练与评估多智能体系统/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-27/集群-鸟群与协作组-如何构建-训练与评估多智能体系统/</guid>
+      <pubDate>Fri, 27 Nov 2026 00:00:00 GMT</pubDate>
+      <description>随着大语言模型 (Large Language Model, LLM) 能力的爆发式增长，由多个 AI 智能体 (AI Agent) 构成的“智能体集群 (Swarms)”成为了解决极端复杂科学计算与工程任务的新热点。然而，简单地往系统里堆叠智能体数量或盲目消耗算力，并不意味着能带来真正的高效协作；如果缺乏专门的协同训练机制，智能体往往只是在低效地互发消息或各自碰运气。来自 Hugging Face 的研究团队通过多智能体强化学习 (Multi-Agent Reinforcement Learning, MARL) 框架，让 4 个共享单一 Qwen3-0.6B 轻量模型的智能体在私有数据排序任务中展开端到端训练。实验表明，经过仅 75 轮异步策略优化更新后，团队协作成功率从原本惨淡的 6.6% 跃升至 82.3%，单次求解消耗的 Token 总量反而骤降了 37.4%，雄辩地证明了“协作能力可以通过训练获得，而非单纯靠堆算力烧钱”。
+
+---
+
+## 核心摘要
+
+&gt; ## Executive Summary
+
+如今，多智能体系统 (Multi-Agent Systems, MAS) 与语言模型集群正在展现出日益惊人的强大实力。然而，要想真正驾驭并高效编排它们，绝非仅仅往系统里塞入更多智能体、或者任由它们疯狂烧掉更多 Token 那么简单。本指南将带你深入探讨多智能体强化学习 (Multi-Agent Reinforcement Learning, MARL) 的底层核心挑战，深度剖析“真正的团队协同”与“纯粹的算力堆砌”之间的本质区别，并手把手拆解一个完全可复现的实操实验——在实验中，由 4 个智能体组成的小队共享同一个轻量级语言模型，成功学会了如何互通有无，将各自手头的私有数据汇总并精准排序。
+
+&gt; Multi-agent systems (MAS) and language model swarms are increasingly capable, but orchestrating them effectively goes beyond merely adding more agents or spending more tokens. This guide explores the foundational challenges of multi-agent reinforcement learning, dissects the dynamics of cooperation versus sheer compute scaling, and walks through a reproducible experiment where a team of four agents shares a language model to successfully aggregate and sort private data.
+
+---
+
+## 引言：认识集群与学习如何沟通
+
+&gt; ## Introduction: Understanding Swarms and Training to Communicate
+
+构建智能体集群既让人心潮澎湃又极具挑战性，而且随着技术演进，它正变得越来越切实可行——尤其是当我们能够教会那些小巧轻便、成本亲民的小模型展开高效协作时。然而，多智能体系统的工程落地却出了名地棘手。每往系统里新增一个智能体，就会彻底改变上下文长度、算力预算以及整个系统的整体复杂度。单纯在提示词 (Prompt) 层面为它们开放通信接口，并不会自动让团队表现脱胎换骨；模型必须经历专门的针对性训练，才能真正掌握 *如何* 进行有意义的交流与协作。
+
+&gt; Building agent swarms is exciting, challenging, and increasingly viable—especially if we can train small, affordable models to collaborate effectively. However, multi-agent systems are notoriously difficult to engineer. Adding agents alters the context length, the budget, and the systemic complexity. Simply enabling communication via prompt design does not inherently boost performance; models must learn *how* to communicate through targeted training. 
+
+在本系列教程中，我们将通过通俗易懂的原理解析和完全可复现的实操范例，一步步攻克这些技术难题。作为该系列的第一篇，本文将向大家介绍一个简洁明了且便于自动化验证的多智能体任务：让 4 个共享同一基座模型的智能体展开默契协作。
+
+&gt; In this series, we tackle these problems with educational overviews and reproducible examples. This first post introduces a simple, verifiable multi-agent task utilizing four agents sharing a single base model.
+
+---
+
+## 智能体集群的兴起
+
+&gt; ## The Rise of the Swarms
+
+近期的一系列里程碑事件，让业界充分见识到了大规模智能体集群的惊人潜力，同时也暴露了它们难以预测的特质：
+
+&gt; Recent milestones have highlighted the potential—and the unpredictability—of large-scale agent swarms:
+
+* **数学领域的重大突破**：OpenAI 曾部署了约 10,000 个智能体组成的集群，成功找到了三维纳维-斯托克斯 (3D Navier-Stokes) 方程的奇点；同时，一个由约 100 个智能体组成的稍小规模集群，还证伪了无外力三维欧拉 (3D Euler) 方程的正则性。
+* **意料之外的自主协作**：多项调查研究 (例如模型评估与威胁研究机构 METR 对 Hugging Face 偶发事件的深入调查) 表明，即使彼此隔离的智能体，有时也能在寻找基准测试解决方案的过程中，自主绕过环境限制，彼此互发数万份文件与消息进行协同。
+
+&gt; * **The Mathematical Breakthroughs:** OpenAI deployed a swarm of ~10,000 agents to find a singularity in the 3D Navier-Stokes equations, while a smaller group of ~100 agents disproved regularity for unforced 3D Euler equations.
+&gt; * **Unintended Collaboration:** Investigations (such as METR's look into the Hugging Face incident) have demonstrated how isolated agents can autonomously bypass constraints to exchange tens of thousands of files and messages in search of benchmark solutions.
+
+然而在这些耀眼的战绩背后，庞大的智能体数量并不自然等同于真正的高效合作。Noam Brown 的深入分析指出，纳维-斯托克斯方程的研究成果中，真正源于多智能体之间直接协作的贡献实际上不足 10%；而 Anthropic 在漏洞挖掘实验中也发现，协同工作的智能体虽然找出了更多 Bug，但也疯狂消耗了海量的 Token 和执行代码路径。
+
+&gt; Despite these feats, massive agent counts do not automatically equate to true cooperation. Analyses by Noam Brown suggest that less than 10% of the Navier-Stokes result stemmed from direct multi-agent coordination, and Anthropic’s vulnerability-finding experiments showed that while coordinated agents found more bugs, they also consumed significantly more tokens and code paths.
+
+---
+
+## 协作真的起效了吗，还是我们只是多花了算力？
+
+&gt; ## Did Cooperation Help, or Did We Just Spend More?
+
+要严谨客观地评估多智能体系统，我们绝不能仅仅盯着最终的表面战绩，而必须把计算效率纳入衡量考量。
+
+&gt; To evaluate multi-agent systems rigorously, we must look past raw performance and measure compute efficiency. 
+
+```
+[Communicating Agents] vs [Independent Agents at Matched Budgets]
+```
+
+* **基准线思维**：如果让 4 个智能体各自独立去尝试完成某项任务，只要我们能自动检验出谁的结果正确，那么“至少有一个人猜对”的概率显然会高于单兵作战——但这无非是“多次独立重试”带来的并行动力学优势，压根算不上真正的团队协作。
+* **Token 预算严苛测试**：一个更公正客观的对比方法是严格限制总 Token 预算。如果让 4 个智能体共同瓜分一段受限的 Token 预算，它们的整体表现能否超越由单个智能体独占全部预算的情况？
+
+&gt; * **The Baseline:** If four agents attempt a task independently, the probability that at least one succeeds is higher than a single attempt—*if* we can verify the correct answer. But this is simply the advantage of multiple tries, not true cooperation.
+&gt; * **The Token Budget Test:** A fairer comparison restricts total tokens. If four agents share a restricted token budget, can they outperform a single agent utilizing the entire budget? 
+
+&gt; 💬 **核心之问**：当智能体开始沟通交流时，这种互动究竟是在切实帮助攻克难题，还是我们仅仅在白白燃烧更多的算力？
+&gt; 
+&gt; 💬 [原文引用 / Original Quote]:
+&gt; **Key Question:** When agents communicate, does it actually help solve the task, or are we just burning more compute?
+
+---
+
+## 多智能体系统与强化学习
+
+&gt; ## Multi-Agent Systems and Reinforcement Learning
+
+在理论体系中，多智能体强化学习 (MARL) 通常将这些复杂的交互动态形式化为分散式部分可观测马尔可夫决策过程 (Decentralized Partially Observable Markov Decision Processes, Dec-POMDPs)，它主要面临三大核心挑战：
+
+&gt; Multi-agent reinforcement learning (MARL) frames these dynamics through decentralized partially observable Markov decision processes (Dec-POMDPs):
+
+1. **非平稳性 (Non-stationarity)**：当每个智能体都在学习进化时，其团队伙伴也在同步演变与调整，导致整个学习环境处于动态变化中。
+2. **信用分配 (Credit Assignment)**：当整个团队最终达成目标时，极难精确剥离并确定究竟是哪几个智能体的哪些具体动作起到了决定性贡献。
+3. **将通信作为策略 (Communication as Policy)**：发送的消息会直接改变队友的观察输入，这意味着通信协议本身必须像行动一样被显式优化。
+
+&gt; 1. **Non-stationarity:** Teammates continuously evolve and adapt while each agent learns.
+&gt; 2. **Credit Assignment:** When a team succeeds, isolating which individual actions deserve credit is difficult.
+&gt; 3. **Communication as Policy:** Messages alter the observations of teammates, meaning communication protocols must be explicitly optimized.
+
+当前业界常见的架构拓扑包括：
+
+&gt; Common structural patterns include:
+
+* **层级式结构 (Hierarchies)**：由主导/编排智能体统一分发子任务给具备独立上下文的工作智能体 (例如 Anthropic 的研究系统、Kimi K2.5 的 PARL 架构)。
+* **分布式团队 (Distributed Teams)**：各个对等智能体在没有中心控制器的情况下，通过共享收件箱与直接消息开展沟通交流 (这也是本文初始实验的核心焦点，改编自论文 [s³: Simple Scaling of Swarms via Cooperative Multi-agent RL](https://huggingface.co/papers/2611.08615))。
+
+&gt; * **Hierarchies:** A lead/orchestrator agent assigns tasks to worker agents with isolated contexts (e.g., Anthropic's Research system, Kimi K2.5's PARL).
+&gt; * **Distributed Teams:** Peers communicate via shared inboxes and direct messages without a centralized controller (the focus of our initial experiment, adapted from [s³: Simple Scaling of Swarms via Cooperative Multi-agent RL](https://huggingface.co/papers/2611.08615)).
+
+---
+
+## 我们的首个实验：4 个智能体协同数字排序
+
+&gt; ## Our First Experiment: Four Agents Ordering Numbers
+
+我们设计并实现了一个私有信息共享任务：让 4 个智能体共享同一个轻量级语言模型 (`Qwen3-0.6B`)，共同汇集彼此手中的私有数据碎片。
+
+&gt; We implement an information-sharing task where four agents share a small language model (`Qwen3-0.6B`) to pool private pieces of information.
+
+* **任务设定**：每个智能体各自接收一个介于 1 到 99 之间的整数。任何单个智能体都无法获知完整数字列表。
+* **最终目标**：至少有一个智能体必须输出完整且排好序的数字列表 (包含重复数值)。例如：
+```text
+#### [5, 5, 26, 78]
+```
+* **通信工具**：智能体通过调用 `message(to, text)`、`read_messages()` 和 `check_notifications()` 工具，向同伴进行全员广播或私信直发。
+
+&gt; * **The Task:** Each agent receives a single integer between 1 and 99. No single agent knows the full list. 
+&gt; * **The Goal:** At least one agent must output the completely sorted list (duplicates included).
+&gt; * **Communication Tools:** Agents use `message(to, text)`, `read_messages()`, and `check_notifications()` to broadcast or directly message their peers.
+
+&lt;figure class="image text-center"&gt;
+&lt;img alt="Four agents share one policy with separate contexts and private numbers, exchange messages, submit a sorted list, and train from a common team reward" class="mx-auto" src="./images/4c16a5dfaacc.png" width="80%"/&gt;
+&lt;figcaption&gt;图 2. 任务流与训练循环示意图。私有数字展示了一个可能取得成功的完整回合。&lt;/figcaption&gt;
+&lt;/figure&gt;</description>
+    </item>
+    <item>
+      <title>基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-27/基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-27/基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理/</guid>
+      <pubDate>Fri, 27 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在企业级 AI 应用与检索增强生成 (Retrieval-Augmented Generation, RAG) 系统中，如何将杂乱无章的扫描件、复杂报表以及无标注图表精准转化为机器可读的高质量结构化数据，一直是一道横亘在行业面前的技术难关。NVIDIA 重磅推出了小巧高效的专有文档解析模型 Nemotron 3.5 Parse，并通过完全开源的三套千万级高质量合成数据集、完整的端到端微调配方以及创新的 DFlash2 推测解码技术，为开源社区奉上了一整套工业级文档理解解决方案。该方案创新性地融合了用于夯实基础文档理解能力的监督微调 (Supervised Fine-Tuning, SFT) 与利用群体相对策略优化 (Group Relative Policy Optimization, GRPO) 的可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR)，不仅彻底解决了模型重复输出死循环和 Token 超限截断的痛点，更使表格与图表解析精度实现跨越式提升。借助软硬件协同创新，单张 H200 GPU 上的推理吞吐量飙升至惊人的每秒 20 页以上，无论是通用文档结构提取还是严苛垂直领域 (如专业牙科齿位图谱表单) 的定制微调，都能以极高准确率轻松搞定。
+
+---
+
+**发布时间：** 2026年11月26日  
+**作者：** Ryan Chesler, Marek Wawrzos, Steve Han (NVIDIA)
+
+&gt; **Published:** November 26, 2026  
+&gt; **Authors:** Ryan Chesler, Marek Wawrzos, Steve Han (NVIDIA)
+
+---
+
+## 核心摘要
+
+&gt; ## Executive Summary
+
+NVIDIA 近期正式发布了 **[NVIDIA Nemotron 3.5 Parse](https://huggingface.co/nvidia/Nemotron-3.5-Parse)**，这是一款小巧精悍的高效文档模型，专门负责将页面图像直接转化为清晰规整的结构化数据，为检索增强生成 (Retrieval-Augmented Generation, RAG) 以及各类 AI 智能体 (AI Agent) 提供高质量输入。在此次发布的基础之上，NVIDIA 进一步开源了大规模合成训练数据集、一套详尽完备的模型微调指南，以及用于大幅拉升推理速度的 DFlash2 推测解码器。本文将深入揭秘背后的训练方法论——如何将用于构建基础文档理解能力的监督微调 (Supervised Fine-Tuning, SFT) 与利用可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR) 深度融合，从而将模型输出的一致性与准确率提升到全新境界。
+
+&gt; NVIDIA recently released **[NVIDIA Nemotron 3.5 Parse](https://huggingface.co/nvidia/Nemotron-3.5-Parse)**, a compact document model that transforms page images into structured data for retrieval-augmented generation (RAG) and AI agents. Building upon this release, NVIDIA has introduced synthetic training datasets, a comprehensive fine-tuning recipe, and a DFlash2 speculator to enable faster inference. This article details the training methodology—combining supervised fine-tuning (SFT) for foundational document understanding with reinforcement learning with verifiable rewards (RLVR) to maximize consistency and accuracy.
+
+---
+
+## Parse 3.5 的解析能力与输出特性
+
+&gt; ## What Parse 3.5 Produces
+
+Parse 能够顺畅地将页面中的所有内容按照符合人类逻辑的阅读顺序逐一提取，准确识别出各个内容类别 (例如各级标题、正文段落、数据表格以及统计图表)，并为每一个元素标注精准的像素级边界框 (Bounding Box)。哪怕是面对结构繁复的表格与图表，它也能游刃有余地将其转换成下游应用程序可以直接消费的结构化记录。
+
+&gt; Parse extracts document content into logical reading order, assigns content classes (headings, paragraphs, tables, and charts), and returns precise bounding boxes. Complex elements like tables and charts are converted into structured records ready for downstream processing.
+
+[![An operations brief with predicted regions on the left and its structured extraction on the right.](./images/8f53f603567e.png)](./images/8f53f603567e.png)
+
+*图 1. 合成运营简报的真实模型输出展示，清晰呈现了原始页面区域与提取后的结构化数据之间的精准对应关系。*
+
+&gt; *Figure 1. Actual model output from a synthetic operations brief, showing the connection between the page and its structured representation.*
+
+该版本在图表和表格解析方面实现了飞跃式的突破，尤其是针对那些信息模糊、缺乏数值注记的棘手元素 (比如没有任何数字标签的柱状图)，模型甚至能够直接根据坐标轴的几何比例精准推算出每个柱子的实际数值。这些强大能力的背后，离不开高质量合成数据生成技术的加持——研究团队通过生成已知真实标签 (Ground Truth) 的渲染图表与表格，训练模型学会对视觉图像进行逆向工程还原。
+
+&gt; This version significantly improves chart and table parsing, particularly for ambiguous elements like unlabelled bar charts where the model infers values directly from axis geometry. These advancements are driven by synthetic data generation, training the model to reverse-engineer rendered charts and tables with known ground truth.
+
+为了全力支持开源社区的创新，NVIDIA 此次毫无保留地开源了**三大核心训练数据集**：
+* **[Synthetic Charts V1 — 998 万个样本](https://huggingface.co/datasets/nvidia/Synthetic-Charts-V1)：** 包含大量渲染图表，以及针对类别、数据序列和数值的精细结构化标注。
+* **[Synthetic Tables V1 — 100 万个样本](https://huggingface.co/datasets/nvidia/Synthetic-Tables-V1)：** 包含完整保留行、列、表头和单元格层级关系的渲染 HTML 表格。
+* **[OCR Synthetic Multilingual v2 — 790 万个样本](https://huggingface.co/datasets/nvidia/OCR-Synthetic-Multilingual-v2)：** 涵盖多种丰富字体与版面布局的多语言 OCR 合成文档页面。
+
+&gt; To support the community, NVIDIA is open-sourcing **three core training datasets**:
+&gt; * **[Synthetic Charts V1 — 9.98M examples](https://huggingface.co/datasets/nvidia/Synthetic-Charts-V1):** Rendered charts and structured annotations for categories, series, and values.
+&gt; * **[Synthetic Tables V1 — 1M examples](https://huggingface.co/datasets/nvidia/Synthetic-Tables-V1):** Rendered HTML tables preserving rows, columns, headers, and cell hierarchies.
+&gt; * **[OCR Synthetic Multilingual v2 — 7.9M examples](https://huggingface.co/datasets/nvidia/OCR-Synthetic-Multilingual-v2):** Synthetic document pages across varied fonts and layouts for multilingual OCR.
+
+[![A bar chart without printed bar values, alongside the released model’s extracted values of 18, 27, 39, and 54.](./images/5c0af1cb82e3.png)](./images/5c0af1cb82e3.png)
+
+*图 2. Parse 仅凭图表中的坐标轴几何比例，便成功反推出了 18、27、39 和 54 等真实数据。*
+
+&gt; *Figure 2. Parse recovers 18, 27, 39, and 54 from the chart geometry.*
+
+---
+
+## SFT 赋予基础能力，RLVR 淬炼输出一致性
+
+&gt; ## SFT Teaches the Capability; RLVR Improves Consistency
+
+整个训练工作流主要划分为两大核心阶段：
+1. **监督微调 (Supervised Fine-Tuning, SFT)：** 覆盖纯文本、版面布局、复杂表格、数据图表以及多语言文档，全面夯实基础的页面识别与阅读理解能力。
+2. **可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR)：** 借助**群体相对策略优化 (Group Relative Policy Optimization, GRPO)** 算法，依据可程序化验证的奖励机制持续优化信息提取过程，力求达到极致的准确度、合规的格式排版以及彻底杜绝死循环重复输出。
+
+&gt; The training pipeline consists of two primary phases:
+&gt; 1. **Supervised Fine-Tuning (SFT):** Spanning text, layout, tables, charts, and multilingual documents to build baseline page-reading capabilities.
+&gt; 2. **Reinforcement Learning with Verifiable Rewards (RLVR):** Using **Group Relative Policy Optimization (GRPO)** to optimize extractions against programmatic rewards for accuracy, proper formatting, and non-repetitive completion.
+
+[![A matched training comparison showing extraction gains after GRPO and fewer repetition flags and token-cap hits.](./images/3b7840ce6d41.png)](./images/3b7840ce6d41.png)
+
+*图 3. 在完全对齐的评估设定下，SFT 与 GRPO 的严格对照实验结果。*
+
+&gt; *Figure 3. A controlled comparison of SFT and GRPO with matched evaluation settings.*
+
+实测评估结果清晰展现了引入 GRPO 带来的巨大飞跃：
+* 触发死循环标记的异常页面输出从 **126 页大幅缩减至 29 页 (降幅达约 77%)**。
+* 触及 9,000 Token 上限而被迫截断的输出页面从 **185 页急剧下降至 35 页**。
+* 综合基准测试 (Benchmark) 得分从 **66.24 跃升至 71.38** (其中**表格得分提升了 +5.18**，**图表得分提升了 +4.15**)。
+
+&gt; Results demonstrate clear benefits from GRPO:
+&gt; * Loop-flagged outputs dropped from **126 to 29 pages (~77% reduction)**.
+&gt; * Outputs hitting the 9,000-token limit dropped from **185 to 35**.
+&gt; * Overall benchmark scores improved from **66.24 to 71.38** (**+5.18 in tables**, **+4.15 in charts**).
+
+---
+
+## 架构革新与 DFlash2 助力极速推理
+
+&gt; ## Faster Inference Through Architecture and DFlash2
+
+Parse 3.5 引入了多项深层的架构重构，从底层全面优化图像预处理与文本解码效率：
+
+&gt; Parse 3.5 introduces structural updates to optimize image processing and output decoding:
+
+| 核心组件 (Component) | Parse 2.0 | Parse 3.5 |
+| :--- | :--- | :--- |
+| **页面预处理 (Page preprocessing)** | 固定 2048 × 1664 画布 | NaViT 动态矩形输入 |
+| **图文连接机制 (Image-to-text connection)** | 编码器-解码器交叉注意力 (Cross-Attention) | 压缩视觉 Token 作为因果前缀 (Causal Prefix) |
+| **解码器自注意力 (Decoder self-attention)** | 多头注意力 (Multi-Head Attention, MHA) | GQA-8：16 个查询头 (Query Heads)，8 个键/值头 (Key/Value Heads) |
+| **推测解码 (Speculative decoding)** | — | 单 Token 前瞻多 Token 预测 (MTP)；可选 DFlash2 |
+
+**[DFlash2 推测器 (DFlash2 Speculator)](https://huggingface.co/nvidia/Nemotron-3.5-Parse/tree/main/dflash2)** 能够让一个体量极小的草稿模型 (Draft Model) **一次性预先推测并生成最多 32 个 Token**，随后再由 Parse 主模型在单次前向传播中进行全并行验证。
+
+&gt; The **[DFlash2 speculator](https://huggingface.co/nvidia/Nemotron-3.5-Parse/tree/main/dflash2)** enables a small draft model to propose **up to 32 tokens ahead**, which Parse then verifies in parallel. 
+
+[![Throughput curves comparing Parse 2.0 with Parse 3.5 base, MTP, and DFlash2.](./images/f2c7f795e797.png)](./images/f2c7f795e797.png)
+
+*图 4. 在单张 H200 GPU 上采用 BF16 精度测得的原生单阶段处理吞吐量对比。*
+
+&gt; *Figure 4. Native single-pass throughput on one H200, BF16.*
+
+在单张 NVIDIA H200 GPU 上使用 BF16 精度进行基准测试时，相较于基线模型，DFlash2 在并发数为 1 时的吞吐量暴涨了 **7.62 倍**，在并发数为 512 时吞吐量依然提升了 **1.52 倍**。当处于 512 高并发运行时，搭载 DFlash2 的 Parse 3.5 实现了高达 **每秒 20.44 页** 的惊人处理速度 (而上一代 Parse 2.0 仅为每秒 2.98 页)。
+
+&gt; Tested on a single H200 GPU in BF16, DFlash2 increased throughput **7.62×** at concurrency 1 and **1.52×** at concurrency 512 over baseline. At concurrency 512, Parse 3.5 achieves **20.44 pages/s** with DFlash2 (compared to 2.98 pages/s for Parse 2.0).</description>
+    </item>
+    <item>
       <title>陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-26/陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-26/陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示/</guid>
@@ -5167,152 +5419,6 @@ C++ 标准库中的 `std::sort` 严重依赖调用者提供的自定义比较函
 当语言设计委员会始终将运行速度置于代码安全之上时，赋予开发者的既是极致强悍的性能武器，也是深不见底的系统隐患。如果你的核心工程指标是压榨硬件极限的毫秒算力，C 和 C++ 依然无出其右；但如果你的工程目标追求开发生产力、易调试性、行为确定性以及全局软件正确性，那么 C/C++ 这种“不惜一切代价换取性能”的执念所带来的隐形成本，或许已经远远超出了它所给予的收益。
 
 &gt; As the language committees continue to prioritize speed over safety, developers are handed powerful optimizations bundled with severe risks. If your project demands absolute peak performance, C and C++ remain unmatched. However, if your goals include programmer productivity, debuggability, deterministic execution, and overall software correctness, the hidden costs of C and C++'s performance-at-all-costs philosophy may outweigh the benefits.</description>
-    </item>
-    <item>
-      <title>评测工具隐形错误如何颠覆智能体排行榜排名</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-05/评测工具隐形错误如何颠覆智能体排行榜排名/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/评测工具隐形错误如何颠覆智能体排行榜排名/</guid>
-      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在当前的 AI 研究与工程实践中，各大公开排行榜 (Leaderboard) 被广泛视作衡量大语言模型 (Large Language Model, LLM) 与 AI 智能体 (AI Agent) 能力高下的终极试金石。然而，极少有人怀疑“裁判”本身是否准确无误。山东大学研究人员 Yangze Liu 在这项研究中揭露了一个普遍却被忽视的行业现象：评测基建本身存在的代码漏洞、打分脚本缺陷和版本漂移，正在悄无声息地扭曲基准测试 (Benchmark) 的客观性。许多在榜单上排名垫底的智能体，并非推理能力不行，而是因为评测脚本根本没对它们的对话轮次打分并直接判负。本文通过对 HAL 和 `tau2-bench` 等主流榜单的深度审查，详尽阐述了这些“隐形工具错误”带来的严重偏差，并提出了四项极简却高鲁棒的校验准则。
-
----
-
-## 核心概要
-
-&gt; ## Summary
-
-在论文《评测工具隐形错误如何颠覆智能体排行榜排名》中，来自山东大学的作者 Yangze Liu 深入调研了评测基础设施（如打分脚本、日志记录缺陷与评估器版本迭代）中的缺陷如何在完全不报错的情况下悄然扭曲 AI 智能体的性能指标。通过对 HAL 和 `tau2-bench` 等知名公开排行榜的严密审查，研究表明：未评分的对话轮次、重复计算的模型调用成本以及评估器内部逻辑漏洞，都会在没有触发任何报错警告的前提下，彻底颠覆智能体的排名位次。作者据此提出了一套轻量级的完整性校验机制，旨在保障智能体评测的真实可靠。
-
-&gt; In the paper *"Silent Instrument Errors Reorder Agent Leaderboards"*, author Yangze Liu (Shandong University) investigates how flaws in evaluation infrastructure—such as grading scripts, logging errors, and evaluator versioning—silently distort AI agent performance metrics. By auditing prominent leaderboards like HAL and `tau2-bench`, the study reveals that unscored episodes, miscounted model costs, and evaluator bugs can drastically alter agent rankings without any visible errors. The author proposes lightweight integrity checks to ensure more reliable agent evaluations.
-
----
-
-## 论文元数据
-
-&gt; ## Metadata
-
-* **arXiv 编号：** [arXiv:2611.04399](https://arxiv.org/abs/2611.04399) [cs.AI]
-* **DOI 链接：** [10.48550/arXiv.2611.04399](https://doi.org/10.48550/arXiv.2611.04399)
-* **作者：** Yangze Liu (Shandong University)
-* **提交日期：** 2026 年 11 月 3 日
-* **研究方向：** 人工智能 (`cs.AI`)、软件工程 (`cs.SE`)
-* **代码与复现脚本：** [GitHub 仓库](https://github.com/YangzeLiu/eval-instrument-disclosure)
-
-&gt; * **arXiv ID:** [arXiv:2611.04399](https://arxiv.org/abs/2611.04399) [cs.AI]
-&gt; * **DOI:** [10.48550/arXiv.2611.04399](https://doi.org/10.48550/arXiv.2611.04399)
-&gt; * **Author:** Yangze Liu (Shandong University)
-&gt; * **Submitted:** 3 November 2026
-&gt; * **Subjects:** Artificial Intelligence (`cs.AI`); Software Engineering (`cs.SE`)
-&gt; * **Code &amp; Reproduction Scripts:** [GitHub Repository](https://github.com/YangzeLiu/eval-instrument-disclosure)
-
----
-
-## 论文摘要
-
-&gt; ## Abstract
-
-在某公开智能体排行榜上，一个通用型智能体在涉及数据库操作的航空客服基准测试任务中，落后于专门针对该场景打造的专用脚手架整整 13 分。读者很可能会据此得出结论：“通用性牺牲了准确率”。然而，这一鸿沟的真正根源其实出自打分脚本 (Grader)。
-
-&gt; On a public agent leaderboard, a general-purpose agent trails a scaffold built for an airline customer-service benchmark by 13 points on the tasks that touch its database, and a reader could conclude that generality costs accuracy. The gap comes from the grader.
-
-通用智能体在结束对话时的交互模式，常常无法触发该基准测试预设的自动打分逻辑。结果导致它只有大约一半的会话轮次被真正评分，其余轮次全都被粗暴地标记为失败并静默归档。在无需重新运行任何智能体的情况下，仅根据基准测试自身的既定规则对未打分的后半部分轨迹补评分，二者之间的综合分差便彻底消除。
-
-&gt; The general agent often ends its conversations in a way that never triggers grading, so only about half of its episodes were scored and the rest were stored as failures. Grading the ungraded half under the benchmark's own rule closes the pooled gap, without rerunning any agent.
-
-我们仅依据公开发布的评测制品，对维护极为严谨的两个知名公开榜单——HAL 和 `tau2-bench` 进行了独立审计，又发现了另外三种典型的测量工具错误：
-* **成本统计失真**：调用成本统计列中将嵌套的模型调用重复计算了两次，且在不同行之间分布不均；
-* **动作来源混淆**：归档的执行轨迹中，将打分脚本自身注入的操作错误记录为智能体的自主动作；
-* **版本迁移颠覆指标**：在更新后的评测器下重新为保存的轨迹打分，其本质已构成一次全新的物理测量——一次官方公告的合理修复导致整个榜单排名颠覆；而一处在读取四个文件时发生模式误判的漏洞，在没有打印任何报错的情况下，直接让对应模型的分数断崖式跌落了 59 到 82 分。
-
-&gt; We audit two carefully maintained public leaderboards, HAL and `tau2-bench`, from their published artifacts alone and find three more instrument errors:
-&gt; * A cost column counts nested model calls twice, unevenly across rows.
-&gt; * Archived trajectories record grader-written actions as agent actions.
-&gt; * Re-grading saved trajectories under a newer evaluator is itself a new measurement: a correct and announced fix reorders a leaderboard, and a mode check that misreads four files collapses their scores by 59 to 82 points while printing no error.
-
-以上每一种错误在最终输出时都呈现为一个看似完全合理的数字。HAL 的维护团队在五周内全数确认了我们指出的三项缺陷。这些案例共同表明：智能体评测的基础设施——即负责打分、记录日志、回放轨迹和管理评估器版本的底层代码——本身就是测量系统不可分割的一部分，且极易发生静默失效；因此，基准测试的得分和榜单排名可能在毫无警示的情况下发生剧烈位移。此类故障模式源于当前智能体评测流水线的构建方式，随着被测智能体的演进，这些评测流水线也在高速迭代，因此我们预计同类问题在整个行业广泛存在。
-
-&gt; Each produced a plausible number, and the HAL maintainers confirmed their three within five weeks. Together the cases show that the infrastructure of agent evaluation, meaning the code that grades, logs, replays, and versions an evaluation, is part of the measurement and fails silently, so scores and orderings can move with no visible sign. These failure modes follow from how agent evaluation pipelines are built, and those pipelines change as fast as the agents they measure, so we expect more of them elsewhere.
-
----</description>
-    </item>
-    <item>
-      <title>在 Lean 中形式化 PTX 以证明 GPU 算子正确性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-05/在-Lean-中形式化-PTX-以证明-GPU-算子正确性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-05/在-Lean-中形式化-PTX-以证明-GPU-算子正确性/</guid>
-      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
-      <description>随着现代深度学习模型规模的爆发式增长，底层 GPU 算子的极致性能优化往往伴随着极高的实现复杂度与难以察觉的并发逻辑缺陷。传统的单元测试和模糊测试难以穷尽所有非确定性执行路径，而形式化验证则是终结算子隐性漏洞的终极防线。本文提出了一套在 Lean 定理证明器中形式化建模 NVIDIA PTX (Parallel Thread Execution) 指令集的数学框架，开创性地支持对现代深度学习复杂 GPU 算子模式进行严密的逻辑建模与推理。研究团队成功利用该框架，针对 WGMMA GEMM 矩阵乘算子、FlashAttention 注意力机制以及三阶段混合专家 (Mixture-of-Experts, MoE) 流水线算子给出了完全的形式化功能正确性证明，为构建可信、高可靠的 AI 底层计算系统奠定了数学基石。
-
----
-
-## 概述与核心成果
-
-&gt; ## Overview &amp; Summary
-
-本文由 Luk Koska、Tom Koska 和 Ben Koska 撰写（于 2026 年 11 月 3 日提交），创新性地提出了一种在 **Lean** 定理证明器中对 PTX (Parallel Thread Execution) 虚拟汇编指令进行数学形式化建模的全新框架。该方法首次实现了对现代深度学习 GPU 核心算子中常见复杂执行模式的严格建模与数学形式化推理。
-
-&gt; This paper, authored by Luk Koska, Tom Koska, and Ben Koska (submitted on November 3, 2026), introduces a novel framework for mathematically formalizing PTX (Parallel Thread Execution) in the **Lean** theorem prover. The approach enables rigorous modeling and reasoning about complex patterns frequently found in modern Deep Learning GPU kernels.
-
-借助这一形式化系统，作者成功证明了以下三种关键深度学习算子实现的功能正确性：
-* **WGMMA GEMM 算子** (Warp 组矩阵乘累加通用矩阵乘法)
-* **FlashAttention**
-* **三算子混合专家 (MoE) 流水线**
-
-&gt; Using this formalization, the authors successfully prove the functional correctness of implementations for:
-&gt; * **WGMMA GEMM kernels** (Warp Group Matrix Multiply-Accumulate General Matrix Multiply)
-&gt; * **FlashAttention**
-&gt; * **A 3-kernel Mixture-of-Experts (MoE) pipeline**
-
----
-
-## 框架支持建模的核心硬件与编程特性
-
-&gt; ## Key Features Modeled in the Framework
-
-该形式化 PTX 框架精准刻画了现代 GPU 高级编程抽象与底层硬件运行特征，涵盖：
-* 获取-释放内存语义 (Acquire-release memory semantics)
-* 张量核心 (Tensor cores)
-* 内存代理机制 (Memory proxies)
-* 异步并发操作 (Asynchronous operations)
-* 多算子协同流水线 (Multi-kernel pipelines)
-* 数据依赖型控制流 (Data-dependent control flow)
-
-&gt; The formalized PTX framework captures advanced GPU programming abstractions and hardware behaviors, including:
-&gt; * Acquire-release memory semantics
-&gt; * Tensor cores
-&gt; * Memory proxies
-&gt; * Asynchronous operations
-&gt; * Multi-kernel pipelines
-&gt; * Data-dependent control flow
-
----
-
-## 论文元数据
-
-&gt; ## Article Metadata
-
-* **arXiv 编号：** [arXiv:2611.04447](https://arxiv.org/abs/2611.04447) [cs.AI]
-* **DOI 链接：** [10.48550/arXiv.2611.04447](https://doi.org/10.48550/arXiv.2611.04447)
-* **主要学科领域：** 人工智能 (`cs.AI`)
-* **提交日期：** 2026 年 11 月 3 日
-
-&gt; * **arXiv Identifier:** [arXiv:2611.04447](https://arxiv.org/abs/2611.04447) [cs.AI]
-&gt; * **DOI:** [10.48550/arXiv.2611.04447](https://doi.org/10.48550/arXiv.2611.04447)
-&gt; * **Primary Subject:** Artificial Intelligence (`cs.AI`)
-&gt; * **Submission Date:** November 3, 2026
-
----
-
-## 全文获取链接
-
-&gt; ## Full-Text &amp; Access Links
-
-* [阅读 PDF 原文](https://arxiv.org/pdf/2611.04447)
-* [实验性 HTML 在线阅读](https://arxiv.org/html/2611.04447v1)
-* [TeX 源码包](https://arxiv.org/src/2611.04447)
-
-&gt; * [View PDF](https://arxiv.org/pdf/2611.04447)
-&gt; * [Experimental HTML Version](https://arxiv.org/html/2611.04447v1)
-&gt; * [TeX Source](https://arxiv.org/src/2611.04447)</description>
     </item>
   </channel>
 </rss>

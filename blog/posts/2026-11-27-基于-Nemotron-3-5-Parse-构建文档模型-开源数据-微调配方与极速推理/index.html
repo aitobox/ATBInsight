@@ -1,0 +1,747 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Insight Pipeline & Tech Blog">
+      
+      
+        <meta name="author" content="艾特创思">
+      
+      
+        <link rel="canonical" href="https://insight.aitobox.com/blog/posts/2026-11-27-%E5%9F%BA%E4%BA%8E-Nemotron-3-5-Parse-%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3%E6%A8%A1%E5%9E%8B-%E5%BC%80%E6%BA%90%E6%95%B0%E6%8D%AE-%E5%BE%AE%E8%B0%83%E9%85%8D%E6%96%B9%E4%B8%8E%E6%9E%81%E9%80%9F%E6%8E%A8%E7%90%86/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理 - ATBInsight</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="导航栏"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#nemotron-35-parse" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Copied from mkdocs-material version 9.7.7 -->
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../../.." title="ATBInsight" class="md-header__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="导航栏">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ATBInsight
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- BEGIN CUSTOM (Custom Links) -->
+    <div class="md-header__custom-links" style="display: flex; gap: 1rem; margin: 0 1rem; align-items: center; white-space: nowrap;">
+      <a href="https://insight.aitobox.com/tags/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Tags</a>
+      <a href="https://insight.aitobox.com/archive/" style="color: inherit; font-size: 0.8rem; font-weight: 700;">Timeline</a>
+      <a href="https://newsweekly.aitobox.com" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">AIToBox周报</a>
+      <a href="https://stats.sender.net/forms/e9rM7P/view" target="_blank" style="color: inherit; font-size: 0.8rem; font-weight: 700;">邮箱订阅</a>
+    </div>
+    <!-- END CUSTOM -->
+
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="查找">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="查找">
+  <button type="button" class="md-search__button">
+    查找
+  </button>
+</div>
+      
+    
+    <!-- BEGIN CUSTOM (RSS Feed) -->
+    <a id="rss-feed-link" href="../../../rss.xml" class="md-header__button md-icon" title="RSS 订阅">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.02c8.83 0 16 7.17 16 16h-3.38c0-6.97-5.65-12.62-12.62-12.62V4.02M4 9.84c5.61 0 10.16 4.55 10.16 10.16H10.8c0-3.75-3.05-6.8-6.8-6.8V9.84Z"/></svg>
+    </a>
+    <!-- END CUSTOM -->
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="ATBInsight" class="md-nav__button md-logo" aria-label="ATBInsight" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    ATBInsight
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  首页
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E4%BA%A7%E5%93%81%E5%8F%91%E5%B8%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  产品发布
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%B7%A5%E5%85%B7%E6%95%99%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  工具教程
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E7%A0%94%E7%A9%B6%E8%A7%A3%E8%AF%BB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  研究解读
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%95%86%E4%B8%9A%E5%8A%A8%E6%80%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  商业动态
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/arXiv%E8%AE%BA%E6%96%87/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  arXiv论文
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../category/%E5%85%B6%E4%BB%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  其他
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="nemotron-35-parse">基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理</h1>
+<blockquote>
+<h1 id="building-on-nemotron-35-parse-open-data-fine-tuning-and-faster-inference">Building on Nemotron 3.5 Parse: Open Data, Fine-Tuning, and Faster Inference</h1>
+</blockquote>
+<h3 id="_1">文章背景与核心概要</h3>
+<p>在企业级 AI 应用与检索增强生成 (Retrieval-Augmented Generation, RAG) 系统中，如何将杂乱无章的扫描件、复杂报表以及无标注图表精准转化为机器可读的高质量结构化数据，一直是一道横亘在行业面前的技术难关。NVIDIA 重磅推出了小巧高效的专有文档解析模型 Nemotron 3.5 Parse，并通过完全开源的三套千万级高质量合成数据集、完整的端到端微调配方以及创新的 DFlash2 推测解码技术，为开源社区奉上了一整套工业级文档理解解决方案。该方案创新性地融合了用于夯实基础文档理解能力的监督微调 (Supervised Fine-Tuning, SFT) 与利用群体相对策略优化 (Group Relative Policy Optimization, GRPO) 的可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR)，不仅彻底解决了模型重复输出死循环和 Token 超限截断的痛点，更使表格与图表解析精度实现跨越式提升。借助软硬件协同创新，单张 H200 GPU 上的推理吞吐量飙升至惊人的每秒 20 页以上，无论是通用文档结构提取还是严苛垂直领域 (如专业牙科齿位图谱表单) 的定制微调，都能以极高准确率轻松搞定。</p>
+<hr />
+<p><strong>发布时间：</strong> 2026年11月26日<br />
+<strong>作者：</strong> Ryan Chesler, Marek Wawrzos, Steve Han (NVIDIA)</p>
+<blockquote>
+<p><strong>Published:</strong> November 26, 2026<br />
+<strong>Authors:</strong> Ryan Chesler, Marek Wawrzos, Steve Han (NVIDIA)</p>
+</blockquote>
+<hr />
+<h2 id="_2">核心摘要</h2>
+<blockquote>
+<h2 id="executive-summary">Executive Summary</h2>
+</blockquote>
+<p>NVIDIA 近期正式发布了 <strong><a href="https://huggingface.co/nvidia/Nemotron-3.5-Parse">NVIDIA Nemotron 3.5 Parse</a></strong>，这是一款小巧精悍的高效文档模型，专门负责将页面图像直接转化为清晰规整的结构化数据，为检索增强生成 (Retrieval-Augmented Generation, RAG) 以及各类 AI 智能体 (AI Agent) 提供高质量输入。在此次发布的基础之上，NVIDIA 进一步开源了大规模合成训练数据集、一套详尽完备的模型微调指南，以及用于大幅拉升推理速度的 DFlash2 推测解码器。本文将深入揭秘背后的训练方法论——如何将用于构建基础文档理解能力的监督微调 (Supervised Fine-Tuning, SFT) 与利用可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR) 深度融合，从而将模型输出的一致性与准确率提升到全新境界。</p>
+<blockquote>
+<p>NVIDIA recently released <strong><a href="https://huggingface.co/nvidia/Nemotron-3.5-Parse">NVIDIA Nemotron 3.5 Parse</a></strong>, a compact document model that transforms page images into structured data for retrieval-augmented generation (RAG) and AI agents. Building upon this release, NVIDIA has introduced synthetic training datasets, a comprehensive fine-tuning recipe, and a DFlash2 speculator to enable faster inference. This article details the training methodology—combining supervised fine-tuning (SFT) for foundational document understanding with reinforcement learning with verifiable rewards (RLVR) to maximize consistency and accuracy.</p>
+</blockquote>
+<hr />
+<h2 id="parse-35">Parse 3.5 的解析能力与输出特性</h2>
+<blockquote>
+<h2 id="what-parse-35-produces">What Parse 3.5 Produces</h2>
+</blockquote>
+<p>Parse 能够顺畅地将页面中的所有内容按照符合人类逻辑的阅读顺序逐一提取，准确识别出各个内容类别 (例如各级标题、正文段落、数据表格以及统计图表)，并为每一个元素标注精准的像素级边界框 (Bounding Box)。哪怕是面对结构繁复的表格与图表，它也能游刃有余地将其转换成下游应用程序可以直接消费的结构化记录。</p>
+<blockquote>
+<p>Parse extracts document content into logical reading order, assigns content classes (headings, paragraphs, tables, and charts), and returns precise bounding boxes. Complex elements like tables and charts are converted into structured records ready for downstream processing.</p>
+</blockquote>
+<p><a href=".././images/8f53f603567e.png"><img alt="An operations brief with predicted regions on the left and its structured extraction on the right." src=".././images/8f53f603567e.png" /></a></p>
+<p><em>图 1. 合成运营简报的真实模型输出展示，清晰呈现了原始页面区域与提取后的结构化数据之间的精准对应关系。</em></p>
+<blockquote>
+<p><em>Figure 1. Actual model output from a synthetic operations brief, showing the connection between the page and its structured representation.</em></p>
+</blockquote>
+<p>该版本在图表和表格解析方面实现了飞跃式的突破，尤其是针对那些信息模糊、缺乏数值注记的棘手元素 (比如没有任何数字标签的柱状图)，模型甚至能够直接根据坐标轴的几何比例精准推算出每个柱子的实际数值。这些强大能力的背后，离不开高质量合成数据生成技术的加持——研究团队通过生成已知真实标签 (Ground Truth) 的渲染图表与表格，训练模型学会对视觉图像进行逆向工程还原。</p>
+<blockquote>
+<p>This version significantly improves chart and table parsing, particularly for ambiguous elements like unlabelled bar charts where the model infers values directly from axis geometry. These advancements are driven by synthetic data generation, training the model to reverse-engineer rendered charts and tables with known ground truth.</p>
+</blockquote>
+<p>为了全力支持开源社区的创新，NVIDIA 此次毫无保留地开源了<strong>三大核心训练数据集</strong>：
+* <strong><a href="https://huggingface.co/datasets/nvidia/Synthetic-Charts-V1">Synthetic Charts V1 — 998 万个样本</a>：</strong> 包含大量渲染图表，以及针对类别、数据序列和数值的精细结构化标注。
+* <strong><a href="https://huggingface.co/datasets/nvidia/Synthetic-Tables-V1">Synthetic Tables V1 — 100 万个样本</a>：</strong> 包含完整保留行、列、表头和单元格层级关系的渲染 HTML 表格。
+* <strong><a href="https://huggingface.co/datasets/nvidia/OCR-Synthetic-Multilingual-v2">OCR Synthetic Multilingual v2 — 790 万个样本</a>：</strong> 涵盖多种丰富字体与版面布局的多语言 OCR 合成文档页面。</p>
+<blockquote>
+<p>To support the community, NVIDIA is open-sourcing <strong>three core training datasets</strong>:
+* <strong><a href="https://huggingface.co/datasets/nvidia/Synthetic-Charts-V1">Synthetic Charts V1 — 9.98M examples</a>:</strong> Rendered charts and structured annotations for categories, series, and values.
+* <strong><a href="https://huggingface.co/datasets/nvidia/Synthetic-Tables-V1">Synthetic Tables V1 — 1M examples</a>:</strong> Rendered HTML tables preserving rows, columns, headers, and cell hierarchies.
+* <strong><a href="https://huggingface.co/datasets/nvidia/OCR-Synthetic-Multilingual-v2">OCR Synthetic Multilingual v2 — 7.9M examples</a>:</strong> Synthetic document pages across varied fonts and layouts for multilingual OCR.</p>
+</blockquote>
+<p><a href=".././images/5c0af1cb82e3.png"><img alt="A bar chart without printed bar values, alongside the released model’s extracted values of 18, 27, 39, and 54." src=".././images/5c0af1cb82e3.png" /></a></p>
+<p><em>图 2. Parse 仅凭图表中的坐标轴几何比例，便成功反推出了 18、27、39 和 54 等真实数据。</em></p>
+<blockquote>
+<p><em>Figure 2. Parse recovers 18, 27, 39, and 54 from the chart geometry.</em></p>
+</blockquote>
+<hr />
+<h2 id="sft-rlvr">SFT 赋予基础能力，RLVR 淬炼输出一致性</h2>
+<blockquote>
+<h2 id="sft-teaches-the-capability-rlvr-improves-consistency">SFT Teaches the Capability; RLVR Improves Consistency</h2>
+</blockquote>
+<p>整个训练工作流主要划分为两大核心阶段：
+1. <strong>监督微调 (Supervised Fine-Tuning, SFT)：</strong> 覆盖纯文本、版面布局、复杂表格、数据图表以及多语言文档，全面夯实基础的页面识别与阅读理解能力。
+2. <strong>可验证奖励强化学习 (Reinforcement Learning with Verifiable Rewards, RLVR)：</strong> 借助<strong>群体相对策略优化 (Group Relative Policy Optimization, GRPO)</strong> 算法，依据可程序化验证的奖励机制持续优化信息提取过程，力求达到极致的准确度、合规的格式排版以及彻底杜绝死循环重复输出。</p>
+<blockquote>
+<p>The training pipeline consists of two primary phases:
+1. <strong>Supervised Fine-Tuning (SFT):</strong> Spanning text, layout, tables, charts, and multilingual documents to build baseline page-reading capabilities.
+2. <strong>Reinforcement Learning with Verifiable Rewards (RLVR):</strong> Using <strong>Group Relative Policy Optimization (GRPO)</strong> to optimize extractions against programmatic rewards for accuracy, proper formatting, and non-repetitive completion.</p>
+</blockquote>
+<p><a href=".././images/3b7840ce6d41.png"><img alt="A matched training comparison showing extraction gains after GRPO and fewer repetition flags and token-cap hits." src=".././images/3b7840ce6d41.png" /></a></p>
+<p><em>图 3. 在完全对齐的评估设定下，SFT 与 GRPO 的严格对照实验结果。</em></p>
+<blockquote>
+<p><em>Figure 3. A controlled comparison of SFT and GRPO with matched evaluation settings.</em></p>
+</blockquote>
+<p>实测评估结果清晰展现了引入 GRPO 带来的巨大飞跃：
+* 触发死循环标记的异常页面输出从 <strong>126 页大幅缩减至 29 页 (降幅达约 77%)</strong>。
+* 触及 9,000 Token 上限而被迫截断的输出页面从 <strong>185 页急剧下降至 35 页</strong>。
+* 综合基准测试 (Benchmark) 得分从 <strong>66.24 跃升至 71.38</strong> (其中<strong>表格得分提升了 +5.18</strong>，<strong>图表得分提升了 +4.15</strong>)。</p>
+<blockquote>
+<p>Results demonstrate clear benefits from GRPO:
+* Loop-flagged outputs dropped from <strong>126 to 29 pages (~77% reduction)</strong>.
+* Outputs hitting the 9,000-token limit dropped from <strong>185 to 35</strong>.
+* Overall benchmark scores improved from <strong>66.24 to 71.38</strong> (<strong>+5.18 in tables</strong>, <strong>+4.15 in charts</strong>).</p>
+</blockquote>
+<hr />
+<h2 id="dflash2">架构革新与 DFlash2 助力极速推理</h2>
+<blockquote>
+<h2 id="faster-inference-through-architecture-and-dflash2">Faster Inference Through Architecture and DFlash2</h2>
+</blockquote>
+<p>Parse 3.5 引入了多项深层的架构重构，从底层全面优化图像预处理与文本解码效率：</p>
+<blockquote>
+<p>Parse 3.5 introduces structural updates to optimize image processing and output decoding:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">核心组件 (Component)</th>
+<th style="text-align: left;">Parse 2.0</th>
+<th style="text-align: left;">Parse 3.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>页面预处理 (Page preprocessing)</strong></td>
+<td style="text-align: left;">固定 2048 × 1664 画布</td>
+<td style="text-align: left;">NaViT 动态矩形输入</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>图文连接机制 (Image-to-text connection)</strong></td>
+<td style="text-align: left;">编码器-解码器交叉注意力 (Cross-Attention)</td>
+<td style="text-align: left;">压缩视觉 Token 作为因果前缀 (Causal Prefix)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>解码器自注意力 (Decoder self-attention)</strong></td>
+<td style="text-align: left;">多头注意力 (Multi-Head Attention, MHA)</td>
+<td style="text-align: left;">GQA-8：16 个查询头 (Query Heads)，8 个键/值头 (Key/Value Heads)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>推测解码 (Speculative decoding)</strong></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">单 Token 前瞻多 Token 预测 (MTP)；可选 DFlash2</td>
+</tr>
+</tbody>
+</table>
+<p><strong><a href="https://huggingface.co/nvidia/Nemotron-3.5-Parse/tree/main/dflash2">DFlash2 推测器 (DFlash2 Speculator)</a></strong> 能够让一个体量极小的草稿模型 (Draft Model) <strong>一次性预先推测并生成最多 32 个 Token</strong>，随后再由 Parse 主模型在单次前向传播中进行全并行验证。</p>
+<blockquote>
+<p>The <strong><a href="https://huggingface.co/nvidia/Nemotron-3.5-Parse/tree/main/dflash2">DFlash2 speculator</a></strong> enables a small draft model to propose <strong>up to 32 tokens ahead</strong>, which Parse then verifies in parallel. </p>
+</blockquote>
+<p><a href=".././images/f2c7f795e797.png"><img alt="Throughput curves comparing Parse 2.0 with Parse 3.5 base, MTP, and DFlash2." src=".././images/f2c7f795e797.png" /></a></p>
+<p><em>图 4. 在单张 H200 GPU 上采用 BF16 精度测得的原生单阶段处理吞吐量对比。</em></p>
+<blockquote>
+<p><em>Figure 4. Native single-pass throughput on one H200, BF16.</em></p>
+</blockquote>
+<p>在单张 NVIDIA H200 GPU 上使用 BF16 精度进行基准测试时，相较于基线模型，DFlash2 在并发数为 1 时的吞吐量暴涨了 <strong>7.62 倍</strong>，在并发数为 512 时吞吐量依然提升了 <strong>1.52 倍</strong>。当处于 512 高并发运行时，搭载 DFlash2 的 Parse 3.5 实现了高达 <strong>每秒 20.44 页</strong> 的惊人处理速度 (而上一代 Parse 2.0 仅为每秒 2.98 页)。</p>
+<blockquote>
+<p>Tested on a single H200 GPU in BF16, DFlash2 increased throughput <strong>7.62×</strong> at concurrency 1 and <strong>1.52×</strong> at concurrency 512 over baseline. At concurrency 512, Parse 3.5 achieves <strong>20.44 pages/s</strong> with DFlash2 (compared to 2.98 pages/s for Parse 2.0).</p>
+</blockquote>
+<h3 id="_3">多阶段精细化解析策略</h3>
+<blockquote>
+<h3 id="multi-pass-refinement-strategy">Multi-Pass Refinement Strategy</h3>
+</blockquote>
+<p>在面对内容密集的复杂区域时，各类应用可以通过多阶段策略灵活调度算力，以适度的计算开销换取极致的准确率：
+1. <strong>单阶段 (Single Pass)：</strong> 对整个页面开展全局端到端解析，一气呵成提取版面布局、正文文本、数据表格及统计图表。
+2. <strong>双阶段 (Double Pass)：</strong> 将密集复杂的表格或图表区域局部裁剪放大，以更高的保真度和视觉分辨率进行二次精准重解析。
+3. <strong>三阶段 (Triple Pass)：</strong> 引入一个独立的区域检测器 (Region Detector) 严格核验解析覆盖范围，确保无一遗漏，并针对漏检区域定向重新提取。</p>
+<blockquote>
+<p>Applications can trade compute for accuracy in dense regions using multi-pass strategies:
+1. <strong>Single Pass:</strong> Full-page extraction for layout, text, tables, and charts.
+2. <strong>Double Pass:</strong> Crop dense tables/charts and re-parse at higher fidelity.
+3. <strong>Triple Pass:</strong> Use an independent region detector to verify coverage before re-extracting missed content.</p>
+</blockquote>
+<p><a href=".././images/6f9a9525bd90.png"><img alt="Single-pass page parsing, double-pass crop refinement, and triple-pass refinement with an independent region detector." src=".././images/6f9a9525bd90.png" /></a></p>
+<p><em>图 5. 引入额外的处理阶段，将宝贵的计算资源集中倾注于高难度区域。</em></p>
+<blockquote>
+<p><em>Figure 5. Additional stages focus computation on difficult regions.</em></p>
+</blockquote>
+<hr />
+<h2 id="sftrlvr">将相同的 SFT/RLVR 方法应用于您的专属文档</h2>
+<blockquote>
+<h2 id="apply-the-same-sftrlvr-approach-to-your-documents">Apply the Same SFT/RLVR Approach to Your Documents</h2>
+</blockquote>
+<p>NVIDIA 开放了一整套完整的 <strong><a href="https://github.com/NVIDIA-NeMo/Nemotron/blob/main/docs/nemotron/parse/index.md">Parse 模型微调配方 (Parse Fine-Tuning Recipe)</a></strong>，融合了成对数据生成、<strong>NeMo Automodel SFT</strong> 框架以及基于 <strong>NeMo RL 的 GRPO 算法</strong>。</p>
+<blockquote>
+<p>NVIDIA provides a complete <strong><a href="https://github.com/NVIDIA-NeMo/Nemotron/blob/main/docs/nemotron/parse/index.md">Parse fine-tuning recipe</a></strong> utilizing paired data generation, <strong>NeMo Automodel SFT</strong>, and <strong>NeMo RL GRPO</strong>. </p>
+</blockquote>
+<p>教程以一个包含<strong>齿位图谱 (Odontogram)</strong> 的合成牙科病历表单作为典型示例，指导如何手把手训练模型将图表中标记的患牙精准映射到特定的诊疗项目与牙齿表面。</p>
+<blockquote>
+<p>Using a synthetic dental form example containing an <strong>odontogram</strong>, the recipe teaches the model to accurately map marked teeth to specific procedures and surfaces.</p>
+</blockquote>
+<p><a href=".././images/1d34b7b05913.png"><img alt="A synthetic dental page, the base model’s tooth-number transcription, and the intended tooth/procedure/surface table." src=".././images/1d34b7b05913.png" /></a></p>
+<p><em>图 6. 牙科领域适配效果展示：图表中的全部 6 行数据均与目标记录达成了完美匹配。</em></p>
+<blockquote>
+<p><em>Figure 6. Dental adaptation results: all six chart rows successfully matched the target.</em></p>
+</blockquote>
+<p>在预留的独立测试表单上，预估的首发成功率 (抽样 pass@1) 从基座模型的 <strong>0.00%</strong>，在经过 SFT 后猛增至 <strong>95.85%</strong>，经过 RLVR 强化学习进一步淬炼后更是攀升到了 <strong>96.58%</strong>。</p>
+<blockquote>
+<p>Estimated first-attempt success rates (sampled pass@1) on held-out forms rose from <strong>0.00%</strong> (base model) to <strong>95.85%</strong> after SFT and <strong>96.58%</strong> after RLVR.</p>
+</blockquote>
+<p><a href=".././images/4314f535ee9b.png"><img alt="Dental sampled pass@1: 95.85% after SFT and 96.58% after RLVR, with the y-axis shown from 90% to 100%" src=".././images/4314f535ee9b.png" /></a></p>
+<p><em>图 7. 在 256 份预留测试表单上的严格对齐评估对比。</em></p>
+<blockquote>
+<p><em>Figure 7. Matched evaluation on 256 held-out forms.</em></p>
+</blockquote>
+<p>广大开发者只需准备好自己的图像/标注配对数据，并直接复用官方提供的<strong><a href="https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/parse/document_rewards">文档奖励组件 (Document Reward Components)</a></strong> (涵盖边界框定位、文本保真度以及表格对齐等维度)，就能快速为自己的垂直业务领域打造高度定制化的文档解析专属模型。</p>
+<blockquote>
+<p>Developers can implement custom adaptations by providing image/label pairs and leveraging the included <strong><a href="https://github.com/NVIDIA-NeMo/Nemotron/tree/main/src/nemotron/recipes/parse/document_rewards">document reward components</a></strong> for bounding boxes, text fidelity, and tables.</p>
+</blockquote>
+
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+      
+        <span class="md-tag">NVIDIA</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">Nemotron</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">文档解析</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">强化学习</span>
+      
+    
+      
+      
+      
+      
+        <span class="md-tag">大语言模型</span>
+      
+    
+  </nav>
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      AIToBox.com - New discoveries in AI start here
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.tracking","navigation.top","search.suggest","search.highlight"],"search":"../../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"已复制","clipboard.copy":"复制","search.result.more.one":"在该页上还有 1 个符合条件的结果","search.result.more.other":"在该页上还有 # 个符合条件的结果","search.result.none":"没有找到符合条件的结果","search.result.one":"找到 1 个符合条件的结果","search.result.other":"# 个符合条件的结果","search.result.placeholder":"键入以开始搜索","search.result.term.missing":"缺少","select.version":"选择当前版本"},"version":null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
