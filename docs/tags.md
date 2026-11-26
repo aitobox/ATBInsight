@@ -492,6 +492,8 @@ title: 标签浏览
 - [Google DeepMind 利用 AI 智能体形式化验证 Signal 核心机器码](blog/posts/2026-11-11-Google-DeepMind-利用-AI-智能体形式化验证-Signal-核心机器码.md)
 - [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 - [构建全天候 AI 智能体：驱动持久自主运行的五大核心原语](blog/posts/2026-11-15-构建全天候-AI-智能体-驱动持久自主运行的五大核心原语.md)
+- [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
+- [陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示](blog/posts/2026-11-26-陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示.md)
 
 ## AI智能体沙盒
 
@@ -823,6 +825,7 @@ title: 标签浏览
 - [智能体记忆架构的组成要素：Anthropic 探索 AI 的睡梦与离线整合](blog/posts/2026-11-07-智能体记忆架构的组成要素-Anthropic-探索-AI-的睡梦与离线整合.md)
 - [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 - [构建全天候 AI 智能体：驱动持久自主运行的五大核心原语](blog/posts/2026-11-15-构建全天候-AI-智能体-驱动持久自主运行的五大核心原语.md)
+- [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
 
 ## Anthropic Labs
 
@@ -1310,6 +1313,7 @@ title: 标签浏览
 - [Anthropic 重构版本控制系统：迈向智能体时代的自研系统 Scion](blog/posts/2026-10-21-Anthropic-重构版本控制系统-迈向智能体时代的自研系统-Scion.md)
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 - [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
+- [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
 
 ## Claude 5
 
@@ -4073,6 +4077,7 @@ title: 标签浏览
 - [post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎](blog/posts/2026-08-29-post-graph-rag：原生于 PostgreSQL 的图 RAG 引擎.md)
 - [Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库](blog/posts/2026-09-04-Zeta-Lite：面向智能体记忆的并发、可分支浏览器内 SQL 数据库.md)
 - [Pinecone 发布 pg_pinecone：在 Postgres 中实现原生高性能向量检索](blog/posts/2026-10-28-Pinecone-发布-pg_pinecone-在-Postgres-中实现原生高性能向量检索.md)
+- [陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示](blog/posts/2026-11-26-陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示.md)
 
 ## Postgres
 
@@ -4607,6 +4612,8 @@ title: 标签浏览
 - [Perplexity 揭秘自研 Rust 检索系统 Photon：将 p99 延迟从 800ms 降至 65ms](blog/posts/2026-10-01-Perplexity-揭秘自研-Rust-检索系统-Photon-将-p99-延迟从-800ms-降至-65ms.md)
 - [Reason Machines 开源专为 AI 智能体设计的 Git 服务器 Aspen](blog/posts/2026-11-10-Reason-Machines-开源专为-AI-智能体设计的-Git-服务器-Aspen.md)
 - [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
+- [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
+- [废除 Lock Poisoning：Rust 并发编程的反思与演进](blog/posts/2026-11-26-废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思.md)
 
 ## R语言
 
@@ -11227,6 +11234,7 @@ title: 标签浏览
 - [通过迭代 DPO 从奖励作弊中诱发突发性不对齐](blog/posts/2026-09-10-通过迭代 DPO 从奖励作弊中诱发突发性不对齐.md)
 - [反词元化泄漏：从缓存痕迹重建本地大模型输出](blog/posts/2026-09-10-反词元化泄漏：从缓存痕迹重建本地大模型输出.md)
 - [拒绝的几何学：为什么事后安全机制如此脆弱，而预训练阶段的安全机制能够持久](blog/posts/2026-09-10-拒绝的几何学：为什么事后安全机制如此脆弱，而预训练阶段的安全机制能够持久.md)
+- [陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示](blog/posts/2026-11-26-陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示.md)
 
 ## 大模型对齐
 
@@ -13377,6 +13385,7 @@ title: 标签浏览
 ## 并发编程
 
 - [Zig 的 Io.Threaded 设计精妙](blog/posts/2026-08-07-Zig 的 Io.Threaded 设计精妙.md)
+- [废除 Lock Poisoning：Rust 并发编程的反思与演进](blog/posts/2026-11-26-废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思.md)
 
 ## 并行策略
 
@@ -16970,6 +16979,10 @@ title: 标签浏览
 
 - [基于最优输运贝尔曼平滑的二阶平滑规划](blog/posts/2026-09-10-基于最优输运贝尔曼平滑的二阶平滑规划.md)
 
+## 最佳实践
+
+- [陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示](blog/posts/2026-11-26-陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示.md)
+
 ## 最大后验估计
 
 - [大概率近似正确最大后验推断](blog/posts/2026-08-14-大概率近似正确最大后验推断.md)
@@ -17552,6 +17565,7 @@ title: 标签浏览
 
 - [上下文不等于权限：金融市场智能体的结构化运行时治理](blog/posts/2026-08-12-上下文不等于权限：金融市场智能体的结构化运行时治理.md)
 - [思考模型：授权与能力](blog/posts/2026-09-09-思考模型：授权与能力.md)
+- [陌生人攻破了我们 AI 智能体的安全护栏：这带给我们的启示](blog/posts/2026-11-26-陌生人攻破了我们-AI-智能体的安全护栏-这带给我们的启示.md)
 
 ## 权限撤销
 
@@ -17730,6 +17744,7 @@ title: 标签浏览
 ## 架构迁移
 
 - [为什么 GPT 风格模型无法直接迁移到符号音乐：错误坐标系下的压缩问题](blog/posts/2026-08-20-为什么 GPT 风格模型无法直接迁移到符号音乐：错误坐标系下的压缩问题.md)
+- [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
 
 ## 架构重构
 
@@ -22548,6 +22563,7 @@ title: 标签浏览
 - [脚手架内部的上下文工程：战胜长程任务中上下文溢出与目标迷失的 4 大机制](blog/posts/2026-09-14-脚手架内部的上下文工程-战胜长程任务中上下文溢出与目标迷失的4大机制.md)
 - [长程 AI 智能体与持久化执行架构深度剖析](blog/posts/2026-11-11-长程-AI-智能体与持久化执行架构深度剖析.md)
 - [构建全天候 AI 智能体：驱动持久自主运行的五大核心原语](blog/posts/2026-11-15-构建全天候-AI-智能体-驱动持久自主运行的五大核心原语.md)
+- [废除 Lock Poisoning：Rust 并发编程的反思与演进](blog/posts/2026-11-26-废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思.md)
 
 ## 系统演示
 
@@ -27483,6 +27499,10 @@ title: 标签浏览
 ## 链路追踪
 
 - [OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量](blog/posts/2026-08-07-OrchestraBench：评估多智能体编排的失效模式、恢复能力与任务拆解质量.md)
+
+## 锁中毒
+
+- [废除 Lock Poisoning：Rust 并发编程的反思与演进](blog/posts/2026-11-26-废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思.md)
 
 ## 错位行为
 
