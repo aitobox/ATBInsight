@@ -560,6 +560,7 @@ title: 标签浏览
 ## AI编程
 
 - [FVSpec：将现实世界基于属性的测试转化为 Lean 挑战](blog/posts/2026-09-08-FVSpec：将现实世界基于属性的测试转化为 Lean 挑战.md)
+- [Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限](blog/posts/2026-11-28-Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战.md)
 
 ## AI编程智能体
 
@@ -1314,6 +1315,7 @@ title: 标签浏览
 - [大语言模型助力形式化软件验证实现规模化突破](blog/posts/2026-10-27-大语言模型助力形式化软件验证实现规模化突破.md)
 - [智能体记忆与做梦：通过离线整理让 AI 实现跨会话长期进化](blog/posts/2026-11-10-智能体记忆与做梦-通过离线整理让-AI-实现跨会话长期进化.md)
 - [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
+- [Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限](blog/posts/2026-11-28-Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战.md)
 
 ## Claude 5
 
@@ -1900,6 +1902,10 @@ title: 标签浏览
 ## FlashRT-PAI
 
 - [FlashRT-PAI：算子快不等于流水线快——具身物理 AI 实时推理引擎突破](blog/posts/2026-10-21-FlashRT-PAI-算子快不等于流水线快-具身物理-AI-实时推理引擎突破.md)
+
+## Flask
+
+- [告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人](blog/posts/2026-11-28-利用工作量证明防御表单垃圾机器人.md)
 
 ## Flow Matching
 
@@ -2654,6 +2660,7 @@ title: 标签浏览
 - [OpenAttention：仅需 1% 尾部代理以超低读取率保留全注意力精度](blog/posts/2026-10-27-OpenAttention-仅需-1-尾部代理以超低读取率保留全注意力精度.md)
 - [清华团队开源 AKV：基于 SGLang 的大模型智能体 KV 缓存工程服务系统](blog/posts/2026-10-27-清华团队开源-AKV-基于-SGLang-的大模型智能体-KV-缓存工程服务系统.md)
 - [Cloudflare 披露 GLM-5.3 漏洞：多租户 KV 缓存暴露导致 155 条会话泄露](blog/posts/2026-10-28-Cloudflare-披露-GLM-5.3-漏洞-多租户-KV-缓存暴露导致-155-条会话泄露.md)
+- [腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术](blog/posts/2026-11-28-腾讯开源-DFly2-投机解码框架.md)
 
 ## KV Cache 压缩
 
@@ -4184,6 +4191,7 @@ title: 标签浏览
 - [实战指南：使用 ADK 与 Gemini Live 构建永不冷场的语音智能体](blog/posts/2026-10-20-实战指南-使用-ADK-与-Gemini-Live-构建永不冷场的语音智能体.md)
 - [NVIDIA Nsight Python 实战教程：如何系统剖析 GPU 算子内核性能](blog/posts/2026-10-23-NVIDIA-Nsight-Python-实战教程-如何系统剖析-GPU-算子内核性能.md)
 - [CKKS 同态加密：重缩放技术与模数切换原理解析](blog/posts/2026-11-13-CKKS-同态加密-重缩放技术与模数切换原理解析.md)
+- [告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人](blog/posts/2026-11-28-利用工作量证明防御表单垃圾机器人.md)
 
 ## Python 库
 
@@ -4617,6 +4625,7 @@ title: 标签浏览
 - [一切皆是接口：从 mkdir 的细微 Bug 看 POSIX 标准与系统调用边界](blog/posts/2026-11-13-一切皆是接口-从-mkdir-的细微-Bug-看-POSIX-标准与系统调用边界.md)
 - [将我们的 Messages API 迁移到 Rust：Anthropic 高并发架构演进与验证实战](blog/posts/2026-11-26-将我们的-Messages-API-迁移到-Rust.md)
 - [废除 Lock Poisoning：Rust 并发编程的反思与演进](blog/posts/2026-11-26-废除-Lock-Poisoning-锁中毒机制-Rust-并发编程的反思.md)
+- [Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限](blog/posts/2026-11-28-Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战.md)
 
 ## R语言
 
@@ -5674,6 +5683,10 @@ title: 标签浏览
 ## Webhook
 
 - [Forgejo 技巧 #2：与 Read the Docs 集成](blog/posts/2026-09-01-Forgejo 技巧 #2：与 Read the Docs 集成.md)
+
+## Web开发
+
+- [告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人](blog/posts/2026-11-28-利用工作量证明防御表单垃圾机器人.md)
 
 ## Whisper
 
@@ -12115,6 +12128,7 @@ title: 标签浏览
 - [什么是 Pathways？Google 大模型单控制器分布式训练系统深度解析](blog/posts/2026-11-10-什么是-Pathways-Google-大模型单控制器分布式训练系统深度解析.md)
 - [在 TPU 上实现位级零误差的同策略强化学习](blog/posts/2026-11-17-在-TPU-上实现位级零误差的同策略强化学习.md)
 - [基于 Nemotron 3.5 Parse 构建文档模型：开源数据、微调配方与极速推理](blog/posts/2026-11-27-基于-Nemotron-3-5-Parse-构建文档模型-开源数据-微调配方与极速推理.md)
+- [腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术](blog/posts/2026-11-28-腾讯开源-DFly2-投机解码框架.md)
 
 ## 大语言模型代理
 
@@ -12529,6 +12543,7 @@ title: 标签浏览
 
 - [通过神经符号安全卫士引导端到端自动驾驶](blog/posts/2026-08-14-通过神经符号安全卫士引导端到端自动驾驶.md)
 - [强化覆盖标志：命令行工具如何防止危险操作被滥用](blog/posts/2026-08-26-强化覆盖标志：命令行工具如何防止危险操作被滥用.md)
+- [告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人](blog/posts/2026-11-28-利用工作量证明防御表单垃圾机器人.md)
 
 ## 安全风险
 
@@ -13231,6 +13246,7 @@ title: 标签浏览
 ## 工作量证明
 
 - [耗时一年：WebAssembly 终于登陆 Anubis](blog/posts/2026-09-08-耗时一年：WebAssembly 终于登陆 Anubis.md)
+- [告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人](blog/posts/2026-11-28-利用工作量证明防御表单垃圾机器人.md)
 
 ## 工具使用
 
@@ -14459,6 +14475,7 @@ title: 标签浏览
 - [ClickHouse 会在大规模场景下让你悄无声息地踩坑：从实战中总结的排坑与调优指南](blog/posts/2026-10-21-ClickHouse-会在大规模场景下让你悄无声息地踩坑.md)
 - [GAUSS：面向大语言模型推理服务的负载感知与蒙特卡洛仿真器](blog/posts/2026-10-31-GAUSS-面向大语言模型推理服务的负载感知仿真器.md)
 - [浮点数打印与解析亦可兼得极简与极致速度](blog/posts/2026-11-06-浮点数打印与解析亦可兼得极简与极致速度.md)
+- [Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限](blog/posts/2026-11-28-Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战.md)
 
 ## 性能分析
 
@@ -14857,6 +14874,7 @@ title: 标签浏览
 - [SpecFit 破局 MoE 离线推理：草稿 Token 成本差异化与子模优化加速](blog/posts/2026-10-15-SpecFit-破局-MoE-离线推理-草稿-Token-成本差异化与子模优化加速.md)
 - [投机接受率不会随位置衰减：长思维链独立草稿全长度诊断分析](blog/posts/2026-10-24-投机接受率不会随位置衰减-长思维链独立草稿全长度诊断分析.md)
 - [FlashMap：普林斯顿与 Polymathic AI 联合发布连续流草稿模型，实现 6.14 倍无损解码加速](blog/posts/2026-10-29-FlashMap-普林斯顿与-Polymathic-AI-发布连续流草稿模型加速-LLM-解码.md)
+- [腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术](blog/posts/2026-11-28-腾讯开源-DFly2-投机解码框架.md)
 
 ## 投毒抢注
 
@@ -15141,6 +15159,7 @@ title: 标签浏览
 - [通过幻觉空间投影减少 Whisper 模型中的幻觉转录](blog/posts/2026-09-08-通过幻觉空间投影减少 Whisper 模型中的幻觉转录.md)
 - [在细粒度混合专家模型中免训练将激活专家减半](blog/posts/2026-09-08-在细粒度混合专家模型中免训练将激活专家减半.md)
 - [Bellman 语言模型：破解大模型智能体的循环重复决策困境](blog/posts/2026-10-21-Bellman-语言模型-破解大模型智能体的循环重复决策困境.md)
+- [腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术](blog/posts/2026-11-28-腾讯开源-DFly2-投机解码框架.md)
 
 ## 推理加速
 
@@ -23490,6 +23509,7 @@ title: 标签浏览
 
 - [SiriusDeliver：腾讯数仓交付自动化技术实践](blog/posts/2026-08-12-SiriusDeliver：腾讯数仓交付自动化技术实践.md)
 - [RecSys Factory：将大模型智能体自主性限制在工业推荐系统生命周期的决策点上](blog/posts/2026-08-14-RecSys Factory：将大模型智能体自主性限制在工业推荐系统生命周期的决策点上.md)
+- [腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术](blog/posts/2026-11-28-腾讯开源-DFly2-投机解码框架.md)
 
 ## 膜电位感知
 
@@ -27056,6 +27076,7 @@ title: 标签浏览
 - [重新编译远远不够：测试引导的反编译C代码修复](blog/posts/2026-09-10-重新编译远远不够：测试引导的反编译C代码修复.md)
 - [逆向实战：借助 AI 破解并修复 Altera Quartus Linux jtagd 守护进程长达八年的隐蔽 Bug](blog/posts/2026-10-04-逆向实战-借助-AI-破解并修复-Altera-Quartus-Linux-jtagd-守护进程长达八年的隐蔽-Bug.md)
 - [利用大模型将 Rockbox 固件移植到 9 美元 AliExpress MP3 播放器](blog/posts/2026-11-22-利用大模型将-Rockbox-固件移植到-9-美元-AliExpress-MP3-播放器.md)
+- [Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限](blog/posts/2026-11-28-Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战.md)
 
 ## 逆向技术
 
