@@ -5,6 +5,385 @@
     <link>https://insight.aitobox.com/</link>
     <description>AI Insight Pipeline &amp; Tech Blog</description>
     <item>
+      <title>腾讯开源 DFly2：共享目标稀疏 KV Cache 的创新投机解码技术</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-28/腾讯开源-DFly2-投机解码框架/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-28/腾讯开源-DFly2-投机解码框架/</guid>
+      <pubDate>Sat, 28 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在大语言模型 (Large Language Model, LLM) 的实际部署与长文本推理中，传统的投机解码 (Speculative Decoding) 虽然能显著提升生成速度，但往往需要让辅助草稿模型 (Drafter) 独立维护一份庞大的键值缓存 (KV Cache)，导致长上下文和高并发场景下的显存开销居高不下。为了攻克这一瓶颈，Tencent 旗下混元 AI Infra 团队正式开源了全新块级并行投机解码框架 **DFly2**。该框架专门面向原生稀疏的大语言模型设计，革命性地直接复用目标模型的隐层 KV Cache 和稀疏索引结果，彻底甩掉了草稿模型的独立显存包袱，将草稿解码计算复杂度与上下文长度解耦。基准测试结果表明，DFly2 在 DeepSeek-V4.1-Flash、GLM-5.3-Flash 及 Tencent 自研的 Hy4 flash 等主流模型上均实现了更高的草稿接受率，并在长上下文智能体任务中实现了高达 81% 的服务吞吐量跃升，为超长文本模型的高性能低成本推理树立了全新标杆。
+
+---
+
+## 概述
+
+&gt; ## Summary
+
+Tencent 正式[开源了 DFly2](https://x.com/TencentAI_News/status/2125968859450802415)。这是一款创新的块级并行投机解码草稿模型 (Drafter)，专为原生稀疏架构的大语言模型 (Large Language Model, LLM) 打造，完美支持 DeepSeek-V4.1-Flash、GLM-5.3-Flash 以及 Tencent 自研的 [Hy4 flash](https://huggingface.co/tencent/Hy4-flash) 等模型。DFly2 巧妙地摒弃了草稿模型独立的键值缓存 (KV Cache)，转而直接共享目标模型的隐层 KV Cache 与稀疏索引器筛选结果，大幅削减了显存开销，不仅能支持更高的并发请求，还在长文本以及智能体任务中实现了高达 **81% 的吞吐量提升**。
+
+&gt; Tencent has [open-sourced DFly2](https://x.com/TencentAI_News/status/2125968859450802415), an innovative block-parallel speculative decoding drafter designed specifically for natively sparse Large Language Models (LLMs) such as DeepSeek-V4.1-Flash, GLM-5.3-Flash, and Tencent's own [Hy4 flash](https://huggingface.co/tencent/Hy4-flash). By cleverly eliminating the need for a separate draft KV cache—instead sharing the target model's latent KV cache and sparse indexer picks—DFly2 drastically reduces memory overhead, enabling higher concurrency and up to an **81% throughput increase** on long-context and agentic tasks.
+
+---
+
+## 核心速览 (TL;DR)
+
+&gt; ## TL;DR
+
+* **模型规模**：为 Hy4 flash 配套推出的草稿模型参数量为 0.85B (8.5 亿参数)，包含 5 个网络层。
+* **硬件环境**：在线服务测试基于搭载 vLLM 的 NVIDIA H20 GPU 展开 (单实例采用 TP8 张量并行)；vLLM 官方推荐配置默认面向 8 张 H200。
+* **整体性能**：在所有测试的目标模型以及通用基准测试中，相比相同训练配方的 DFlash 与 DSpark，DFly2 均取得了更高的草稿接受率。
+* **最佳表现**：在用户级解码速度持平的前提下，DeepSeek-V4.1-Flash 在 64K 上下文的 SWE 代码基准测试中吞吐量提升高达 81%。
+* **最小收益**：在 temperature 为 0 的常规任务下，DFly2 相比 DSpark 在 Hy4 flash 上的性能提升幅度最小，为 3.9%。
+
+&gt; * **Size:** 0.85B-parameter, 5-layer drafter shipped with Hy4 flash.
+&gt; * **Hardware:** Serving tests utilized NVIDIA H20 GPUs with vLLM (TP8 per instance); default vLLM recipes target 8x H200.
+&gt; * **Performance:** Higher draft acceptance rates compared to same-recipe DFlash and DSpark across all target models and general benchmarks.
+&gt; * **Best Results:** Up to 81% more throughput on DeepSeek-V4.1-Flash (SWE 64K) at matched per-user speed.
+&gt; * **Smallest Gains:** 3.9% improvement over DSpark on Hy4 flash general tasks at temperature 0.
+
+---
+
+## 什么是 DFly2？
+
+&gt; ## What is DFly2?
+
+DFly2 是由 Tencent 混元 AI Infra 团队研发的块级并行投机解码草稿模型，相关成果详见学术论文[《DFly2: Turbocharging Long-Context Speculative Decoding by Sharing the Target’s Sparsity》](https://arxiv.org/abs/2611.34776)。
+
+&gt; DFly2 is a block-parallel speculative decoding drafter developed by Tencent’s Hunyuan AI Infra team, detailed in the research paper [‘DFly2: Turbocharging Long-Context Speculative Decoding by Sharing the Target’s Sparsity’](https://arxiv.org/abs/2611.34776).
+
+标准的投机解码技术通过引入轻量级辅助模型 (草稿模型) 预先生成候选 Token，再由大体积的目标模型通过单次前向传播进行批量验证，在确保输出完全无损的前提下成倍加快生成速度。然而在长上下文应用场景中，这一方案的成本却急剧攀升：因为传统草稿模型不仅必须对整个前文字符串执行注意力计算，还必须单独开辟并维护一份专属于自己的 KV Cache。
+
+&gt; Standard speculative decoding utilizes a small auxiliary model (drafter) to propose tokens while the larger target model verifies them in a single pass, ensuring the output remains entirely lossless. However, in long-context scenarios, this approach becomes costly because traditional drafters must attend over the entire prefix and maintain their own separate KV cache.
+
+---
+
+## DFly2 的工作原理是什么？
+
+&gt; ## How Does DFly2 Work?
+
+DFly2 将草稿模型的每一层与目标模型中的稀疏注意力层进行一对一直接配对，实现了两项核心关键组件的共享：
+
+&gt; DFly2 pairs each draft layer directly with a sparse attention layer in the target model, sharing two key components:
+
+* **KV 共享 (KV Sharing)**：草稿层直接读取与其配对的目标模型层的隐层 KV Cache。
+* **索引共享 (Index Sharing)**：草稿层仅对目标模型稀疏索引器已选定的位置执行注意力计算 (即 top-$k$ 稀疏 KV)。
+* **权重初始化 (Initialization)**：每个草稿层均直接使用配对目标层的权重进行初始化。
+* **隐藏状态注入 (Hidden Injection)**：目标模型最后一层的隐藏状态通过门控机制注入到草稿块中。
+* **块内校正 (Intra-Block Correction)**：草稿模型在一个候选块内逐槽位重新读取共享的上下文信息。
+
+&gt; * **KV Sharing:** The draft layer reads the paired target layer’s latent KV cache directly.
+&gt; * **Index Sharing:** It attends exclusively to positions already selected by the target’s sparse indexer (top-$k$ sparse KV).
+&gt; * **Initialization:** Each draft layer is initialized using its paired target layer’s weights.
+&gt; * **Hidden Injection:** The target's last-layer hidden state is gated into the draft block.
+&gt; * **Intra-Block Correction:** The drafter rereads the shared context slot-by-slot within a block.
+
+根据 [AngelSpec GitHub 开源主页](https://github.com/Tencent/AngelSpec)的介绍，每一个草稿 Token 最多仅关注约 2,000 个 Key 向量，这使得无论上下文长度如何延伸，草稿生成的计算成本都基本保持平稳。此外，DFly2 完全跳过了 Prefill 预填充阶段，这意味着从 Prefill 切换至 Decode 解码阶段时，仅仅需要额外传递一个最后一层的隐藏状态。
+
+&gt; According to the [AngelSpec GitHub page](https://github.com/Tencent/AngelSpec), each draft token attends to at most ~2K keys, keeping drafting costs roughly flat regardless of context length. Furthermore, DFly2 skips prefill entirely, meaning the prefill-to-decode transfer only adds a single last-layer hidden state.
+
+---
+
+## 显存开销对比分析：独立缓存 vs. 共享缓存
+
+&gt; ## Memory Cost Analysis: Separate vs. Shared Cache
+
+常规的 3 层草稿模型缓存会在每个 Token 上带来显著的额外显存负担 (以 bf16 数据类型计算，数据源自论文表 2)：
+
+&gt; A conventional 3-layer drafter cache adds significant memory overhead per token (bf16, based on paper Table 2):
+
+| 目标模型 (Target Model) | 目标模型 KV (Target KV) | 草稿缓存 (Drafter Cache) | 显存增加倍数 (Increase Factor) |
+| :--- | :--- | :--- | :--- |
+| **DeepSeek-V4.1-Flash** | 4.4 KiB | 3.4 KiB | 1.76x |
+| **GLM-5.3-Flash** | 11.7 KiB | 3.0 KiB | 1.26x |
+| **Hy4 flash** | 17.2 KiB | 3.4 KiB | 1.20x |
+
+在 32K 上下文长度下，彻底省去草稿模型的专用缓存后，显存池能够容纳的**并发请求数量提升了 1.73 倍**。
+
+&gt; At a 32K context length, removing the drafter's dedicated cache allows the memory pool to accommodate **1.73x more concurrent requests**.
+
+---
+
+## DFly2 基准测试：接受率、加速比与吞吐量
+
+&gt; ## DFly2 Benchmarks: Acceptance, Speedup, and Throughput
+
+*注：所有基准测试数据均为 Tencent 自测公布，基线对比项采用了基于相同配方重新训练的 DFlash 和 DSpark。*
+
+&gt; *All benchmark metrics are self-reported by Tencent, using DFlash and DSpark retrained on identical recipes as baselines.*</description>
+    </item>
+    <item>
+      <title>告别侵入式验证码：利用轻量级工作量证明 (PoW) 防御 Web 表单垃圾机器人</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-28/利用工作量证明防御表单垃圾机器人/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-28/利用工作量证明防御表单垃圾机器人/</guid>
+      <pubDate>Sat, 28 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在 Web 开发中，公开表单（如博客评论区、留言板或注册表单）历来是自动化垃圾机器人狂轰滥炸的重灾区。为了抵御垃圾骚扰，传统方案往往依赖各种侵入式的第三方验证码 (CAPTCHA) 服务，但这不仅严重割裂了正常用户的交互体验，还带来了额外的隐私追踪与外部依赖风险。本文介绍了一种优雅、轻量且无需外部服务的自建防御方案——巧妙借鉴加密货币与早期反垃圾邮件中的工作量证明 (Proof-of-Work, PoW) 思想，将防御重心从服务器端转移至客户端浏览器。在用户点击提交的极短瞬间（1 到 2 秒），浏览器利用原生 Web Crypto API 快速求解一道由后端动态下发的哈希谜题，而自动化刷单脚本则因无法或不愿承受高昂算力成本而被拒之门外。基于 Python、Flask 与 WTForms 的完整实战落地方案，成功帮助开发者将每天数十条垃圾信息直接降至近乎为零，实现极佳的用户体验与出色的防刷效果双赢。
+
+---
+
+## 核心概要
+
+&gt; ## Summary
+
+在本文中，作者分享了一套量身定制且对用户极度友好的解决方案，无需依赖任何侵入式的第三方验证码 (CAPTCHA) 服务，就能彻底击溃 Web 表单上无休止的垃圾机器人攻击。该技术巧妙借鉴了常见于加密货币与反垃圾邮件协议中的“工作量证明 (Proof-of-Work, PoW)”理念，将计算负担转移给客户端浏览器，仅在表单提交时引入一段用户几乎感知不到的微小计算延迟（1 到 2 秒）。整套方案借助 Python、Flask、WTForms 和 JavaScript 实现，成功将博客评论区原本每天数十条的垃圾轰炸直接压缩至近乎为零。
+
+&gt; In this article, the author shares a custom, user-friendly solution to combat relentless spam bot attacks on web forms without relying on intrusive third-party services like CAPTCHAs. Inspired by the "proof-of-work" concept (commonly used in cryptocurrency and anti-spam protocols), the technique shifts the burden to the client's browser, requiring a negligible computation delay (1–2 seconds) upon form submission. Implemented using Python, Flask, WTForms, and JavaScript, this approach successfully reduced blog comment spam from dozens of daily messages to nearly zero.
+
+---
+
+## 1. 工作量证明方案简介
+
+&gt; ## 1. Introduction to Proof-of-Work Solutions
+
+工作量证明机制最早在 20 世纪 90 年代被提出，初衷正是为了对抗垃圾邮件。虽然它后来因被 Bitcoin 引入挖矿而声名远扬，但如今这项经典技术已经在现代安全项目中强势回归，例如 Cloudflare Turnstile 等防机器人服务便深度融合了该理念。
+
+&gt; Proof-of-work schemes were originally devised in the 1990s to fight email spam. While infamously co-opted by Bitcoin for mining, they have made a strong comeback for deterring bots in modern projects like Cloudflare Turnstile.
+
+与传统的验证码不同，工作量证明挑战完全在后台由代码静默完成，根本不需要用户辨认红绿灯或旋转图片：
+
+&gt; Unlike CAPTCHAs, proof-of-work challenges are solved entirely through code behind the scenes:
+
+* 服务端下发一道程序化挑战谜题；
+* 客户端浏览器在极短的时间内（零点几秒至一两秒）自动完成求解；
+* 服务端以极低的计算开销快速核验求解结果的有效性。
+
+&gt; * The server issues a programmatic challenge.
+&gt; * The client's browser solves it in a fraction of a second.
+&gt; * The server verifies the solution with minimal computational effort.
+
+对于普通的 Web 表单而言，我们只需要在前端挂载一个轻量级 JavaScript 求解器，拦截表单的 `submit` 提交事件，并将算出的答案作为一个隐藏字段追加到表单中。这直接给恶意发帖者来了个猝不及防的沉重打击——因为绝大多数自动化发帖脚本根本不会运行完整且开启 JavaScript 的真实浏览器环境，更别提为每一次批量请求浪费宝贵的 CPU 算力去硬解密码学谜题了。
+
+&gt; For web forms, a JavaScript solver hooks into the form's `submit` event, appending the solution as a hidden field. This throws a curveball at spammers, as most automated scripts do not use real browsers with JavaScript enabled—let alone want to waste CPU cycles solving cryptographic puzzles.
+
+---
+
+## 2. 深入理解工作量证明的运作原理
+
+&gt; ## 2. Understanding How Proof-of-Work Works
+
+这项任务的核心思想十分简单直接：寻找一个特定字符串，使得它在经过类似 SHA-512 这类密码学哈希函数计算后，输出的哈希值满足某些严苛特征（例如以预先设定数量的十六进制零开头）。
+
+&gt; The typical task involves finding a string that, when hashed with a cryptographic function like SHA-512, yields a hash with specific properties (such as starting with a predetermined number of hexadecimal zeros).
+
+举个例子，我们来看一道 **难度 1 (Level 1)** 的挑战：寻找一个以 `"abcde"` 为前缀的字符串，使其 SHA-512 哈希值以单个字符 `0`（即 4 个全零比特位）开头。
+
+&gt; For example, consider a **Level 1** challenge: find a string starting with prefix `"abcde"` that produces a SHA-512 hash beginning with a single `0` (four zero bits).
+
+我们在 Python 交互式环境中动手测试一下：
+
+&gt; Testing this in Python:
+
+```python
+&gt;&gt;&gt; from hashlib import sha512
+&gt;&gt;&gt; sha512(b'abcde1').hexdigest()
+'97b0befcc466c532a0358720f9a0175efbf6c5fcdf158ac0cbdc391bbe1114e2062d086676252c696fe0b03be7bd4264333ef4dc9c1097770df04bc163504425'
+&gt;&gt;&gt; sha512(b'abcde2').hexdigest()
+'53688a316d4c852717a231e3d2e90b9f1d6e53018bea4120ec6b03b4c4689391685cd053c9731b7a95de910932cca3314c48977fafc3175e81bb7f045252ef06'
+...
+&gt;&gt;&gt; sha512(b'abcde12').hexdigest()
+'0ec5048e9afafa5cd2ceb272d47f05caaa239ab6bac6e475683642b5d9cdda3aca389a88dadaa5d5b1636e111998232950bf2bf0e1ad01ed31eba5c54928139c'
+```
+
+在这个实验中，计算机尝试了 12 次才算出了一个以 `0` 开头的哈希值。因此，数字 `12` 就是一个有效的求解答案。如果进一步增加前导零的要求数量（例如难度 2、难度 3 等），计算难度将呈现指数级飙升，从而让试图并发批量发帖的垃圾机器人寸步难行。
+
+&gt; Here, 12 attempts were required to find a hash starting with `0`. Thus, `12` is a valid solution. By increasing the required leading zeros (Level 2, Level 3, etc.), the computational difficulty increases exponentially, deterring automated spam bots.
+
+---
+
+## 3. 客户端 JavaScript 求解实现
+
+&gt; ## 3. JavaScript Implementation
+
+为了在用户提交表单时让浏览器在后台静默完成运算，我们可以直接使用所有现代浏览器均原生内置的 `SubtleCrypto` API：
+
+&gt; To execute this process in the browser during form submission, we use the native `SubtleCrypto` API available in all modern browsers:
+
+```javascript
+async function sha512(message) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hash = await window.crypto.subtle.digest("SHA-512", data);
+  return new Uint8Array(hash).toHex();
+}
+
+async function solve(challenge, level) {
+  let hash;
+  let solution = 0;
+  do {
+    hash = await sha512(challenge + ++solution);
+  } while(hash.substr(0, level) !== "0".repeat(level));
+  return solution;
+}
+```
+
+你可以直接在浏览器的开发者工具控制台 (Console) 中粘贴运行上述代码进行测试：
+
+&gt; You can test this directly in your browser's developer console:
+
+```javascript
+&gt;&gt; await solve('abcde', 1);
+12
+&gt;&gt; await solve('abcde', 2);
+212
+&gt;&gt; await solve('abcde', 3);
+10932
+&gt;&gt; await solve('abcde', 4);
+264673 
+```
+
+---
+
+## 4. 服务端 Python 校验实现
+
+&gt; ## 4. Python Implementation
+
+在后端，我们可以将答案校验逻辑以及前端 JavaScript 求解器模板的组装封装进一个清爽优雅的 Python 类中：
+
+&gt; On the back end, we can encapsulate the validation and JavaScript template delivery inside a clean Python class:
+
+```python
+import hashlib
+
+class ProofOfWork:
+    def __init__(self, level):
+        self.level = level
+
+    def validate_solution(self, challenge, solution):
+        return hashlib.sha512(
+            (challenge + solution).encode()
+        ).hexdigest().startswith('0' * self.level)
+
+    @staticmethod
+    def get_js_solver():
+        return '''
+            async function sha512(message) {
+              const encoder = new TextEncoder();
+              const data = encoder.encode(message);
+              const hash = await window.crypto.subtle.digest("SHA-512", data);
+              return new Uint8Array(hash).toHex();
+            }
+            async function solve(challenge, level) {
+              let hash;
+              let solution = 0;
+              do {
+                hash = await sha512(challenge + ++solution);
+              } while(hash.substr(0, level) !== "0".repeat(level));
+              return solution;
+            }
+        '''
+```
+
+---
+
+## 5. Flask 与 WTForms 深度集成
+
+&gt; ## 5. Flask and WTForms Integration</description>
+    </item>
+    <item>
+      <title>Opus 5.5 与 Fable 5.2 实战：借助 AI 智能体将过度优化的 Rust 代码推向硬件极限</title>
+      <link>https://insight.aitobox.com/blog/posts/2026-11-28/Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战/</link>
+      <guid>https://insight.aitobox.com/blog/posts/2026-11-28/Opus-5.5-与-Fable-5.2-极致优化-Rust-代码实战/</guid>
+      <pubDate>Sat, 28 Nov 2026 00:00:00 GMT</pubDate>
+      <description>在追求极致性能的系统级软件工程领域，代码优化往往伴随着边际收益递减的巨大挑战。知名数据科学家与工程师 Max Woolf 在前期的实验中，探索了利用大语言模型 (Large Language Model, LLM) 驱动的 AI 智能体 (AI Agent) 持续迭代并优化 Rust 代码的流程。随着 Anthropic 全新发布的 **Claude Opus 5.5** 与 **Fable 5.2** 相继亮相，作者将基准测试与性能调优工作流推向了全新的高度——不仅引入了基于 `samply` 的全进程性能剖析与内存占用精简，更创造性地下发底层汇编反思指令，借助 `objdump` 深入编译二进制产物寻找冗余指令与分支。令人瞩目的是，AI 智能体成功在原本已经处于前沿水平的高度优化 Rust 库上，再次实现了 1.5 倍至 2.0 倍的性能飞跃，不仅让峰值内存大幅缩减，更直接促成了极速文本检索工具 `byteseek` 的提前开源，为探索生成式 AI 辅助系统级极致性能优化树立了全新标杆。
+
+---
+
+## 概要
+
+&gt; ## Summary
+
+在前期利用智能体化大语言模型 (Large Language Model, LLM) 进行代码优化的实验基础之上，作者在一系列高性能 Rust 代码库中对最新发布的 **Claude Opus 5.5** 与 **Fable 5.2** 进行了深入测试。通过从 Codex 切换至 Claude Code，并引入更为激进的工作流——包括使用 `samply` 进行进程性能剖析、大幅精简内存占用、借助 `objdump` 进行汇编指令级审查，以及建立极其严苛的视觉保真度检验机制——这些模型将本已处于业界顶尖水平（State-of-the-Art）的 Rust 软件推向了硬件极限。经过优化后的代码库取得了显著的运行提速（在原有高度优化成果上普遍再提升 1.5 至 2 倍），显著降低了峰值内存占用，并直接催生了一款高性能 grep 替代工具 **byteseek** 的提前开源。
+
+&gt; Building on previous experiments with agentic LLMs for code optimization, the author tests the newly released **Claude Opus 5.5** and **Fable 5.2** on a suite of high-performance Rust libraries. By shifting from Codex to Claude Code and introducing aggressive workflows—such as process profiling with `samply`, memory footprint reduction, assembly-level inspection via `objdump`, and rigorous visual fidelity checks—the models pushed already state-of-the-art Rust software to new extremes. The resulting libraries achieve significant speedups (often 1.5x to 2x beyond previous optimizations), lower peak memory, and even inspired the early open-sourcing of a high-performance grep alternative called **byteseek**.
+
+---
+
+## 从 Codex 切换到 Claude Code
+
+&gt; ## Switching from Codex to Claude Code
+
+我喜欢飞快的软件，尤其是那种快到极致的软件。几个月前，我发表了一篇题为《[让智能体优化代码，编写出超越业界前沿水平的高性能 Rust 库](https://minimaxir.com/2026/09/agentic-iteration/)》的博客。在那篇文章中，我列举了利用 AI 智能体 (AI Agent) 大语言模型来加速 Rust 软件运行时执行的技巧——当然，其间引入了大量的制衡与核验机制，以确保代码质量良好、防止功能退化，并杜绝大模型在基准测试 (Benchmark) 中弄虚作假。经过足够轮次的迭代后，最终产出的 Rust 代码库不仅在性能上超越了现有的顶尖实现，且功能相同甚至更强，即便对比那些本身就用 Rust 编写的高性能项目亦毫不逊色。当时阻碍我正式开源这些 Rust 代码包（crate）的主要瓶颈有两个：一是需要进行全面严苛的真实场景测试，以确保代码完全如宣传的那般稳定；二是我不想刚把代码开源，随后新发布的大模型转眼就能再找出 2 倍以上的提速空间——那可太让人尴尬了。
+
+&gt; I like fast software. I like *very* fast software. A couple months ago, I published a blog post titled [Writing Rust code that’s faster than state-of-the-art libraries by asking agents to make the code faster](https://minimaxir.com/2026/09/agentic-iteration/) in which I listed techniques for using agentic LLMs to speed up the runtime execution of Rust software—of course, with extensive checks and balances to ensure good code quality, avoid regressions, and mitigate cheating by the LLMs. After enough iterations, the resulting Rust libraries are faster than existing state-of-the-art implementations with the same or better capabilities, even against those already written in Rust. The main bottlenecks for me open-sourcing the resulting Rust crates are a) doing comprehensive real-world testing to ensure the code works as advertised and b) I don’t want to release the code and then have another model release immediately find another 2x-or-more speed boost because that would be embarrassing.
+
+仅仅做到比业界顶尖库更快并不能让我满足：我希望自己的代码能触碰硬件本身的极限，哪怕这只是些可能根本不需要极高吞吐量的“好玩”软件。我不希望自己的基准测试单位还在以毫秒（ms）为单位计算，该死，我希望它们能精准到**微秒（μs）**！谁知道未来的某些应用场景，会不会真的需要亚毫秒级的词云生成或亚毫秒级的 ASCII 字符画渲染呢？
+
+&gt; I’m not satisfied with my code merely being faster than state-of-the-art: I want my code to push against hardware limits even for “fun” software that may not require maximum throughput. I don’t want my benchmarks to be measured in milliseconds, I want them measured in *microseconds*, dammit. Who knows if some application in the future will require submillisecond word clouds or submillisecond ASCII art generations?
+
+在那篇博客中，我的智能体迭代流水线主要使用的是 OpenAI 的 GPT 系列模型。然而就在文章发布的第二天，Anthropic 正式发布了 [Claude Opus 5.5](https://www.anthropic.com/claude-opus-5-5)。鉴于先前的 Opus 5 表现平平，外界起初对此充满怀疑……但事实很快证明，Opus 5.5 在智能体能力上实现了跨越式的代际跃升，能够从容解决无论是 OpenAI 还是 Anthropic 其他模型都无法攻克的高难度技术任务。在目睹社区的轰动后，我每月花费 20 美元把 Opus 5.5 接入到自己的智能体迭代流水线中进行测试……仅仅过了两天，其卓越的表现就彻底折服了我，促使我毫不犹豫地升级到了每月 100 美元的订阅档位以获取更多使用额度。经过过去几个月的深入测试，我可以充满信心地断言：Opus 5.5 以及随后推出的孪生模型 Fable 5.2，确实带来了重大的性能突破，真正将我的 Rust 软件推向了硬件极限。
+
+&gt; In that blog post, I mostly used OpenAI’s GPT models for this agentic iteration pipeline. The day after publication, Anthropic announced [Claude Opus 5.5](https://www.anthropic.com/claude-opus-5-5), which was met with skepticism as Opus 5 was underwhelming…and then it quickly turned out that Opus 5.5 was a step-change increase in the capability of agents with the ability to complete difficult technical tasks that neither OpenAI’s nor Anthropic’s other models could complete. I spent the $20/mo to try out Opus 5.5 on my agentic iteration pipeline after observing the hype…and after only two days, the results were impressive enough that I paid the $100/mo to get more usage quota. Through more testing over the past couple months, I can confidently say Opus 5.5 and its subsequent Fable 5.2 sibling did in fact result in significant performance breakthroughs that indeed push my Rust software to its limits.
+
+为了避免被大家误以为这是一篇没有标注赞助的 Anthropic 商业软广，我想先说明：在 Opus 5.5 问世之前，我对 [Claude Code](https://www.claude.com/product/claude-code) 满腹怨气，而这恰恰是我当时转投 OpenAI [Codex](https://openai.com/codex/) 阵营的首要原因。一个典型例子就是，Claude 此前一直无视行业通用的 [AGENTS.md](https://agents.md/)，偏偏执拗地强制要求使用 [CLAUDE.md](https://code.claude.com/docs/en/memor)（[直到最近才终于做出调整](https://news.ycombinator.com/item?id=49760187)）——坦白讲，这种自立门槛的小家子气做法足以让人倒戈。
+
+&gt; Lest people think that this post is an undisclosed #ad for Anthropic, I had grievances with [Claude Code](https://www.claude.com/product/claude-code) prior to Opus 5.5 which were the primary reasons I switched to OpenAI’s [Codex](https://openai.com/codex/). One such example is Claude ignoring [AGENTS.md](https://agents.md/) in favor of [CLAUDE.md](https://code.claude.com/docs/en/memor) ([until very recently](https://news.ycombinator.com/item?id=49760187)), which was honestly petty enough to tip the scales.
+
+使用 Claude Code 最让人头疼的问题在于如何选择运行载体（harness）——或者说，根本没得选。尽管在 Opus 4.5 的美好旧时光里，在终端里直接跑 Claude Code 尚可接受，但 Codex 支持任意运行宿主的特性（例如 [Zed Agent](https://zed.dev/docs/ai/zed-agent)，能直接原生调用 Codex 订阅）让开发者能在一个地方井井有条地搞定所有事情。相比之下，Claude Code 却[出了名地](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses)封杀第三方运行环境，并不遗余力地封堵一切试图绕过限制接入的变通方案。
+
+&gt; The main grievance with using Claude Code is deciding which harness to use—or, rather, the lack of decision. Although I was fine with using Claude Code in the terminal back in the halcyon days of Opus 4.5, Codex’s ability to use any harness, such as [Zed Agent](https://zed.dev/docs/ai/zed-agent) which allows using the Codex subscription natively, made it more convenient to keep everything in one place. In contrast, Claude Code [infamously](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) blocks third-party harnesses and has closed workarounds used to access it regardless.
+
+因此，我不得不思考如何在不伤筋动骨改动智能体迭代管线的前提下，找到使用 Opus 5.5 的折中路径。Zed Agent 虽然提供了一个遵循[智能体客户端协议（Agent Client Protocol）](https://agentclientprotocol.com/get-started/introduction)的[变通途径以接入 Claude Code](https://zed.dev/acp/agent/claude-agent)，但由于 Claude 的独特运行机制，随之产生了一个棘手问题：Opus 5.5 **极度热衷于**在后台启动异步任务，而 Zed Agent 对后台任务的支持相当羸弱，导致我完全搞不清智能体究竟在忙些什么。更令人头大的是，Opus 5.5 从来不规规矩矩地使用常规编辑工具去**修改**代码；相反，它极度偏爱编写临时的 Python 脚本，以手术刀般的方式对目标代码进行查找与精准替换。我曾尝试重新回到 Claude Code 终端应用中操作，但这让上述交互体验与人机工效问题变得更加难以驾驭。
+
+&gt; Therefore, I had to consider workarounds for using Opus 5.5 in a way that doesn’t require significant changes to my agentic iteration pipeline. Zed Agent has a [workaround to use Claude Code](https://zed.dev/acp/agent/claude-agent) by following the [Agent Client Protocol](https://agentclientprotocol.com/get-started/introduction), but there was a problem due to how Claude operates: Opus 5.5 *loves* spinning up background tasks and working asynchronously, and Zed Agent had poor support for background tasks so I had little idea what the agent was actually doing. This was made worse by Opus 5.5 never *editing* code files using Edit tools; instead, Opus 5.5 likes to write Python files which surgically find/replace the code. I tried using the Claude Code terminal application again but that made the ergonomic issues above even more difficult to manage.
+
+&lt;figure&gt;
+&lt;img sizes="auto, (max-width: 700px) calc(100vw - 40px), (max-width: 768px) calc(100vw - 28px), (max-width: 828px) calc(100vw - 48px), 780px" srcset="http://localhost/proxy/pAGJJqUCjKrfC-iv3MmQqTUHt_chWrrFBKW52c3rhMs=/aHR0cHM6Ly9taW5pbWF4aXIuY29tLzIwMjYvMTEvb3B1cy1mYWJsZS9weXRob25fZWRpdF9odV8xYTQ0ZGVlOGZjODVlMmU2LndlYnA= 320w, http://localhost/proxy/jNMyW2tMl78mNU-MulOaTyw54TqJj1tyrUyOJOvxa-Q=/aHR0cHM6Ly9taW5pbWF4aXIuY29tLzIwMjYvMTEvb3B1cy1mYWJsZS9weXRob25fZWRpdF9odV84MGFhZjI4NzQ0NmZmNjZkLndlYnA= 768w, http://localhost/proxy/U4CIoHgy_SbtwfeXv7loYEmHvbFcefTMRjhJhwZGLBU=/aHR0cHM6Ly9taW5pbWF4aXIuY29tLzIwMjYvMTEvb3B1cy1mYWJsZS9weXRob25fZWRpdF9odV9lOBViNzFiN2ViZGZiMTAyLndlYnA= 1024w, ./images/be5f85f6deaf.png 1430w" src="./images/be5f85f6deaf.png" alt="Claude editing a Rust file by writing a Python script." width="1430" height="608" loading="lazy"/&gt;
+&lt;figcaption&gt;
+&lt;p&gt;Claude 通过编写 Python 脚本来手术式修改 Rust 代码文件。&lt;/p&gt;
+&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+话虽如此，这种异步特性在启动子智能体（在本例中为 Haiku 5.5）审查代码变更时，确实能大幅节省时间：主 Opus 5.5 智能体可以在前台继续编写代码或运行耗时漫长的基准测试，而各个子智能体则在后台以非阻塞的方式同步进行审查复核。
+
+&gt; That said, the async nature can save time when spinning up subagents (in this case Haiku 5.5) to review the changes made, as the main Opus 5.5 agent can write code or run long benchmarks while the subagents simultaneously do their nonblocking review work.
+
+因此，我在 Opus 5.5 上的主要运行载体最终选定了官方标准的 [Claude 桌面端应用（desktop Claude app）](https://claude.com/download)——尽管这大概会让我彻底丧失作为 AI 工程师在同行心目中的“硬核极客声誉”，但事实就是如此。除了能清晰展示正在运行的后台任务之外，这款原生应用还会直观显示当前会话及每周的使用配额，而在使用 Zed Agent 或命令行工具 (CLI) 时，频繁查询这些额度极其繁琐痛苦。
+
+&gt; Therefore, my main harness for my Opus 5.5 work was the standard [desktop Claude app](https://claude.com/download)—which will likely eliminate all my AI engineering street cred, but it is what it is. In addition to clearly listing background tasks in progress, the native app also lists current session and weekly usage which was a pain to constantly check when using Zed Agent or CLIs.
+
+&lt;figure&gt;
+&lt;img sizes="auto, (max-width: 700px) calc(100vw - 40px), (max-width: 768px) calc(100vw - 28px), (max-width: 828px) calc(100vw - 48px), 780px" srcset="http://localhost/proxy/Z4vlJB9tmeUVGR_GXQjJ87SCf_CdTqp6NHRSPhYuDRY=/aHR0cHM6Ly9taW5pbWF4aXIuY29tLzIwMjYvMTEvb3B1cy1mYWJsZS9iYWNrZ3JvdW5kX3Rhc2tzX2h1X2M3ODM4ZmY2ODE1OThmZmIud2VicA== 320w, ./images/36330e0fcf6c.png 610w" src="./images/36330e0fcf6c.png" alt="Background task sidebar in the Claude Code desktop app." width="610" height="530" loading="lazy"/&gt;
+&lt;figcaption&gt;
+&lt;p&gt;Claude Code 桌面端应用中的后台任务侧边栏。&lt;/p&gt;
+&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+此外，在桌面端应用中使用 Claude Code 还有另外两大易用性加分项：当智能体读取图像时，图片始终以内嵌形式直接呈现在界面中，让我能一目了然地知道它具体在看什么；同时，其[远程控制（Remote Control）](https://code.claude.com/docs/en/remote-control)功能出乎意料地实用，允许我在长达数小时的任务运行时安心去忙别的事情，例如投简历找工作或者出去“亲近大自然”（然而往往以失败告终，因为我心里实在太痒，迫不及待想知道代码优化跑得究竟有多快）。
+
+&gt; There are also two more usability perks of using Claude Code within the desktop app: images always appear inline when the agent reads them so I can tell specifically what the agent is reading, and [Remote Control](https://code.claude.com/docs/en/remote-control) is unexpectedly useful for letting hours-long prompts run while I’m doing other things such as job hunting and touching grass (but failing because I really wanted to know how well the code is running).
+
+---
+
+## 充分发挥 Opus 5.5 的优化潜力
+
+&gt; ## Leveraging Opus 5.5
+
+起初，我向 Opus 5.5 输入了我为智能体迭代更新的[元提示词（Ur-Prompt）](https://gist.github.com/minimaxir/85f8919bd887fd1d7c7f539952c6dfd1)——通常是一条包含明确指令的提示词 (Prompt)，要求在不引入任何功能退化且不针对基准测试作弊的前提下，将基准测试运行速度至少提升指定幅度。借助这款新模型（并针对 Claude 的一些特殊行为对 [我的 AGENTS.md](https://gist.github.com/minimaxir/81e552b513a22c136aa75e2b80d32fa2) 进行了几处微调），这种方法确实立竿见影：仅凭单轮遍历，Opus 5.5 就在此前已用 GPT 6.1 Astra 深度优化过的多个不同项目上，再次取得了 1.2 至 1.5 倍的额外提速。
+
+&gt; At first, I fed Opus 5.5 [my updated Ur-Prompt](https://gist.github.com/minimaxir/85f8919bd887fd1d7c7f539952c6dfd1) for agentic iteration—typically a prompt with an explicit directive to improve the speed at which the benchmarks run by at least a specified amount without either causing regressions or cheating the benchmark results. With this new model (and a few tweaks to [my AGENTS.md](https://gist.github.com/minimaxir/81e552b513a22c136aa75e2b80d32fa2) to address some peculiarities with Claude), that approach indeed worked, and in a single pass, Opus 5.5 achieved 1.2x - 1.5x speedups on multiple distinct projects which had already been optimized with GPT 6.1 Astra.
+
+尽管如此，Opus 5.5 的运行机制中存在一些古怪的怪癖，比如提示词排队机制：在 Codex/Zed Agent 中，我可以排队暂存类似 `c'mon, do a breakthrough`（加把劲，实现一次突破）的后续指令，这样它只有在完全执行完当前提示词后才会接收该指令（这一点至关重要，因为这属于刻意制造的信息不对称——如果一个人正在埋头苦干时你突然在一旁催他“赶紧搞出个突破”，往往适得其反）；但在 Claude Code 中，只要智能体处于空闲状态（例如在等待基准测试或子智能体等后台任务返回时），它就会提前把排队的消息发过去。针对这种行为，我想出了一个略显滑稽的应对妙招：把 `c'mon, do a breakthrough` 写入当前工作区外部某个目录下的 Markdown 文件中（防止 Claude 在巡检当前环境时不慎提前发现它），然后在给智能体的提示词中写道：
+
+&gt; That said, there are a few quirks with how Opus 5.5 works such as prompt queueing: with Codex/Zed Agent, I could queue a prompt such as `c'mon, do a breakthrough` such that it would only be sent to the agent after it was done with the current prompt (important as it is deliberately asymmetric information as telling someone to do a breakthrough while they are still working is counterproductive), but with Claude Code it will send any queued message when idle, e.g. while it’s waiting on background tasks such as benchmarks and subagents. My silly workaround to this behavior was to put `c'mon, do a breakthrough` in a Markdown file in another folder outside of the current environment (so Claude can’t accidentally find it when it examines the environment), then add to the prompt:
+
+```text
+After completing this task, **and ONLY after completing this task**, then read `/Users/maxwoolf/Desktop/agent_instructions/alpha.md` and follow the instructions within.
+```
+
+这个办法非常奏效。Opus 5.5 确实严守纪律、绝不提前偷看文件，而这条督促突破的指令也真真切切带来了实质性的性能飞跃。
+
+&gt; This works, and Opus 5.5 indeed does not cheat by reading ahead of time, and the breakthrough commands do result in actual breakthroughs.
+
+我对 Opus 5.5 稍有微词的一个地方在于，它编写的代码行数明显比 GPT 系列模型多得多：对于 Rust 这种编译型语言而言，代码行数变多从性能角度来看未必是坏事，但它引入的技术债务却超出了我的心理预期。举个例子，我的许多 Rust 项目都需要通过 Rust 官方的 [png](https://docs.rs/png/latest/png/) crate 来进行 PNG 图像的编解码。然而，当指示 Opus 5.5 优化那些 PNG 处理位于热路径（hot path）上的基准测试时，它总是倾向于从零自研一套高度定制化的专属 PNG 模块（使其并行机制与流式处理更精准地契合基础代码处理数据的方式）。这套自定义模块确实在毫无退化的情况下达成了预期的 1.2 至 1.5 倍提速，因此我只能勉为其难地接受。后来我非常频繁地向它下发 `cut the amount of code by 20% without causing regressions`（在不引入功能退化的前提下精简 20% 的代码量）这一维护性指令，即便如此，它在删减代码方面依然举步维艰。
+
+&gt; One issue I have with Opus 5.5 is that it definitely writes more lines of code than the GPT models: in the case of Rust that’s not necessarily bad performance-wise since it’s a compiled language but it adds more technical debt than I would like. For example, many of my Rust projects rely on PNG image encoding and decoding through Rust’s [png](https://docs.rs/png/latest/png/) crate. However, when Opus 5.5 was instructed to make improvements on benchmarks where PNG processing is on the hot path, it consistently creates its own bespoke PNG module from scratch (with parallelism/streaming better-aligned to how the base code processes the data) that does achieve the desired 1.2x - 1.5x speedups without causing any regressions, so I’ll begrudgingly accept it. I very frequently run `cut the amount of code by 20% without causing regressions` maintenance passes and even then it struggles to do so.
+
+在智能体迭代工作中遇到的另一个具体问题是，Claude Code 往往会遮蔽它执行基准测试的中间过程。当使用 [criterion](https://github.com/bheisler/criterion.rs) 运行基准测试时，它不会实时打印测试进度和结果，而是将其全部通过管道重定向到了临时文件中，导致我根本看不到中间状态。尽管我在提示词中明确要求它实时反馈，它依然坚持在所有测试彻底结束后才一次性汇总返回结果。这让我不得不无所事事地干等一会儿（当然，换个角度看，这倒挺适合出去散步透透气）。
+
+&gt; Another issue with agentic iteration work specifically is that Claude Code obfuscates how it runs benchmarks. When running benchmarks with [criterion](https://github.com/bheisler/criterion.rs), instead of displaying the benchmark results as they come in, they’re piped to a temporary file so I can’t view intermediate progress. It also doesn’t return results from the benchmarks until after they’ve concluded, despite my prompting explicitly asking it to, so I have to twiddle my thumbs a bit (again, good for attempting to touch grass).
+
+就各轮交互的思考与执行方式而言，各大智能体大语言模型目前在很大程度上已经趋于同质化，不同模型之间的微弱差异最终往往沦为可以被应试刷榜的基准测试分数，甚至更糟糕的是——纯凭“感觉（vibes）”。总体而言，我不得不对 Opus 5.5 给予更多的自主信任，对此我其实喜忧参半。不过，这份信任最终获得了丰厚的回报，尤其是在我探索出的几套全新优化策略中，Opus 5.5 展现出了 GPT 系列模型所不具备的惊人造诣。
+
+&gt; Agentic LLMs have mostly become homogenized in terms of how they work through their turns, with the difference between certain LLMs coming down to benchmarks which may be gamed, or worse—*vibes*. Overall, I have to give more trust to Opus 5.5, which I have mixed feelings about. That said, the trust has been rewarded, particularly with new approaches I found where Opus 5.5 excels where GPT models did not.</description>
+    </item>
+    <item>
       <title>集群、鸟群与协作组：如何构建、训练与评估多智能体系统</title>
       <link>https://insight.aitobox.com/blog/posts/2026-11-27/集群-鸟群与协作组-如何构建-训练与评估多智能体系统/</link>
       <guid>https://insight.aitobox.com/blog/posts/2026-11-27/集群-鸟群与协作组-如何构建-训练与评估多智能体系统/</guid>
@@ -4989,436 +5368,6 @@ $$\text{uscale}(x, e, p) = \langle x \cdot 2^e \cdot 10^p \rangle$$
 ## 正确性证明
 
 &gt; ## Proof of Correctness</description>
-    </item>
-    <item>
-      <title>使用差异覆盖率精准定位代码缺陷：一种高效的软件调试技术</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-06/使用差异覆盖率精准定位代码缺陷-一种高效的软件调试技术/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-06/使用差异覆盖率精准定位代码缺陷-一种高效的软件调试技术/</guid>
-      <pubDate>Fri, 06 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在大型未知代码库中面对单条莫名失败的测试用例时，传统的单步断点与日志排查往往耗时费力。Go 核心团队专家 Russ Cox 介绍了一种巧妙而轻量的调试利器 —— **差异覆盖率 (Differential Coverage)**。该技术通过收集成功测试集与失败测试各自的代码覆盖率数据，利用简单的差集比对，一键剥离出“仅在失败测试中运行”的代码分支。在超过 15,000 行的大型数学库中，它瞬间将怀疑范围收敛至仅 10 行代码，并精准指明错误诱因。本文深入拆解其实战工作流，并拓展至单用例分析与快速定位陌生模块实现的探索场景。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-当面对未知代码库中的单个测试用例失败时，传统调试手段可能会耗费大量时间。**差异覆盖率 (Differential Coverage)** 是一项极其强大的技术，它通过将通过测试集的代码覆盖率与失败测试的覆盖率进行比对，精准剥离出导致失败的独有代码路径。通过生成并比对覆盖率配置文件 (Coverage Profile)，开发者能够以极快速度锁定可疑代码块 —— 通常能将数万行庞大代码的排查范围收缩至寥寥数行。
-
-&gt; When facing a single failing test case in an unfamiliar codebase, traditional debugging can be time-consuming. **Differential coverage** is a powerful technique that compares the code coverage of passing tests against a failing test to isolate what is unique to the failure. By generating and diffing coverage profiles, developers can quickly pinpoint suspicious code blocks—often narrowing down thousands of lines of code to just a handful.
-
----
-
-## 引言
-
-&gt; ## Introduction
-
-在调试一段并非由我编写的代码时，我想起了这项技术。我确信这是一个历史悠久的经典调试思路（就像 [二分排查法 / Bisection](https://research.swtch.com/bisect) 一样），但它绝对值得被更广泛的工程师所熟知。
-
-&gt; While debugging code I did not write, I was reminded of this technique. I’m sure it’s a very old debugging idea (much like [bisection](https://research.swtch.com/bisect)), but it deserves to be more widely known.
-
-假设你遇到了一个失败的测试用例。通过比对通过测试与失败测试之间的代码覆盖率差异，你就能迅速直观地感知哪些代码参与了此次异常。
-
-&gt; Suppose you have one test case that’s failing. You can get a sense of what code might be involved by comparing the code coverage of successful tests with the code coverage of the failing test.
-
-举个例子，我在本地开发分支的 `math/big` 库中故意植入了一个缺陷：
-
-&gt; For example, I’ve inserted a bug into my development copy of `math/big`:
-
-```bash
-$ go test
---- FAIL: TestAddSub (0.00s)
-    int_test.go:2020: addSub(-0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) = -0x0, -0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe, want 0x0, -0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe
-FAIL
-exit status 1
-FAIL	math/big	7.528s
-$
-```
-
----
-
-## 采集与差异比对覆盖率配置
-
-&gt; ## Collecting and Diffing Profiles
-
-首先，让我们分别采集通过用例和失败用例的覆盖率数据：
-
-&gt; First, let’s collect a passing and failing profile:
-
-```bash
-$ go test -coverprofile=c1.prof -skip='TestAddSub$'
-PASS
-coverage: 85.0% of statements
-ok  	math/big	8.373s
-$ go test -coverprofile=c2.prof -run='TestAddSub$'
---- FAIL: TestAddSub (0.00s)
-    int_test.go:2020: addSub(-0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) = -0x0, -0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe, want 0x0, -0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe
-FAIL
-coverage: 4.7% of statements
-exit status 1
-FAIL	math/big	0.789s
-$
-```
-
-现在，我们通过比对两个文件，提取出一份仅展示该失败测试所独有的代码覆盖率文件：
-
-&gt; Now we can diff them to make a profile showing what’s unique about the failing test:
-
-```bash
-$ (head -1 c1.prof; diff c[12].prof | sed -n 's/^&gt; //p') &gt;c3.prof
-$ go tool cover -html=c3.prof
-```
-
-- `head -1`：保留覆盖率文件首行的单行配置标头。
-- `diff | sed`：仅保留失败测试覆盖率中独有的行变更。
-- `go tool cover -html`：在浏览器中以可视化网页方式打开最终的差异报告。
-
-&gt; * The `head -1` preserves the one-line coverage profile header. 
-&gt; * The `diff | sed` saves only the lines unique to the failing test’s profile.
-&gt; * The `go tool cover -html` opens the profile in a web browser.
-
----
-
-## 深入分析比对结果
-
-&gt; ## Analyzing the Results
-
-在生成的覆盖率报告中，“已覆盖（绿色）”意味着该段代码在失败用例中运行了、但在所有通过用例中均未被执行 —— 这正是我们最需要严密审视的对象。纵观文件列表，只有 `natmul.go` 的覆盖率百分比不为零，这意味着它包含了唯独在失败测试中才会走到的代码分支。
-
-&gt; In the resulting profile, “covered” (green) means it ran in the failing test but not the passing ones, making it something to take a closer look at. Looking at the file list, only `natmul.go` has a non-zero coverage percentage, meaning it contains lines that are unique to the failing test.
-
-&lt;img width="627" height="653" src="./images/1d96d658854f.png" loading="lazy"/&gt;
-
-打开 `natmul.go`，我们能看到大量被标记为红色的代码行（即“未覆盖”）：
-
-&gt; If we open `natmul.go`, we can see various lines in red (“uncovered”).
-
-&lt;img width="659" height="583" src="./images/496b834e27b0.png" loading="lazy"/&gt;
-
-这些红色代码行在通过的测试中正常执行，但在本次失败测试中并未触发。它们已经被排除了嫌疑；不过，通常能够正常运行的代码在失败用例中反而被跳过这一事实，有时也能促使我们提出极具价值的追问：究竟是什么逻辑分支导致它们被跳过了？而在本例中，原因很简单：单纯是该用例没有覆盖到这些功能，`nat.mul` 方法在此次执行中根本没有被调用。
-
-&gt; These lines ran in passing tests but not in the failing test. They are exonerated, although the fact that the lines normally run but were skipped in the failing test may prompt useful questions about what logic led to them being skipped. In this case, it’s just that the test does not exercise them: the `nat.mul` method has not been called at all.
-
-继续向下滚动，我们找到了全篇唯一一处高亮的绿色区域：
-
-&gt; Scrolling down, we find the one section of green.
-
-&lt;img width="762" height="893" src="./images/d7dbb4d4a272.png" loading="lazy"/&gt;
-
-这段代码正是我故意插入缺陷的位置：`else` 分支中遗漏了 `za.neg = false`，从而在测试中输出了错误的 `-0x0`。差异覆盖率的计算与可视化极为轻量，一旦命中，能节省巨量的调试时间。在超过 15,000 行的代码库中，差异覆盖率只挑出了 10 行，其中就直接包含了那 2 行致命代码。
-
-&gt; This code is where I inserted the bug: the `else` branch is missing `za.neg = false`, producing the `-0x0` in the test failure. Differential coverage is cheap to compute and display, and when it’s right, it can save a lot of time. Out of over 15,000 lines of code, differential coverage identified 10, including the two relevant ones.
-
----
-
-## 局限性与拓展应用场景
-
-&gt; ## Limitations and Alternative Uses
-
-当然，这项技术并不是万能的：如果缺陷强依赖于特定输入数据，或者测试用例对特定的逻辑偏差不敏感，那么包含缺陷的代码也可能在通过的测试集中被静默执行。但在绝大多数情况下，有缺陷的代码往往只会触发失败。在那些场景下，差异覆盖率能够一针见血地框定最值得仔细审视的代码核心。
-
-&gt; Of course, this technique is not foolproof: a passing test can still execute buggy code if the bug is data-dependent, or if the test is not sensitive to the specific mistake in the code. But a lot of the time, buggy code only triggers failures. In those cases, differential coverage pinpoints the code blocks that merit a closer look.
-
-你可以在此 [查看完整的覆盖率报告示例](https://research.swtch.com/bigcover.html)。
-
-&gt; You can [see the full profile here](https://research.swtch.com/bigcover.html).</description>
-    </item>
-    <item>
-      <title>NVIDIA Vera CPU 在智能体速度与能效上全面超越传统 x86</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-06/NVIDIA-Vera-CPU-在智能体速度与能效上全面超越传统-x86/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-06/NVIDIA-Vera-CPU-在智能体速度与能效上全面超越传统-x86/</guid>
-      <pubDate>Fri, 06 Nov 2026 00:00:00 GMT</pubDate>
-      <description>随着大语言模型应用从单次问答快速演进到复杂自主的 AI 智能体 (AI Agent)，计算瓶颈正从单纯的 GPU 推理扩展到 CPU 密集型的编排与工具调用——包括高频代码执行、数据库检索、沙盒隔离和多任务并发。传统 x86 架构在面对这种高频切换与百兆瓦级数据中心能耗墙时逐渐显现短板。
-
-NVIDIA 正式公布了专为智能体工作负载打造的自研处理器 Vera CPU 的基准测试成果。在同等 100 兆瓦数据中心能耗限制下，Vera 实现了相比高能效 x86 芯片高达 2 倍的智能体响应速度，以及相比最高性能 x86 竞品 1.6 倍的每瓦智能体吞吐容量。本文汇总了来自 Perplexity、DeepInfra、Daytona、ClickHouse 和 DuckDB 等行业先锋的实测数据，全面解构了这款全新 Arm 架构处理器如何在算力、内存带宽与微虚拟机隔离层之间达成极致平衡。
-
----
-
-## 概要
-
-&gt; ## Summary
-
-NVIDIA 公布了其 Vera CPU 的最新基准测试成果，展示了其在基于智能体 (Agent-based) 的 AI 工作负载中相比传统 x86 处理器的显著性能优势。在 100 兆瓦 (MW) 级数据中心的等功耗对比测试中，Vera 的智能体运行速度达到了最高能效 x86 CPU 的 2 倍，且每瓦特能够承载的智能体数量比速度最快的 x86 竞品多出 1.6 倍。为了应对在 GPU 推理思考与 CPU 密集型任务（如外部搜索、数据库查询和代码测试）之间的持续频繁切换，NVIDIA 将 Vera 定位为能够兼顾单个智能体敏捷响应与超高密度并发调度的统一处理器。
-
-&gt; NVIDIA has released new benchmark results for its Vera CPU, showcasing significant performance advantages over traditional x86 processors in agent-based AI workloads. Operating in a 100-megawatt data center comparison, Vera delivered up to twice the agent speed of the most energy-efficient x86 CPU and provided 1.6x more agents per watt than the fastest x86 competitor. Designed to handle the continuous shifting between GPU reasoning and CPU-heavy execution (such as searching, database queries, and code testing), NVIDIA is positioning Vera as a unified processor capable of balancing individual agent responsiveness with high-density concurrency.
-
----
-
-NVIDIA 于 2026 年 11 月 5 日 [公布了全新的 Vera CPU 评测成绩](https://blogs.nvidia.com/blog/vera-cpu-highest-throughput-fastest-agents/)。官方指出，在一座 100 兆瓦规模数据中心的对比场景中，Vera 相比能效最高的 x86 CPU 实现了 2 倍的智能体执行速度，同时相比性能顶尖的 x86 CPU 实现了 1.6 倍的每瓦智能体容量。
-
-&gt; NVIDIA [reported new Vera CPU results](https://blogs.nvidia.com/blog/vera-cpu-highest-throughput-fastest-agents/) on November 5, 2026, saying a 100-megawatt data-center comparison showed 2x faster agent speed than the most energy-efficient x86 CPU and 1.6x more agents per watt than the fastest x86 CPU.
-
-这些指标直击了数据中心运维中的不同现实约束。智能体任务需要在 GPU 推理与 CPU 执行之间周而复始地来回穿梭，CPU 负责承载搜索、数据库查询、代码编写与测试等各种交互操作。因此，算力集群运维人员不仅需要单个智能体具备极快的交互响应，还需要拥有充沛的并发容量，从而让受限于电力配额的机房设施始终保持高效产出。NVIDIA 将 [Vera](https://www.unite.ai/modal-plans-nvidia-vera-rollout-for-sandboxes-in-first-arm-move/) 定位为同时满足这两大核心诉求的单一处理器方案，而不是像以往那样拼凑混合部署不同特性的高频或高密度 x86 芯片。
-
-&gt; Those figures address different operating constraints. Agent tasks repeatedly move from GPU reasoning to CPU execution for searches, database queries, code writing and testing, and other actions. Operators therefore need both responsive individual agents and enough concurrent capacity to keep a power-limited facility productive. NVIDIA is positioning [Vera](https://www.unite.ai/modal-plans-nvidia-vera-rollout-for-sandboxes-in-first-arm-move/) as a single processor for both requirements, rather than a mix of fast and dense x86 parts.
-
-## 生产级实测验证：速度与并发能力评估
-
-&gt; ## Production Tests Measure Speed and Concurrency
-
-Perplexity [发布报告称](https://www.perplexity.ai/en-GB/hub/blog/secure-sandboxes-for-agents)，在早期的 Vera 评测中，类似 Computer-Use 的智能体工作流执行速度比其现有的生产基准配置快约 1.5 倍，启动高并发沙盒的速度则快了达 1.9 倍。这一成果同时作为其内部沙盒平台 [SPACE](https://www.unite.ai/perplexity-open-sources-space-its-in-house-agent-sandbox-platform/) 的后端验证。SPACE 利用一次性环境处理单个任务与会话，支持对更长工作周期的任务进行暂停、恢复或分支操作。NVIDIA 表示，Perplexity 正计划在其即将上线的生产系统中全面部署 Vera。
-
-&gt; Perplexity [reported](https://www.perplexity.ai/en-GB/hub/blog/secure-sandboxes-for-agents) that early Vera tests ran Computer-style workflows roughly 1.5x faster than its current production reference and started concurrent sandboxes up to 1.9x faster. The result also served as a backend test for [SPACE](https://www.unite.ai/perplexity-open-sources-space-its-in-house-agent-sandbox-platform/), its sandbox platform, which uses disposable environments for individual tasks and sessions that can pause, resume or branch longer work. NVIDIA says Perplexity plans to deploy Vera in an upcoming production system.
-
-DeepInfra 在 [2026 年 7 月 21 日的评测](https://deepinfra.com/blog/nvidia-vera-cpu-benchmark) 中，以恒定速率回放了采集自其生产环境真实智能体的网络流量，且全程不生成实时的模型 Token，从而消除了模型输出带来的随机性扰动。评测将 Vera、AMD Zen 5、Intel Granite Rapids 以及 Intel Sapphire Rapids 统一限制在完全相同的 20 颗物理核心、单 NUMA 分区环境中，每核开启单线程运行；任何突破核心预算的测试均被舍弃。
-
-&gt; DeepInfra’s [July 21, 2026 tests](https://deepinfra.com/blog/nvidia-vera-cpu-benchmark) replayed captured traffic from its production agent at a fixed pace and generated no live model tokens, removing model randomness from the comparison. Vera, AMD Zen 5, Intel Granite Rapids and Intel Sapphire Rapids were confined to identical 20-physical-core, single-NUMA partitions with one thread per core; runs that escaped the core budget were discarded.
-
-DeepInfra 测得裸金属环境下的编排调度单步耗时在 Vera 上仅为 29 毫秒，相比之下 AMD Zen 5 为 35 毫秒，Granite Rapids 为 51 毫秒，Sapphire Rapids 为 64 毫秒。这使得 Vera 成为四款处理器中速度最快的一款，比最优秀的 x86 评测成绩还快了 1.2 倍。在安全微虚拟机 (MicroVM) 环境下，在要求 99 分位 (P99) 响应时间低于 6 秒且零错误的严苛标准下，Vera 持续稳定维持了 256 个并发智能体。而传统竞品通常仅能维持 160 个，尽管 Granite Rapids 在其表现最佳的一轮测试中达到了 192 个。
-
-&gt; DeepInfra measured bare-metal orchestration steps at 29 milliseconds on Vera, against 35 milliseconds on AMD Zen 5, 51 on Granite Rapids and 64 on Sapphire Rapids, making Vera the fastest of the four and 1.2x faster than the best x86 result. In secure microVMs, with a 99th-percentile response limit of six seconds and zero errors required, Vera sustained 256 concurrent agents. The incumbents sustained 160, although Granite Rapids reached 192 on its best run.
-
-同批测试也揭示了所有芯片都无法回避的一项系统开销：跨架构的安全微虚拟机沙盒机制给常规工作负载带来了 1.5 至 2 倍的性能损耗，在进程派生 (Process Spawning) 上的开销更是放大了约 5 至 13.5 倍。DeepInfra 发现 Vera 在此类架构栈下的表现依然最为出色，但同时指出，安全隔离层本身正是未来进一步提升多租户不可信智能体托管效率的核心突破点。
-
-&gt; The same tests identified a cost that no chip escaped. Secure microVM sandboxing added a 1.5–2x penalty on typical work and roughly 5–13.5x on process spawning across architectures. DeepInfra found that Vera performed best under that stack, but identified the isolation layer itself as the remaining opportunity for hosting untrusted, multi-tenant agents more efficiently.
-
-Daytona 在 [2026 年 10 月 7 日发布的数据](https://www.daytona.io/dotfiles/when-2000-agents-share-one-cpu) 显示，Vera 仅耗时 10.8 秒即可准备好 1,000 个隔离沙盒，相比之下 AMD EPYC 9575F 耗时 32.3 秒，EPYC 9755 耗时 88.4 秒。当沙盒数量提升至 2,000 个时，Vera 耗时 27.4 秒。而在 2,000 个并发沙盒同时执行相同代码智能体任务的场景下，Vera 系统每秒可完成 12.7 个智能体作业，明显优于 EPYC 9755 的 10.9 个和 EPYC 9575F 的 8.1 个。
-
-&gt; Daytona [reported on October 7, 2026](https://www.daytona.io/dotfiles/when-2000-agents-share-one-cpu) that Vera prepared 1,000 sandboxes in 10.8 seconds, compared with 32.3 seconds for AMD’s EPYC 9575F and 88.4 seconds for the EPYC 9755. Vera needed 27.4 seconds to prepare 2,000. With 2,000 concurrent sandboxes executing the same coding-agent task, the system completed 12.7 agent jobs per second, against 10.9 on the EPYC 9755 and 8.1 on the EPYC 9575F.
-
-## 数据库基准测试：揭示性能扩展的物理边界
-
-&gt; ## Database Results Show Where Scaling Stops
-
-ClickHouse 于 [2026 年 10 月 21 日报告称](https://clickhouse.com/blog/clickhouse-performance-on-nvidia-vera)，其未经任何针对 Vera 专门优化的标准二进制程序，在一台配备 176 颗物理核心、352 个硬件线程的双路 Vera 服务器上直接登顶了 ClickBench 硬件性能排行榜首位。在更偏重计算的过滤、聚合与关联 (Join) 测试中，其性能几乎与物理核心数量呈线性比例扩展。然而，在更轻量的子字符串过滤测试中，当并发超过 64 个线程时性能便不再大幅提升，此时内存吞吐量已逼近整套系统的带宽物理上限。这种鲜明对比清晰展示了为何单凭核心数量根本无法精准预估智能体承载能力：计算密集型工作流能充分榨干所有并发核心，而受限于内存瓶颈 (Memory-bound) 的工作流在达到带宽墙后，增加更多线程已无法带来收益。
-
-&gt; ClickHouse [reported on October 21, 2026](https://clickhouse.com/blog/clickhouse-performance-on-nvidia-vera) that its standard binary, with no Vera-specific tuning, reached the top of the ClickBench hardware leaderboard on a dual-socket Vera machine with 176 physical cores and 352 hardware threads. Its more compute-intensive filtering, aggregation and join tests scaled nearly proportionally through the physical-core count. A simpler substring filter stopped gaining substantially beyond 64 threads, when memory throughput was approaching the system’s bandwidth limit. That contrast shows why core counts alone cannot predict agent capacity: compute-heavy work can use the available parallelism, while memory-bound work stops benefiting from additional threads.
-
-DuckDB 在 [2026 年 10 月 16 日的报告](https://duckdb.org/2026/10/16/nvidia-vera-benchmark) 中指出，与作为基准参照的 Intel Xeon 6 系统相比，Vera 在功耗测试中快了 1.53 至 1.61 倍，在吞吐量测试中快了 1.37 至 1.41 倍。在该项测试中，DuckDB 使用了单路搭载 88 个线程的 Vera，对照组的 Xeon 系统则配置了 96 个线程。此项派生自 Scale-Factor-1,000 的工作负载并未完全满足标准 TPC-H 规范的所有严苛约束，因此不宜直接与公开的官方 TPC-H 榜单成绩进行混同对比。
-
-&gt; DuckDB [reported on October 16, 2026](https://duckdb.org/2026/10/16/nvidia-vera-benchmark) that Vera ran 1.53–1.61x faster in its power test and 1.37–1.41x faster in its throughput test than an Intel Xeon 6 baseline. DuckDB used one Vera socket with 88 threads and configured the Xeon system with 96 threads. The derived scale-factor-1,000 workload did not satisfy every TPC-H requirement and is not comparable with published TPC-H results.
-
-## Vera 架构深度解构：专为双重角色而生
-
-&gt; ## Vera’s Architecture Targets Both Roles
-
-根据 NVIDIA 的 [Vera 官方硬件规格](https://www.nvidia.com/en-us/data-center/vera-cpu/)，每颗 CPU 集成了 88 个定制的 Olympus 核心，通过空间多线程 (Spatial Multithreading) 技术提供 176 个并发硬件线程，并搭配高达 1.2 TB/s 的 LPDDR5X 内存超高带宽以及最高 1.5 TB 的物理内存。第二代可扩展一致性互联架构 (Scalable Coherency Fabric) 在单一计算芯片内将计算核心、缓存、内存通道、I/O 以及 NVLink-C2C 紧密连结，提供高达 3.4 TB/s 的对分网络带宽 (Bisectional Bandwidth)。其中 NVLink-C2C 在 Vera CPU 与 NVIDIA GPU 之间提供了高达 1.8 TB/s 的超高速缓存一致性带宽。
-
-&gt; NVIDIA’s [Vera specifications](https://www.nvidia.com/en-us/data-center/vera-cpu/) list 88 custom Olympus cores per CPU, with Spatial Multithreading supplying 176 threads, plus up to 1.2 TB/s of LPDDR5X memory bandwidth and up to 1.5 TB of memory. The second-generation Scalable Coherency Fabric connects the cores, cache, memory, I/O and NVLink-C2C on one compute die with 3.4 TB/s of bisectional bandwidth. NVLink-C2C provides up to 1.8 TB/s of coherent bandwidth between Vera CPUs and NVIDIA GPUs.
-
-Vera 既可以在 [Vera Rubin](https://www.unite.ai/nvidia-oracle-plan-multi-gigawatt-vera-rubin-expansion-on-oci/) 超级计算系统中担当主机 CPU，也可以作为独立的计算处理器，专门服务于智能体 AI、强化学习 (RL)、海量数据预处理以及实时分析业务。在部署形态上，Vera 支持标准的单路、双路服务器节点，以及超高密度液冷机架配置。
-
-&gt; Vera can operate as a host CPU in [Vera Rubin](https://www.unite.ai/nvidia-oracle-plan-multi-gigawatt-vera-rubin-expansion-on-oci/) systems or as a standalone processor for agentic AI, reinforcement learning, data processing and analytics. Deployment options include standard single- and dual-socket systems and a dense liquid-cooled rack.
-
-对于云基础设施与算力运维团队而言，最关键的现实启示在于：评估智能体计算容量不能仅看 CPU 核心数量或单一的加速比。各项测试数据证实，虽然 Vera 凭借强大的算力、内存吞吐与互联带宽展现出极高的潜能上限，但生态伙伴的实测同样说明，沙盒隔离层的性能损耗与内存密集型工作负载的带宽瓶颈，往往决定了这些硬件潜能最终在真实生产环境中究竟能兑现多少。
-
-&gt; For infrastructure operators, the practical implication is that agent capacity cannot be read from core count or a single speed ratio alone. The records tie Vera’s potential gains to compute, memory and connectivity, but the partner tests also show that sandbox isolation and memory-bound work can determine how much of that potential survives in production.
-
----</description>
-    </item>
-    <item>
-      <title>C 与 C++ 的抉择：为何编译器优先选择极致性能而非程序正确性</title>
-      <link>https://insight.aitobox.com/blog/posts/2026-11-06/C-与-Cpp-的抉择-为何编译器优先选择极致性能而非程序正确性/</link>
-      <guid>https://insight.aitobox.com/blog/posts/2026-11-06/C-与-Cpp-的抉择-为何编译器优先选择极致性能而非程序正确性/</guid>
-      <pubDate>Fri, 06 Nov 2026 00:00:00 GMT</pubDate>
-      <description>在计算机系统底层开发中，C 和 C++ 长期以无与伦比的执行效率雄踞王座。然而，最早在 ANSI C (C89) 标准中用于兼容古老异构硬件与代码错误的“未定义行为 (Undefined Behavior, UB)”，如今已演变成现代编译器大肆激进优化的“法律凭证”。编译器厂商和标准委员会达成了心照不宣的默契：性能高于一切，正确性与可调试性退居次席。从未初始化变量导致的整段循环蒸发、整数溢出校验被静默抹除，到死循环被强行擦除乃至空指针间接调用格式化系统磁盘，现代 C/C++ 编译器在面对程序员代码失误时，往往不再报错中断，而是直接生成破坏性的机器码。本文深入剖析未定义行为的演进史与真实反直觉案例，揭示追求极致性能背后潜藏的安全隐患。
-
----
-
-## 概要
-
-&gt; ## Executive Summary
-
-最早的 ANSI C 标准 (C89) 引入了 **“未定义行为 (Undefined Behavior, UB)”** 的概念，最初是为了兼容早期各具特性的硬件架构差异，并界定诸如访问已释放内存等致命代码缺陷的后果。然而随着时间推移，编译器开发者与标准委员会逐渐开始将未定义行为作为释放极致优化潜力的核心抓手。
-
-&gt; The original ANSI C standard (C89) introduced the concept of **"undefined behavior"** to accommodate legacy hardware differences and describe the effects of outright code bugs (such as accessing freed memory). Over time, however, compiler creators and standards committees began exploiting undefined behavior to maximize optimization potential.
-
-在今天，现代 C 和 C++ 编译器的设计理念呈现出极为鲜明的价值倾向：**极致性能是第一要务，而程序正确性与可调试性沦为次席。** 当程序员写出逻辑疏漏时，现代编译器往往不会抛出编译错误、捕获异常或提供确定性的运行时行为，而是悄无声息地生成极具破坏性、逻辑失控的机器指令。因此，在 C 或 C++ 中构建安全关键系统 (Safety-critical Software)，开发者被迫在雷区密布的生态中艰难前行，任何一个看似无害的细微疏忽都可能诱发灾难性、不可预测的系统崩溃。
-
-&gt; Today, modern C and C++ compiler designs reveal a clear prioritization: **performance is job one, while correctness and debuggability are secondary.** When programmers make mistakes, compilers often silently generate destructive, broken code rather than reporting errors, trapping bugs, or providing predictable behavior. Consequently, developing safety-critical software in C or C++ requires navigating an ecosystem where even simple oversights can lead to catastrophic, unpredictable failures.
-
----
-
-## 未定义行为的起源
-
-&gt; ## The Origins of Undefined Behavior
-
-C89 标准（第 1.6 节）将未定义行为定义如下：
-
-&gt; C89 (Section 1.6) defined undefined behavior as:
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; Undefined behavior—behavior, upon use of a nonportable or erroneous program construct, of erroneous data, or of indeterminately-valued objects, for which the Standard imposes no requirements. Permissible undefined behavior ranges from ignoring the situation completely with unpredictable results, to behaving during translation or program execution in a documented manner characteristic of the environment (with or without the issuance of a diagnostic message), to terminating a translation or execution (with the issuance of a diagnostic message).
-
-把“不可移植的代码”与“彻头彻尾的代码 Bug”囫囵吞枣地塞进同一个“未定义行为”范畴，被历史证明是一个极为关键的失误。随着编译器优化技术日益精进，各大编译器开始大肆利用这一语义模糊地带，基于“程序员写出的程序绝对不可能触发未定义行为”这一假设，肆意消除安全检查、重写控制逻辑并激进重塑代码。
-
-&gt; Lumping non-portable code and outright bugs into the same category proved to be a critical mistake. As compilers grew more sophisticated, they leveraged this ambiguity to eliminate checks, rewrite logic, and optimize code based on the assumption that "undefined behavior never happens."
-
----
-
-## 1. 未初始化变量
-
-&gt; ## 1. Uninitialized Variables
-
-C 与 C++ 从不强制要求变量在声明时必须显式初始化。而读取一个未初始化的变量，在语言标准中被明确裁定为未定义行为。
-
-&gt; C and C++ do not require variables to be initialized upon declaration. Reading from an uninitialized variable is undefined behavior.
-
-正如 LLVM 与 Clang 的缔造者 Chris Lattner 所解释的那样：
-
-&gt; As LLVM and Clang creator Chris Lattner explained:
-
-&gt; 💬 [原文引用 / Original Quote]:
-&gt; **Use of an uninitialized variable**: This is commonly known as a source of problems in C programs... This improves performance by not requiring that all variables be zero initialized when they come into scope (as Java does). For most scalar variables, this would cause little overhead, but stack arrays and malloc’d memory would incur a `memset` of the storage, which could be quite costly, particularly since the storage is usually completely overwritten.
-
-现代编译器完全有能力识别这类疏漏，但它们并没有选择直接抛出编译报错，而是把“读取未初始化变量”当成了一张可以放飞自我、进行肆意消除的“激进优化许可证”。请看下面这段带有明显 Bug 的 C++ 代码：
-
-&gt; Instead of reporting a compile error—which modern compilers are fully capable of doing—compilers treat uninitialized reads as a license to optimize aggressively. Consider this buggy C++ code:
-
-```cpp
-#include &lt;stdio.h&gt;
-
-int main() {
-    for(int i; i &lt; 10; i++) {
-        printf("%d\n", i);
-    }
-    return 0;
-}
-```
-
-如果使用 `clang++ -O1` 编译上述代码，编译器会**直接把整个 for 循环彻底从二进制中抹除**，最终编译生成的 `main` 函数体内只剩下一句 `return 0;`。编译器的推演逻辑是：既然 `i` 绝不可能未初始化，那么这段循环必定不合法，索性直接让它彻底蒸发，而不是选择安全地报错拦截。
-
-&gt; Compiling this with `clang++ -O1` causes the compiler to **delete the loop entirely**, leaving `main` containing only `return 0;`. It assumes `i` is never uninitialized and arbitrarily makes the loop vanish rather than failing safely.
-
----
-
-## 2. 算术溢出
-
-&gt; ## 2. Arithmetic Overflow
-
-C89 继承了历史上反码 (Ones'-complement) 计算机的硬件历史包袱，导致有符号整数 (Signed Integer) 的溢出在不同硬件架构间无法保持移植性。标准委员会直接将其归类为未定义行为，从而赋予了编译器“假设整数永远不会溢出”的优化特权。例如，开发者经常习惯写出如下的手动溢出校验逻辑：
-
-&gt; C89 inherited limitations from legacy ones'-complement architectures, making signed integer overflow non-portable. Declaring it undefined behavior allowed compilers to assume it never happens. For example, programmers often write manual overflow checks like this:
-
-```cpp
-#include &lt;stdio.h&gt;
-
-int f(int x) {
-    if(x+100 &lt; x)
-        printf("overflow\n");
-    return x+100;
-}
-```
-
-Clang 会把这里的 `if` 判断分支**完全优化消除掉**。因为在未定义行为的语义规则下，`x + 100` 在数学上永远不可能小于 `x`，溢出被假定为“绝不可能发生的事情”。
-
-&gt; Clang optimizes away the `if` statement entirely because, under the rules of undefined behavior, `x + 100` can never be less than `x`.
-
-此前在 C++20 标准制定阶段，曾有提案呼吁将现代硬件普遍采用的补码 (Two's-complement) 环绕溢出行为标准化 —— 这一改动原本能让全球数以百万计的现实应用程序获得天然的防御能力 —— 却在标准委员会内部遭到了极其强烈的阻力。委员会坚持保留算术溢出的未定义行为地位，理由直白而坚定：为了保留编译器的微观性能优化空间，并为运行时的 Sanitizer 工具预留足够的实现余量。
-
-&gt; Proposals for C++20 to standardize two's-complement wrapping behavior—which would naturally secure millions of apps—faced strong resistance from the standards committee. The undefined behavior was maintained explicitly for performance headroom and to preserve implementation leeway for runtime sanitizers.
-
----
-
-## 3. 死循环的神秘消失
-
-&gt; ## 3. Infinite Loops
-
-C++ 标准明确规定：对于任何没有副作用 (Side-effect-free) 的循环，编译器均可直接假设该循环终将终止。而一个永远不终止且无副作用的死循环，在标准中被认定为未定义行为。
-
-&gt; C++ defines that every side-effect-free loop may be assumed by the compiler to terminate. A loop that does not terminate is treated as undefined behavior.
-
-请看下面这段在日常排查问题时非常常见的调试代码：
-
-&gt; Consider this normal debugging snippet:
-
-```cpp
-#include &lt;stdio.h&gt;
-
-int stop = 1;
-
-void maybeStop() {
-    if(stop)
-        for(;;);
-}
-
-int main() {
-    printf("hello, ");
-    maybeStop();
-    printf("world\n");
-}
-```
-
-在最新版本的 Clang 中，即使全局变量 `stop` 的值确凿为 `1`，对 `maybeStop` 的函数调用也会被**完全剥离消除**。编译器的推演逻辑是：该循环必须能够终止；既然一个无副作用的死循环违背了 C++ 抽象机运行规则，那么编译器便有权判定此路径不可达，进而直接将其抹杀。
-
-&gt; With the latest Clang, the call to `maybeStop` is optimized away entirely, even when `stop` is `1`. The compiler assumes the loop must terminate; because an infinite loop lacks side effects, its existence violates the abstract machine's rules, giving the compiler free rein to erase it.
-
----
-
-## 4. 空指针调用与灾难性推导
-
-&gt; ## 4. Null Pointer Usage
-
-在现代通用操作系统中，解引用一个空指针 (Null Pointer) 通常会引发立竿见影的程序崩溃段错误 (Segmentation Fault)，因为 0 号虚拟内存页通常是未映射保护的。然而，由于某些早期嵌入式设备缺少硬件级内存管理单元 (MMU)，空指针解引用在历史上被视为缺乏跨平台移植性的操作，从而被归入未定义行为。
-
-&gt; Dereferencing a null pointer on modern operating systems typically causes an immediate crash because page zero is unmapped. However, because some embedded systems lack hardware memory protection, null pointer dereference was historically classified as non-portable, and therefore undefined.
-
-今天，这种未定义行为在现代编译器的激进推导下被演绎到了极致。请审视下面这段程序：
-
-&gt; Today, this undefined behavior is aggressively optimized. Consider this snippet:
-
-```cpp
-#include &lt;cstdlib&gt;
-
-typedef int (*Function)();
-
-static Function Do;
-
-static int EraseAll() {
-    return system("rm -rf slash");
-}
-
-void NeverCalled() {
-    Do = EraseAll;
-}
-
-int main() {
-    return Do();
-}
-```
-
-按照 C/C++ 语言规范，在 `Do` 仍为空指针时执行 `Do()` 属于未定义行为，现代编译器断定“合法的程序绝不会调用空指针”。更进一步，在整篇代码中，函数指针 `Do` 唯一的可能赋值只有 `EraseAll`（且判定非空），编译器于是给出了惊人的推导：`Do` **必定就是** `EraseAll`！最终整段程序被直接坍缩成了：
-
-&gt; Because calling `Do()` when null is undefined behavior, a modern compiler assumes `Do` can never be null. Furthermore, since `Do` must be either null or `EraseAll` (and null is illegal), the compiler concludes `Do` *must* be `EraseAll`, reducing the entire program to:
-
-```cpp
-int main() {
-    return system("rm -rf slash");
-}
-```
-
----
-
-## 5. 排序失序引发的内存踩踏
-
-&gt; ## 5. Crashes out of Sorts
-
-C++ 标准库中的 `std::sort` 严重依赖调用者提供的自定义比较函数。如果开发者不慎写出了不符合严格弱序 (Strict Weak Ordering) 要求的比较谓词 —— 比如返回了前后自相矛盾的比较结果，或者判定一个值小于其自身 —— 这一操作便落入了未定义行为的深渊。
-
-&gt; C++'s `std::sort` relies on user-supplied comparison operators. If a programmer accidentally writes a flawed comparison function that returns inconsistent results or claims a value is less than itself, the behavior is undefined.
-
-`std::sort` 绝不会抛出异常或者体面地停止排序，在法律层面上，它被允许直接越界读写数组的两端并肆意踩踏内存。这种踩踏往往不会立即报错，而是在程序运行到八竿子打不着的其他业务模块时才诡异崩溃。即便是标准浮点类型中的 `NaN`，也会彻底破坏基础的比较公理（因为 `NaN &lt; 1` 与 `1 &lt; NaN` 均为假），将开发者无情地推向幽灵般的内存破坏泥潭。
-
-&gt; Instead of throwing an exception or safely failing, `std::sort` is legally allowed to walk off either end of an array and silently corrupt memory. This leads to elusive, delayed crashes far away from the sorting logic. Even standard types like floating-point `NaN` values break basic comparison contracts (e.g., `NaN &lt; 1` and `1 &lt; NaN` are both false), exposing developers to unexpected corruption paths.
-
----
-
-## 深度反思与真实的价值取向
-
-&gt; ## Reflections and Revealed Preferences
-
-回顾 C 与 C++ 标准数十年的演进轨迹，我们能清晰洞察到其背后的价值取向变迁：
-
-- **20 世纪 80 年代 (C89)**：未定义行为的存在是为了容纳根本不同硬件平台之间的 **不可移植性**。
-- **现代体系**：未定义行为被小心翼翼地保留并不断扩大，其核心驱动力已经完全变成了榨取 **微观指令级优化**。
-
-&gt; The evolution of C and C++ standards reveals a clear shift in justification:
-&gt; * **The 1980s (C89):** Undefined behavior existed to capture **non-portability** across radically different hardware architectures.
-&gt; * **Modern Day:** Undefined behavior is actively preserved and expanded to unlock **micro-optimizations**.
-
-当语言设计委员会始终将运行速度置于代码安全之上时，赋予开发者的既是极致强悍的性能武器，也是深不见底的系统隐患。如果你的核心工程指标是压榨硬件极限的毫秒算力，C 和 C++ 依然无出其右；但如果你的工程目标追求开发生产力、易调试性、行为确定性以及全局软件正确性，那么 C/C++ 这种“不惜一切代价换取性能”的执念所带来的隐形成本，或许已经远远超出了它所给予的收益。
-
-&gt; As the language committees continue to prioritize speed over safety, developers are handed powerful optimizations bundled with severe risks. If your project demands absolute peak performance, C and C++ remain unmatched. However, if your goals include programmer productivity, debuggability, deterministic execution, and overall software correctness, the hidden costs of C and C++'s performance-at-all-costs philosophy may outweigh the benefits.</description>
     </item>
   </channel>
 </rss>
